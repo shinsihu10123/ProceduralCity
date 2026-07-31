@@ -32,6 +32,138 @@ const projection = new Float32Array(16)
 const view = new Float32Array(16)
 const viewProjection = new Float32Array(16)
 
+const transportBuffer = gl.createBuffer()
+let transportAgents = []
+let transportCity = null
+const TRANSPORT_COLORS = [
+  [0.78, 0.82, 0.84], [0.19, 0.42, 0.66], [0.72, 0.18, 0.14],
+  [0.16, 0.56, 0.42], [0.86, 0.63, 0.16], [0.31, 0.32, 0.35],
+]
+
+function bindGeometryBuffer(buffer) {
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+  const stride = 9 * Float32Array.BYTES_PER_ELEMENT
+  gl.enableVertexAttribArray(locations.position)
+  gl.vertexAttribPointer(locations.position, 3, gl.FLOAT, false, stride, 0)
+  gl.enableVertexAttribArray(locations.normal)
+  gl.vertexAttribPointer(locations.normal, 3, gl.FLOAT, false, stride, 3 * Float32Array.BYTES_PER_ELEMENT)
+  gl.enableVertexAttribArray(locations.color)
+  gl.vertexAttribPointer(locations.color, 3, gl.FLOAT, false, stride, 6 * Float32Array.BYTES_PER_ELEMENT)
+}
+
+function resetNativeTransport(city) {
+  transportAgents = []
+  transportCity = city
+  if (!city) return
+  const random = mulberry32(hashString(`${city.settings.seed}:native-transport`))
+  const usableRoads = city.roads.filter((road) => road.class !== 'local')
+  const count = Math.min(110, Math.max(42, Math.round(city.metrics.roadLengthKm * 4.8)))
+  for (let index = 0; index < count; index += 1) {
+    const road = usableRoads[Math.floor(random() * usableRoads.length)] || city.roads[index % city.roads.length]
+    if (!road) continue
+    const roll = random()
+    transportAgents.push({
+      kind: roll < 0.10 ? 'bus' : roll < 0.18 ? 'truck' : 'car',
+      road,
+      progress: random(),
+      speed: 4.5 + random() * 8.5,
+      direction: random() < 0.5 ? -1 : 1,
+      lane: (random() < 0.5 ? -1 : 1) * (road.class === 'arterial' ? 5.8 : 2.5),
+      color: TRANSPORT_COLORS[Math.floor(random() * TRANSPORT_COLORS.length)],
+    })
+  }
+  const station = city.infrastructure.stations[Math.floor(city.infrastructure.stations.length / 2)]
+  for (let index = 0; index < 3; index += 1) {
+    transportAgents.push({
+      kind: 'train',
+      progress: index / 3,
+      speed: 15 + index * 1.6,
+      direction: index % 2 ? -1 : 1,
+      x: city.centers.cbd.x,
+      y: station ? station.y + 0.62 : 2.2,
+      extent: city.extent * 0.92,
+      color: index % 2 ? [0.18, 0.63, 0.79] : [0.82, 0.36, 0.18],
+    })
+  }
+  document.body.classList.add('native-webgl-transport')
+  window.dispatchEvent(new CustomEvent('procedural-city:native-transport-ready', {
+    detail: { agents: transportAgents.length, mode: 'webgl' },
+  }))
+}
+
+function pushWheel(vertices, x, y, z, rotation, along, across) {
+  const [ox, oz] = rotation === 0 ? [across, along] : [along, across]
+  pushBox(vertices, x + ox, y, z + oz, 0.48, 0.55, 0.24, [0.035, 0.04, 0.045], rotation)
+}
+
+function pushRoadVehicle(vertices, agent, x, y, z, rotation) {
+  const isBus = agent.kind === 'bus'
+  const isTruck = agent.kind === 'truck'
+  const length = isBus ? 10.6 : isTruck ? 8.3 : 4.7
+  const width = isBus ? 2.55 : isTruck ? 2.45 : 1.92
+  const height = isBus ? 2.85 : isTruck ? 2.75 : 1.35
+  const bodyY = y + 0.28
+  pushBox(vertices, x, bodyY, z, width, height * 0.58, length, agent.color, rotation)
+  if (isTruck) {
+    const cabOffset = length * 0.31
+    const dx = Math.sin(rotation) * cabOffset
+    const dz = Math.cos(rotation) * cabOffset
+    pushBox(vertices, x + dx, bodyY + height * 0.45, z + dz, width * 0.94, height * 0.48, length * 0.28, tintColor(agent.color, 0.08), rotation)
+    pushBox(vertices, x - dx * 0.32, bodyY + height * 0.58, z - dz * 0.32, width * 0.92, height * 0.48, length * 0.58, tintColor(agent.color, -0.10), rotation)
+  } else {
+    pushBox(vertices, x, bodyY + height * 0.52, z, width * 0.82, height * 0.42, length * (isBus ? 0.88 : 0.53), [0.18, 0.29, 0.35], rotation)
+  }
+  const wheelAlong = length * 0.31
+  const wheelAcross = width * 0.52
+  pushWheel(vertices, x, bodyY + 0.03, z, rotation, wheelAlong, wheelAcross)
+  pushWheel(vertices, x, bodyY + 0.03, z, rotation, wheelAlong, -wheelAcross)
+  pushWheel(vertices, x, bodyY + 0.03, z, rotation, -wheelAlong, wheelAcross)
+  pushWheel(vertices, x, bodyY + 0.03, z, rotation, -wheelAlong, -wheelAcross)
+  const lampOffset = length * 0.51
+  const lx = Math.sin(rotation) * lampOffset
+  const lz = Math.cos(rotation) * lampOffset
+  pushBox(vertices, x + lx, bodyY + height * 0.25, z + lz, width * 0.58, 0.13, 0.08, [1.0, 0.85, 0.47], rotation)
+}
+
+function pushTrain(vertices, agent, z, direction) {
+  const rotation = 0
+  for (let car = -1; car <= 1; car += 1) {
+    const carZ = z + car * 14.5 * direction
+    pushBox(vertices, agent.x, agent.y, carZ, 3.25, 3.15, 13.3, agent.color, rotation)
+    pushBox(vertices, agent.x, agent.y + 1.22, carZ, 3.31, 1.18, 10.5, [0.16, 0.30, 0.38], rotation)
+    pushBox(vertices, agent.x, agent.y + 3.14, carZ, 2.2, 0.18, 7.8, tintColor(agent.color, 0.16), rotation)
+  }
+}
+
+function buildTransportVertices(deltaSeconds) {
+  if (currentCity !== transportCity) resetNativeTransport(currentCity)
+  const vertices = []
+  for (const agent of transportAgents) {
+    const routeLength = agent.kind === 'train' ? agent.extent : Math.max(agent.road.length, 1)
+    agent.progress = (agent.progress + deltaSeconds * agent.speed * agent.direction / routeLength + 10) % 1
+    if (agent.kind === 'train') {
+      const z = -agent.extent / 2 + agent.progress * agent.extent
+      pushTrain(vertices, agent, z, agent.direction)
+      continue
+    }
+    const offset = (agent.progress - 0.5) * agent.road.length
+    let x = agent.road.x
+    let z = agent.road.z
+    let rotation = 0
+    if (agent.road.orientation === 'vertical') {
+      x += agent.lane
+      z += offset
+      rotation = agent.direction > 0 ? 0 : Math.PI
+    } else {
+      x += offset
+      z += agent.lane
+      rotation = agent.direction > 0 ? Math.PI / 2 : -Math.PI / 2
+    }
+    pushRoadVehicle(vertices, agent, x, agent.road.y + 0.22, z, rotation)
+  }
+  return new Float32Array(vertices)
+}
+
 function resizeCanvas() {
   const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
   const width = Math.max(1, Math.floor(canvas.clientWidth * pixelRatio))
@@ -121,10 +253,31 @@ function render(frameTime = performance.now()) {
   gl.uniform1f(locations.fogNear, currentCity ? currentCity.extent * 0.78 : 650)
   gl.uniform1f(locations.fogFar, currentCity ? currentCity.extent * 2.55 : 1800)
   gl.uniform1f(locations.nightFactor, environment.nightFactor)
-  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+
+  bindGeometryBuffer(vertexBuffer)
   gl.drawArrays(gl.TRIANGLES, 0, vertexCount)
+
+  const transportVertices = buildTransportVertices(deltaSeconds)
+  if (transportVertices.length) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, transportBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, transportVertices, gl.DYNAMIC_DRAW)
+    bindGeometryBuffer(transportBuffer)
+    gl.drawArrays(gl.TRIANGLES, 0, transportVertices.length / 9)
+  }
+
   updateScale()
   requestAnimationFrame(render)
+}
+
+window.ProceduralCityRenderer = {
+  getCity: () => currentCity,
+  getViewProjection: () => new Float32Array(viewProjection),
+  getTransportSnapshot: () => transportAgents.map((agent) => ({
+    kind: agent.kind,
+    progress: agent.progress,
+    speed: agent.speed,
+    roadClass: agent.road?.class || 'rail',
+  })),
 }
 
 updateLabels()
