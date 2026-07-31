@@ -122,25 +122,56 @@ function range(random, min, max) {
   return min + (max - min) * random()
 }
 
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value))
+}
+
 function terrainHeight(x, z, seedOffset, roughness, cityExtent) {
-  const broad = Math.sin((x + seedOffset) * 0.042) * Math.cos((z - seedOffset) * 0.038)
-  const medium = Math.sin((x - z) * 0.085 + seedOffset * 0.01) * 0.42
-  const fine = Math.cos((x + z) * 0.17 - seedOffset * 0.02) * 0.14
-  const radius = Math.hypot(x, z) / Math.max(cityExtent * 0.6, 1)
-  const urbanFlattening = 0.18 + Math.min(1, Math.max(0, radius - 0.35)) * 0.82
-  return (broad + medium + fine) * roughness * urbanFlattening
+  const extent = Math.max(cityExtent, 1)
+  const nx = x / extent
+  const nz = z / extent
+  const phase = seedOffset * 0.0017
+  const broad = Math.sin((nx * 2.35 + phase) * Math.PI) * Math.cos((nz * 1.9 - phase) * Math.PI)
+  const ridge = Math.sin((nx + nz) * 4.2 * Math.PI + phase * 7.0) * 0.26
+  const fine = Math.cos((nx * 7.6 - nz * 6.4) * Math.PI - phase * 11.0) * 0.08
+  const radius = Math.hypot(nx, nz)
+  const urbanFlattening = 0.24 + clamp((radius - 0.12) / 0.48, 0, 1) * 0.76
+  return (broad * 0.72 + ridge + fine) * roughness * urbanFlattening
+}
+
+function terrainSlopeDegrees(x, z, seedOffset, roughness, cityExtent) {
+  const sample = 4
+  const dx = (
+    terrainHeight(x + sample, z, seedOffset, roughness, cityExtent)
+    - terrainHeight(x - sample, z, seedOffset, roughness, cityExtent)
+  ) / (sample * 2)
+  const dz = (
+    terrainHeight(x, z + sample, seedOffset, roughness, cityExtent)
+    - terrainHeight(x, z - sample, seedOffset, roughness, cityExtent)
+  ) / (sample * 2)
+  return Math.atan(Math.hypot(dx, dz)) * 180 / Math.PI
 }
 
 const COLORS = {
   terrainLow: [0.35, 0.43, 0.29],
   terrainHigh: [0.47, 0.51, 0.38],
-  road: [0.12, 0.14, 0.15],
-  roadMark: [0.72, 0.68, 0.48],
+  sidewalk: [0.46, 0.48, 0.46],
+  roadArterial: [0.10, 0.12, 0.13],
+  roadCollector: [0.12, 0.14, 0.15],
+  roadLocal: [0.15, 0.16, 0.16],
+  roadMark: [0.78, 0.71, 0.43],
+  lotResidential: [0.39, 0.49, 0.32],
+  lotCommercial: [0.43, 0.45, 0.44],
+  lotIndustrial: [0.42, 0.40, 0.36],
+  lotCivic: [0.46, 0.45, 0.41],
+  park: [0.27, 0.47, 0.25],
   residential: [0.72, 0.62, 0.48],
   commercial: [0.39, 0.57, 0.70],
   industrial: [0.50, 0.47, 0.42],
   civic: [0.63, 0.39, 0.36],
   roof: [0.26, 0.29, 0.31],
+  treeTrunk: [0.28, 0.21, 0.14],
+  treeCanopy: [0.22, 0.40, 0.20],
 }
 
 function mixColor(a, b, factor) {
@@ -148,3 +179,71 @@ function mixColor(a, b, factor) {
     a[0] + (b[0] - a[0]) * factor,
     a[1] + (b[1] - a[1]) * factor,
     a[2] + (b[2] - a[2]) * factor,
+  ]
+}
+
+function pushVertex(target, position, normal, color) {
+  target.push(...position, ...normal, ...color)
+}
+
+function pushTriangle(target, a, b, c, normal, color) {
+  pushVertex(target, a, normal, color)
+  pushVertex(target, b, normal, color)
+  pushVertex(target, c, normal, color)
+}
+
+function pushQuad(target, a, b, c, d, normal, color) {
+  pushTriangle(target, a, b, c, normal, color)
+  pushTriangle(target, a, c, d, normal, color)
+}
+
+function pushBox(target, x, y, z, width, height, depth, color, rotation = 0, roofColor = null) {
+  const halfWidth = width / 2
+  const halfDepth = depth / 2
+  const cos = Math.cos(rotation)
+  const sin = Math.sin(rotation)
+  const transform = (localX, localY, localZ) => [
+    x + localX * cos - localZ * sin,
+    y + localY,
+    z + localX * sin + localZ * cos,
+  ]
+  const rotateNormal = (nx, ny, nz) => [nx * cos - nz * sin, ny, nx * sin + nz * cos]
+
+  const p000 = transform(-halfWidth, 0, -halfDepth)
+  const p100 = transform(halfWidth, 0, -halfDepth)
+  const p110 = transform(halfWidth, height, -halfDepth)
+  const p010 = transform(-halfWidth, height, -halfDepth)
+  const p001 = transform(-halfWidth, 0, halfDepth)
+  const p101 = transform(halfWidth, 0, halfDepth)
+  const p111 = transform(halfWidth, height, halfDepth)
+  const p011 = transform(-halfWidth, height, halfDepth)
+
+  pushQuad(target, p000, p100, p110, p010, rotateNormal(0, 0, -1), color)
+  pushQuad(target, p101, p001, p011, p111, rotateNormal(0, 0, 1), color)
+  pushQuad(target, p001, p000, p010, p011, rotateNormal(-1, 0, 0), color)
+  pushQuad(target, p100, p101, p111, p110, rotateNormal(1, 0, 0), color)
+  pushQuad(target, p010, p110, p111, p011, [0, 1, 0], roofColor || color)
+}
+
+function pushTerrain(target, settings, extent, seedOffset) {
+  const size = extent * 1.32
+  const segments = Math.min(80, settings.gridSize * 2)
+  const step = size / segments
+  const start = -size / 2
+
+  for (let xIndex = 0; xIndex < segments; xIndex += 1) {
+    for (let zIndex = 0; zIndex < segments; zIndex += 1) {
+      const x0 = start + xIndex * step
+      const z0 = start + zIndex * step
+      const x1 = x0 + step
+      const z1 = z0 + step
+      const y00 = terrainHeight(x0, z0, seedOffset, settings.roughness, extent)
+      const y10 = terrainHeight(x1, z0, seedOffset, settings.roughness, extent)
+      const y11 = terrainHeight(x1, z1, seedOffset, settings.roughness, extent)
+      const y01 = terrainHeight(x0, z1, seedOffset, settings.roughness, extent)
+      const average = (y00 + y10 + y11 + y01) / 4
+      const colorFactor = clamp(average / Math.max(settings.roughness * 1.2, 1) + 0.5, 0, 1)
+      const color = mixColor(COLORS.terrainLow, COLORS.terrainHigh, colorFactor)
+      const normal = calculateNormal([x0, y00, z0], [x1, y10, z0], [x1, y11, z1])
+      const normal2 = calculateNormal([x0, y00, z0], [x1, y11, z1], [x0, y01, z1])
+      pushTriangle(target, [x0, y00, z0], [x1, y10, z0], [x1, y11, z1], normal, color)
