@@ -1,0 +1,132 @@
+function dot3(a, b) {
+  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+}
+
+function mat4LookAt(out, eye, target, up) {
+  const zAxis = normalize3([eye[0] - target[0], eye[1] - target[1], eye[2] - target[2]])
+  const xAxis = normalize3(cross3(up, zAxis))
+  const yAxis = cross3(zAxis, xAxis)
+  out[0] = xAxis[0]; out[1] = yAxis[0]; out[2] = zAxis[0]; out[3] = 0
+  out[4] = xAxis[1]; out[5] = yAxis[1]; out[6] = zAxis[1]; out[7] = 0
+  out[8] = xAxis[2]; out[9] = yAxis[2]; out[10] = zAxis[2]; out[11] = 0
+  out[12] = -dot3(xAxis, eye); out[13] = -dot3(yAxis, eye); out[14] = -dot3(zAxis, eye); out[15] = 1
+  return out
+}
+
+function mat4Multiply(out, a, b) {
+  const result = new Float32Array(16)
+  for (let column = 0; column < 4; column += 1) {
+    for (let row = 0; row < 4; row += 1) {
+      result[column * 4 + row] =
+        a[row] * b[column * 4]
+        + a[4 + row] * b[column * 4 + 1]
+        + a[8 + row] * b[column * 4 + 2]
+        + a[12 + row] * b[column * 4 + 3]
+    }
+  }
+  out.set(result)
+  return out
+}
+
+const projection = new Float32Array(16)
+const view = new Float32Array(16)
+const viewProjection = new Float32Array(16)
+
+function resizeCanvas() {
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
+  const width = Math.max(1, Math.floor(canvas.clientWidth * pixelRatio))
+  const height = Math.max(1, Math.floor(canvas.clientHeight * pixelRatio))
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width
+    canvas.height = height
+  }
+  gl.viewport(0, 0, width, height)
+}
+
+function environmentForTime(time) {
+  const daylight = smoothstep(6, 8, time) * (1 - smoothstep(18.2, 21.0, time))
+  const sunset = Math.max(
+    1 - Math.abs(time - 6.6) / 1.8,
+    1 - Math.abs(time - 18.8) / 2.0,
+    0,
+  )
+  const night = 1 - daylight
+  const skyDay = [0.61, 0.74, 0.82]
+  const skyNight = [0.055, 0.085, 0.13]
+  const skySunset = [0.78, 0.52, 0.39]
+  let sky = mixColor(skyNight, skyDay, daylight)
+  sky = mixColor(sky, skySunset, sunset * 0.38)
+  const sunElevation = clamp(Math.sin(((time - 6) / 15) * Math.PI), 0.05, 1)
+  const sunAzimuth = ((time - 6) / 17) * Math.PI * 1.35 - Math.PI * 0.25
+  const lightDirection = normalize3([
+    Math.cos(sunAzimuth) * (0.25 + sunElevation),
+    0.18 + sunElevation * 1.10,
+    Math.sin(sunAzimuth) * (0.25 + sunElevation),
+  ])
+  const sunColor = mixColor([0.95, 0.54, 0.30], [1.0, 0.98, 0.90], daylight)
+  return {
+    sky,
+    lightDirection,
+    sunColor,
+    ambient: 0.20 + daylight * 0.33 + sunset * 0.04,
+    nightFactor: clamp(night * 1.18, 0, 1),
+  }
+}
+
+function niceScale(value) {
+  const exponent = Math.floor(Math.log10(Math.max(value, 1)))
+  const fraction = value / (10 ** exponent)
+  const niceFraction = fraction < 1.5 ? 1 : fraction < 3.5 ? 2 : fraction < 7.5 ? 5 : 10
+  return niceFraction * (10 ** exponent)
+}
+
+function updateScale() {
+  const meters = niceScale(camera.distance * 0.18)
+  const width = clamp((meters / Math.max(camera.distance * 0.18, 1)) * 90, 54, 118)
+  ui.scaleLine.style.width = `${width}px`
+  ui.scaleLabel.textContent = meters >= 1000 ? `${(meters / 1000).toFixed(meters % 1000 === 0 ? 0 : 1)} km` : `${meters} m`
+  ui.compassNeedle.style.transform = `rotate(${-camera.yaw}rad)`
+}
+
+let previousFrameTime = performance.now()
+function render(frameTime = performance.now()) {
+  const deltaSeconds = Math.min(0.05, (frameTime - previousFrameTime) / 1000)
+  previousFrameTime = frameTime
+  if (autoRotateEnabled && activePointers.size === 0) camera.yaw += deltaSeconds * 0.075
+
+  resizeCanvas()
+  const environment = environmentForTime(Number(ui.timeOfDay.value))
+  gl.enable(gl.DEPTH_TEST)
+  gl.disable(gl.CULL_FACE)
+  gl.clearColor(environment.sky[0], environment.sky[1], environment.sky[2], 1)
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+  const cosPitch = Math.cos(camera.pitch)
+  const eye = [
+    camera.target[0] + Math.sin(camera.yaw) * cosPitch * camera.distance,
+    camera.target[1] + Math.sin(camera.pitch) * camera.distance,
+    camera.target[2] + Math.cos(camera.yaw) * cosPitch * camera.distance,
+  ]
+  const far = Math.max(2500, currentCity ? currentCity.extent * 4.2 : 3000)
+  mat4Perspective(projection, Math.PI / 4, canvas.width / canvas.height, 0.2, far)
+  mat4LookAt(view, eye, camera.target, [0, 1, 0])
+  mat4Multiply(viewProjection, projection, view)
+
+  gl.useProgram(program)
+  gl.uniformMatrix4fv(locations.viewProjection, false, viewProjection)
+  gl.uniform3fv(locations.lightDirection, environment.lightDirection)
+  gl.uniform3fv(locations.sunColor, environment.sunColor)
+  gl.uniform3fv(locations.fogColor, environment.sky)
+  gl.uniform1f(locations.ambient, environment.ambient)
+  gl.uniform1f(locations.fogNear, currentCity ? currentCity.extent * 0.78 : 650)
+  gl.uniform1f(locations.fogFar, currentCity ? currentCity.extent * 2.55 : 1800)
+  gl.uniform1f(locations.nightFactor, environment.nightFactor)
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+  gl.drawArrays(gl.TRIANGLES, 0, vertexCount)
+  updateScale()
+  requestAnimationFrame(render)
+}
+
+updateLabels()
+rebuildCity()
+render()
