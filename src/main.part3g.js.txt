@@ -1,0 +1,212 @@
+
+// v0.5.2 routed transport extension
+let transportGraph = null
+
+function graphKey(x, z, cellSize) {
+  return `${Math.round(x / cellSize)}:${Math.round(z / cellSize)}`
+}
+
+function buildTransportGraph(city) {
+  const cellSize = city.settings.cellSize || 28
+  const nodes = []
+  const nodeByKey = new Map()
+  for (const road of city.roads) {
+    const key = graphKey(road.x, road.z, cellSize)
+    let node = nodeByKey.get(key)
+    if (!node) {
+      node = { id: nodes.length, x: road.x, y: road.y, z: road.z, roads: [], edges: [] }
+      nodes.push(node)
+      nodeByKey.set(key, node)
+    }
+    node.roads.push(road)
+    node.y = Math.max(node.y, road.y)
+  }
+  const offsets = [[1,0],[-1,0],[0,1],[0,-1],[2,0],[-2,0],[0,2],[0,-2]]
+  for (const node of nodes) {
+    const gx = Math.round(node.x / cellSize)
+    const gz = Math.round(node.z / cellSize)
+    for (const [dx, dz] of offsets) {
+      const other = nodeByKey.get(`${gx + dx}:${gz + dz}`)
+      if (!other) continue
+      const distance = Math.hypot(other.x - node.x, other.z - node.z)
+      const aligned = Math.abs(other.x - node.x) < 1 || Math.abs(other.z - node.z) < 1
+      if (!aligned || distance > cellSize * 2.15) continue
+      if (!node.edges.some((edge) => edge.to === other.id)) node.edges.push({ to: other.id, cost: distance })
+    }
+  }
+  const intersections = nodes.filter((node) => node.edges.length >= 3)
+  return { nodes, intersections, cellSize }
+}
+
+function nearestGraphNode(x, z) {
+  if (!transportGraph?.nodes.length) return null
+  let best = transportGraph.nodes[0]
+  let bestDistance = Infinity
+  for (const node of transportGraph.nodes) {
+    const distance = Math.hypot(node.x - x, node.z - z)
+    if (distance < bestDistance) { best = node; bestDistance = distance }
+  }
+  return best
+}
+
+function findRoute(startId, goalId) {
+  const nodes = transportGraph?.nodes || []
+  if (!nodes[startId] || !nodes[goalId]) return []
+  const open = new Set([startId])
+  const cameFrom = new Map()
+  const g = new Map([[startId, 0]])
+  const f = new Map([[startId, Math.hypot(nodes[startId].x - nodes[goalId].x, nodes[startId].z - nodes[goalId].z)]])
+  while (open.size) {
+    let current = null
+    let currentScore = Infinity
+    for (const id of open) {
+      const score = f.get(id) ?? Infinity
+      if (score < currentScore) { current = id; currentScore = score }
+    }
+    if (current === goalId) {
+      const route = [current]
+      while (cameFrom.has(current)) { current = cameFrom.get(current); route.unshift(current) }
+      return route
+    }
+    open.delete(current)
+    for (const edge of nodes[current].edges) {
+      const tentative = (g.get(current) ?? Infinity) + edge.cost
+      if (tentative >= (g.get(edge.to) ?? Infinity)) continue
+      cameFrom.set(edge.to, current)
+      g.set(edge.to, tentative)
+      const heuristic = Math.hypot(nodes[edge.to].x - nodes[goalId].x, nodes[edge.to].z - nodes[goalId].z)
+      f.set(edge.to, tentative + heuristic)
+      open.add(edge.to)
+    }
+  }
+  return []
+}
+
+function assignNewRoute(agent, random = Math.random) {
+  const nodes = transportGraph?.nodes || []
+  if (nodes.length < 2) return
+  const start = agent.route?.length ? agent.route[Math.min(agent.routeIndex || 0, agent.route.length - 1)] : Math.floor(random() * nodes.length)
+  let goal = Math.floor(random() * nodes.length)
+  for (let attempt = 0; attempt < 8 && goal === start; attempt += 1) goal = Math.floor(random() * nodes.length)
+  const route = findRoute(start, goal)
+  if (route.length < 2) return
+  agent.route = route
+  agent.routeIndex = 0
+  agent.segmentProgress = 0
+  agent.stopTimer = 0
+}
+
+function resetNativeTransport(city) {
+  transportAgents = []
+  transportCity = city
+  transportGraph = city ? buildTransportGraph(city) : null
+  if (!city || !transportGraph.nodes.length) return
+  const random = mulberry32(hashString(`${city.settings.seed}:routed-transport`))
+  const count = Math.min(96, Math.max(36, Math.round(city.metrics.roadLengthKm * 3.8)))
+  for (let index = 0; index < count; index += 1) {
+    const roll = random()
+    const agent = {
+      kind: roll < 0.11 ? 'bus' : roll < 0.19 ? 'truck' : 'car',
+      speed: 5.2 + random() * 8.2,
+      color: TRANSPORT_COLORS[Math.floor(random() * TRANSPORT_COLORS.length)],
+      route: [Math.floor(random() * transportGraph.nodes.length)],
+      routeIndex: 0,
+      segmentProgress: random(),
+      stopTimer: 0,
+      serviceCounter: Math.floor(random() * 4),
+    }
+    assignNewRoute(agent, random)
+    if (agent.route?.length > 1) transportAgents.push(agent)
+  }
+  const stations = city.infrastructure.stations || []
+  for (let index = 0; index < 3; index += 1) {
+    transportAgents.push({
+      kind: 'train', progress: index / 3, speed: 15 + index * 1.6,
+      direction: index % 2 ? -1 : 1, x: city.centers.cbd.x,
+      y: stations[Math.floor(stations.length / 2)]?.y + 0.62 || 2.2,
+      extent: city.extent * 0.92, color: index % 2 ? [0.18,0.63,0.79] : [0.82,0.36,0.18],
+      stations: stations.map((station) => station.z), dwell: 0,
+    })
+  }
+  document.body.classList.add('native-webgl-transport')
+  window.dispatchEvent(new CustomEvent('procedural-city:native-transport-ready', {
+    detail: { agents: transportAgents.length, nodes: transportGraph.nodes.length, intersections: transportGraph.intersections.length, mode: 'webgl-routed' },
+  }))
+}
+
+function signalAllows(agent, node, frameSeconds) {
+  if (!node || node.edges.length < 3) return true
+  const phase = Math.floor(frameSeconds / 7) % 2
+  const nextId = agent.route?.[agent.routeIndex + 1]
+  const next = transportGraph.nodes[nextId]
+  if (!next) return true
+  const vertical = Math.abs(next.z - node.z) >= Math.abs(next.x - node.x)
+  return vertical ? phase === 0 : phase === 1
+}
+
+function routePose(agent, deltaSeconds, frameSeconds) {
+  if (!agent.route || agent.route.length < 2) return null
+  if (agent.stopTimer > 0) {
+    agent.stopTimer = Math.max(0, agent.stopTimer - deltaSeconds)
+  } else {
+    const a = transportGraph.nodes[agent.route[agent.routeIndex]]
+    const b = transportGraph.nodes[agent.route[agent.routeIndex + 1]]
+    if (!a || !b) { assignNewRoute(agent); return null }
+    const distance = Math.max(1, Math.hypot(b.x - a.x, b.z - a.z))
+    const approaching = agent.segmentProgress > 0.83
+    const signalFactor = approaching && !signalAllows(agent, b, frameSeconds) ? 0 : 1
+    agent.segmentProgress += deltaSeconds * agent.speed * signalFactor / distance
+    if (agent.segmentProgress >= 1) {
+      agent.segmentProgress = 0
+      agent.routeIndex += 1
+      agent.serviceCounter += 1
+      if (agent.kind === 'bus' && agent.serviceCounter % 4 === 0) agent.stopTimer = 1.8
+      if (agent.routeIndex >= agent.route.length - 1) assignNewRoute(agent)
+    }
+  }
+  const a = transportGraph.nodes[agent.route[agent.routeIndex]]
+  const b = transportGraph.nodes[agent.route[Math.min(agent.routeIndex + 1, agent.route.length - 1)]]
+  if (!a || !b) return null
+  const t = smoothstep(0, 1, agent.segmentProgress)
+  const x = lerp(a.x, b.x, t)
+  const y = lerp(a.y, b.y, t) + 0.22
+  const z = lerp(a.z, b.z, t)
+  const rotation = Math.atan2(b.x - a.x, b.z - a.z)
+  const lane = agent.kind === 'bus' ? 3.3 : 2.35
+  return { x: x + Math.cos(rotation) * lane, y, z: z - Math.sin(rotation) * lane, rotation }
+}
+
+function buildTransportVertices(deltaSeconds) {
+  if (currentCity !== transportCity) resetNativeTransport(currentCity)
+  const vertices = []
+  const frameSeconds = performance.now() / 1000
+  for (const agent of transportAgents) {
+    if (agent.kind === 'train') {
+      if (agent.dwell > 0) agent.dwell = Math.max(0, agent.dwell - deltaSeconds)
+      else agent.progress = (agent.progress + deltaSeconds * agent.speed * agent.direction / agent.extent + 10) % 1
+      const z = -agent.extent / 2 + agent.progress * agent.extent
+      const closeToStation = agent.stations?.some((stationZ) => Math.abs(stationZ - z) < 2.2)
+      if (closeToStation && agent.dwell <= 0) agent.dwell = 2.4
+      pushTrain(vertices, agent, z, agent.direction)
+      continue
+    }
+    const pose = routePose(agent, deltaSeconds, frameSeconds)
+    if (pose) pushRoadVehicle(vertices, agent, pose.x, pose.y, pose.z, pose.rotation)
+  }
+  return new Float32Array(vertices)
+}
+
+const baseTransportSnapshot = window.ProceduralCityRenderer?.getTransportSnapshot
+if (window.ProceduralCityRenderer) {
+  window.ProceduralCityRenderer.getRoadGraph = () => ({
+    nodes: transportGraph?.nodes.length || 0,
+    intersections: transportGraph?.intersections.length || 0,
+  })
+  window.ProceduralCityRenderer.getTransportSnapshot = () => transportAgents.map((agent) => ({
+    kind: agent.kind,
+    speed: agent.speed,
+    routeLength: agent.route?.length || 0,
+    routeIndex: agent.routeIndex || 0,
+    stopped: (agent.stopTimer || agent.dwell || 0) > 0,
+  }))
+}
