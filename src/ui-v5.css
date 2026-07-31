@@ -1,0 +1,30 @@
+/* v0.5 city-first interface: overrides v0.4 HUD without breaking engine selectors */
+:root{--v5-bg:rgba(8,14,19,.90);--v5-line:rgba(255,255,255,.14);--v5-text:#edf4f6;--v5-muted:#91a3ad;--v5-accent:#b9d8e6}
+.app-shell{grid-template-columns:minmax(0,1fr)!important;position:relative}
+.panel{position:absolute!important;z-index:30;left:14px;top:64px;bottom:14px;width:min(370px,calc(100vw - 28px));height:auto!important;transform:translateX(calc(-100% - 24px));transition:transform .22s ease,opacity .22s ease;opacity:0;border:1px solid var(--v5-line)!important;border-radius:14px;background:var(--v5-bg)!important;backdrop-filter:blur(18px);box-shadow:0 18px 50px rgba(0,0,0,.35)!important}
+body.v5-panel-open .panel{transform:translateX(0);opacity:1}
+.viewport{grid-column:1;grid-row:1;min-height:100vh}
+.simulation-hud{top:14px!important;left:50%!important;right:auto!important;transform:translateX(-50%);max-width:min(760px,calc(100vw - 210px));grid-template-columns:repeat(6,minmax(88px,1fr))!important;transition:opacity .18s ease,transform .18s ease}
+body:not(.v5-kpi-open) .simulation-hud{opacity:0;pointer-events:none;transform:translate(-50%,-12px)}
+.environment-card{left:14px!important;top:64px!important;transition:opacity .18s ease}
+body:not(.v5-environment-open) .environment-card{opacity:0;pointer-events:none}
+.layer-panel{top:64px!important;right:14px!important;transition:opacity .18s ease,transform .18s ease}
+body:not(.v5-layer-open) .layer-panel{opacity:0;pointer-events:none;transform:translateX(18px)}
+.analysis-dock{left:50%!important;right:auto!important;bottom:14px!important;width:min(920px,calc(100vw - 250px));transform:translateX(-50%);grid-template-columns:repeat(4,minmax(150px,1fr))!important;transition:opacity .18s ease,transform .18s ease}
+body:not(.v5-analysis-open) .analysis-dock{opacity:0;pointer-events:none;transform:translate(-50%,18px)}
+.mini-map{right:14px!important;bottom:14px!important;transition:opacity .18s ease,transform .18s ease}
+body:not(.v5-map-open) .mini-map{opacity:0;pointer-events:none;transform:translateY(18px)}
+.quality-note,.status-badge{display:none!important}
+.v5-toolbar{position:absolute;z-index:50;top:max(12px,env(safe-area-inset-top));left:14px;right:14px;display:flex;align-items:center;gap:8px;pointer-events:none}
+.v5-toolbar>*{pointer-events:auto}
+.v5-brand{display:flex;align-items:center;gap:9px;margin-right:auto;padding:9px 12px;border:1px solid var(--v5-line);border-radius:12px;color:var(--v5-text);background:var(--v5-bg);backdrop-filter:blur(16px);font-size:.72rem;font-weight:800;letter-spacing:.04em}
+.v5-brand small{color:var(--v5-muted);font-weight:700}
+.v5-tool{min-width:40px;min-height:40px;padding:0 11px;border:1px solid var(--v5-line);border-radius:11px;color:var(--v5-text);background:var(--v5-bg);backdrop-filter:blur(16px);font-size:.72rem;font-weight:750}
+.v5-tool[aria-pressed="true"]{color:#10191e;background:var(--v5-accent);border-color:var(--v5-accent)}
+.v5-mode-strip{position:absolute;z-index:44;left:50%;bottom:max(14px,env(safe-area-inset-bottom));display:flex;gap:6px;transform:translateX(-50%);padding:6px;border:1px solid var(--v5-line);border-radius:13px;background:var(--v5-bg);backdrop-filter:blur(16px)}
+.v5-mode-strip button{min-height:34px;padding:0 12px;border:0;border-radius:8px;color:var(--v5-muted);background:transparent;font-size:.7rem;font-weight:750}
+.v5-mode-strip button.active{color:#10191e;background:var(--v5-accent)}
+#living-city-canvas{z-index:4!important}
+.object-inspector{z-index:55!important}
+@media(max-width:900px){.simulation-hud{max-width:calc(100vw - 170px);grid-template-columns:repeat(3,minmax(90px,1fr))!important}.analysis-dock{width:calc(100vw - 28px);grid-template-columns:repeat(2,minmax(150px,1fr))!important}.v5-brand small{display:none}}
+@media(max-width:620px){.v5-brand{display:none}.v5-toolbar{justify-content:center}.v5-tool{padding:0 9px}.panel{top:62px}.simulation-hud{left:14px!important;right:14px!important;max-width:none;transform:none;grid-template-columns:repeat(2,1fr)!important}body:not(.v5-kpi-open) .simulation-hud{transform:translateY(-12px)}.analysis-dock{grid-template-columns:1fr!important;max-height:48vh;overflow:auto}.v5-mode-strip{bottom:10px}.environment-card{top:62px!important}}
