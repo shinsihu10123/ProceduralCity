@@ -7,18 +7,18 @@
 
 const camera = {
   yaw: Math.PI * 0.25,
-  pitch: 0.70,
-  distance: 900,
-  target: [0, 20, 0],
+  pitch: 0.48,
+  distance: 620,
+  target: [0, 24, 0],
 }
 
 function applyCameraPreset(preset) {
   const extent = currentCity ? currentCity.extent : 800
   if (preset === 'overview' || preset === 'reset') {
     camera.yaw = Math.PI * 0.25
-    camera.pitch = 0.72
-    camera.distance = extent * 1.05
-    camera.target = [0, Math.max(14, extent * 0.025), 0]
+    camera.pitch = 0.50
+    camera.distance = extent * 0.72
+    camera.target = [0, Math.max(18, extent * 0.03), 0]
   } else if (preset === 'street') {
     camera.yaw = Math.PI * 0.08
     camera.pitch = 0.16
@@ -26,10 +26,10 @@ function applyCameraPreset(preset) {
     camera.target = [0, 12, -extent * 0.05]
   } else if (preset === 'center') {
     camera.yaw = Math.PI * 0.66
-    camera.pitch = 0.40
-    camera.distance = extent * 0.44
+    camera.pitch = 0.36
+    camera.distance = extent * 0.38
     camera.target = currentCity
-      ? [currentCity.centers.cbd.x, 32, currentCity.centers.cbd.z]
+      ? [currentCity.centers.cbd.x, 34, currentCity.centers.cbd.z]
       : [0, 24, 0]
   }
 }
@@ -66,7 +66,7 @@ canvas.addEventListener('pointermove', (event) => {
       camera.target[2] -= right[2] * dx * panScale + forward[2] * dy * panScale
     } else {
       camera.yaw -= dx * 0.006
-      camera.pitch = clamp(camera.pitch + dy * 0.0048, 0.08, 1.48)
+      camera.pitch = clamp(camera.pitch + dy * 0.0048, 0.08, 1.30)
     }
     previousSinglePointer = { x: pointer.x, y: pointer.y, pan: pointer.shift }
   } else if (pointers.length >= 2) {
@@ -76,7 +76,7 @@ canvas.addEventListener('pointermove', (event) => {
     const distance = Math.hypot(a.x - b.x, a.y - b.y)
     if (previousPinch) {
       const pinchScale = previousPinch.distance / Math.max(distance, 1)
-      camera.distance = clamp(camera.distance * pinchScale, 28, 2400)
+      camera.distance = clamp(camera.distance * pinchScale, 28, 1800)
       const dx = center.x - previousPinch.center.x
       const dy = center.y - previousPinch.center.y
       const panScale = camera.distance * 0.0011
