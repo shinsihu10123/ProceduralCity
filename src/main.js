@@ -20,6 +20,15 @@ try {
   const moduleUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }))
   await import(moduleUrl)
   URL.revokeObjectURL(moduleUrl)
+
+  if (!document.querySelector('link[data-living-city]')) {
+    const stylesheet = document.createElement('link')
+    stylesheet.rel = 'stylesheet'
+    stylesheet.href = new URL('./living-city.css', import.meta.url)
+    stylesheet.dataset.livingCity = 'true'
+    document.head.appendChild(stylesheet)
+  }
+  await import('./living-city.js')
 } catch (error) {
   console.error(error)
   const loading = document.querySelector('#loading')
