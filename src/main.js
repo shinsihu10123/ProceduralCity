@@ -1,0 +1,25 @@
+const sourceParts = [
+  './main.part1.js.txt',
+  './main.part2.js.txt',
+  './main.part3.js.txt',
+  './main.part4.js.txt',
+]
+
+try {
+  const source = (await Promise.all(sourceParts.map(async (path) => {
+    const response = await fetch(new URL(path, import.meta.url))
+    if (!response.ok) throw new Error(`Failed to load ${path}: ${response.status}`)
+    return response.text()
+  }))).join('')
+
+  const moduleUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }))
+  await import(moduleUrl)
+  URL.revokeObjectURL(moduleUrl)
+} catch (error) {
+  console.error(error)
+  const loading = document.querySelector('#loading')
+  if (loading) {
+    loading.textContent = '도시 엔진을 불러오지 못했습니다.'
+    loading.classList.add('visible')
+  }
+}
