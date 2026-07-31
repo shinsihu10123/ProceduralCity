@@ -32,6 +32,71 @@ const projection = new Float32Array(16)
 const view = new Float32Array(16)
 const viewProjection = new Float32Array(16)
 
+const v052PrototypeBuffer = gl.createBuffer()
+let v052PrototypeCity = null
+let v052PrototypeVertexCount = 0
+
+function v052BindGeometry(buffer) {
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+  const stride = 9 * Float32Array.BYTES_PER_ELEMENT
+  gl.enableVertexAttribArray(locations.position)
+  gl.vertexAttribPointer(locations.position, 3, gl.FLOAT, false, stride, 0)
+  gl.enableVertexAttribArray(locations.normal)
+  gl.vertexAttribPointer(locations.normal, 3, gl.FLOAT, false, stride, 3 * Float32Array.BYTES_PER_ELEMENT)
+  gl.enableVertexAttribArray(locations.color)
+  gl.vertexAttribPointer(locations.color, 3, gl.FLOAT, false, stride, 6 * Float32Array.BYTES_PER_ELEMENT)
+}
+
+function v052BuildStaticVehicle(city) {
+  if (!city || !city.roads?.length) {
+    v052PrototypeVertexCount = 0
+    return
+  }
+  const road = city.roads.find((item) => item.class === 'arterial') || city.roads[0]
+  if (!road) {
+    v052PrototypeVertexCount = 0
+    return
+  }
+
+  const vertices = []
+  const rotation = road.orientation === 'horizontal' ? Math.PI / 2 : 0
+  const laneOffset = road.class === 'arterial' ? 5.4 : 2.4
+  const x = road.x + (road.orientation === 'vertical' ? laneOffset : 0)
+  const z = road.z + (road.orientation === 'horizontal' ? laneOffset : 0)
+  const y = road.y + 0.42
+  const bodyColor = [0.18, 0.42, 0.68]
+
+  pushBox(vertices, x, y, z, 1.9, 0.72, 4.6, bodyColor, rotation)
+  pushBox(vertices, x, y + 0.72, z - 0.12, 1.58, 0.68, 2.45, [0.16, 0.27, 0.34], rotation)
+
+  const wheelColor = [0.035, 0.04, 0.045]
+  const wheelAlong = 1.45
+  const wheelAcross = 1.02
+  const wheelPositions = [
+    [wheelAcross, wheelAlong], [-wheelAcross, wheelAlong],
+    [wheelAcross, -wheelAlong], [-wheelAcross, -wheelAlong],
+  ]
+  for (const [across, along] of wheelPositions) {
+    const wx = rotation === 0 ? x + across : x + along
+    const wz = rotation === 0 ? z + along : z + across
+    pushBox(vertices, wx, y - 0.28, wz, 0.28, 0.46, 0.58, wheelColor, rotation)
+  }
+
+  const frontOffset = 2.32
+  const lampX = x + Math.sin(rotation) * frontOffset
+  const lampZ = z + Math.cos(rotation) * frontOffset
+  pushBox(vertices, lampX, y + 0.12, lampZ, 1.2, 0.12, 0.08, [1.0, 0.84, 0.42], rotation)
+
+  const data = new Float32Array(vertices)
+  gl.bindBuffer(gl.ARRAY_BUFFER, v052PrototypeBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW)
+  v052PrototypeVertexCount = data.length / 9
+  v052PrototypeCity = city
+  window.dispatchEvent(new CustomEvent('procedural-city:webgl-prototype-ready', {
+    detail: { vehicles: 1, moving: false },
+  }))
+}
+
 function resizeCanvas() {
   const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
   const width = Math.max(1, Math.floor(canvas.clientWidth * pixelRatio))
@@ -121,8 +186,16 @@ function render(frameTime = performance.now()) {
   gl.uniform1f(locations.fogNear, currentCity ? currentCity.extent * 0.78 : 650)
   gl.uniform1f(locations.fogFar, currentCity ? currentCity.extent * 2.55 : 1800)
   gl.uniform1f(locations.nightFactor, environment.nightFactor)
-  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+
+  v052BindGeometry(vertexBuffer)
   gl.drawArrays(gl.TRIANGLES, 0, vertexCount)
+
+  if (currentCity !== v052PrototypeCity) v052BuildStaticVehicle(currentCity)
+  if (v052PrototypeVertexCount > 0) {
+    v052BindGeometry(v052PrototypeBuffer)
+    gl.drawArrays(gl.TRIANGLES, 0, v052PrototypeVertexCount)
+  }
+
   updateScale()
   requestAnimationFrame(render)
 }
