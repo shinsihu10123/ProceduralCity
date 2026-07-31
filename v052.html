@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#101820" />
+  <title>Procedural City v0.5.2</title>
+</head>
+<body>
+  <p style="font-family:system-ui;padding:24px">최신 도시 엔진을 불러오는 중입니다.</p>
+  <script>
+    const build = 'v052-c8a4b8ef-20260801-0230';
+    fetch(`./index.html?v=${build}`, { cache: 'no-store' })
+      .then((response) => {
+        if (!response.ok) throw new Error(`index load failed: ${response.status}`);
+        return response.text();
+      })
+      .then((html) => {
+        const replacements = [
+          ['./src/style.css', `./src/style.css?v=${build}`],
+          ['./src/simulation.css', `./src/simulation.css?v=${build}`],
+          ['./src/main.js', `./src/main.js?v=${build}`],
+          ['./src/simulation.js', `./src/simulation.js?v=${build}`],
+        ];
+        for (const [from, to] of replacements) html = html.split(from).join(to);
+        document.open();
+        document.write(html);
+        document.close();
+      })
+      .catch((error) => {
+        console.error(error);
+        document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">최신 엔진을 불러오지 못했습니다.</p>';
+      });
+  </script>
+</body>
+</html>
