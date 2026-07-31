@@ -1,64 +1,112 @@
-# Procedural City 아키텍처 v0.1
+# Procedural City 아키텍처 v0.2-alpha
 
-## 생성 파이프라인
+## 현실성 중심 생성 파이프라인
 
 ```text
 사용자 설정
 → 문자열 시드 해싱
 → 결정론적 난수 생성기
-→ 지형 메시 생성
-→ 도로 셀 배치
-→ 개발 가능 셀 판정
-→ 용도지역 배정
-→ 건물 형태·높이 생성
-→ 도시 지표 계산
+→ 지구 중심·부도심·산업 거점·공원 거점 계획
+→ 정규화된 절차적 지형 생성
+→ 경사도·개발 적합도 계산
+→ 간선·보조간선·생활도로 계층 생성
+→ 도로변 보도·차선 표시
+→ 블록 내부 필지 판정
+→ 공원·보전녹지 선배치
+→ 접근성·거점 영향 기반 용도 배정
+→ 밀도·경사·도로 위계 기반 건축 유형 선택
+→ 연면적·거주 인구·일자리·녹지 지표 계산
 → WebGL 버퍼 업로드
 → 실시간 3D 렌더링
 ```
 
-## 현재 모듈
+## v0.2-alpha에서 도입한 규칙
 
-- `UI`: 도시 생성 조건과 지표 표시
-- `Generator`: 시드, 지형, 도로, 용도, 건물 생성
-- `Geometry Builder`: 지형 삼각형 및 건물·도로 박스 메시 생성
-- `Renderer`: WebGL2 셰이더, 조명, 안개, 카메라
-- `Exporter`: 생성 결과 JSON 내보내기
+### 지형 적합도
 
-## 다음 분리 대상
+- 도시 규모와 무관하게 비슷한 지형 패턴을 유지하도록 좌표를 정규화한다.
+- 각 필지 중심에서 수치 미분으로 경사도를 계산한다.
+- 급경사지는 건축을 제한하고 녹지로 보전한다.
+- 중경사지에서는 개발 확률과 건축 강도를 낮춘다.
 
-v0.2부터 `main.js`를 다음 모듈로 분리한다.
+### 도로 계층
 
-```text
-src/
-├── app.js
-├── core/random.js
-├── generation/terrain.js
-├── generation/roads.js
-├── generation/parcels.js
-├── generation/zoning.js
-├── generation/buildings.js
-├── render/geometry.js
-├── render/camera.js
-├── render/webgl.js
-└── ui/controls.js
-```
+- 중심 도로를 기준으로 간선도로, 보조간선도로, 생활도로를 대칭 배치한다.
+- 도로 위계별 폭과 노면 색을 다르게 적용한다.
+- 도로보다 넓은 보도 기층을 먼저 배치해 보행 공간을 표현한다.
+- 간선·보조간선에는 차선 중심선을 표시한다.
 
-## 데이터 모델 초안
+### 도시 구조
+
+- CBD, 두 개의 부도심, 외곽 산업 거점, 세 개의 공원 거점, 세 개의 공공시설 거점을 생성한다.
+- 용도는 단순 난수가 아니라 도심 거리, 간선도로 접근성, 공원 접근성, 산업 거점과의 거리로 결정한다.
+- 동일 시드에서는 같은 도시 구조가 재현된다.
+
+### 건축 유형
+
+- 단독주택
+- 판상형 공동주택
+- 주거 타워
+- 저·중층 복합용도 건물
+- 업무 타워
+- 산업시설
+- 공공 복합시설
+
+건물 높이는 용도, 중심지 영향, 도로 접근성, 개발 밀도, 경사도를 종합해 층수로 결정한다. 건축 연면적은 층수와 유효면적률을 사용해 계산한다.
+
+## 현재 데이터 모델
 
 ```js
 City {
+  schemaVersion,
   settings,
   extent,
+  districts,
   buildings[],
   roads[],
-  metrics
+  parks[],
+  parcels[],
+  metrics,
+  vertices
 }
 
 Building {
   id,
   x, y, z,
+  zone,
+  type,
+  floors,
+  floorHeight,
   width, depth, height,
+  floorArea,
   rotation,
-  zone
+  slope,
+  roadClass,
+  intensity
+}
+
+RoadSegment {
+  x, y, z,
+  orientation,
+  roadClass,
+  width,
+  length
+}
+
+Parcel {
+  id,
+  x, z,
+  width, depth,
+  zone,
+  slope,
+  developed
 }
 ```
+
+## 다음 구현 우선순위
+
+1. 블록 단위 필지 분할과 필지 경계 시각화
+2. 학교·병원·역 등 시설별 모델과 서비스 반경
+3. 곡선·지형 순응형 도로
+4. 건물 클릭·속성 확인·재생성
+5. GeoJSON 및 실제 공간 데이터 연동
