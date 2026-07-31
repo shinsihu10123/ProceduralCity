@@ -1,0 +1,150 @@
+const canvas = document.querySelector('#city-canvas')
+const gl = canvas.getContext('webgl2', { antialias: true, alpha: false })
+
+if (!gl) {
+  document.querySelector('.viewport').innerHTML = '<div class="loading visible">이 브라우저는 WebGL2를 지원하지 않습니다.</div>'
+  throw new Error('WebGL2 is required')
+}
+
+const ui = {
+  seed: document.querySelector('#seed'),
+  generate: document.querySelector('#generate'),
+  export: document.querySelector('#export'),
+  gridSize: document.querySelector('#grid-size'),
+  density: document.querySelector('#density'),
+  roughness: document.querySelector('#roughness'),
+  roadSpacing: document.querySelector('#road-spacing'),
+  gridSizeValue: document.querySelector('#grid-size-value'),
+  densityValue: document.querySelector('#density-value'),
+  roughnessValue: document.querySelector('#roughness-value'),
+  roadSpacingValue: document.querySelector('#road-spacing-value'),
+  metricBuildings: document.querySelector('#metric-buildings'),
+  metricPopulation: document.querySelector('#metric-population'),
+  metricHeight: document.querySelector('#metric-height'),
+  metricRatio: document.querySelector('#metric-ratio'),
+  loading: document.querySelector('#loading'),
+}
+
+const VERTEX_SHADER = `#version 300 es
+precision highp float;
+in vec3 aPosition;
+in vec3 aNormal;
+in vec3 aColor;
+uniform mat4 uViewProjection;
+out vec3 vNormal;
+out vec3 vColor;
+out float vFogDepth;
+void main() {
+  vec4 worldPosition = vec4(aPosition, 1.0);
+  gl_Position = uViewProjection * worldPosition;
+  vNormal = aNormal;
+  vColor = aColor;
+  vFogDepth = gl_Position.w;
+}`
+
+const FRAGMENT_SHADER = `#version 300 es
+precision highp float;
+in vec3 vNormal;
+in vec3 vColor;
+in float vFogDepth;
+uniform vec3 uLightDirection;
+uniform vec3 uFogColor;
+uniform float uFogNear;
+uniform float uFogFar;
+out vec4 outColor;
+void main() {
+  vec3 normal = normalize(vNormal);
+  float diffuse = max(dot(normal, normalize(uLightDirection)), 0.0);
+  float light = 0.38 + diffuse * 0.72;
+  vec3 color = vColor * light;
+  float fogFactor = smoothstep(uFogNear, uFogFar, vFogDepth);
+  outColor = vec4(mix(color, uFogColor, fogFactor), 1.0);
+}`
+
+function compileShader(type, source) {
+  const shader = gl.createShader(type)
+  gl.shaderSource(shader, source)
+  gl.compileShader(shader)
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    throw new Error(gl.getShaderInfoLog(shader) || 'Shader compile error')
+  }
+  return shader
+}
+
+function createProgram() {
+  const program = gl.createProgram()
+  gl.attachShader(program, compileShader(gl.VERTEX_SHADER, VERTEX_SHADER))
+  gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, FRAGMENT_SHADER))
+  gl.linkProgram(program)
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    throw new Error(gl.getProgramInfoLog(program) || 'Program link error')
+  }
+  return program
+}
+
+const program = createProgram()
+const locations = {
+  position: gl.getAttribLocation(program, 'aPosition'),
+  normal: gl.getAttribLocation(program, 'aNormal'),
+  color: gl.getAttribLocation(program, 'aColor'),
+  viewProjection: gl.getUniformLocation(program, 'uViewProjection'),
+  lightDirection: gl.getUniformLocation(program, 'uLightDirection'),
+  fogColor: gl.getUniformLocation(program, 'uFogColor'),
+  fogNear: gl.getUniformLocation(program, 'uFogNear'),
+  fogFar: gl.getUniformLocation(program, 'uFogFar'),
+}
+
+let vertexBuffer = gl.createBuffer()
+let vertexCount = 0
+let currentCity = null
+
+function hashString(value) {
+  let hash = 2166136261
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+function mulberry32(seed) {
+  let state = seed >>> 0
+  return () => {
+    state += 0x6d2b79f5
+    let value = state
+    value = Math.imul(value ^ (value >>> 15), value | 1)
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61)
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function range(random, min, max) {
+  return min + (max - min) * random()
+}
+
+function terrainHeight(x, z, seedOffset, roughness, cityExtent) {
+  const broad = Math.sin((x + seedOffset) * 0.042) * Math.cos((z - seedOffset) * 0.038)
+  const medium = Math.sin((x - z) * 0.085 + seedOffset * 0.01) * 0.42
+  const fine = Math.cos((x + z) * 0.17 - seedOffset * 0.02) * 0.14
+  const radius = Math.hypot(x, z) / Math.max(cityExtent * 0.6, 1)
+  const urbanFlattening = 0.18 + Math.min(1, Math.max(0, radius - 0.35)) * 0.82
+  return (broad + medium + fine) * roughness * urbanFlattening
+}
+
+const COLORS = {
+  terrainLow: [0.35, 0.43, 0.29],
+  terrainHigh: [0.47, 0.51, 0.38],
+  road: [0.12, 0.14, 0.15],
+  roadMark: [0.72, 0.68, 0.48],
+  residential: [0.72, 0.62, 0.48],
+  commercial: [0.39, 0.57, 0.70],
+  industrial: [0.50, 0.47, 0.42],
+  civic: [0.63, 0.39, 0.36],
+  roof: [0.26, 0.29, 0.31],
+}
+
+function mixColor(a, b, factor) {
+  return [
+    a[0] + (b[0] - a[0]) * factor,
+    a[1] + (b[1] - a[1]) * factor,
+    a[2] + (b[2] - a[2]) * factor,
