@@ -81,14 +81,15 @@ ProceduralCity/
 │   ├── main.js
 │   ├── main.part1.js.txt
 │   ├── main.part2.js.txt
-│   ├── main.part3.js.txt
-│   ├── main.part4.js.txt
+│   ├── main.part3a.js.txt … main.part3f.js.txt
+│   ├── main.part3e1.js.txt
+│   ├── main.part3e2.js.txt
 │   └── style.css
 ├── LICENSE
 └── README.md
 ```
 
-`src/main.js`는 네 개의 소스 조각을 순서대로 불러와 하나의 ES 모듈로 실행합니다. 이 구조는 GitHub Contents API의 파일 크기와 작업 안정성을 고려한 임시 배포 구조입니다.
+`src/main.js`는 아홉 개의 소스 조각을 순서대로 불러와 하나의 ES 모듈로 실행합니다. 이 구조는 GitHub Contents API의 파일 크기와 작업 안정성을 고려한 임시 배포 구조입니다.
 
 ## 현재 한계
 
