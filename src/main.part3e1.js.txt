@@ -1,0 +1,88 @@
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `procedural-city-v3-${currentCity.settings.seed.replace(/[^a-z0-9-_]+/gi, '-')}.json`
+  anchor.click()
+  URL.revokeObjectURL(url)
+})
+
+const camera = {
+  yaw: Math.PI * 0.25,
+  pitch: 0.70,
+  distance: 900,
+  target: [0, 20, 0],
+}
+
+function applyCameraPreset(preset) {
+  const extent = currentCity ? currentCity.extent : 800
+  if (preset === 'overview' || preset === 'reset') {
+    camera.yaw = Math.PI * 0.25
+    camera.pitch = 0.72
+    camera.distance = extent * 1.05
+    camera.target = [0, Math.max(14, extent * 0.025), 0]
+  } else if (preset === 'street') {
+    camera.yaw = Math.PI * 0.08
+    camera.pitch = 0.16
+    camera.distance = extent * 0.34
+    camera.target = [0, 12, -extent * 0.05]
+  } else if (preset === 'center') {
+    camera.yaw = Math.PI * 0.66
+    camera.pitch = 0.40
+    camera.distance = extent * 0.44
+    camera.target = currentCity
+      ? [currentCity.centers.cbd.x, 32, currentCity.centers.cbd.z]
+      : [0, 24, 0]
+  }
+}
+
+document.querySelectorAll('[data-camera]').forEach((button) => {
+  button.addEventListener('click', () => applyCameraPreset(button.dataset.camera))
+})
+
+const activePointers = new Map()
+let previousSinglePointer = null
+let previousPinch = null
+
+canvas.addEventListener('pointerdown', (event) => {
+  canvas.setPointerCapture(event.pointerId)
+  activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY, shift: event.shiftKey || event.button === 2 })
+  if (activePointers.size === 1) previousSinglePointer = { x: event.clientX, y: event.clientY, pan: event.shiftKey || event.button === 2 }
+  if (activePointers.size === 2) previousPinch = null
+})
+
+canvas.addEventListener('pointermove', (event) => {
+  if (!activePointers.has(event.pointerId)) return
+  activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY, shift: event.shiftKey || event.button === 2 })
+  const pointers = [...activePointers.values()]
+
+  if (pointers.length === 1 && previousSinglePointer) {
+    const pointer = pointers[0]
+    const dx = pointer.x - previousSinglePointer.x
+    const dy = pointer.y - previousSinglePointer.y
+    if (previousSinglePointer.pan || pointer.shift) {
+      const panScale = camera.distance * 0.0014
+      const right = [Math.cos(camera.yaw), 0, -Math.sin(camera.yaw)]
+      const forward = [Math.sin(camera.yaw), 0, Math.cos(camera.yaw)]
+      camera.target[0] -= right[0] * dx * panScale + forward[0] * dy * panScale
+      camera.target[2] -= right[2] * dx * panScale + forward[2] * dy * panScale
+    } else {
+      camera.yaw -= dx * 0.006
+      camera.pitch = clamp(camera.pitch + dy * 0.0048, 0.08, 1.48)
+    }
+    previousSinglePointer = { x: pointer.x, y: pointer.y, pan: pointer.shift }
+  } else if (pointers.length >= 2) {
+    const a = pointers[0]
+    const b = pointers[1]
+    const center = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+    const distance = Math.hypot(a.x - b.x, a.y - b.y)
+    if (previousPinch) {
+      const pinchScale = previousPinch.distance / Math.max(distance, 1)
+      camera.distance = clamp(camera.distance * pinchScale, 28, 2400)
+      const dx = center.x - previousPinch.center.x
+      const dy = center.y - previousPinch.center.y
+      const panScale = camera.distance * 0.0011
+      camera.target[0] -= Math.cos(camera.yaw) * dx * panScale + Math.sin(camera.yaw) * dy * panScale
+      camera.target[2] += Math.sin(camera.yaw) * dx * panScale - Math.cos(camera.yaw) * dy * panScale
+    }
+    previousPinch = { center, distance }
+  }
+})
