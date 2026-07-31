@@ -89,7 +89,7 @@ void main() {
   float diffuse = max(dot(normal, normalize(uLightDirection)), 0.0);
   float skyLight = 0.45 + max(normal.y, 0.0) * 0.55;
   float groundShade = clamp(0.82 + vWorldPosition.y * 0.0012, 0.78, 1.04);
-  vec3 lit = vColor * (uAmbient + diffuse * 0.72 * uSunColor) * skyLight * groundShade;
+  vec3 lit = vColor * (vec3(uAmbient) + diffuse * 0.72 * uSunColor) * skyLight * groundShade;
   float luminance = dot(vColor, vec3(0.299, 0.587, 0.114));
   float warmWindow = smoothstep(0.73, 0.93, luminance) * smoothstep(0.18, 0.55, vColor.r - vColor.b);
   vec3 emissive = vec3(1.0, 0.71, 0.34) * warmWindow * uNightFactor * 0.85;
