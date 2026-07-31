@@ -1,150 +1,170 @@
-          if (isRoadRow) pushBox(vertices, x, groundY + 0.105, z, 1.55, 0.015, 0.09, COLORS.roadMark)
+    pushBox(target, building.x, baseY + building.height, building.z, building.width * 0.28, 0.9, building.depth * 0.42, roof, building.rotation)
+    return
+  }
+
+  if (building.type === 'residential-tower' || building.type === 'office-tower') {
+    const podiumHeight = building.type === 'office-tower' ? Math.min(8.2, building.height * 0.16) : Math.min(5.8, building.height * 0.12)
+    const podiumColor = mixColor(building.color, [0.26, 0.28, 0.29], 0.16)
+    pushBox(target, building.x, baseY, building.z, Math.min(15.4, building.width * 1.28), podiumHeight, Math.min(15.4, building.depth * 1.28), podiumColor, building.rotation, roof)
+    pushBox(target, building.x, baseY + podiumHeight, building.z, building.width, building.height - podiumHeight, building.depth, building.color, building.rotation, roof)
+    pushBox(target, building.x, baseY + building.height, building.z, building.width * 0.34, 1.15, building.depth * 0.34, roof, building.rotation)
+    return
+  }
+
+  if (building.type === 'mixed-use') {
+    const podiumHeight = Math.min(6.8, building.height * 0.28)
+    pushBox(target, building.x, baseY, building.z, building.width, podiumHeight, building.depth, mixColor(building.color, [0.22, 0.24, 0.25], 0.12), building.rotation, roof)
+    pushBox(target, building.x, baseY + podiumHeight, building.z, building.width * 0.76, building.height - podiumHeight, building.depth * 0.76, building.color, building.rotation, roof)
+    return
+  }
+
+  if (building.type === 'industrial-hall') {
+    pushBox(target, building.x, baseY, building.z, building.width, building.height, building.depth, building.color, building.rotation, roof)
+    pushBox(target, building.x + building.width * 0.27, baseY, building.z - building.depth * 0.28, building.width * 0.34, building.height * 0.70, building.depth * 0.32, mixColor(building.color, [0.72, 0.70, 0.65], 0.18), building.rotation, roof)
+    if (random() > 0.35) pushBox(target, building.x, baseY + building.height, building.z, building.width * 0.24, 0.75, building.depth * 0.22, roof, building.rotation)
+    return
+  }
+
+  const wingHeight = building.height * 0.72
+  pushBox(target, building.x - building.width * 0.16, baseY, building.z, building.width * 0.68, building.height, building.depth, building.color, building.rotation, roof)
+  pushBox(target, building.x + building.width * 0.27, baseY, building.z, building.width * 0.42, wingHeight, building.depth * 0.72, mixColor(building.color, [0.88, 0.78, 0.70], 0.16), building.rotation, roof)
+}
+
+function generateCity(settings) {
+  const seedValue = hashString(settings.seed)
+  const random = mulberry32(seedValue)
+  const cellSize = 18
+  const half = settings.gridSize / 2
+  const extent = settings.gridSize * cellSize
+  const vertices = []
+  const buildings = []
+  const roads = []
+  const parks = []
+  const parcels = []
+  const seedOffset = seedValue % 1000
+  const roadLinesX = buildRoadLines(settings.gridSize, settings.roadSpacing)
+  const roadLinesZ = buildRoadLines(settings.gridSize, settings.roadSpacing)
+  const plan = createDistrictPlan(random, extent)
+
+  pushTerrain(vertices, settings, extent, seedOffset)
+
+  let buildableLots = 0
+  let developedLots = 0
+
+  for (let gridX = 0; gridX < settings.gridSize; gridX += 1) {
+    for (let gridZ = 0; gridZ < settings.gridSize; gridZ += 1) {
+      const x = (gridX - half + 0.5) * cellSize
+      const z = (gridZ - half + 0.5) * cellSize
+      const groundY = terrainHeight(x, z, seedOffset, settings.roughness, extent)
+      const verticalRoadClass = roadLinesX.get(gridX) || null
+      const horizontalRoadClass = roadLinesZ.get(gridZ) || null
+
+      if (verticalRoadClass || horizontalRoadClass) {
+        const vertical = verticalRoadClass ? ROAD_CLASSES[verticalRoadClass] : null
+        const horizontal = horizontalRoadClass ? ROAD_CLASSES[horizontalRoadClass] : null
+        if (vertical) pushBox(vertices, x, groundY + 0.025, z, vertical.width + vertical.sidewalk, 0.07, cellSize + 0.35, COLORS.sidewalk)
+        if (horizontal) pushBox(vertices, x, groundY + 0.025, z, cellSize + 0.35, 0.07, horizontal.width + horizontal.sidewalk, COLORS.sidewalk)
+        if (vertical) {
+          pushBox(vertices, x, groundY + 0.075, z, vertical.width, 0.10, cellSize + 0.35, vertical.color)
+          if (verticalRoadClass !== 'local' && gridZ % 2 === 0) pushBox(vertices, x, groundY + 0.18, z, 0.16, 0.018, 5.0, COLORS.roadMark)
+          roads.push({ x, z, y: groundY, orientation: 'vertical', roadClass: verticalRoadClass, width: vertical.width, length: cellSize })
+        }
+        if (horizontal) {
+          pushBox(vertices, x, groundY + 0.075, z, cellSize + 0.35, 0.10, horizontal.width, horizontal.color)
+          if (horizontalRoadClass !== 'local' && gridX % 2 === 0) pushBox(vertices, x, groundY + 0.18, z, 5.0, 0.018, 0.16, COLORS.roadMark)
+          roads.push({ x, z, y: groundY, orientation: 'horizontal', roadClass: horizontalRoadClass, width: horizontal.width, length: cellSize })
         }
         continue
       }
 
-      if (random() > settings.density) continue
+      buildableLots += 1
+      const slope = terrainSlopeDegrees(x, z, seedOffset, settings.roughness, extent)
+      const nearestX = nearestLine(gridX, roadLinesX)
+      const nearestZ = nearestLine(gridZ, roadLinesZ)
+      const nearestArterialX = nearestLine(gridX, roadLinesX, ['arterial'])
+      const nearestArterialZ = nearestLine(gridZ, roadLinesZ, ['arterial'])
+      const nearestRoadOrientation = nearestX.distance <= nearestZ.distance ? 'vertical' : 'horizontal'
+      const nearestRoadClass = nearestX.distance <= nearestZ.distance ? nearestX.roadClass : nearestZ.roadClass
+      const arterialDistance = Math.min(nearestArterialX.distance, nearestArterialZ.distance)
+      const arterialAccess = 1 - clamp(arterialDistance / Math.max(settings.roadSpacing * 2.5, 1), 0, 1)
+      const parkAmenity = parkInfluenceAt(x, z, plan)
+      const cbdInfluence = pointInfluence(x, z, plan.cbd, extent * 0.30)
+      let secondaryInfluence = 0
+      for (const center of plan.secondaryCenters) {
+        secondaryInfluence = Math.max(secondaryInfluence, pointInfluence(x, z, center, extent * 0.20))
+      }
 
-      const normalizedDistance = Math.min(1, Math.hypot(x, z) / (extent * 0.58))
-      const centerFactor = 1 - normalizedDistance
-      const zone = chooseZone(normalizedDistance, random)
-      const height = buildingHeight(zone, centerFactor, random)
+      const forcedGreen = slope > 17.5
+      const plannedPark = parkAmenity > 0.10
+      if (forcedGreen || plannedPark) {
+        pushBox(vertices, x, groundY + 0.035, z, cellSize - 1.1, 0.08, cellSize - 1.1, COLORS.park)
+        const park = { id: parks.length, x, y: groundY, z, slope, planned: plannedPark }
+        parks.push(park)
+        const treeCount = forcedGreen ? Math.round(range(random, 2, 5)) : Math.round(range(random, 1, 4))
+        for (let tree = 0; tree < treeCount; tree += 1) {
+          pushTree(
+            vertices,
+            x + range(random, -cellSize * 0.34, cellSize * 0.34),
+            groundY + 0.13,
+            z + range(random, -cellSize * 0.34, cellSize * 0.34),
+            random,
+            range(random, 0.82, 1.18),
+          )
+        }
+        continue
+      }
+
+      const suitability = clamp(1 - slope / 18, 0.18, 1)
+      const roadAccess = 1 - clamp(Math.min(nearestX.distance, nearestZ.distance) / Math.max(settings.roadSpacing / 2, 1), 0, 1)
+      const developmentProbability = clamp(settings.density * (0.68 + suitability * 0.32) * (0.84 + roadAccess * 0.16), 0, 0.98)
+      if (random() > developmentProbability) continue
+
+      const context = {
+        x,
+        z,
+        extent,
+        slope,
+        settings,
+        parkAmenity,
+        cbdInfluence,
+        secondaryInfluence,
+        arterialAccess,
+        nearestRoadOrientation,
+        nearestRoadClass,
+      }
+      const zone = chooseZone(context, plan, random)
+      const spec = createBuildingSpec(zone, context, random)
+      const lotColor = COLORS[`lot${zone[0].toUpperCase()}${zone.slice(1)}`]
+      pushBox(vertices, x, groundY + 0.03, z, cellSize - 1.0, 0.07, cellSize - 1.0, lotColor)
+
       const building = {
         id: buildings.length,
         x,
         y: groundY,
         z,
-        width: range(random, 3.7, 5.65),
-        depth: range(random, 3.7, 5.65),
-        height,
-        rotation: random() > 0.88 ? Math.PI / 2 : 0,
         zone,
+        slope,
+        roadClass: nearestRoadClass,
+        ...spec,
       }
       buildings.push(building)
-      pushBox(
-        vertices,
-        building.x,
-        building.y + 0.12,
-        building.z,
-        building.width,
-        building.height,
-        building.depth,
-        COLORS[zone],
-        building.rotation,
-        COLORS.roof,
-      )
+      parcels.push({ id: parcels.length, x, z, width: cellSize - 1.0, depth: cellSize - 1.0, zone, slope, developed: true })
+      developedLots += 1
+      pushBuildingModel(vertices, building, random)
 
-      if (building.height > 13 && random() > 0.45) {
-        pushBox(
+      if ((nearestRoadClass === 'arterial' || nearestRoadClass === 'collector') && random() > 0.56) {
+        const side = nearestRoadOrientation === 'vertical' ? [Math.sign(nearestX.index - gridX) || 1, 0] : [0, Math.sign(nearestZ.index - gridZ) || 1]
+        pushTree(
           vertices,
-          building.x,
-          building.y + building.height + 0.12,
-          building.z,
-          building.width * 0.42,
-          0.65,
-          building.depth * 0.42,
-          COLORS.roof,
-          building.rotation,
+          x + side[0] * cellSize * 0.45,
+          groundY + 0.13,
+          z + side[1] * cellSize * 0.45,
+          random,
+          range(random, 0.72, 0.92),
         )
       }
     }
   }
 
   const totalHeight = buildings.reduce((sum, building) => sum + building.height, 0)
-  const population = Math.round(buildings.reduce((sum, building) => {
-    const factor = building.zone === 'residential' ? 2.65 : 0.38
-    return sum + building.width * building.depth * building.height * factor
-  }, 0))
-
-  const metrics = {
-    buildings: buildings.length,
-    population,
-    averageHeight: buildings.length ? totalHeight / buildings.length : 0,
-    developedRatio: buildings.length / (settings.gridSize * settings.gridSize),
-  }
-
-  return { settings, extent, buildings, roads, metrics, vertices: new Float32Array(vertices) }
-}
-
-function uploadCity(city) {
-  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
-  gl.bufferData(gl.ARRAY_BUFFER, city.vertices, gl.STATIC_DRAW)
-  vertexCount = city.vertices.length / 9
-
-  const stride = 9 * Float32Array.BYTES_PER_ELEMENT
-  gl.enableVertexAttribArray(locations.position)
-  gl.vertexAttribPointer(locations.position, 3, gl.FLOAT, false, stride, 0)
-  gl.enableVertexAttribArray(locations.normal)
-  gl.vertexAttribPointer(locations.normal, 3, gl.FLOAT, false, stride, 3 * Float32Array.BYTES_PER_ELEMENT)
-  gl.enableVertexAttribArray(locations.color)
-  gl.vertexAttribPointer(locations.color, 3, gl.FLOAT, false, stride, 6 * Float32Array.BYTES_PER_ELEMENT)
-}
-
-function updateMetrics(city) {
-  ui.metricBuildings.textContent = city.metrics.buildings.toLocaleString('ko-KR')
-  ui.metricPopulation.textContent = city.metrics.population.toLocaleString('ko-KR')
-  ui.metricHeight.textContent = `${city.metrics.averageHeight.toFixed(1)} m`
-  ui.metricRatio.textContent = `${Math.round(city.metrics.developedRatio * 100)}%`
-}
-
-function readSettings() {
-  return {
-    seed: ui.seed.value.trim() || 'city',
-    gridSize: Number(ui.gridSize.value),
-    density: Number(ui.density.value) / 100,
-    roughness: Number(ui.roughness.value),
-    roadSpacing: Number(ui.roadSpacing.value),
-  }
-}
-
-function rebuildCity() {
-  ui.loading.classList.add('visible')
-  requestAnimationFrame(() => {
-    currentCity = generateCity(readSettings())
-    uploadCity(currentCity)
-    updateMetrics(currentCity)
-    camera.target = [0, 5, 0]
-    camera.distance = Math.max(95, currentCity.extent * 0.95)
-    ui.loading.classList.remove('visible')
-  })
-}
-
-function updateLabels() {
-  ui.gridSizeValue.textContent = `${ui.gridSize.value} × ${ui.gridSize.value}`
-  ui.densityValue.textContent = `${ui.density.value}%`
-  ui.roughnessValue.textContent = Number(ui.roughness.value).toFixed(1)
-  ui.roadSpacingValue.textContent = `${ui.roadSpacing.value}칸`
-}
-
-for (const control of [ui.gridSize, ui.density, ui.roughness, ui.roadSpacing]) {
-  control.addEventListener('input', updateLabels)
-  control.addEventListener('change', rebuildCity)
-}
-ui.seed.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter') rebuildCity()
-})
-ui.generate.addEventListener('click', rebuildCity)
-ui.export.addEventListener('click', () => {
-  if (!currentCity) return
-  const exportData = {
-    schemaVersion: 1,
-    generatedAt: new Date().toISOString(),
-    settings: currentCity.settings,
-    metrics: currentCity.metrics,
-    buildings: currentCity.buildings,
-    roads: currentCity.roads,
-  }
-  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = `procedural-city-${currentCity.settings.seed.replace(/[^a-z0-9-_]+/gi, '-')}.json`
-  anchor.click()
-  URL.revokeObjectURL(url)
-})
-
-const camera = {
-  yaw: Math.PI * 0.25,
-  pitch: 0.72,
-  distance: 145,
-  target: [0, 5, 0],
+  const residentialFloorArea = buildings.reduce((sum, building) => sum + (building.zone === 'residential' ? building.floorArea : 0), 0)
