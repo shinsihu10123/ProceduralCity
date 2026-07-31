@@ -1,3 +1,4 @@
+const BUILD_ID = 'v052-c8a4b8ef-20260801-0230'
 const sourceParts = [
   './main.part1.js.txt',
   './main.part2.js.txt',
@@ -11,9 +12,15 @@ const sourceParts = [
   './main.part3h.js.txt',
 ]
 
+function versionedUrl(path) {
+  const url = new URL(path, import.meta.url)
+  url.searchParams.set('v', BUILD_ID)
+  return url
+}
+
 try {
   const source = (await Promise.all(sourceParts.map(async (path) => {
-    const response = await fetch(new URL(path, import.meta.url))
+    const response = await fetch(versionedUrl(path), { cache: 'no-store' })
     if (!response.ok) throw new Error(`Failed to load ${path}: ${response.status}`)
     return response.text()
   }))).join('')
@@ -25,12 +32,12 @@ try {
   if (!document.querySelector('link[data-living-city]')) {
     const stylesheet = document.createElement('link')
     stylesheet.rel = 'stylesheet'
-    stylesheet.href = new URL('./living-city.css', import.meta.url)
+    stylesheet.href = versionedUrl('./living-city.css').href
     stylesheet.dataset.livingCity = 'true'
     document.head.appendChild(stylesheet)
   }
-  await import('./living-city.js')
-  await import('./ui-v5.js')
+  await import(versionedUrl('./living-city.js').href)
+  await import(versionedUrl('./ui-v5.js').href)
 } catch (error) {
   console.error(error)
   const loading = document.querySelector('#loading')
