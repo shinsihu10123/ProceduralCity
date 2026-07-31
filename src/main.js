@@ -8,6 +8,7 @@ const sourceParts = [
   './main.part3e1.js.txt',
   './main.part3e2.js.txt',
   './main.part3f.js.txt',
+  './main.part3g.js.txt',
 ]
 
 try {
