@@ -1,0 +1,42 @@
+function releasePointer(event) {
+  activePointers.delete(event.pointerId)
+  if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId)
+  previousSinglePointer = null
+  previousPinch = null
+  if (activePointers.size === 1) {
+    const pointer = [...activePointers.values()][0]
+    previousSinglePointer = { x: pointer.x, y: pointer.y, pan: pointer.shift }
+  }
+}
+
+canvas.addEventListener('pointerup', releasePointer)
+canvas.addEventListener('pointercancel', releasePointer)
+canvas.addEventListener('contextmenu', (event) => event.preventDefault())
+canvas.addEventListener('wheel', (event) => {
+  event.preventDefault()
+  camera.distance = clamp(camera.distance * Math.exp(event.deltaY * 0.001), 28, 2400)
+}, { passive: false })
+
+function mat4Perspective(out, fovy, aspect, near, far) {
+  const f = 1 / Math.tan(fovy / 2)
+  out.fill(0)
+  out[0] = f / aspect
+  out[5] = f
+  out[10] = (far + near) / (near - far)
+  out[11] = -1
+  out[14] = (2 * far * near) / (near - far)
+  return out
+}
+
+function normalize3(vector) {
+  const length = Math.hypot(vector[0], vector[1], vector[2]) || 1
+  return [vector[0] / length, vector[1] / length, vector[2] / length]
+}
+
+function cross3(a, b) {
+  return [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ]
+}
