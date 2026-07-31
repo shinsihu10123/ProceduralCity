@@ -1,3 +1,120 @@
+  const jobFloorArea = buildings.reduce((sum, building) => {
+    if (building.zone === 'commercial') return sum + building.floorArea / 22
+    if (building.zone === 'industrial') return sum + building.floorArea / 48
+    if (building.zone === 'civic') return sum + building.floorArea / 34
+    return sum
+  }, 0)
+  const population = Math.round(residentialFloorArea / 34)
+  const greenRatio = parks.length / Math.max(buildableLots, 1)
+
+  const metrics = {
+    buildings: buildings.length,
+    population,
+    jobs: Math.round(jobFloorArea),
+    averageHeight: buildings.length ? totalHeight / buildings.length : 0,
+    developedRatio: developedLots / Math.max(buildableLots, 1),
+    greenRatio,
+  }
+
+  return {
+    schemaVersion: 2,
+    settings,
+    extent,
+    districts: plan,
+    buildings,
+    roads,
+    parks,
+    parcels,
+    metrics,
+    vertices: new Float32Array(vertices),
+  }
+}
+
+function uploadCity(city) {
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, city.vertices, gl.STATIC_DRAW)
+  vertexCount = city.vertices.length / 9
+
+  const stride = 9 * Float32Array.BYTES_PER_ELEMENT
+  gl.enableVertexAttribArray(locations.position)
+  gl.vertexAttribPointer(locations.position, 3, gl.FLOAT, false, stride, 0)
+  gl.enableVertexAttribArray(locations.normal)
+  gl.vertexAttribPointer(locations.normal, 3, gl.FLOAT, false, stride, 3 * Float32Array.BYTES_PER_ELEMENT)
+  gl.enableVertexAttribArray(locations.color)
+  gl.vertexAttribPointer(locations.color, 3, gl.FLOAT, false, stride, 6 * Float32Array.BYTES_PER_ELEMENT)
+}
+
+function updateMetrics(city) {
+  ui.metricBuildings.textContent = city.metrics.buildings.toLocaleString('ko-KR')
+  ui.metricPopulation.textContent = city.metrics.population.toLocaleString('ko-KR')
+  ui.metricHeight.textContent = `${city.metrics.averageHeight.toFixed(1)} m`
+  ui.metricRatio.textContent = `${Math.round(city.metrics.greenRatio * 100)}%`
+}
+
+function readSettings() {
+  return {
+    seed: ui.seed.value.trim() || 'city',
+    gridSize: Number(ui.gridSize.value),
+    density: Number(ui.density.value) / 100,
+    roughness: Number(ui.roughness.value),
+    roadSpacing: Number(ui.roadSpacing.value),
+  }
+}
+
+function rebuildCity() {
+  ui.loading.classList.add('visible')
+  requestAnimationFrame(() => {
+    currentCity = generateCity(readSettings())
+    uploadCity(currentCity)
+    updateMetrics(currentCity)
+    camera.target = [0, 5, 0]
+    camera.distance = Math.max(95, currentCity.extent * 0.95)
+    ui.loading.classList.remove('visible')
+  })
+}
+
+function updateLabels() {
+  ui.gridSizeValue.textContent = `${ui.gridSize.value} × ${ui.gridSize.value}`
+  ui.densityValue.textContent = `${ui.density.value}%`
+  ui.roughnessValue.textContent = Number(ui.roughness.value).toFixed(1)
+  ui.roadSpacingValue.textContent = `${ui.roadSpacing.value}칸`
+}
+
+for (const control of [ui.gridSize, ui.density, ui.roughness, ui.roadSpacing]) {
+  control.addEventListener('input', updateLabels)
+  control.addEventListener('change', rebuildCity)
+}
+ui.seed.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') rebuildCity()
+})
+ui.generate.addEventListener('click', rebuildCity)
+ui.export.addEventListener('click', () => {
+  if (!currentCity) return
+  const exportData = {
+    schemaVersion: currentCity.schemaVersion,
+    generatedAt: new Date().toISOString(),
+    settings: currentCity.settings,
+    metrics: currentCity.metrics,
+    districts: currentCity.districts,
+    buildings: currentCity.buildings,
+    roads: currentCity.roads,
+    parks: currentCity.parks,
+    parcels: currentCity.parcels,
+  }
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `procedural-city-${currentCity.settings.seed.replace(/[^a-z0-9-_]+/gi, '-')}.json`
+  anchor.click()
+  URL.revokeObjectURL(url)
+})
+
+const camera = {
+  yaw: Math.PI * 0.25,
+  pitch: 0.72,
+  distance: 145,
+  target: [0, 5, 0],
 }
 
 let dragging = false

@@ -14,7 +14,7 @@
       <header>
         <p class="eyebrow">PROCEDURAL URBAN LAB</p>
         <h1>Procedural City</h1>
-        <p class="description">지형·도로·용도·건물을 규칙에 따라 자동 생성하는 3D 도시 MVP</p>
+        <p class="description">지형 적합도·도로 계층·용도·건축 유형을 반영하는 3D 도시 생성기</p>
       </header>
 
       <section class="control-group">
@@ -52,9 +52,9 @@
         </div>
         <dl>
           <div><dt>건물 수</dt><dd id="metric-buildings">0</dd></div>
-          <div><dt>추정 수용 인구</dt><dd id="metric-population">0</dd></div>
+          <div><dt>추정 거주 인구</dt><dd id="metric-population">0</dd></div>
           <div><dt>평균 건물 높이</dt><dd id="metric-height">0 m</dd></div>
-          <div><dt>개발 비율</dt><dd id="metric-ratio">0%</dd></div>
+          <div><dt>공원·녹지 비율</dt><dd id="metric-ratio">0%</dd></div>
         </dl>
       </section>
 
@@ -63,6 +63,7 @@
         <span><i class="commercial"></i>상업</span>
         <span><i class="industrial"></i>산업</span>
         <span><i class="civic"></i>공공</span>
+        <span><i class="park"></i>공원·녹지</span>
       </section>
 
       <footer>
@@ -74,7 +75,7 @@
     <section class="viewport" aria-label="3D 도시 뷰어">
       <canvas id="city-canvas"></canvas>
       <div id="loading" class="loading">도시 생성 중</div>
-      <div class="status-badge">MVP v0.1 · WebGL2 · No dependencies</div>
+      <div class="status-badge">v0.2-alpha · Urban rules · WebGL2</div>
     </section>
   </main>
   <script type="module" src="./src/main.js"></script>
