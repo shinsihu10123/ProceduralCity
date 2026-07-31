@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f151b" />
+  <meta name="description" content="절차적 생성 기반 3D 도시 웹 앱" />
+  <title>Procedural City</title>
+  <link rel="stylesheet" href="./src/style.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <aside class="panel">
+      <header>
+        <p class="eyebrow">PROCEDURAL URBAN LAB</p>
+        <h1>Procedural City</h1>
+        <p class="description">지형·도로·용도·건물을 규칙에 따라 자동 생성하는 3D 도시 MVP</p>
+      </header>
+
+      <section class="control-group">
+        <label for="seed">도시 시드</label>
+        <div class="seed-row">
+          <input id="seed" type="text" value="seoul-2040" spellcheck="false" />
+          <button id="generate" type="button">생성</button>
+        </div>
+      </section>
+
+      <section class="control-group">
+        <label for="grid-size">도시 규모 <strong id="grid-size-value">24 × 24</strong></label>
+        <input id="grid-size" type="range" min="12" max="40" step="4" value="24" />
+      </section>
+
+      <section class="control-group">
+        <label for="density">개발 밀도 <strong id="density-value">72%</strong></label>
+        <input id="density" type="range" min="35" max="95" step="5" value="72" />
+      </section>
+
+      <section class="control-group">
+        <label for="roughness">지형 굴곡 <strong id="roughness-value">2.5</strong></label>
+        <input id="roughness" type="range" min="0" max="6" step="0.5" value="2.5" />
+      </section>
+
+      <section class="control-group">
+        <label for="road-spacing">도로 간격 <strong id="road-spacing-value">4칸</strong></label>
+        <input id="road-spacing" type="range" min="3" max="7" step="1" value="4" />
+      </section>
+
+      <section class="metrics">
+        <div class="metrics-heading">
+          <h2>도시 지표</h2>
+          <button id="export" type="button" class="ghost-button">JSON</button>
+        </div>
+        <dl>
+          <div><dt>건물 수</dt><dd id="metric-buildings">0</dd></div>
+          <div><dt>추정 수용 인구</dt><dd id="metric-population">0</dd></div>
+          <div><dt>평균 건물 높이</dt><dd id="metric-height">0 m</dd></div>
+          <div><dt>개발 비율</dt><dd id="metric-ratio">0%</dd></div>
+        </dl>
+      </section>
+
+      <section class="legend" aria-label="용도지역 범례">
+        <span><i class="residential"></i>주거</span>
+        <span><i class="commercial"></i>상업</span>
+        <span><i class="industrial"></i>산업</span>
+        <span><i class="civic"></i>공공</span>
+      </section>
+
+      <footer>
+        드래그: 회전 · 휠: 확대 · Shift+드래그: 이동<br />
+        동일한 시드는 동일한 도시를 생성한다.
+      </footer>
+    </aside>
+
+    <section class="viewport" aria-label="3D 도시 뷰어">
+      <canvas id="city-canvas"></canvas>
+      <div id="loading" class="loading">도시 생성 중</div>
+      <div class="status-badge">MVP v0.1 · WebGL2 · No dependencies</div>
+    </section>
+  </main>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
