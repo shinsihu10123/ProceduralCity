@@ -2,80 +2,126 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0f151b" />
-  <meta name="description" content="절차적 생성 기반 3D 도시 웹 앱" />
-  <title>Procedural City</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#101820" />
+  <meta name="description" content="도시계획 규칙과 기반시설을 반영한 절차적 3D 도시 생성기" />
+  <title>Procedural City · Urban Systems Lab</title>
   <link rel="stylesheet" href="./src/style.css" />
 </head>
 <body>
   <main class="app-shell">
-    <aside class="panel">
-      <header>
-        <p class="eyebrow">PROCEDURAL URBAN LAB</p>
-        <h1>Procedural City</h1>
-        <p class="description">지형 적합도·도로 계층·용도·건축 유형을 반영하는 3D 도시 생성기</p>
+    <aside class="panel" aria-label="도시 생성 제어판">
+      <header class="brand-block">
+        <div class="brand-row">
+          <div>
+            <p class="eyebrow">PROCEDURAL URBAN SYSTEMS LAB</p>
+            <h1>Procedural City</h1>
+          </div>
+          <span class="version-chip">v0.3 α</span>
+        </div>
+        <p class="description">지형·도로·대중교통·용도·건축·녹지를 하나의 도시 시스템으로 생성합니다.</p>
       </header>
 
-      <section class="control-group">
-        <label for="seed">도시 시드</label>
+      <section class="panel-section scenario-section">
+        <div class="section-heading">
+          <h2>도시 시나리오</h2>
+          <button id="random-seed" type="button" class="icon-button" aria-label="무작위 시드">↻</button>
+        </div>
         <div class="seed-row">
-          <input id="seed" type="text" value="seoul-2040" spellcheck="false" />
-          <button id="generate" type="button">생성</button>
+          <input id="seed" type="text" value="seoul-2040" spellcheck="false" aria-label="도시 시드" />
+          <button id="generate" type="button" class="primary-button">도시 생성</button>
+        </div>
+        <label class="field-label" for="profile">도시 유형</label>
+        <select id="profile">
+          <option value="balanced">균형형 광역 중심지</option>
+          <option value="metropolitan">고밀도 대도시</option>
+          <option value="eco">녹지·대중교통 중심</option>
+          <option value="waterfront">수변 복합도시</option>
+          <option value="industrial">산업·물류 거점</option>
+        </select>
+      </section>
+
+      <section class="panel-section controls-grid">
+        <div class="control-group">
+          <label for="grid-size">도시 범위 <strong id="grid-size-value">30 × 30</strong></label>
+          <input id="grid-size" type="range" min="18" max="42" step="4" value="30" />
+        </div>
+        <div class="control-group">
+          <label for="density">개발 강도 <strong id="density-value">68%</strong></label>
+          <input id="density" type="range" min="35" max="92" step="1" value="68" />
+        </div>
+        <div class="control-group">
+          <label for="roughness">지형 기복 <strong id="roughness-value">14 m</strong></label>
+          <input id="roughness" type="range" min="0" max="32" step="1" value="14" />
+        </div>
+        <div class="control-group">
+          <label for="block-size">블록 규모 <strong id="block-size-value">중간</strong></label>
+          <input id="block-size" type="range" min="3" max="7" step="1" value="5" />
         </div>
       </section>
 
-      <section class="control-group">
-        <label for="grid-size">도시 규모 <strong id="grid-size-value">24 × 24</strong></label>
-        <input id="grid-size" type="range" min="12" max="40" step="4" value="24" />
-      </section>
-
-      <section class="control-group">
-        <label for="density">개발 밀도 <strong id="density-value">72%</strong></label>
-        <input id="density" type="range" min="35" max="95" step="5" value="72" />
-      </section>
-
-      <section class="control-group">
-        <label for="roughness">지형 굴곡 <strong id="roughness-value">2.5</strong></label>
-        <input id="roughness" type="range" min="0" max="6" step="0.5" value="2.5" />
-      </section>
-
-      <section class="control-group">
-        <label for="road-spacing">도로 간격 <strong id="road-spacing-value">4칸</strong></label>
-        <input id="road-spacing" type="range" min="3" max="7" step="1" value="4" />
-      </section>
-
-      <section class="metrics">
-        <div class="metrics-heading">
-          <h2>도시 지표</h2>
-          <button id="export" type="button" class="ghost-button">JSON</button>
+      <section class="panel-section visual-section">
+        <div class="section-heading">
+          <h2>환경·표현</h2>
+          <button id="auto-rotate" type="button" class="toggle-button" aria-pressed="false">자동 회전</button>
         </div>
-        <dl>
-          <div><dt>건물 수</dt><dd id="metric-buildings">0</dd></div>
-          <div><dt>추정 거주 인구</dt><dd id="metric-population">0</dd></div>
-          <div><dt>평균 건물 높이</dt><dd id="metric-height">0 m</dd></div>
-          <div><dt>공원·녹지 비율</dt><dd id="metric-ratio">0%</dd></div>
+        <div class="control-group compact">
+          <label for="time-of-day">시간대 <strong id="time-value">15:00</strong></label>
+          <input id="time-of-day" type="range" min="6" max="23" step="0.25" value="15" />
+        </div>
+        <div class="camera-buttons" role="group" aria-label="카메라 프리셋">
+          <button type="button" data-camera="overview">조감</button>
+          <button type="button" data-camera="street">가로</button>
+          <button type="button" data-camera="center">도심</button>
+          <button type="button" data-camera="reset">초기화</button>
+        </div>
+      </section>
+
+      <section class="metrics panel-section">
+        <div class="section-heading">
+          <h2>도시 성능 지표</h2>
+          <button id="export" type="button" class="ghost-button">JSON 내보내기</button>
+        </div>
+        <dl class="metric-grid">
+          <div><dt>건축물</dt><dd id="metric-buildings">0</dd></div>
+          <div><dt>거주 인구</dt><dd id="metric-population">0</dd></div>
+          <div><dt>일자리</dt><dd id="metric-jobs">0</dd></div>
+          <div><dt>평균 높이</dt><dd id="metric-height">0 m</dd></div>
+          <div><dt>녹지율</dt><dd id="metric-green">0%</dd></div>
+          <div><dt>도로 연장</dt><dd id="metric-roads">0 km</dd></div>
+          <div><dt>대중교통 접근</dt><dd id="metric-transit">0%</dd></div>
+          <div><dt>직주 균형</dt><dd id="metric-balance">0.00</dd></div>
         </dl>
       </section>
 
-      <section class="legend" aria-label="용도지역 범례">
+      <section class="panel-section legend" aria-label="도시 요소 범례">
         <span><i class="residential"></i>주거</span>
-        <span><i class="commercial"></i>상업</span>
-        <span><i class="industrial"></i>산업</span>
-        <span><i class="civic"></i>공공</span>
+        <span><i class="commercial"></i>상업·업무</span>
+        <span><i class="industrial"></i>산업·물류</span>
+        <span><i class="civic"></i>공공시설</span>
         <span><i class="park"></i>공원·녹지</span>
+        <span><i class="water"></i>수공간</span>
       </section>
 
       <footer>
-        드래그: 회전 · 휠: 확대 · Shift+드래그: 이동<br />
-        동일한 시드는 동일한 도시를 생성한다.
+        한 손가락: 회전 · 두 손가락/Shift+드래그: 이동 · 핀치/휠: 확대<br />
+        동일한 시드와 설정은 동일한 도시를 재현합니다.
       </footer>
     </aside>
 
     <section class="viewport" aria-label="3D 도시 뷰어">
       <canvas id="city-canvas"></canvas>
-      <div id="loading" class="loading">도시 생성 중</div>
-      <div class="status-badge">v0.2-alpha · Urban rules · WebGL2</div>
+      <div id="loading" class="loading" role="status">도시 시스템 계산 중</div>
+      <div class="viewport-topbar">
+        <div class="location-badge"><span class="pulse-dot"></span><span id="district-label">CENTRAL DISTRICT</span></div>
+        <div class="compass" aria-label="북쪽 방향"><span>N</span><i id="compass-needle"></i></div>
+      </div>
+      <div class="scale-wrap">
+        <div id="scale-line" class="scale-line"></div>
+        <span id="scale-label">100 m</span>
+      </div>
+      <div class="status-badge">Urban Systems v0.3 · WebGL2 · Procedural GIS</div>
+      <div class="quality-note">실시간 렌더링을 위해 세부도는 도시 규모에 따라 자동 조정됩니다.</div>
     </section>
   </main>
   <script type="module" src="./src/main.js"></script>
