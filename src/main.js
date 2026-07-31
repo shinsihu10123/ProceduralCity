@@ -29,6 +29,7 @@ try {
     document.head.appendChild(stylesheet)
   }
   await import('./living-city.js')
+  await import('./ui-v5.js')
 } catch (error) {
   console.error(error)
   const loading = document.querySelector('#loading')
