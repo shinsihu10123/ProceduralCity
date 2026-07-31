@@ -1,0 +1,131 @@
+  const floors = building.floors
+  pushBox(vertices, building.x, building.y, building.z, building.width, building.height, building.depth, building.color, building.rotation)
+  pushGableRoof(vertices, building.x, building.y + building.height, building.z, building.width * 1.04, building.depth * 1.05, 2.4, pick(random, [COLORS.roofWarm, COLORS.roof]), building.rotation)
+  if (detailLevel > 0) {
+    const [frontX, frontZ] = buildingOffset(building, 0, -building.depth / 2 - 0.05)
+    const [doorX, doorZ] = buildingOffset(building, -building.width * 0.28, -building.depth / 2 - 0.07)
+    pushBox(vertices, frontX, building.y + floors * 1.25, frontZ, building.width * 0.48, 1.05, 0.10, COLORS.windowDay, building.rotation)
+    pushBox(vertices, doorX, building.y, doorZ, 1.05, 2.25, 0.12, tintColor(building.color, -0.12), building.rotation)
+  }
+}
+
+function createApartmentSlab(vertices, building, random, detailLevel) {
+  pushBox(vertices, building.x, building.y, building.z, building.width, building.height, building.depth, building.color, building.rotation, COLORS.roof)
+  pushFacadeBands(vertices, building, random, detailLevel, false)
+  if (detailLevel > 0) {
+    const balconyColor = tintColor(building.color, 0.18)
+    const floorHeight = building.height / building.floors
+    const visibleFloors = Math.min(building.floors - 1, 12)
+    const step = Math.max(1, Math.floor((building.floors - 1) / Math.max(visibleFloors, 1)))
+    for (let floor = 1; floor < building.floors; floor += step) {
+      const [balconyX, balconyZ] = buildingOffset(building, 0, -building.depth / 2 - 0.28)
+      pushBox(vertices, balconyX, building.y + floor * floorHeight, balconyZ, building.width * 0.78, 0.18, 0.55, balconyColor, building.rotation)
+    }
+  }
+  pushBox(vertices, building.x, building.y + building.height, building.z, building.width * 0.22, 1.2, building.depth * 0.30, COLORS.roof, building.rotation)
+}
+
+function createResidentialTower(vertices, building, random, detailLevel) {
+  const podiumHeight = Math.min(10, building.height * 0.19)
+  pushBox(vertices, building.x, building.y, building.z, building.width * 1.18, podiumHeight, building.depth * 1.18, tintColor(building.color, -0.06), building.rotation)
+  pushBox(vertices, building.x, building.y + podiumHeight, building.z, building.width, building.height - podiumHeight, building.depth, building.color, building.rotation, COLORS.roof)
+  pushFacadeBands(vertices, building, random, detailLevel, false)
+  if (building.floors > 24) {
+    pushBox(vertices, building.x, building.y + building.height * 0.72, building.z, building.width * 0.86, building.height * 0.28, building.depth * 0.86, tintColor(building.color, 0.05), building.rotation, COLORS.roof)
+  }
+}
+
+function createMixedUse(vertices, building, random, detailLevel) {
+  const podiumHeight = Math.min(14, building.height * 0.30)
+  pushBox(vertices, building.x, building.y, building.z, building.width * 1.22, podiumHeight, building.depth * 1.18, COLORS.glassDark, building.rotation)
+  pushBox(vertices, building.x, building.y + podiumHeight, building.z, building.width * 0.86, building.height - podiumHeight, building.depth * 0.86, building.color, building.rotation, COLORS.roof)
+  pushFacadeBands(vertices, building, random, detailLevel, true)
+  if (detailLevel > 0) {
+    const [shopX, shopZ] = buildingOffset(building, 0, -building.depth * 0.61)
+    pushBox(vertices, shopX, building.y + 2.5, shopZ, building.width * 0.72, 1.3, 0.10, COLORS.window, building.rotation)
+  }
+}
+
+function createOfficeTower(vertices, building, random, detailLevel) {
+  const podiumHeight = Math.min(16, building.height * 0.22)
+  pushBox(vertices, building.x, building.y, building.z, building.width * 1.30, podiumHeight, building.depth * 1.30, tintColor(COLORS.glassDark, -0.06), building.rotation)
+  const middleHeight = building.height * 0.50
+  pushBox(vertices, building.x, building.y + podiumHeight, building.z, building.width, middleHeight, building.depth, building.color, building.rotation)
+  pushBox(vertices, building.x, building.y + podiumHeight + middleHeight, building.z, building.width * 0.80, building.height - podiumHeight - middleHeight, building.depth * 0.80, tintColor(building.color, 0.08), building.rotation, COLORS.roof)
+  pushFacadeBands(vertices, building, random, detailLevel, true)
+  pushBox(vertices, building.x, building.y + building.height, building.z, building.width * 0.16, 3.2, building.depth * 0.16, COLORS.roof, building.rotation)
+}
+
+function createWarehouse(vertices, building, random, detailLevel) {
+  pushBox(vertices, building.x, building.y, building.z, building.width, building.height, building.depth, building.color, building.rotation, tintColor(COLORS.roof, 0.06))
+  if (detailLevel > 0) {
+    const bayCount = 4
+    for (let bay = 0; bay < bayCount; bay += 1) {
+      const offset = (bay - (bayCount - 1) / 2) * building.width * 0.20
+      const [bayX, bayZ] = buildingOffset(building, offset, -building.depth / 2 - 0.06)
+      pushBox(vertices, bayX, building.y, bayZ, building.width * 0.14, building.height * 0.58, 0.12, COLORS.signal, building.rotation)
+    }
+    for (let ridge = -1; ridge <= 1; ridge += 1) {
+      pushBox(vertices, building.x + ridge * building.width * 0.24, building.y + building.height, building.z, building.width * 0.18, 1.0, building.depth * 0.92, tintColor(COLORS.roof, 0.16), building.rotation)
+    }
+  }
+}
+
+function createCivicBuilding(vertices, building, random, detailLevel) {
+  const wingWidth = building.width * 0.42
+  pushBox(vertices, building.x, building.y, building.z, building.width, building.height * 0.72, building.depth * 0.55, building.color, building.rotation)
+  pushBox(vertices, building.x - building.width * 0.29, building.y, building.z + building.depth * 0.16, wingWidth, building.height, building.depth * 0.70, tintColor(building.color, 0.05), building.rotation, COLORS.roof)
+  pushBox(vertices, building.x + building.width * 0.29, building.y, building.z + building.depth * 0.16, wingWidth, building.height, building.depth * 0.70, tintColor(building.color, -0.04), building.rotation, COLORS.roof)
+  if (detailLevel > 0) {
+    const [entryX, entryZ] = buildingOffset(building, 0, -building.depth * 0.30)
+    pushBox(vertices, entryX, building.y + 1.1, entryZ, building.width * 0.38, 2.2, 0.10, COLORS.windowDay, building.rotation)
+  }
+}
+
+function pushBuilding(vertices, building, random, detailLevel) {
+  if (building.type === 'detached-house') createDetachedHouse(vertices, building, random, detailLevel)
+  else if (building.type === 'apartment-slab') createApartmentSlab(vertices, building, random, detailLevel)
+  else if (building.type === 'residential-tower') createResidentialTower(vertices, building, random, detailLevel)
+  else if (building.type === 'mixed-use') createMixedUse(vertices, building, random, detailLevel)
+  else if (building.type === 'office-tower') createOfficeTower(vertices, building, random, detailLevel)
+  else if (building.type === 'warehouse') createWarehouse(vertices, building, random, detailLevel)
+  else createCivicBuilding(vertices, building, random, detailLevel)
+}
+
+function chooseBuildingType(zone, context, settings, random) {
+  const { centerScore, arterialAccess, edgeFactor } = context
+  if (zone === 'residential') {
+    if (centerScore > 0.70 && random() < 0.62) return 'residential-tower'
+    if (arterialAccess > 0.65 && random() < 0.46) return 'apartment-slab'
+    if (settings.profile === 'metropolitan' && random() < 0.50) return 'apartment-slab'
+    return edgeFactor > 0.50 && random() < 0.62 ? 'detached-house' : 'apartment-slab'
+  }
+  if (zone === 'commercial') {
+    if (centerScore > 0.72 || (settings.profile === 'metropolitan' && random() < 0.48)) return 'office-tower'
+    return 'mixed-use'
+  }
+  if (zone === 'industrial') return 'warehouse'
+  return 'civic-complex'
+}
+
+function buildingParameters(type, parcel, context, settings, random) {
+  const floorHeight = type === 'warehouse' ? 5.5 : type === 'civic-complex' ? 4.1 : 3.25
+  const densityFactor = settings.density
+  let floors
+  let width = parcel.width * range(random, 0.56, 0.82)
+  let depth = parcel.depth * range(random, 0.54, 0.82)
+  if (type === 'detached-house') {
+    floors = random() < 0.72 ? 2 : 3
+    width = parcel.width * range(random, 0.42, 0.58)
+    depth = parcel.depth * range(random, 0.40, 0.58)
+  } else if (type === 'apartment-slab') {
+    floors = Math.round(range(random, 7, 17) * (0.78 + densityFactor * 0.40))
+    if (random() < 0.5) width = parcel.width * 0.42
+    else depth = parcel.depth * 0.42
+  } else if (type === 'residential-tower') {
+    floors = Math.round(range(random, 17, 34) * (0.78 + densityFactor * 0.46) * (0.82 + context.centerScore * 0.38))
+    width = parcel.width * range(random, 0.43, 0.58)
+    depth = parcel.depth * range(random, 0.43, 0.58)
+  } else if (type === 'mixed-use') {
+    floors = Math.round(range(random, 7, 19) * (0.80 + context.centerScore * 0.45))
+  } else if (type === 'office-tower') {

@@ -1,243 +1,395 @@
+
+  function waterDistance(x, z) {
+    if (!waterEnabled) return Infinity
+    return Math.abs(z - riverCenterZ(x))
+  }
+
+  function rawHeight(x, z) {
+    const nx = x / extent
+    const nz = z / extent
+    const broad = fbm(nx * 2.2 + phase, nz * 2.2 - phase, seedValue, 4)
+    const ridge = Math.abs(fbm(nx * 4.5 - phase, nz * 4.5 + phase, seedValue + 991, 3))
+    const urbanBasin = 1 - smoothstep(0.12, 0.66, Math.hypot(nx, nz))
+    const profileScale = settings.profile === 'metropolitan' ? 0.72 : settings.profile === 'eco' ? 1.12 : 1
+    return (broad * 0.76 + ridge * 0.24 - urbanBasin * 0.12) * settings.roughness * profileScale
+  }
+
+  function height(x, z) {
+    const raw = rawHeight(x, z)
+    const distance = waterDistance(x, z)
+    if (!Number.isFinite(distance)) return raw
+    const carve = 1 - smoothstep(waterWidth * 0.48, waterWidth * 1.65, distance)
+    return lerp(raw, waterY - 3.8, carve)
+  }
+
+  function slopeDegrees(x, z) {
+    const sample = 5
+    const dx = (height(x + sample, z) - height(x - sample, z)) / (sample * 2)
+    const dz = (height(x, z + sample) - height(x, z - sample)) / (sample * 2)
+    return Math.atan(Math.hypot(dx, dz)) * 180 / Math.PI
+  }
+
+  function isWater(x, z) {
+    return waterDistance(x, z) < waterWidth * 0.52
+  }
+
+  return { height, rawHeight, slopeDegrees, waterDistance, isWater, waterEnabled, waterWidth, waterY, riverCenterZ }
+}
+
+function pushTerrain(target, settings, extent, seedValue, terrain) {
+  const size = extent * 1.28
+  const segments = Math.min(92, settings.gridSize * 2 + 12)
+  const step = size / segments
+  const start = -size / 2
+  const waterVertices = []
+
+  for (let xIndex = 0; xIndex < segments; xIndex += 1) {
+    for (let zIndex = 0; zIndex < segments; zIndex += 1) {
+      const x0 = start + xIndex * step
+      const z0 = start + zIndex * step
+      const x1 = x0 + step
+      const z1 = z0 + step
+      const y00 = terrain.height(x0, z0)
+      const y10 = terrain.height(x1, z0)
+      const y11 = terrain.height(x1, z1)
+      const y01 = terrain.height(x0, z1)
+      const average = (y00 + y10 + y11 + y01) / 4
+      const slope = Math.max(
+        Math.abs(y00 - y11) / Math.max(step, 1),
+        Math.abs(y10 - y01) / Math.max(step, 1),
+      )
+      const heightFactor = clamp(average / Math.max(settings.roughness * 1.2, 1) + 0.5, 0, 1)
+      let color = mixColor(COLORS.terrainLow, COLORS.terrainHigh, heightFactor)
+      if (settings.profile === 'industrial') color = mixColor(color, COLORS.terrainDry, 0.18)
+      color = tintColor(color, -clamp(slope * 0.35, 0, 0.12))
+      const normal1 = calculateNormal([x0, y00, z0], [x1, y10, z0], [x1, y11, z1])
+      const normal2 = calculateNormal([x0, y00, z0], [x1, y11, z1], [x0, y01, z1])
+      pushTriangle(target, [x0, y00, z0], [x1, y10, z0], [x1, y11, z1], normal1, color)
       pushTriangle(target, [x0, y00, z0], [x1, y11, z1], [x0, y01, z1], normal2, color)
+
+      const centerX = (x0 + x1) / 2
+      const centerZ = (z0 + z1) / 2
+      if (terrain.isWater(centerX, centerZ)) {
+        const waterColor = mixColor(COLORS.waterDeep, COLORS.waterShallow, hash2(xIndex, zIndex, seedValue) * 0.45)
+        pushQuad(
+          waterVertices,
+          [x0, terrain.waterY, z0],
+          [x1, terrain.waterY, z0],
+          [x1, terrain.waterY, z1],
+          [x0, terrain.waterY, z1],
+          [0, 1, 0],
+          waterColor,
+        )
+      }
+    }
+  }
+  target.push(...waterVertices)
+}
+
+const ROAD_LEVEL = { local: 1, collector: 2, arterial: 3 }
+const ROAD_WIDTH = { local: 8.5, collector: 14, arterial: 22 }
+
+function roadClassForIndex(index, gridSize, blockSize, seedOffset) {
+  const center = Math.floor(gridSize / 2)
+  if (index === center) return 'arterial'
+  const shifted = index + seedOffset
+  if (index === 0 || index === gridSize - 1) return 'collector'
+  if (shifted % (blockSize * 3) === 0) return 'arterial'
+  if (shifted % (blockSize * 2) === 0) return 'collector'
+  if (shifted % blockSize === 0) return 'local'
+  return null
+}
+
+function strongestRoad(a, b) {
+  if (!a) return b
+  if (!b) return a
+  return ROAD_LEVEL[a] >= ROAD_LEVEL[b] ? a : b
+}
+
+function buildRoadNetwork(settings, seedValue) {
+  const seedOffsetX = seedValue % Math.max(settings.blockSize, 1)
+  const seedOffsetZ = (seedValue >>> 8) % Math.max(settings.blockSize, 1)
+  const xRoads = []
+  const zRoads = []
+  for (let index = 0; index < settings.gridSize; index += 1) {
+    const xClass = roadClassForIndex(index, settings.gridSize, settings.blockSize, seedOffsetX)
+    const zClass = roadClassForIndex(index, settings.gridSize, settings.blockSize, seedOffsetZ)
+    if (xClass) xRoads.push({ index, class: xClass })
+    if (zClass) zRoads.push({ index, class: zClass })
+  }
+  return { xRoads, zRoads }
+}
+
+function nearestRoadDistance(index, roads) {
+  let best = Infinity
+  let roadClass = null
+  for (const road of roads) {
+    const distance = Math.abs(index - road.index)
+    if (distance < best || (distance === best && ROAD_LEVEL[road.class] > ROAD_LEVEL[roadClass || 'local'])) {
+      best = distance
+      roadClass = road.class
+    }
+  }
+  return { cells: best, class: roadClass }
+}
+
+function pushLaneMarkings(vertices, road, cellSize, random) {
+  const { x, y, z, width, depth, orientation, class: roadClass } = road
+  const markY = y + 0.14
+  if (orientation === 'vertical') {
+    if (roadClass === 'arterial') {
+      pushBox(vertices, x - 5.5, markY, z, 0.16, 0.025, cellSize * 0.72, COLORS.roadMark)
+      pushBox(vertices, x + 5.5, markY, z, 0.16, 0.025, cellSize * 0.72, COLORS.roadMark)
+      pushBox(vertices, x, markY - 0.01, z, 4.8, 0.04, depth, COLORS.median)
+    } else {
+      pushBox(vertices, x, markY, z, 0.13, 0.02, cellSize * 0.58, COLORS.roadMark)
+    }
+  } else if (orientation === 'horizontal') {
+    if (roadClass === 'arterial') {
+      pushBox(vertices, x, markY, z - 5.5, cellSize * 0.72, 0.025, 0.16, COLORS.roadMark)
+      pushBox(vertices, x, markY, z + 5.5, cellSize * 0.72, 0.025, 0.16, COLORS.roadMark)
+      pushBox(vertices, x, markY - 0.01, z, width, 0.04, 4.8, COLORS.median)
+    } else {
+      pushBox(vertices, x, markY, z, cellSize * 0.58, 0.02, 0.13, COLORS.roadMark)
+    }
+  }
+
+  if (roadClass !== 'local' && random() < 0.18) {
+    const direction = orientation === 'vertical' ? 0 : Math.PI / 2
+    const laneOffset = roadClass === 'arterial' ? 7.2 : 2.6
+    const side = random() < 0.5 ? -1 : 1
+    if (orientation === 'vertical') pushVehicle(vertices, x + side * laneOffset, y + 0.16, z + range(random, -8, 8), direction, random)
+    if (orientation === 'horizontal') pushVehicle(vertices, x + range(random, -8, 8), y + 0.16, z + side * laneOffset, direction, random)
+  }
+}
+
+function pushCrosswalk(vertices, x, y, z, roadWidth, orientation) {
+  const stripeCount = 6
+  for (let stripe = 0; stripe < stripeCount; stripe += 1) {
+    const offset = (stripe - (stripeCount - 1) / 2) * 1.1
+    if (orientation === 'vertical') {
+      pushBox(vertices, x + offset, y + 0.17, z, 0.62, 0.025, roadWidth * 0.72, COLORS.crosswalk)
+    } else {
+      pushBox(vertices, x, y + 0.17, z + offset, roadWidth * 0.72, 0.025, 0.62, COLORS.crosswalk)
     }
   }
 }
 
-function calculateNormal(a, b, c) {
-  const ux = b[0] - a[0]
-  const uy = b[1] - a[1]
-  const uz = b[2] - a[2]
-  const vx = c[0] - a[0]
-  const vy = c[1] - a[1]
-  const vz = c[2] - a[2]
-  let nx = uy * vz - uz * vy
-  let ny = uz * vx - ux * vz
-  let nz = ux * vy - uy * vx
-  const length = Math.hypot(nx, ny, nz) || 1
-  nx /= length
-  ny /= length
-  nz /= length
-  if (ny < 0) {
-    nx *= -1
-    ny *= -1
-    nz *= -1
-  }
-  return [nx, ny, nz]
-}
-
-const ROAD_CLASSES = {
-  arterial: { width: 9.4, sidewalk: 2.8, color: COLORS.roadArterial },
-  collector: { width: 7.0, sidewalk: 2.4, color: COLORS.roadCollector },
-  local: { width: 5.2, sidewalk: 2.0, color: COLORS.roadLocal },
-}
-
-function buildRoadLines(gridSize, spacing) {
-  const center = Math.floor(gridSize / 2)
-  const lines = new Map()
-  for (let index = center; index >= 0; index -= spacing) {
-    const offset = center - index
-    lines.set(index, offset % (spacing * 3) === 0 ? 'arterial' : (offset % (spacing * 2) === 0 ? 'collector' : 'local'))
-  }
-  for (let index = center + spacing; index < gridSize; index += spacing) {
-    const offset = index - center
-    lines.set(index, offset % (spacing * 3) === 0 ? 'arterial' : (offset % (spacing * 2) === 0 ? 'collector' : 'local'))
-  }
-  return lines
-}
-
-function nearestLine(index, lines, acceptedClasses = null) {
-  let best = { distance: Infinity, index: null, roadClass: null }
-  for (const [lineIndex, roadClass] of lines.entries()) {
-    if (acceptedClasses && !acceptedClasses.includes(roadClass)) continue
-    const distance = Math.abs(index - lineIndex)
-    if (distance < best.distance) best = { distance, index: lineIndex, roadClass }
-  }
-  return best
-}
-
-function createDistrictPlan(random, extent) {
-  const cbd = [range(random, -extent * 0.08, extent * 0.08), range(random, -extent * 0.08, extent * 0.08)]
-  const secondaryCenters = []
-  for (let index = 0; index < 2; index += 1) {
-    const angle = range(random, 0, Math.PI * 2)
-    const radius = range(random, extent * 0.20, extent * 0.34)
-    secondaryCenters.push([Math.cos(angle) * radius, Math.sin(angle) * radius])
-  }
-  const industrialAngle = range(random, 0, Math.PI * 2)
-  const industrial = [
-    Math.cos(industrialAngle) * extent * 0.43,
-    Math.sin(industrialAngle) * extent * 0.43,
+function pushTrafficSignal(vertices, x, y, z, roadWidth, random) {
+  const offset = roadWidth / 2 + 1.7
+  const positions = [
+    [x - offset, z - offset],
+    [x + offset, z + offset],
   ]
-  const parkCenters = []
-  for (let index = 0; index < 3; index += 1) {
-    const angle = range(random, 0, Math.PI * 2)
-    const radius = range(random, extent * 0.12, extent * 0.37)
-    parkCenters.push({
-      x: Math.cos(angle) * radius,
-      z: Math.sin(angle) * radius,
-      radius: range(random, extent * 0.055, extent * 0.095),
-    })
+  for (const [px, pz] of positions) {
+    pushBox(vertices, px, y, pz, 0.25, 4.6, 0.25, COLORS.signal)
+    pushBox(vertices, px, y + 3.8, pz, 0.55, 1.15, 0.38, COLORS.signal, random() > 0.5 ? Math.PI / 2 : 0)
+    pushBox(vertices, px, y + 4.55, pz, 0.19, 0.19, 0.19, random() > 0.5 ? [0.25, 0.75, 0.35] : [0.86, 0.20, 0.14])
   }
-  const civicCenters = [
-    [
-      cbd[0] + range(random, -extent * 0.08, extent * 0.08),
-      cbd[1] + range(random, -extent * 0.08, extent * 0.08),
-    ],
-    [
-      secondaryCenters[0][0] + range(random, -extent * 0.045, extent * 0.045),
-      secondaryCenters[0][1] + range(random, -extent * 0.045, extent * 0.045),
-    ],
-    [
-      secondaryCenters[1][0] + range(random, -extent * 0.045, extent * 0.045),
-      secondaryCenters[1][1] + range(random, -extent * 0.045, extent * 0.045),
-    ],
+}
+
+function pushRoadCell(vertices, roads, settings, terrain, cell, random, detailLevel) {
+  const { x, z, xClass, zClass } = cell
+  const roadClass = strongestRoad(xClass, zClass)
+  const isIntersection = Boolean(xClass && zClass)
+  const widthX = xClass ? ROAD_WIDTH[xClass] : 0
+  const widthZ = zClass ? ROAD_WIDTH[zClass] : 0
+  const maxWidth = Math.max(widthX, widthZ)
+  const sidewalkWidth = roadClass === 'arterial' ? 3.8 : roadClass === 'collector' ? 3.0 : 2.2
+  const waterDistance = terrain.waterDistance(x, z)
+  const bridgeInfluence = Number.isFinite(waterDistance)
+    ? 1 - smoothstep(terrain.waterWidth * 0.45, terrain.waterWidth * 0.95 + settings.cellSize, waterDistance)
+    : 0
+  const ground = terrain.height(x, z)
+  const bridgeDeck = terrain.waterY + 5.2
+  const roadY = Math.max(ground, lerp(ground, bridgeDeck, bridgeInfluence))
+
+  if (isIntersection) {
+    const footprint = maxWidth + sidewalkWidth * 2
+    pushBox(vertices, x, roadY, z, footprint, 0.12, footprint, COLORS.sidewalk)
+    pushBox(vertices, x, roadY + 0.11, z, maxWidth, 0.10, maxWidth, COLORS[roadClass])
+    if (roadClass !== 'local') {
+      pushCrosswalk(vertices, x, roadY, z - maxWidth * 0.34, maxWidth, 'vertical')
+      pushCrosswalk(vertices, x - maxWidth * 0.34, roadY, z, maxWidth, 'horizontal')
+      if (detailLevel > 0) pushTrafficSignal(vertices, x, roadY, z, maxWidth, random)
+    }
+  } else if (xClass) {
+    const roadWidth = ROAD_WIDTH[xClass]
+    pushBox(vertices, x, roadY, z, roadWidth + sidewalkWidth * 2, 0.12, settings.cellSize + 0.7, COLORS.sidewalk)
+    pushBox(vertices, x, roadY + 0.11, z, roadWidth, 0.10, settings.cellSize + 0.8, COLORS[xClass])
+    pushLaneMarkings(vertices, {
+      x, y: roadY, z, width: roadWidth, depth: settings.cellSize, orientation: 'vertical', class: xClass,
+    }, settings.cellSize, random)
+    roads.push({ x, z, y: roadY, orientation: 'vertical', class: xClass, length: settings.cellSize, bridge: bridgeInfluence > 0.4 })
+    if (detailLevel > 0 && xClass !== 'local' && Math.abs(Math.round(z / settings.cellSize)) % 2 === 0) {
+      pushStreetLight(vertices, x - roadWidth / 2 - 1.1, roadY + 0.12, z, Math.PI / 2)
+      pushStreetLight(vertices, x + roadWidth / 2 + 1.1, roadY + 0.12, z, -Math.PI / 2)
+    }
+  } else if (zClass) {
+    const roadWidth = ROAD_WIDTH[zClass]
+    pushBox(vertices, x, roadY, z, settings.cellSize + 0.7, 0.12, roadWidth + sidewalkWidth * 2, COLORS.sidewalk)
+    pushBox(vertices, x, roadY + 0.11, z, settings.cellSize + 0.8, 0.10, roadWidth, COLORS[zClass])
+    pushLaneMarkings(vertices, {
+      x, y: roadY, z, width: settings.cellSize, depth: roadWidth, orientation: 'horizontal', class: zClass,
+    }, settings.cellSize, random)
+    roads.push({ x, z, y: roadY, orientation: 'horizontal', class: zClass, length: settings.cellSize, bridge: bridgeInfluence > 0.4 })
+    if (detailLevel > 0 && zClass !== 'local' && Math.abs(Math.round(x / settings.cellSize)) % 2 === 0) {
+      pushStreetLight(vertices, x, roadY + 0.12, z - roadWidth / 2 - 1.1, 0)
+      pushStreetLight(vertices, x, roadY + 0.12, z + roadWidth / 2 + 1.1, Math.PI)
+    }
+  }
+
+  if (bridgeInfluence > 0.5 && detailLevel > 0) {
+    const pierHeight = Math.max(1, roadY - terrain.waterY)
+    pushBox(vertices, x - maxWidth * 0.28, terrain.waterY - 0.4, z, 1.2, pierHeight, 1.2, COLORS.embankment)
+    pushBox(vertices, x + maxWidth * 0.28, terrain.waterY - 0.4, z, 1.2, pierHeight, 1.2, COLORS.embankment)
+  }
+}
+
+function createUrbanCenters(settings, random, extent, terrain) {
+  const adjust = (x, z) => {
+    if (!terrain.isWater(x, z)) return { x, z }
+    return { x, z: z - terrain.waterWidth * 1.6 }
+  }
+  const centralRoadX = (Math.floor(settings.gridSize / 2) - settings.gridSize / 2 + 0.5) * settings.cellSize
+  const cbd = adjust(centralRoadX, -extent * 0.04)
+  const subcenters = [
+    adjust(extent * 0.26, -extent * 0.23),
+    adjust(-extent * 0.28, extent * 0.19),
   ]
-  return { cbd, secondaryCenters, industrial, parkCenters, civicCenters }
+  const industrial = adjust(
+    settings.profile === 'industrial' ? extent * 0.31 : extent * 0.40,
+    settings.profile === 'waterfront' ? extent * 0.30 : -extent * 0.34,
+  )
+  const parkAnchors = [
+    adjust(-extent * 0.18, -extent * 0.28),
+    adjust(extent * 0.25, extent * 0.22),
+    adjust(-extent * 0.34, extent * 0.31),
+  ]
+  const civicAnchors = [
+    adjust(extent * 0.10, -extent * 0.18),
+    adjust(-extent * 0.21, extent * 0.04),
+    adjust(extent * 0.30, extent * 0.02),
+  ]
+  return { cbd, subcenters, industrial, parkAnchors, civicAnchors }
 }
 
-function pointInfluence(x, z, point, radius) {
-  return 1 - clamp(Math.hypot(x - point[0], z - point[1]) / radius, 0, 1)
+function distanceToPoint(x, z, point) {
+  return Math.hypot(x - point.x, z - point.z)
 }
 
-function parkInfluenceAt(x, z, plan) {
-  let influence = 0
-  for (const park of plan.parkCenters) {
-    influence = Math.max(influence, 1 - clamp(Math.hypot(x - park.x, z - park.z) / park.radius, 0, 1))
-  }
-  return influence
+function proximityScore(x, z, point, radius) {
+  return 1 - smoothstep(0, radius, distanceToPoint(x, z, point))
 }
 
-function chooseZone(context, plan, random) {
-  const cbdInfluence = pointInfluence(context.x, context.z, plan.cbd, context.extent * 0.30)
-  let secondaryInfluence = 0
-  for (const center of plan.secondaryCenters) {
-    secondaryInfluence = Math.max(secondaryInfluence, pointInfluence(context.x, context.z, center, context.extent * 0.20))
-  }
-  const industrialInfluence = pointInfluence(context.x, context.z, plan.industrial, context.extent * 0.23)
-  let civicInfluence = 0
-  for (const center of plan.civicCenters) {
-    civicInfluence = Math.max(civicInfluence, pointInfluence(context.x, context.z, center, context.extent * 0.10))
-  }
-  const edgeFactor = clamp(Math.hypot(context.x, context.z) / (context.extent * 0.60), 0, 1)
+function chooseZone(parcel, centers, settings, random, extent, nearestRoad) {
+  const { x, z, slope, waterDistance } = parcel
+  const cbd = proximityScore(x, z, centers.cbd, extent * 0.30)
+  const subcenter = Math.max(...centers.subcenters.map((center) => proximityScore(x, z, center, extent * 0.19)))
+  const industrial = proximityScore(x, z, centers.industrial, extent * 0.25)
+  const park = Math.max(...centers.parkAnchors.map((center) => proximityScore(x, z, center, extent * 0.13)))
+  const civic = Math.max(...centers.civicAnchors.map((center) => proximityScore(x, z, center, extent * 0.10)))
+  const waterEdge = Number.isFinite(waterDistance) ? 1 - smoothstep(terrainSafeWidth(settings), terrainSafeWidth(settings) * 3.2, waterDistance) : 0
+  const arterialAccess = nearestRoad.class === 'arterial' ? 1 : nearestRoad.class === 'collector' ? 0.55 : 0.18
 
-  if (civicInfluence > 0.30 && random() < 0.46) return 'civic'
+  const slopeLimit = settings.profile === 'eco' ? 10 : 14
+  const greenBias = settings.profile === 'eco' ? 0.24 : settings.profile === 'metropolitan' ? -0.08 : 0
+  if (slope > slopeLimit + random() * 5) return 'park'
+  if (waterEdge > 0.82 && random() < 0.58) return 'park'
+  if (park + greenBias > 0.74 && random() < 0.84) return 'park'
+  if (civic > 0.76 && random() < 0.62) return 'civic'
 
   const scores = {
-    residential: 0.62 + secondaryInfluence * 0.44 + context.parkAmenity * 0.34 - cbdInfluence * 0.38 - industrialInfluence * 0.95,
-    commercial: 0.13 + cbdInfluence * 1.32 + secondaryInfluence * 0.58 + context.arterialAccess * 0.42 - industrialInfluence * 0.28,
-    industrial: 0.02 + industrialInfluence * 1.42 + edgeFactor * 0.40 + context.arterialAccess * 0.18 - cbdInfluence * 0.82,
-    civic: 0.02 + civicInfluence * 0.92 + context.parkAmenity * 0.16,
+    residential: 0.62 + (1 - cbd) * 0.48 + park * 0.32 + waterEdge * 0.22 - industrial * 0.58,
+    commercial: 0.24 + cbd * 1.35 + subcenter * 0.78 + arterialAccess * 0.32 + waterEdge * 0.14,
+    industrial: 0.12 + industrial * 1.46 + arterialAccess * 0.24 - park * 0.72 - cbd * 0.45,
+    civic: 0.10 + civic * 1.18 + subcenter * 0.18,
   }
 
-  let chosen = 'residential'
-  let bestScore = -Infinity
-  for (const [zone, score] of Object.entries(scores)) {
-    const jitter = range(random, -0.10, 0.10)
-    if (score + jitter > bestScore) {
-      chosen = zone
-      bestScore = score + jitter
-    }
+  if (settings.profile === 'metropolitan') {
+    scores.commercial += 0.24
+    scores.residential += 0.08
+  } else if (settings.profile === 'industrial') {
+    scores.industrial += 0.35
+    scores.commercial += 0.08
+  } else if (settings.profile === 'waterfront') {
+    scores.commercial += waterEdge * 0.30
+    scores.residential += waterEdge * 0.22
+  } else if (settings.profile === 'eco') {
+    scores.residential += park * 0.20
+    scores.industrial -= 0.20
   }
-  return chosen
+
+  const entries = Object.entries(scores).map(([zone, score]) => [zone, Math.max(0.01, score * range(random, 0.84, 1.16))])
+  const total = entries.reduce((sum, [, score]) => sum + score, 0)
+  let roll = random() * total
+  for (const [zone, score] of entries) {
+    roll -= score
+    if (roll <= 0) return zone
+  }
+  return 'residential'
 }
 
-function createBuildingSpec(zone, context, random) {
-  const densityBias = (context.settings.density - 0.35) / 0.60
-  const intensity = clamp(
-    0.10 + context.cbdInfluence * 0.78 + context.secondaryInfluence * 0.30
-    + context.arterialAccess * 0.20 + densityBias * 0.28 - context.slope / 42,
-    0,
-    1,
-  )
-  const streetRotation = context.nearestRoadOrientation === 'horizontal' ? Math.PI / 2 : 0
-  const colorVariation = range(random, -0.08, 0.10)
-  const baseColor = mixColor(COLORS[zone], colorVariation >= 0 ? [0.95, 0.95, 0.92] : [0.18, 0.20, 0.21], Math.abs(colorVariation))
+function terrainSafeWidth(settings) {
+  return settings.profile === 'waterfront' ? 24 : 14
+}
 
-  let type
-  let floors
-  let floorHeight
-  let width
-  let depth
+function pushLotSurface(vertices, parcel, zone) {
+  const color = zone === 'park'
+    ? COLORS.park
+    : zone === 'commercial'
+      ? [0.44, 0.45, 0.43]
+      : zone === 'industrial'
+        ? [0.42, 0.40, 0.36]
+        : zone === 'civic'
+          ? [0.49, 0.46, 0.41]
+          : [0.38, 0.48, 0.33]
+  pushBox(vertices, parcel.x, parcel.y, parcel.z, parcel.width, 0.18, parcel.depth, color)
+}
 
-  if (zone === 'residential') {
-    if (intensity < 0.36) {
-      type = 'detached'
-      floors = Math.round(range(random, 2, 4))
-      floorHeight = 3.0
-      width = range(random, 8.0, 10.8)
-      depth = range(random, 8.5, 11.5)
-    } else if (intensity < 0.70) {
-      type = 'apartment-slab'
-      floors = Math.round(range(random, 5, 12) * (0.78 + intensity * 0.36))
-      floorHeight = 3.05
-      width = range(random, 12.0, 15.2)
-      depth = range(random, 6.8, 8.8)
-    } else {
-      type = 'residential-tower'
-      floors = Math.round(range(random, 12, 25) * (0.76 + intensity * 0.42))
-      floorHeight = 3.15
-      width = range(random, 9.5, 12.2)
-      depth = range(random, 9.5, 12.2)
-    }
-  } else if (zone === 'commercial') {
-    if (intensity > 0.62) {
-      type = 'office-tower'
-      floors = Math.round(range(random, 12, 31) * (0.72 + intensity * 0.50))
-      floorHeight = 3.75
-      width = range(random, 10.0, 13.0)
-      depth = range(random, 10.0, 13.0)
-    } else {
-      type = 'mixed-use'
-      floors = Math.round(range(random, 4, 10) * (0.82 + intensity * 0.28))
-      floorHeight = 3.45
-      width = range(random, 12.5, 15.0)
-      depth = range(random, 10.0, 13.8)
-    }
-  } else if (zone === 'industrial') {
-    type = 'industrial-hall'
-    floors = Math.round(range(random, 1, 3))
-    floorHeight = 5.0
-    width = range(random, 13.5, 16.0)
-    depth = range(random, 12.5, 16.0)
-  } else {
-    type = 'civic-complex'
-    floors = Math.round(range(random, 2, 6))
-    floorHeight = 3.7
-    width = range(random, 12.0, 15.5)
-    depth = range(random, 10.0, 14.5)
+function buildingOffset(building, localX, localZ) {
+  const cos = Math.cos(building.rotation)
+  const sin = Math.sin(building.rotation)
+  return [
+    building.x + localX * cos - localZ * sin,
+    building.z + localX * sin + localZ * cos,
+  ]
+}
+
+function pushFacadeBands(vertices, building, random, detailLevel, glass = false) {
+  if (detailLevel <= 0 || building.floors < 5) return
+  const color = glass ? COLORS.windowDay : tintColor(building.color, -0.18)
+  const interval = building.floors > 24 ? 5 : building.floors > 12 ? 3 : 2
+  const floorHeight = building.height / building.floors
+  const maxBands = 10
+  let bandCount = 0
+  for (let floor = interval; floor < building.floors && bandCount < maxBands; floor += interval) {
+    const bandY = building.y + floor * floorHeight
+    const bandHeight = glass ? 0.32 : 0.22
+    const [frontX, frontZ] = buildingOffset(building, 0, -building.depth / 2 - 0.035)
+    const [backX, backZ] = buildingOffset(building, 0, building.depth / 2 + 0.035)
+    pushBox(vertices, frontX, bandY, frontZ, building.width * 0.88, bandHeight, 0.07, color, building.rotation)
+    pushBox(vertices, backX, bandY, backZ, building.width * 0.88, bandHeight, 0.07, color, building.rotation)
+    bandCount += 1
   }
 
-  const height = floors * floorHeight
-  const efficiency = zone === 'industrial' ? 0.82 : 0.76
-  return {
-    type,
-    floors,
-    floorHeight,
-    width,
-    depth,
-    height,
-    rotation: streetRotation,
-    color: baseColor,
-    floorArea: width * depth * floors * efficiency,
-    intensity,
+  if (building.floors > 12 && random() < 0.82) {
+    const litColor = random() < 0.45 ? COLORS.window : COLORS.windowDay
+    for (const side of [-1, 1]) {
+      const [sideX, sideZ] = buildingOffset(building, side * (building.width / 2 + 0.04), 0)
+      pushBox(
+        vertices,
+        sideX,
+        building.y + building.height * 0.48,
+        sideZ,
+        0.07,
+        building.height * 0.60,
+        building.depth * 0.14,
+        litColor,
+        building.rotation,
+      )
+    }
   }
 }
 
-function pushTree(target, x, y, z, random, scale = 1) {
-  const trunkHeight = range(random, 2.4, 3.4) * scale
-  pushBox(target, x, y, z, 0.48 * scale, trunkHeight, 0.48 * scale, COLORS.treeTrunk)
-  pushBox(target, x, y + trunkHeight * 0.72, z, 2.5 * scale, 2.5 * scale, 2.5 * scale, COLORS.treeCanopy)
-  pushBox(target, x, y + trunkHeight * 1.12, z, 1.8 * scale, 1.8 * scale, 1.8 * scale, mixColor(COLORS.treeCanopy, [0.42, 0.55, 0.28], 0.20))
-}
-
-function pushBuildingModel(target, building, random) {
-  const baseY = building.y + 0.14
-  const roof = COLORS.roof
-  if (building.type === 'detached') {
-    pushBox(target, building.x, baseY, building.z, building.width, building.height, building.depth, building.color, building.rotation, roof)
-    pushBox(target, building.x, baseY + building.height, building.z, building.width * 0.68, 0.65, building.depth * 0.68, roof, building.rotation)
-    return
-  }
-
-  if (building.type === 'apartment-slab') {
-    pushBox(target, building.x, baseY, building.z, building.width, building.height, building.depth, building.color, building.rotation, roof)
+function createDetachedHouse(vertices, building, random, detailLevel) {

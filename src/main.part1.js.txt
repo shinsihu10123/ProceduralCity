@@ -1,5 +1,10 @@
 const canvas = document.querySelector('#city-canvas')
-const gl = canvas.getContext('webgl2', { antialias: true, alpha: false })
+const gl = canvas.getContext('webgl2', {
+  antialias: true,
+  alpha: false,
+  depth: true,
+  powerPreference: 'high-performance',
+})
 
 if (!gl) {
   document.querySelector('.viewport').innerHTML = '<div class="loading visible">이 브라우저는 WebGL2를 지원하지 않습니다.</div>'
@@ -8,21 +13,42 @@ if (!gl) {
 
 const ui = {
   seed: document.querySelector('#seed'),
+  randomSeed: document.querySelector('#random-seed'),
   generate: document.querySelector('#generate'),
   export: document.querySelector('#export'),
+  profile: document.querySelector('#profile'),
   gridSize: document.querySelector('#grid-size'),
   density: document.querySelector('#density'),
   roughness: document.querySelector('#roughness'),
-  roadSpacing: document.querySelector('#road-spacing'),
+  blockSize: document.querySelector('#block-size'),
+  timeOfDay: document.querySelector('#time-of-day'),
+  autoRotate: document.querySelector('#auto-rotate'),
   gridSizeValue: document.querySelector('#grid-size-value'),
   densityValue: document.querySelector('#density-value'),
   roughnessValue: document.querySelector('#roughness-value'),
-  roadSpacingValue: document.querySelector('#road-spacing-value'),
+  blockSizeValue: document.querySelector('#block-size-value'),
+  timeValue: document.querySelector('#time-value'),
   metricBuildings: document.querySelector('#metric-buildings'),
   metricPopulation: document.querySelector('#metric-population'),
+  metricJobs: document.querySelector('#metric-jobs'),
   metricHeight: document.querySelector('#metric-height'),
-  metricRatio: document.querySelector('#metric-ratio'),
+  metricGreen: document.querySelector('#metric-green'),
+  metricRoads: document.querySelector('#metric-roads'),
+  metricTransit: document.querySelector('#metric-transit'),
+  metricBalance: document.querySelector('#metric-balance'),
   loading: document.querySelector('#loading'),
+  districtLabel: document.querySelector('#district-label'),
+  compassNeedle: document.querySelector('#compass-needle'),
+  scaleLine: document.querySelector('#scale-line'),
+  scaleLabel: document.querySelector('#scale-label'),
+}
+
+const PROFILE_LABELS = {
+  balanced: 'BALANCED METROPOLIS',
+  metropolitan: 'HIGH-DENSITY CORE',
+  eco: 'GREEN TRANSIT CITY',
+  waterfront: 'WATERFRONT DISTRICT',
+  industrial: 'INDUSTRIAL LOGISTICS HUB',
 }
 
 const VERTEX_SHADER = `#version 300 es
@@ -31,12 +57,14 @@ in vec3 aPosition;
 in vec3 aNormal;
 in vec3 aColor;
 uniform mat4 uViewProjection;
+out vec3 vWorldPosition;
 out vec3 vNormal;
 out vec3 vColor;
 out float vFogDepth;
 void main() {
   vec4 worldPosition = vec4(aPosition, 1.0);
   gl_Position = uViewProjection * worldPosition;
+  vWorldPosition = aPosition;
   vNormal = aNormal;
   vColor = aColor;
   vFogDepth = gl_Position.w;
@@ -44,21 +72,30 @@ void main() {
 
 const FRAGMENT_SHADER = `#version 300 es
 precision highp float;
+in vec3 vWorldPosition;
 in vec3 vNormal;
 in vec3 vColor;
 in float vFogDepth;
 uniform vec3 uLightDirection;
+uniform vec3 uSunColor;
 uniform vec3 uFogColor;
+uniform float uAmbient;
 uniform float uFogNear;
 uniform float uFogFar;
+uniform float uNightFactor;
 out vec4 outColor;
 void main() {
   vec3 normal = normalize(vNormal);
   float diffuse = max(dot(normal, normalize(uLightDirection)), 0.0);
-  float light = 0.38 + diffuse * 0.72;
-  vec3 color = vColor * light;
+  float skyLight = 0.45 + max(normal.y, 0.0) * 0.55;
+  float groundShade = clamp(0.82 + vWorldPosition.y * 0.0012, 0.78, 1.04);
+  vec3 lit = vColor * (vec3(uAmbient) + diffuse * 0.72 * uSunColor) * skyLight * groundShade;
+  float luminance = dot(vColor, vec3(0.299, 0.587, 0.114));
+  float warmWindow = smoothstep(0.73, 0.93, luminance) * smoothstep(0.18, 0.55, vColor.r - vColor.b);
+  vec3 emissive = vec3(1.0, 0.71, 0.34) * warmWindow * uNightFactor * 0.85;
   float fogFactor = smoothstep(uFogNear, uFogFar, vFogDepth);
-  outColor = vec4(mix(color, uFogColor, fogFactor), 1.0);
+  vec3 finalColor = mix(lit + emissive, uFogColor, fogFactor);
+  outColor = vec4(finalColor, 1.0);
 }`
 
 function compileShader(type, source) {
@@ -89,14 +126,18 @@ const locations = {
   color: gl.getAttribLocation(program, 'aColor'),
   viewProjection: gl.getUniformLocation(program, 'uViewProjection'),
   lightDirection: gl.getUniformLocation(program, 'uLightDirection'),
+  sunColor: gl.getUniformLocation(program, 'uSunColor'),
   fogColor: gl.getUniformLocation(program, 'uFogColor'),
+  ambient: gl.getUniformLocation(program, 'uAmbient'),
   fogNear: gl.getUniformLocation(program, 'uFogNear'),
   fogFar: gl.getUniformLocation(program, 'uFogFar'),
+  nightFactor: gl.getUniformLocation(program, 'uNightFactor'),
 }
 
-let vertexBuffer = gl.createBuffer()
+const vertexBuffer = gl.createBuffer()
 let vertexCount = 0
 let currentCity = null
+let autoRotateEnabled = false
 
 function hashString(value) {
   let hash = 2166136261
@@ -118,68 +159,118 @@ function mulberry32(seed) {
   }
 }
 
-function range(random, min, max) {
-  return min + (max - min) * random()
-}
-
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))
 }
 
-function terrainHeight(x, z, seedOffset, roughness, cityExtent) {
-  const extent = Math.max(cityExtent, 1)
-  const nx = x / extent
-  const nz = z / extent
-  const phase = seedOffset * 0.0017
-  const broad = Math.sin((nx * 2.35 + phase) * Math.PI) * Math.cos((nz * 1.9 - phase) * Math.PI)
-  const ridge = Math.sin((nx + nz) * 4.2 * Math.PI + phase * 7.0) * 0.26
-  const fine = Math.cos((nx * 7.6 - nz * 6.4) * Math.PI - phase * 11.0) * 0.08
-  const radius = Math.hypot(nx, nz)
-  const urbanFlattening = 0.24 + clamp((radius - 0.12) / 0.48, 0, 1) * 0.76
-  return (broad * 0.72 + ridge + fine) * roughness * urbanFlattening
+function lerp(a, b, factor) {
+  return a + (b - a) * factor
 }
 
-function terrainSlopeDegrees(x, z, seedOffset, roughness, cityExtent) {
-  const sample = 4
-  const dx = (
-    terrainHeight(x + sample, z, seedOffset, roughness, cityExtent)
-    - terrainHeight(x - sample, z, seedOffset, roughness, cityExtent)
-  ) / (sample * 2)
-  const dz = (
-    terrainHeight(x, z + sample, seedOffset, roughness, cityExtent)
-    - terrainHeight(x, z - sample, seedOffset, roughness, cityExtent)
-  ) / (sample * 2)
-  return Math.atan(Math.hypot(dx, dz)) * 180 / Math.PI
+function smoothstep(edge0, edge1, value) {
+  const t = clamp((value - edge0) / (edge1 - edge0), 0, 1)
+  return t * t * (3 - 2 * t)
+}
+
+function range(random, min, max) {
+  return min + (max - min) * random()
+}
+
+function pick(random, values) {
+  return values[Math.min(values.length - 1, Math.floor(random() * values.length))]
+}
+
+function hash2(x, z, seed) {
+  let value = Math.imul(x, 374761393) + Math.imul(z, 668265263) + Math.imul(seed, 1442695041)
+  value = (value ^ (value >>> 13)) * 1274126177
+  return ((value ^ (value >>> 16)) >>> 0) / 4294967295
+}
+
+function valueNoise(x, z, seed) {
+  const x0 = Math.floor(x)
+  const z0 = Math.floor(z)
+  const fx = x - x0
+  const fz = z - z0
+  const ux = fx * fx * (3 - 2 * fx)
+  const uz = fz * fz * (3 - 2 * fz)
+  const a = hash2(x0, z0, seed)
+  const b = hash2(x0 + 1, z0, seed)
+  const c = hash2(x0, z0 + 1, seed)
+  const d = hash2(x0 + 1, z0 + 1, seed)
+  return lerp(lerp(a, b, ux), lerp(c, d, ux), uz) * 2 - 1
+}
+
+function fbm(x, z, seed, octaves = 4) {
+  let value = 0
+  let amplitude = 0.55
+  let frequency = 1
+  let normalizer = 0
+  for (let octave = 0; octave < octaves; octave += 1) {
+    value += valueNoise(x * frequency, z * frequency, seed + octave * 1013) * amplitude
+    normalizer += amplitude
+    amplitude *= 0.5
+    frequency *= 2.05
+  }
+  return value / normalizer
 }
 
 const COLORS = {
-  terrainLow: [0.35, 0.43, 0.29],
-  terrainHigh: [0.47, 0.51, 0.38],
-  sidewalk: [0.46, 0.48, 0.46],
-  roadArterial: [0.10, 0.12, 0.13],
-  roadCollector: [0.12, 0.14, 0.15],
-  roadLocal: [0.15, 0.16, 0.16],
-  roadMark: [0.78, 0.71, 0.43],
-  lotResidential: [0.39, 0.49, 0.32],
-  lotCommercial: [0.43, 0.45, 0.44],
-  lotIndustrial: [0.42, 0.40, 0.36],
-  lotCivic: [0.46, 0.45, 0.41],
-  park: [0.27, 0.47, 0.25],
-  residential: [0.72, 0.62, 0.48],
-  commercial: [0.39, 0.57, 0.70],
-  industrial: [0.50, 0.47, 0.42],
-  civic: [0.63, 0.39, 0.36],
-  roof: [0.26, 0.29, 0.31],
-  treeTrunk: [0.28, 0.21, 0.14],
-  treeCanopy: [0.22, 0.40, 0.20],
+  terrainLow: [0.33, 0.42, 0.29],
+  terrainHigh: [0.52, 0.53, 0.42],
+  terrainDry: [0.50, 0.46, 0.36],
+  waterDeep: [0.21, 0.43, 0.57],
+  waterShallow: [0.34, 0.61, 0.70],
+  embankment: [0.39, 0.43, 0.39],
+  sidewalk: [0.53, 0.54, 0.52],
+  sidewalkEdge: [0.68, 0.68, 0.64],
+  arterial: [0.085, 0.095, 0.102],
+  collector: [0.11, 0.12, 0.125],
+  local: [0.15, 0.15, 0.145],
+  roadMark: [0.88, 0.82, 0.58],
+  crosswalk: [0.82, 0.84, 0.82],
+  median: [0.31, 0.39, 0.27],
+  rail: [0.42, 0.45, 0.46],
+  platform: [0.62, 0.61, 0.57],
+  glassBlue: [0.32, 0.51, 0.65],
+  glassDark: [0.20, 0.34, 0.43],
+  concreteLight: [0.69, 0.67, 0.62],
+  concreteWarm: [0.66, 0.57, 0.47],
+  brick: [0.57, 0.32, 0.27],
+  industrial: [0.48, 0.47, 0.44],
+  civic: [0.64, 0.39, 0.34],
+  roof: [0.24, 0.27, 0.28],
+  roofWarm: [0.42, 0.28, 0.21],
+  window: [0.96, 0.78, 0.44],
+  windowDay: [0.42, 0.57, 0.65],
+  park: [0.25, 0.48, 0.27],
+  plaza: [0.58, 0.56, 0.50],
+  treeTrunk: [0.31, 0.23, 0.14],
+  treeCanopy: [0.18, 0.40, 0.20],
+  treeCanopyLight: [0.29, 0.50, 0.25],
+  vehicleWhite: [0.74, 0.77, 0.77],
+  vehicleRed: [0.58, 0.18, 0.15],
+  vehicleBlue: [0.18, 0.31, 0.49],
+  signal: [0.13, 0.16, 0.17],
+}
+
+const BUILDING_PALETTES = {
+  residential: [COLORS.concreteWarm, [0.73, 0.68, 0.58], [0.64, 0.55, 0.45], [0.72, 0.62, 0.48]],
+  commercial: [COLORS.glassBlue, COLORS.glassDark, [0.39, 0.57, 0.70], [0.31, 0.48, 0.59]],
+  industrial: [COLORS.industrial, [0.56, 0.53, 0.48], [0.43, 0.45, 0.44]],
+  civic: [COLORS.civic, COLORS.concreteLight, [0.60, 0.46, 0.39]],
 }
 
 function mixColor(a, b, factor) {
   return [
-    a[0] + (b[0] - a[0]) * factor,
-    a[1] + (b[1] - a[1]) * factor,
-    a[2] + (b[2] - a[2]) * factor,
+    lerp(a[0], b[0], factor),
+    lerp(a[1], b[1], factor),
+    lerp(a[2], b[2], factor),
   ]
+}
+
+function tintColor(color, amount) {
+  const target = amount >= 0 ? [1, 1, 1] : [0, 0, 0]
+  return mixColor(color, target, Math.abs(amount))
 }
 
 function pushVertex(target, position, normal, color) {
@@ -197,6 +288,24 @@ function pushQuad(target, a, b, c, d, normal, color) {
   pushTriangle(target, a, c, d, normal, color)
 }
 
+function calculateNormal(a, b, c) {
+  const ux = b[0] - a[0]
+  const uy = b[1] - a[1]
+  const uz = b[2] - a[2]
+  const vx = c[0] - a[0]
+  const vy = c[1] - a[1]
+  const vz = c[2] - a[2]
+  let nx = uy * vz - uz * vy
+  let ny = uz * vx - ux * vz
+  let nz = ux * vy - uy * vx
+  const length = Math.hypot(nx, ny, nz) || 1
+  nx /= length
+  ny /= length
+  nz /= length
+  if (ny < 0) return [-nx, -ny, -nz]
+  return [nx, ny, nz]
+}
+
 function pushBox(target, x, y, z, width, height, depth, color, rotation = 0, roofColor = null) {
   const halfWidth = width / 2
   const halfDepth = depth / 2
@@ -208,7 +317,6 @@ function pushBox(target, x, y, z, width, height, depth, color, rotation = 0, roo
     z + localX * sin + localZ * cos,
   ]
   const rotateNormal = (nx, ny, nz) => [nx * cos - nz * sin, ny, nx * sin + nz * cos]
-
   const p000 = transform(-halfWidth, 0, -halfDepth)
   const p100 = transform(halfWidth, 0, -halfDepth)
   const p110 = transform(halfWidth, height, -halfDepth)
@@ -217,7 +325,6 @@ function pushBox(target, x, y, z, width, height, depth, color, rotation = 0, roo
   const p101 = transform(halfWidth, 0, halfDepth)
   const p111 = transform(halfWidth, height, halfDepth)
   const p011 = transform(-halfWidth, height, halfDepth)
-
   pushQuad(target, p000, p100, p110, p010, rotateNormal(0, 0, -1), color)
   pushQuad(target, p101, p001, p011, p111, rotateNormal(0, 0, 1), color)
   pushQuad(target, p001, p000, p010, p011, rotateNormal(-1, 0, 0), color)
@@ -225,25 +332,63 @@ function pushBox(target, x, y, z, width, height, depth, color, rotation = 0, roo
   pushQuad(target, p010, p110, p111, p011, [0, 1, 0], roofColor || color)
 }
 
-function pushTerrain(target, settings, extent, seedOffset) {
-  const size = extent * 1.32
-  const segments = Math.min(80, settings.gridSize * 2)
-  const step = size / segments
-  const start = -size / 2
+function pushGableRoof(target, x, y, z, width, depth, roofHeight, color, rotation = 0) {
+  const halfWidth = width / 2
+  const halfDepth = depth / 2
+  const cos = Math.cos(rotation)
+  const sin = Math.sin(rotation)
+  const transform = (localX, localY, localZ) => [
+    x + localX * cos - localZ * sin,
+    y + localY,
+    z + localX * sin + localZ * cos,
+  ]
+  const a = transform(-halfWidth, 0, -halfDepth)
+  const b = transform(halfWidth, 0, -halfDepth)
+  const c = transform(halfWidth, 0, halfDepth)
+  const d = transform(-halfWidth, 0, halfDepth)
+  const e = transform(0, roofHeight, -halfDepth)
+  const f = transform(0, roofHeight, halfDepth)
+  pushTriangle(target, a, b, e, calculateNormal(a, b, e), color)
+  pushTriangle(target, c, d, f, calculateNormal(c, d, f), color)
+  pushQuad(target, a, e, f, d, calculateNormal(a, e, f), color)
+  pushQuad(target, b, c, f, e, calculateNormal(b, c, f), color)
+}
 
-  for (let xIndex = 0; xIndex < segments; xIndex += 1) {
-    for (let zIndex = 0; zIndex < segments; zIndex += 1) {
-      const x0 = start + xIndex * step
-      const z0 = start + zIndex * step
-      const x1 = x0 + step
-      const z1 = z0 + step
-      const y00 = terrainHeight(x0, z0, seedOffset, settings.roughness, extent)
-      const y10 = terrainHeight(x1, z0, seedOffset, settings.roughness, extent)
-      const y11 = terrainHeight(x1, z1, seedOffset, settings.roughness, extent)
-      const y01 = terrainHeight(x0, z1, seedOffset, settings.roughness, extent)
-      const average = (y00 + y10 + y11 + y01) / 4
-      const colorFactor = clamp(average / Math.max(settings.roughness * 1.2, 1) + 0.5, 0, 1)
-      const color = mixColor(COLORS.terrainLow, COLORS.terrainHigh, colorFactor)
-      const normal = calculateNormal([x0, y00, z0], [x1, y10, z0], [x1, y11, z1])
-      const normal2 = calculateNormal([x0, y00, z0], [x1, y11, z1], [x0, y01, z1])
-      pushTriangle(target, [x0, y00, z0], [x1, y10, z0], [x1, y11, z1], normal, color)
+function pushTree(target, x, y, z, scale, random) {
+  const trunkHeight = scale * range(random, 2.6, 3.5)
+  pushBox(target, x, y, z, 0.45 * scale, trunkHeight, 0.45 * scale, COLORS.treeTrunk)
+  const canopy = mixColor(COLORS.treeCanopy, COLORS.treeCanopyLight, random())
+  pushBox(target, x, y + trunkHeight * 0.72, z, 2.8 * scale, 2.5 * scale, 2.8 * scale, canopy, random() * Math.PI)
+  if (scale > 0.75) {
+    pushBox(target, x + 0.45 * scale, y + trunkHeight * 1.05, z - 0.25 * scale, 2.1 * scale, 2.0 * scale, 2.1 * scale, tintColor(canopy, 0.05), random() * Math.PI)
+  }
+}
+
+function pushStreetLight(target, x, y, z, rotation = 0) {
+  pushBox(target, x, y, z, 0.22, 5.2, 0.22, COLORS.signal, rotation)
+  const armX = x + Math.cos(rotation) * 0.7
+  const armZ = z + Math.sin(rotation) * 0.7
+  pushBox(target, armX, y + 4.9, armZ, 1.55, 0.15, 0.15, COLORS.signal, rotation)
+  pushBox(target, armX + Math.cos(rotation) * 0.62, y + 4.72, armZ + Math.sin(rotation) * 0.62, 0.42, 0.18, 0.42, COLORS.window)
+}
+
+function pushVehicle(target, x, y, z, rotation, random) {
+  const color = pick(random, [COLORS.vehicleWhite, COLORS.vehicleRed, COLORS.vehicleBlue, [0.12, 0.13, 0.14]])
+  pushBox(target, x, y, z, 1.75, 1.15, 4.1, color, rotation)
+  pushBox(target, x, y + 1.0, z, 1.55, 0.65, 2.0, tintColor(color, 0.12), rotation)
+}
+
+function createTerrainModel(settings, seedValue, extent) {
+  const phase = (seedValue % 10000) / 10000 * Math.PI * 2
+  const waterEnabled = settings.profile === 'waterfront'
+    || settings.profile === 'eco'
+    || (settings.profile === 'balanced' && seedValue % 4 === 0)
+  const waterWidth = settings.profile === 'waterfront' ? 42 : 24
+  const waterY = -Math.max(2.2, settings.roughness * 0.18)
+  const riverOffset = settings.profile === 'waterfront' ? extent * 0.16 : extent * 0.23
+
+  function riverCenterZ(x) {
+    return riverOffset
+      + Math.sin((x / extent) * Math.PI * 2.1 + phase) * extent * 0.075
+      + Math.sin((x / extent) * Math.PI * 4.7 - phase * 0.7) * extent * 0.018
+  }

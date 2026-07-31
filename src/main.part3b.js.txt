@@ -1,0 +1,131 @@
+    floors = Math.round(range(random, 18, 43) * (0.78 + densityFactor * 0.40) * (0.86 + context.centerScore * 0.38))
+    width = parcel.width * range(random, 0.48, 0.66)
+    depth = parcel.depth * range(random, 0.48, 0.66)
+  } else if (type === 'warehouse') {
+    floors = random() < 0.78 ? 1 : 2
+    width = parcel.width * range(random, 0.75, 0.92)
+    depth = parcel.depth * range(random, 0.72, 0.90)
+  } else {
+    floors = Math.round(range(random, 3, 8))
+    width = parcel.width * range(random, 0.62, 0.82)
+    depth = parcel.depth * range(random, 0.58, 0.80)
+  }
+  floors = clamp(floors, 1, 58)
+  return { floors, width, depth, height: floors * floorHeight }
+}
+
+function pushPark(vertices, parcel, random, detailLevel, greenSpaces) {
+  pushLotSurface(vertices, parcel, 'park')
+  greenSpaces.push({ x: parcel.x, z: parcel.z, area: parcel.width * parcel.depth, type: parcel.slope > 14 ? 'conservation' : 'park' })
+  const pathWidth = 2.2
+  if (detailLevel > 0) {
+    pushBox(vertices, parcel.x, parcel.y + 0.19, parcel.z, parcel.width * 0.82, 0.05, pathWidth, [0.62, 0.58, 0.49], random() < 0.5 ? 0 : Math.PI / 2)
+  }
+  const treeCount = detailLevel > 0 ? Math.round(range(random, 5, 10)) : Math.round(range(random, 3, 6))
+  for (let tree = 0; tree < treeCount; tree += 1) {
+    const tx = parcel.x + range(random, -parcel.width * 0.37, parcel.width * 0.37)
+    const tz = parcel.z + range(random, -parcel.depth * 0.37, parcel.depth * 0.37)
+    pushTree(vertices, tx, parcel.y + 0.20, tz, range(random, 0.70, 1.15), random)
+  }
+  if (detailLevel > 0 && random() < 0.28) {
+    pushBox(vertices, parcel.x, parcel.y + 0.20, parcel.z, 5.8, 0.45, 5.8, [0.30, 0.55, 0.63])
+  }
+}
+
+function pushPlaza(vertices, parcel, random, greenSpaces) {
+  pushBox(vertices, parcel.x, parcel.y, parcel.z, parcel.width, 0.18, parcel.depth, COLORS.plaza)
+  greenSpaces.push({ x: parcel.x, z: parcel.z, area: parcel.width * parcel.depth * 0.20, type: 'plaza' })
+  for (let tree = 0; tree < 4; tree += 1) {
+    const sx = tree % 2 === 0 ? -1 : 1
+    const sz = tree < 2 ? -1 : 1
+    pushTree(vertices, parcel.x + sx * parcel.width * 0.32, parcel.y + 0.18, parcel.z + sz * parcel.depth * 0.32, 0.72, random)
+  }
+}
+
+function pushTransitSystem(vertices, settings, terrain, centers, random, infrastructure, detailLevel) {
+  const lineX = centers.cbd.x
+  const stationPositions = [-0.28, 0, 0.28].map((factor) => factor * settings.extent)
+  const railLength = settings.extent * 0.92
+  const segmentLength = settings.cellSize
+  const startZ = -railLength / 2
+
+  for (let z = startZ; z < railLength / 2; z += segmentLength) {
+    const centerZ = z + segmentLength / 2
+    const waterDistance = terrain.waterDistance(lineX, centerZ)
+    const bridgeInfluence = Number.isFinite(waterDistance)
+      ? 1 - smoothstep(terrain.waterWidth * 0.40, terrain.waterWidth * 0.95 + segmentLength, waterDistance)
+      : 0
+    const terrainY = terrain.height(lineX, centerZ) + 0.35
+    const railY = Math.max(terrainY, lerp(terrainY, terrain.waterY + 6.0, bridgeInfluence))
+    pushBox(vertices, lineX - 1.8, railY, centerZ, 0.16, 0.14, segmentLength + 0.6, COLORS.rail)
+    pushBox(vertices, lineX + 1.8, railY, centerZ, 0.16, 0.14, segmentLength + 0.6, COLORS.rail)
+    const sleeperStep = detailLevel > 0 ? 5 : 9
+    for (let sleeper = z + 1.5; sleeper < z + segmentLength; sleeper += sleeperStep) {
+      pushBox(vertices, lineX, railY - 0.08, sleeper, 5.2, 0.12, 0.28, tintColor(COLORS.rail, -0.16))
+    }
+    if (bridgeInfluence > 0.55 && detailLevel > 0) {
+      const pierHeight = railY - terrain.waterY + 0.5
+      pushBox(vertices, lineX, terrain.waterY - 0.5, centerZ, 1.35, pierHeight, 1.35, COLORS.embankment)
+    }
+  }
+
+  for (const stationZ of stationPositions) {
+    const waterDistance = terrain.waterDistance(lineX, stationZ)
+    const bridgeInfluence = Number.isFinite(waterDistance)
+      ? 1 - smoothstep(terrain.waterWidth * 0.40, terrain.waterWidth * 0.95 + settings.cellSize, waterDistance)
+      : 0
+    const terrainY = terrain.height(lineX, stationZ) + 0.35
+    const stationY = Math.max(terrainY, lerp(terrainY, terrain.waterY + 6.0, bridgeInfluence))
+    pushBox(vertices, lineX - 5.2, stationY, stationZ, 4.6, 0.55, 34, COLORS.platform)
+    pushBox(vertices, lineX + 5.2, stationY, stationZ, 4.6, 0.55, 34, COLORS.platform)
+    pushBox(vertices, lineX, stationY + 3.65, stationZ, 12.0, 0.50, 20, [0.35, 0.46, 0.52])
+    if (detailLevel > 0) {
+      for (const side of [-1, 1]) {
+        pushBox(vertices, lineX + side * 5.2, stationY + 0.55, stationZ - 7, 0.25, 3.1, 0.25, COLORS.signal)
+        pushBox(vertices, lineX + side * 5.2, stationY + 0.55, stationZ + 7, 0.25, 3.1, 0.25, COLORS.signal)
+      }
+    }
+    infrastructure.stations.push({ x: lineX, y: stationY, z: stationZ, mode: 'light-rail' })
+  }
+}
+
+function generateCity(settings) {
+  const startedAt = performance.now()
+  const seedValue = hashString(`${settings.seed}:${settings.profile}`)
+  const random = mulberry32(seedValue)
+  const cellSize = 28
+  const extent = settings.gridSize * cellSize
+  settings.cellSize = cellSize
+  settings.extent = extent
+  const half = settings.gridSize / 2
+  const terrain = createTerrainModel(settings, seedValue, extent)
+  const roadNetwork = buildRoadNetwork(settings, seedValue)
+  const centers = createUrbanCenters(settings, random, extent, terrain)
+  const detailLevel = settings.gridSize <= 30 ? 2 : settings.gridSize <= 38 ? 1 : 0
+  const vertices = []
+  const buildings = []
+  const roads = []
+  const parcels = []
+  const greenSpaces = []
+  const infrastructure = { stations: [], bridges: 0, streetLights: 0 }
+  const zoneCounts = { residential: 0, commercial: 0, industrial: 0, civic: 0, park: 0 }
+
+  pushTerrain(vertices, settings, extent, seedValue, terrain)
+
+  const xRoadMap = new Map(roadNetwork.xRoads.map((road) => [road.index, road.class]))
+  const zRoadMap = new Map(roadNetwork.zRoads.map((road) => [road.index, road.class]))
+
+  for (let gridX = 0; gridX < settings.gridSize; gridX += 1) {
+    for (let gridZ = 0; gridZ < settings.gridSize; gridZ += 1) {
+      const x = (gridX - half + 0.5) * cellSize
+      const z = (gridZ - half + 0.5) * cellSize
+      const xClass = xRoadMap.get(gridX) || null
+      const zClass = zRoadMap.get(gridZ) || null
+      if (xClass || zClass) {
+        pushRoadCell(vertices, roads, settings, terrain, { x, z, xClass, zClass }, random, detailLevel)
+        continue
+      }
+
+      const groundSamples = [
+        terrain.height(x - cellSize * 0.35, z - cellSize * 0.35),
+        terrain.height(x + cellSize * 0.35, z - cellSize * 0.35),

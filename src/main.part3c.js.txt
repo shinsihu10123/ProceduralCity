@@ -1,0 +1,132 @@
+        terrain.height(x + cellSize * 0.35, z + cellSize * 0.35),
+        terrain.height(x - cellSize * 0.35, z + cellSize * 0.35),
+      ]
+      const averageY = groundSamples.reduce((sum, value) => sum + value, 0) / groundSamples.length
+      const slope = terrain.slopeDegrees(x, z)
+      const waterDistance = terrain.waterDistance(x, z)
+      if (terrain.isWater(x, z)) continue
+
+      const parcel = {
+        id: parcels.length,
+        gridX,
+        gridZ,
+        x,
+        y: averageY + 0.02,
+        z,
+        width: cellSize * range(random, 0.82, 0.94),
+        depth: cellSize * range(random, 0.82, 0.94),
+        slope,
+        waterDistance,
+      }
+      parcels.push(parcel)
+
+      const nearestXRoad = nearestRoadDistance(gridX, roadNetwork.xRoads)
+      const nearestZRoad = nearestRoadDistance(gridZ, roadNetwork.zRoads)
+      const nearestRoad = nearestXRoad.cells <= nearestZRoad.cells ? nearestXRoad : nearestZRoad
+      const zone = chooseZone(parcel, centers, settings, random, extent, nearestRoad)
+      zoneCounts[zone] += 1
+
+      if (zone === 'park') {
+        pushPark(vertices, parcel, random, detailLevel, greenSpaces)
+        continue
+      }
+
+      const centerScore = Math.max(
+        proximityScore(x, z, centers.cbd, extent * 0.32),
+        ...centers.subcenters.map((center) => proximityScore(x, z, center, extent * 0.20) * 0.72),
+      )
+      const edgeFactor = smoothstep(extent * 0.24, extent * 0.62, Math.hypot(x, z))
+      const arterialAccess = nearestRoad.class === 'arterial' ? 1 : nearestRoad.class === 'collector' ? 0.58 : 0.22
+      const developProbability = clamp(
+        settings.density
+          + centerScore * 0.18
+          + arterialAccess * 0.06
+          - slope * 0.016
+          - (zone === 'industrial' && settings.profile !== 'industrial' ? 0.05 : 0),
+        0.12,
+        0.98,
+      )
+
+      if (random() > developProbability) {
+        if (zone === 'commercial' && centerScore > 0.58) pushPlaza(vertices, parcel, random, greenSpaces)
+        else pushPark(vertices, parcel, random, Math.min(detailLevel, 1), greenSpaces)
+        continue
+      }
+
+      pushLotSurface(vertices, parcel, zone)
+      const type = chooseBuildingType(zone, { centerScore, arterialAccess, edgeFactor }, settings, random)
+      const parameters = buildingParameters(type, parcel, { centerScore, arterialAccess, edgeFactor }, settings, random)
+      const rotation = nearestXRoad.cells < nearestZRoad.cells ? 0 : Math.PI / 2
+      const palette = BUILDING_PALETTES[zone]
+      const baseColor = tintColor(pick(random, palette), range(random, -0.08, 0.09))
+      const building = {
+        id: buildings.length,
+        parcelId: parcel.id,
+        x,
+        y: parcel.y + 0.20,
+        z,
+        width: parameters.width,
+        depth: parameters.depth,
+        height: parameters.height,
+        floors: parameters.floors,
+        rotation,
+        zone,
+        type,
+        color: baseColor,
+        grossFloorArea: parameters.width * parameters.depth * parameters.floors * (type === 'office-tower' ? 0.78 : 0.84),
+      }
+      buildings.push(building)
+      pushBuilding(vertices, building, random, detailLevel)
+
+      if (detailLevel > 0 && zone === 'residential' && type !== 'detached-house' && random() < 0.40) {
+        pushTree(vertices, x + parcel.width * 0.34, parcel.y + 0.20, z + parcel.depth * 0.32, 0.74, random)
+        pushTree(vertices, x - parcel.width * 0.34, parcel.y + 0.20, z - parcel.depth * 0.32, 0.74, random)
+      }
+      if (detailLevel > 0 && zone === 'industrial' && random() < 0.45) {
+        pushBox(vertices, x + parcel.width * 0.31, parcel.y + 0.20, z + parcel.depth * 0.28, 4.6, 1.2, 2.4, pick(random, [COLORS.vehicleWhite, COLORS.vehicleBlue, COLORS.vehicleRed]))
+      }
+    }
+  }
+
+  pushTransitSystem(vertices, settings, terrain, centers, random, infrastructure, detailLevel)
+
+  let population = 0
+  let jobs = 0
+  let totalHeight = 0
+  let residentialPopulationNearTransit = 0
+  let totalResidentialPopulation = 0
+  for (const building of buildings) {
+    totalHeight += building.height
+    const stationDistance = infrastructure.stations.length
+      ? Math.min(...infrastructure.stations.map((station) => Math.hypot(building.x - station.x, building.z - station.z)))
+      : Infinity
+    if (building.zone === 'residential') {
+      const efficiency = building.type === 'detached-house' ? 0.70 : 0.79
+      const residents = Math.round(building.grossFloorArea * efficiency / (building.type === 'detached-house' ? 42 : 34))
+      population += residents
+      totalResidentialPopulation += residents
+      if (stationDistance <= 300) residentialPopulationNearTransit += residents
+      jobs += Math.round(building.grossFloorArea * 0.015)
+    } else if (building.zone === 'commercial') {
+      jobs += Math.round(building.grossFloorArea / (building.type === 'office-tower' ? 34 : 46))
+      if (building.type === 'mixed-use') population += Math.round(building.grossFloorArea * 0.34 / 38)
+    } else if (building.zone === 'industrial') {
+      jobs += Math.round(building.grossFloorArea / 82)
+    } else if (building.zone === 'civic') {
+      jobs += Math.round(building.grossFloorArea / 62)
+    }
+  }
+
+  const cityArea = extent * extent
+  const greenArea = greenSpaces.reduce((sum, space) => sum + space.area, 0)
+  const roadLength = roads.reduce((sum, road) => sum + road.length, 0)
+  const transitAccess = totalResidentialPopulation > 0 ? residentialPopulationNearTransit / totalResidentialPopulation : 0
+  const targetJobs = population * 0.43
+  const jobHousingBalance = targetJobs > 0 && jobs > 0 ? Math.min(jobs / targetJobs, targetJobs / jobs) : 0
+  const metrics = {
+    buildings: buildings.length,
+    population,
+    jobs,
+    averageHeight: buildings.length ? totalHeight / buildings.length : 0,
+    greenRatio: clamp(greenArea / cityArea, 0, 1),
+    roadLengthKm: roadLength / 1000,

@@ -1,0 +1,132 @@
+    transitAccess,
+    jobHousingBalance,
+    generationMs: performance.now() - startedAt,
+    detailLevel,
+    vertexCount: vertices.length / 9,
+  }
+
+  return {
+    schemaVersion: 3,
+    settings: { ...settings },
+    extent,
+    centers,
+    buildings,
+    parcels,
+    roads,
+    greenSpaces,
+    infrastructure,
+    zoneCounts,
+    metrics,
+    vertices: new Float32Array(vertices),
+  }
+}
+
+function uploadCity(city) {
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, city.vertices, gl.STATIC_DRAW)
+  vertexCount = city.vertices.length / 9
+  const stride = 9 * Float32Array.BYTES_PER_ELEMENT
+  gl.enableVertexAttribArray(locations.position)
+  gl.vertexAttribPointer(locations.position, 3, gl.FLOAT, false, stride, 0)
+  gl.enableVertexAttribArray(locations.normal)
+  gl.vertexAttribPointer(locations.normal, 3, gl.FLOAT, false, stride, 3 * Float32Array.BYTES_PER_ELEMENT)
+  gl.enableVertexAttribArray(locations.color)
+  gl.vertexAttribPointer(locations.color, 3, gl.FLOAT, false, stride, 6 * Float32Array.BYTES_PER_ELEMENT)
+}
+
+function updateMetrics(city) {
+  const metrics = city.metrics
+  ui.metricBuildings.textContent = metrics.buildings.toLocaleString('ko-KR')
+  ui.metricPopulation.textContent = metrics.population.toLocaleString('ko-KR')
+  ui.metricJobs.textContent = metrics.jobs.toLocaleString('ko-KR')
+  ui.metricHeight.textContent = `${metrics.averageHeight.toFixed(1)} m`
+  ui.metricGreen.textContent = `${Math.round(metrics.greenRatio * 100)}%`
+  ui.metricRoads.textContent = `${metrics.roadLengthKm.toFixed(1)} km`
+  ui.metricTransit.textContent = `${Math.round(metrics.transitAccess * 100)}%`
+  ui.metricBalance.textContent = metrics.jobHousingBalance.toFixed(2)
+  ui.districtLabel.textContent = PROFILE_LABELS[city.settings.profile]
+}
+
+function readSettings() {
+  return {
+    seed: ui.seed.value.trim() || 'city',
+    profile: ui.profile.value,
+    gridSize: Number(ui.gridSize.value),
+    density: Number(ui.density.value) / 100,
+    roughness: Number(ui.roughness.value),
+    blockSize: Number(ui.blockSize.value),
+  }
+}
+
+function rebuildCity() {
+  ui.loading.classList.add('visible')
+  window.setTimeout(() => {
+    try {
+      currentCity = generateCity(readSettings())
+      uploadCity(currentCity)
+      updateMetrics(currentCity)
+      applyCameraPreset('overview')
+    } catch (error) {
+      console.error(error)
+      ui.loading.textContent = '도시 생성 중 오류가 발생했습니다.'
+    } finally {
+      window.setTimeout(() => {
+        ui.loading.classList.remove('visible')
+        ui.loading.textContent = '도시 시스템 계산 중'
+      }, 80)
+    }
+  }, 20)
+}
+
+function formatTime(value) {
+  const hour = Math.floor(value)
+  const minutes = Math.round((value - hour) * 60)
+  return `${String(hour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+function updateLabels() {
+  ui.gridSizeValue.textContent = `${ui.gridSize.value} × ${ui.gridSize.value}`
+  ui.densityValue.textContent = `${ui.density.value}%`
+  ui.roughnessValue.textContent = `${ui.roughness.value} m`
+  ui.blockSizeValue.textContent = ({ 3: '소형', 4: '중소형', 5: '중간', 6: '대형', 7: '초대형' })[ui.blockSize.value]
+  ui.timeValue.textContent = formatTime(Number(ui.timeOfDay.value))
+}
+
+for (const control of [ui.gridSize, ui.density, ui.roughness, ui.blockSize]) {
+  control.addEventListener('input', updateLabels)
+  control.addEventListener('change', rebuildCity)
+}
+ui.timeOfDay.addEventListener('input', updateLabels)
+ui.profile.addEventListener('change', rebuildCity)
+ui.seed.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') rebuildCity()
+})
+ui.generate.addEventListener('click', rebuildCity)
+ui.randomSeed.addEventListener('click', () => {
+  const cities = ['han-river', 'new-busan', 'sejong-grid', 'eco-delta', 'metro-2050', 'bay-district', 'urban-lab']
+  ui.seed.value = `${pick(Math.random, cities)}-${Math.floor(Math.random() * 9000 + 1000)}`
+  rebuildCity()
+})
+ui.autoRotate.addEventListener('click', () => {
+  autoRotateEnabled = !autoRotateEnabled
+  ui.autoRotate.setAttribute('aria-pressed', String(autoRotateEnabled))
+})
+
+ui.export.addEventListener('click', () => {
+  if (!currentCity) return
+  const exportData = {
+    schemaVersion: currentCity.schemaVersion,
+    generatedAt: new Date().toISOString(),
+    settings: currentCity.settings,
+    extent: currentCity.extent,
+    centers: currentCity.centers,
+    metrics: currentCity.metrics,
+    zoneCounts: currentCity.zoneCounts,
+    buildings: currentCity.buildings.map(({ color, ...building }) => building),
+    parcels: currentCity.parcels,
+    roads: currentCity.roads,
+    greenSpaces: currentCity.greenSpaces,
+    infrastructure: currentCity.infrastructure,
+  }
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
