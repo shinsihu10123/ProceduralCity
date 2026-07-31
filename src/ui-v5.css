@@ -26,5 +26,7 @@ body:not(.v5-map-open) .mini-map{opacity:0;pointer-events:none;transform:transla
 .v5-mode-strip button.active{color:#10191e;background:var(--v5-accent)}
 #living-city-canvas{z-index:4!important}
 .object-inspector{z-index:55!important}
+.weather-layer.fog{backdrop-filter:none!important;background:linear-gradient(90deg,rgba(205,218,222,.12),rgba(187,204,210,.06),rgba(220,227,229,.13))!important}
+.viewport.sim-overcast::before{background:rgba(55,70,79,.09)!important}
 @media(max-width:900px){.simulation-hud{max-width:calc(100vw - 170px);grid-template-columns:repeat(3,minmax(90px,1fr))!important}.analysis-dock{width:calc(100vw - 28px);grid-template-columns:repeat(2,minmax(150px,1fr))!important}.v5-brand small{display:none}}
 @media(max-width:620px){.v5-brand{display:none}.v5-toolbar{justify-content:center}.v5-tool{padding:0 9px}.panel{top:62px}.simulation-hud{left:14px!important;right:14px!important;max-width:none;transform:none;grid-template-columns:repeat(2,1fr)!important}body:not(.v5-kpi-open) .simulation-hud{transform:translateY(-12px)}.analysis-dock{grid-template-columns:1fr!important;max-height:48vh;overflow:auto}.v5-mode-strip{bottom:10px}.environment-card{top:62px!important}}
