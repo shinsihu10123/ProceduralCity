@@ -32,21 +32,25 @@ const projection = new Float32Array(16)
 const view = new Float32Array(16)
 const viewProjection = new Float32Array(16)
 
-const v052TrafficBuffer = gl.createBuffer()
-let v052TrafficCity = null
-let v052TrafficVertexCount = 0
-let v052TrafficAgents = []
+const v053TrafficBuffer = gl.createBuffer()
+const v053RailBuffer = gl.createBuffer()
+let v053TrafficCity = null
+let v053TrafficVertexCount = 0
+let v053RailVertexCount = 0
+let v053Graph = null
+let v053TrafficAgents = []
+let v053Rail = null
 
-const v052TrafficColors = [
-  [0.18, 0.42, 0.68],
-  [0.72, 0.18, 0.14],
-  [0.16, 0.56, 0.42],
-  [0.82, 0.60, 0.16],
-  [0.70, 0.74, 0.78],
-  [0.28, 0.30, 0.34],
+const v053TrafficColors = [
+  [0.16, 0.48, 0.82],
+  [0.86, 0.22, 0.16],
+  [0.12, 0.66, 0.42],
+  [0.94, 0.66, 0.12],
+  [0.82, 0.86, 0.90],
+  [0.34, 0.36, 0.42],
 ]
 
-function v052BindGeometry(buffer) {
+function v053BindGeometry(buffer) {
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
   const stride = 9 * Float32Array.BYTES_PER_ELEMENT
   gl.enableVertexAttribArray(locations.position)
@@ -57,122 +61,388 @@ function v052BindGeometry(buffer) {
   gl.vertexAttribPointer(locations.color, 3, gl.FLOAT, false, stride, 6 * Float32Array.BYTES_PER_ELEMENT)
 }
 
-function v052ResetTraffic(city) {
-  v052TrafficCity = city
-  v052TrafficAgents = []
-  v052TrafficVertexCount = 0
-  if (!city?.roads?.length) return
+function v053NodeKey(x, z) {
+  return `${Math.round(x * 10) / 10}:${Math.round(z * 10) / 10}`
+}
 
-  const eligibleRoads = city.roads.filter((road) => road.class !== 'local')
-  const roads = eligibleRoads.length ? eligibleRoads : city.roads
-  const count = Math.min(18, Math.max(8, Math.round(roads.length * 0.08)))
+function v053RoadRange(road) {
+  const half = Math.max(road.length || 0, 8) / 2
+  return road.orientation === 'horizontal'
+    ? { minX: road.x - half, maxX: road.x + half, minZ: road.z, maxZ: road.z }
+    : { minX: road.x, maxX: road.x, minZ: road.z - half, maxZ: road.z + half }
+}
 
-  for (let index = 0; index < count; index += 1) {
-    const road = roads[(index * 7) % roads.length]
-    if (!road) continue
-    const type = index % 9 === 0 ? 'bus' : index % 7 === 0 ? 'truck' : 'car'
-    const speed = type === 'bus' ? 5.2 : type === 'truck' ? 4.4 : 6.8 + (index % 4) * 0.7
-    v052TrafficAgents.push({
-      id: `V052-${index + 1}`,
-      type,
-      road,
-      progress: ((index * 0.173) % 0.86) + 0.07,
-      direction: index % 2 === 0 ? 1 : -1,
-      speed,
-      laneSign: index % 2 === 0 ? 1 : -1,
-      color: v052TrafficColors[index % v052TrafficColors.length],
-    })
+function v053BuildRoadGraph(city) {
+  const roads = (city?.roads || []).filter((road) => road.length > 8)
+  const nodeMap = new Map()
+  const roadPoints = new Map()
+
+  function ensureNode(x, y, z) {
+    const key = v053NodeKey(x, z)
+    if (!nodeMap.has(key)) nodeMap.set(key, { id: key, x, y, z, edges: [] })
+    return nodeMap.get(key)
   }
 
-  window.dispatchEvent(new CustomEvent('procedural-city:webgl-prototype-ready', {
+  roads.forEach((road, index) => {
+    const range = v053RoadRange(road)
+    const points = road.orientation === 'horizontal'
+      ? [
+          { x: range.minX, z: road.z },
+          { x: range.maxX, z: road.z },
+        ]
+      : [
+          { x: road.x, z: range.minZ },
+          { x: road.x, z: range.maxZ },
+        ]
+    roadPoints.set(index, points)
+  })
+
+  for (let a = 0; a < roads.length; a += 1) {
+    const roadA = roads[a]
+    const rangeA = v053RoadRange(roadA)
+    for (let b = a + 1; b < roads.length; b += 1) {
+      const roadB = roads[b]
+      if (roadA.orientation === roadB.orientation) continue
+      const horizontal = roadA.orientation === 'horizontal' ? roadA : roadB
+      const vertical = roadA.orientation === 'vertical' ? roadA : roadB
+      const hRange = roadA.orientation === 'horizontal' ? rangeA : v053RoadRange(roadB)
+      const vRange = roadA.orientation === 'vertical' ? rangeA : v053RoadRange(roadB)
+      if (vertical.x < hRange.minX - 0.5 || vertical.x > hRange.maxX + 0.5) continue
+      if (horizontal.z < vRange.minZ - 0.5 || horizontal.z > vRange.maxZ + 0.5) continue
+      const point = { x: vertical.x, z: horizontal.z }
+      roadPoints.get(a).push(point)
+      roadPoints.get(b).push(point)
+    }
+  }
+
+  const edges = []
+  roads.forEach((road, roadIndex) => {
+    const points = roadPoints.get(roadIndex)
+    points.sort((a, b) => road.orientation === 'horizontal' ? a.x - b.x : a.z - b.z)
+    const unique = []
+    for (const point of points) {
+      if (!unique.length || Math.hypot(point.x - unique[unique.length - 1].x, point.z - unique[unique.length - 1].z) > 0.8) unique.push(point)
+    }
+    for (let index = 0; index < unique.length - 1; index += 1) {
+      const startPoint = unique[index]
+      const endPoint = unique[index + 1]
+      const length = Math.hypot(endPoint.x - startPoint.x, endPoint.z - startPoint.z)
+      if (length < 4) continue
+      const start = ensureNode(startPoint.x, road.y || 0, startPoint.z)
+      const end = ensureNode(endPoint.x, road.y || 0, endPoint.z)
+      const edge = {
+        id: `E-${edges.length + 1}`,
+        start,
+        end,
+        length,
+        roadClass: road.class || 'local',
+        orientation: road.orientation,
+      }
+      const reverse = {
+        id: `${edge.id}R`,
+        start: end,
+        end: start,
+        length,
+        roadClass: edge.roadClass,
+        orientation: edge.orientation,
+      }
+      start.edges.push(edge)
+      end.edges.push(reverse)
+      edges.push(edge, reverse)
+    }
+  })
+
+  return { nodes: [...nodeMap.values()], edges }
+}
+
+function v053Heuristic(a, b) {
+  return Math.hypot(a.x - b.x, a.z - b.z)
+}
+
+function v053FindRoute(graph, start, goal) {
+  if (!start || !goal || start === goal) return []
+  const open = [start]
+  const cameFrom = new Map()
+  const edgeFrom = new Map()
+  const gScore = new Map([[start.id, 0]])
+  const fScore = new Map([[start.id, v053Heuristic(start, goal)]])
+
+  while (open.length) {
+    open.sort((a, b) => (fScore.get(a.id) ?? Infinity) - (fScore.get(b.id) ?? Infinity))
+    const current = open.shift()
+    if (current === goal) {
+      const route = []
+      let cursor = current
+      while (cameFrom.has(cursor.id)) {
+        route.unshift(edgeFrom.get(cursor.id))
+        cursor = cameFrom.get(cursor.id)
+      }
+      return route
+    }
+    for (const edge of current.edges) {
+      const congestionPenalty = edge.roadClass === 'local' ? 1.18 : edge.roadClass === 'arterial' ? 0.88 : 1
+      const tentative = (gScore.get(current.id) ?? Infinity) + edge.length * congestionPenalty
+      if (tentative >= (gScore.get(edge.end.id) ?? Infinity)) continue
+      cameFrom.set(edge.end.id, current)
+      edgeFrom.set(edge.end.id, edge)
+      gScore.set(edge.end.id, tentative)
+      fScore.set(edge.end.id, tentative + v053Heuristic(edge.end, goal))
+      if (!open.includes(edge.end)) open.push(edge.end)
+    }
+  }
+  return []
+}
+
+function v053ChooseDestination(graph, origin, index) {
+  if (!graph.nodes.length) return origin
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const candidate = graph.nodes[(index * 17 + attempt * 31 + Math.floor(performance.now() / 5000)) % graph.nodes.length]
+    if (candidate !== origin && v053Heuristic(origin, candidate) > 80) return candidate
+  }
+  return graph.nodes[(index + Math.floor(graph.nodes.length / 2)) % graph.nodes.length]
+}
+
+function v053AssignRoute(agent, index) {
+  if (!v053Graph?.nodes.length) return
+  const origin = agent.edge?.end || v053Graph.nodes[(index * 11) % v053Graph.nodes.length]
+  const destination = v053ChooseDestination(v053Graph, origin, index)
+  const route = v053FindRoute(v053Graph, origin, destination)
+  if (route.length) {
+    agent.route = route
+    agent.routeIndex = 0
+    agent.edge = route[0]
+    agent.progress = 0
+    agent.destination = destination
+  } else if (origin.edges.length) {
+    agent.route = [origin.edges[index % origin.edges.length]]
+    agent.routeIndex = 0
+    agent.edge = agent.route[0]
+    agent.progress = 0
+  }
+}
+
+function v053ResetTraffic(city) {
+  v053TrafficCity = city
+  v053Graph = v053BuildRoadGraph(city)
+  v053TrafficAgents = []
+  v053TrafficVertexCount = 0
+  if (!v053Graph.nodes.length || !v053Graph.edges.length) return
+
+  const density = Number(ui.density?.value || 68) / 100
+  const count = Math.min(42, Math.max(14, Math.round(v053Graph.nodes.length * 0.12 * density)))
+  for (let index = 0; index < count; index += 1) {
+    const type = index % 11 === 0 ? 'bus' : index % 8 === 0 ? 'truck' : 'car'
+    const speed = type === 'bus' ? 8.2 : type === 'truck' ? 7.0 : 10.5 + (index % 5) * 0.9
+    const startNode = v053Graph.nodes[(index * 13) % v053Graph.nodes.length]
+    const agent = {
+      id: `V053-${index + 1}`,
+      type,
+      speed,
+      color: v053TrafficColors[index % v053TrafficColors.length],
+      laneSign: index % 2 === 0 ? 1 : -1,
+      edge: null,
+      route: [],
+      routeIndex: 0,
+      progress: 0,
+      dwell: index * 0.08,
+      stopsPassed: 0,
+    }
+    agent.edge = startNode.edges[index % Math.max(startNode.edges.length, 1)] || null
+    v053AssignRoute(agent, index)
+    agent.progress = ((index * 0.137) % 0.82) + 0.08
+    v053TrafficAgents.push(agent)
+  }
+
+  const stations = city?.infrastructure?.stations || []
+  const extent = Math.max(city?.extent || 600, 160)
+  const stationProgress = stations.length >= 2
+    ? stations.map((station) => clamp((station.z / extent) + 0.5, 0.08, 0.92)).sort((a, b) => a - b)
+    : [0.14, 0.36, 0.58, 0.82]
+  v053Rail = {
+    progress: 0.10,
+    direction: 1,
+    dwell: 0,
+    stations: stationProgress,
+    routeLength: extent * 0.94,
+  }
+
+  window.dispatchEvent(new CustomEvent('procedural-city:webgl-traffic-ready', {
     detail: {
-      vehicles: v052TrafficAgents.length,
-      moving: true,
-      types: [...new Set(v052TrafficAgents.map((agent) => agent.type))],
+      vehicles: v053TrafficAgents.length,
+      nodes: v053Graph.nodes.length,
+      edges: v053Graph.edges.length,
+      routed: true,
     },
   }))
 }
 
-function v052PushWheel(vertices, x, y, z, rotation, across, along) {
-  const vertical = rotation === 0 || rotation === Math.PI
+function v053PushWheel(vertices, x, y, z, rotation, across, along, scale = 1) {
+  const vertical = Math.abs(Math.cos(rotation)) > 0.7
   const wx = vertical ? x + across : x + along
   const wz = vertical ? z + along : z + across
-  pushBox(vertices, wx, y, wz, 0.30, 0.48, 0.60, [0.035, 0.04, 0.045], rotation)
+  pushBox(vertices, wx, y, wz, 0.38 * scale, 0.54 * scale, 0.72 * scale, [0.025, 0.03, 0.035], rotation)
 }
 
-function v052PushVehicle(vertices, agent, x, y, z, rotation) {
+function v053PushVehicle(vertices, agent, x, y, z, rotation) {
   const isBus = agent.type === 'bus'
   const isTruck = agent.type === 'truck'
-  const length = isBus ? 10.4 : isTruck ? 8.0 : 4.6
-  const width = isBus ? 2.48 : isTruck ? 2.38 : 1.90
-  const bodyHeight = isBus ? 1.62 : isTruck ? 1.48 : 0.74
-  const cabinHeight = isBus ? 1.08 : isTruck ? 1.04 : 0.66
+  const scale = 1.22
+  const length = (isBus ? 10.8 : isTruck ? 8.4 : 4.9) * scale
+  const width = (isBus ? 2.52 : isTruck ? 2.42 : 1.96) * scale
+  const bodyHeight = (isBus ? 1.68 : isTruck ? 1.52 : 0.80) * scale
+  const cabinHeight = (isBus ? 1.12 : isTruck ? 1.08 : 0.72) * scale
 
   pushBox(vertices, x, y, z, width, bodyHeight, length, agent.color, rotation)
-
   if (isBus) {
-    pushBox(vertices, x, y + 1.24, z, width * 0.92, cabinHeight, length * 0.90, [0.14, 0.25, 0.31], rotation)
-    pushBox(vertices, x, y + 1.92, z, width * 0.74, 0.16, length * 0.62, [0.74, 0.78, 0.80], rotation)
+    pushBox(vertices, x, y + 1.42 * scale, z, width * 0.93, cabinHeight, length * 0.91, [0.10, 0.24, 0.32], rotation)
+    pushBox(vertices, x, y + 2.20 * scale, z, width * 0.74, 0.18, length * 0.64, [0.78, 0.82, 0.84], rotation)
   } else if (isTruck) {
     const forward = length * 0.31
     const dx = Math.sin(rotation) * forward
     const dz = Math.cos(rotation) * forward
-    pushBox(vertices, x + dx, y + 1.05, z + dz, width * 0.92, cabinHeight, length * 0.30, [0.15, 0.25, 0.30], rotation)
-    pushBox(vertices, x - dx * 0.42, y + 1.00, z - dz * 0.42, width * 0.94, cabinHeight * 1.05, length * 0.56, agent.color, rotation)
+    pushBox(vertices, x + dx, y + 1.20 * scale, z + dz, width * 0.92, cabinHeight, length * 0.31, [0.11, 0.25, 0.33], rotation)
+    pushBox(vertices, x - dx * 0.42, y + 1.08 * scale, z - dz * 0.42, width * 0.95, cabinHeight * 1.06, length * 0.57, agent.color, rotation)
   } else {
-    pushBox(vertices, x, y + 0.72, z - 0.10, width * 0.82, cabinHeight, length * 0.53, [0.16, 0.27, 0.34], rotation)
+    pushBox(vertices, x, y + 0.84 * scale, z, width * 0.84, cabinHeight, length * 0.54, [0.10, 0.25, 0.34], rotation)
   }
 
   const wheelAlong = length * 0.31
-  const wheelAcross = width * 0.54
-  v052PushWheel(vertices, x, y - 0.30, z, rotation, wheelAcross, wheelAlong)
-  v052PushWheel(vertices, x, y - 0.30, z, rotation, -wheelAcross, wheelAlong)
-  v052PushWheel(vertices, x, y - 0.30, z, rotation, wheelAcross, -wheelAlong)
-  v052PushWheel(vertices, x, y - 0.30, z, rotation, -wheelAcross, -wheelAlong)
+  const wheelAcross = width * 0.53
+  v053PushWheel(vertices, x, y - 0.34, z, rotation, wheelAcross, wheelAlong, scale)
+  v053PushWheel(vertices, x, y - 0.34, z, rotation, -wheelAcross, wheelAlong, scale)
+  v053PushWheel(vertices, x, y - 0.34, z, rotation, wheelAcross, -wheelAlong, scale)
+  v053PushWheel(vertices, x, y - 0.34, z, rotation, -wheelAcross, -wheelAlong, scale)
 
   const lampOffset = length * 0.51
-  const lampX = x + Math.sin(rotation) * lampOffset
-  const lampZ = z + Math.cos(rotation) * lampOffset
-  pushBox(vertices, lampX, y + bodyHeight * 0.14, lampZ, width * 0.62, 0.12, 0.08, [1.0, 0.84, 0.42], rotation)
+  pushBox(
+    vertices,
+    x + Math.sin(rotation) * lampOffset,
+    y + bodyHeight * 0.12,
+    z + Math.cos(rotation) * lampOffset,
+    width * 0.62,
+    0.14,
+    0.10,
+    [1.0, 0.88, 0.44],
+    rotation,
+  )
 }
 
-function v052BuildTraffic(city, deltaSeconds = 0) {
-  if (city !== v052TrafficCity) v052ResetTraffic(city)
-  if (!v052TrafficAgents.length) {
-    v052TrafficVertexCount = 0
+function v053AdvanceAgent(agent, deltaSeconds, index) {
+  if (!agent.edge) {
+    v053AssignRoute(agent, index)
+    return
+  }
+  if (agent.dwell > 0) {
+    agent.dwell = Math.max(0, agent.dwell - deltaSeconds)
+    return
+  }
+  agent.progress += deltaSeconds * agent.speed / Math.max(agent.edge.length, 1)
+  while (agent.progress >= 1) {
+    agent.progress -= 1
+    agent.routeIndex += 1
+    agent.stopsPassed += 1
+    if (agent.type === 'bus' && agent.stopsPassed % 3 === 0) agent.dwell = 1.6
+    if (agent.routeIndex >= agent.route.length) {
+      v053AssignRoute(agent, index + agent.stopsPassed)
+      if (!agent.edge) return
+    } else {
+      agent.edge = agent.route[agent.routeIndex]
+    }
+  }
+}
+
+function v053BuildTraffic(city, deltaSeconds = 0) {
+  if (city !== v053TrafficCity) v053ResetTraffic(city)
+  if (!v053TrafficAgents.length) {
+    v053TrafficVertexCount = 0
     return
   }
 
   const vertices = []
-  for (const agent of v052TrafficAgents) {
-    const road = agent.road
-    const vehicleLength = agent.type === 'bus' ? 10.4 : agent.type === 'truck' ? 8.0 : 4.6
-    const routeLength = Math.max(road.length - vehicleLength - 3, 12)
-    agent.progress += deltaSeconds * agent.speed * agent.direction / routeLength
-    if (agent.progress >= 1) {
-      agent.progress = 1
-      agent.direction = -1
-    } else if (agent.progress <= 0) {
-      agent.progress = 0
-      agent.direction = 1
-    }
-
-    const rotation = road.orientation === 'horizontal'
-      ? (agent.direction > 0 ? Math.PI / 2 : -Math.PI / 2)
-      : (agent.direction > 0 ? 0 : Math.PI)
-    const laneWidth = road.class === 'arterial' ? 5.2 : 2.35
-    const laneOffset = laneWidth * agent.laneSign
-    const offset = (agent.progress - 0.5) * routeLength
-    const x = road.x + (road.orientation === 'vertical' ? laneOffset : offset)
-    const z = road.z + (road.orientation === 'horizontal' ? laneOffset : offset)
-    const y = road.y + 0.42
-    v052PushVehicle(vertices, agent, x, y, z, rotation)
-  }
+  v053TrafficAgents.forEach((agent, index) => {
+    v053AdvanceAgent(agent, deltaSeconds, index)
+    const edge = agent.edge
+    if (!edge) return
+    const t = clamp(agent.progress, 0, 1)
+    const centerX = edge.start.x + (edge.end.x - edge.start.x) * t
+    const centerZ = edge.start.z + (edge.end.z - edge.start.z) * t
+    const y = edge.start.y + (edge.end.y - edge.start.y) * t + 0.62
+    const dx = edge.end.x - edge.start.x
+    const dz = edge.end.z - edge.start.z
+    const rotation = Math.atan2(dx, dz)
+    const laneWidth = edge.roadClass === 'arterial' ? 4.8 : edge.roadClass === 'local' ? 1.55 : 2.65
+    const laneX = Math.cos(rotation) * laneWidth * agent.laneSign
+    const laneZ = -Math.sin(rotation) * laneWidth * agent.laneSign
+    v053PushVehicle(vertices, agent, centerX + laneX, y, centerZ + laneZ, rotation)
+  })
 
   const data = new Float32Array(vertices)
-  gl.bindBuffer(gl.ARRAY_BUFFER, v052TrafficBuffer)
+  gl.bindBuffer(gl.ARRAY_BUFFER, v053TrafficBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW)
-  v052TrafficVertexCount = data.length / 9
+  v053TrafficVertexCount = data.length / 9
+}
+
+function v053CrossedStation(previous, current, station, direction) {
+  return direction > 0
+    ? previous < station && current >= station
+    : previous > station && current <= station
+}
+
+function v053PushRailCar(vertices, x, y, z, rotation, lead, direction) {
+  const color = [0.10, 0.68, 0.86]
+  pushBox(vertices, x, y, z, 3.48, 2.55, 14.2, color, rotation)
+  pushBox(vertices, x, y + 1.66, z, 3.30, 1.02, 12.4, [0.08, 0.24, 0.32], rotation)
+  pushBox(vertices, x, y + 2.78, z, 2.42, 0.18, 8.0, [0.76, 0.82, 0.84], rotation)
+  if (lead) {
+    const offset = 7.18 * direction
+    pushBox(vertices, x + Math.sin(rotation) * offset, y + 0.36, z + Math.cos(rotation) * offset, 2.1, 0.20, 0.12, [1.0, 0.86, 0.40], rotation)
+  }
+}
+
+function v053BuildRail(city, deltaSeconds) {
+  if (!v053Rail) {
+    v053RailVertexCount = 0
+    return
+  }
+  if (v053Rail.dwell > 0) {
+    v053Rail.dwell = Math.max(0, v053Rail.dwell - deltaSeconds)
+  } else {
+    const previous = v053Rail.progress
+    v053Rail.progress += deltaSeconds * 17.5 * v053Rail.direction / Math.max(v053Rail.routeLength, 1)
+    if (v053Rail.progress >= 0.96) {
+      v053Rail.progress = 0.96
+      v053Rail.direction = -1
+      v053Rail.dwell = 2.0
+    } else if (v053Rail.progress <= 0.04) {
+      v053Rail.progress = 0.04
+      v053Rail.direction = 1
+      v053Rail.dwell = 2.0
+    } else {
+      for (const station of v053Rail.stations) {
+        if (v053CrossedStation(previous, v053Rail.progress, station, v053Rail.direction)) {
+          v053Rail.progress = station
+          v053Rail.dwell = 2.8
+          break
+        }
+      }
+    }
+  }
+
+  const vertices = []
+  const routeLength = v053Rail.routeLength
+  const railX = city.centers?.cbd?.x || 0
+  const baseY = (city.infrastructure?.stations?.[0]?.y ?? 1.8) + 0.92
+  const trainZ = -routeLength / 2 + v053Rail.progress * routeLength
+  const rotation = v053Rail.direction > 0 ? 0 : Math.PI
+  const spacing = 15.1
+  for (let car = -1; car <= 1; car += 1) {
+    const z = trainZ - car * spacing * v053Rail.direction
+    v053PushRailCar(vertices, railX, baseY, z, rotation, car === -1, v053Rail.direction)
+  }
+  const data = new Float32Array(vertices)
+  gl.bindBuffer(gl.ARRAY_BUFFER, v053RailBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW)
+  v053RailVertexCount = data.length / 9
 }
 
 function resizeCanvas() {
@@ -188,11 +458,7 @@ function resizeCanvas() {
 
 function environmentForTime(time) {
   const daylight = smoothstep(6, 8, time) * (1 - smoothstep(18.2, 21.0, time))
-  const sunset = Math.max(
-    1 - Math.abs(time - 6.6) / 1.8,
-    1 - Math.abs(time - 18.8) / 2.0,
-    0,
-  )
+  const sunset = Math.max(1 - Math.abs(time - 6.6) / 1.8, 1 - Math.abs(time - 18.8) / 2.0, 0)
   const night = 1 - daylight
   const skyDay = [0.61, 0.74, 0.82]
   const skyNight = [0.055, 0.085, 0.13]
@@ -233,7 +499,7 @@ function updateScale() {
 
 let previousFrameTime = performance.now()
 function render(frameTime = performance.now()) {
-  const deltaSeconds = Math.min(0.05, (frameTime - previousFrameTime) / 1000)
+  const deltaSeconds = Math.min(0.05, Math.max(0, (frameTime - previousFrameTime) / 1000))
   previousFrameTime = frameTime
   if (autoRotateEnabled && activePointers.size === 0) camera.yaw += deltaSeconds * 0.075
 
@@ -265,33 +531,49 @@ function render(frameTime = performance.now()) {
   gl.uniform1f(locations.fogFar, currentCity ? currentCity.extent * 2.55 : 1800)
   gl.uniform1f(locations.nightFactor, environment.nightFactor)
 
-  v052BindGeometry(vertexBuffer)
+  v053BindGeometry(vertexBuffer)
   gl.drawArrays(gl.TRIANGLES, 0, vertexCount)
 
-  v052BuildTraffic(currentCity, deltaSeconds)
-  if (v052TrafficVertexCount > 0) {
-    v052BindGeometry(v052TrafficBuffer)
-    gl.drawArrays(gl.TRIANGLES, 0, v052TrafficVertexCount)
+  v053BuildTraffic(currentCity, deltaSeconds)
+  if (v053TrafficVertexCount > 0) {
+    v053BindGeometry(v053TrafficBuffer)
+    gl.drawArrays(gl.TRIANGLES, 0, v053TrafficVertexCount)
+  }
+
+  v053BuildRail(currentCity, deltaSeconds)
+  if (v053RailVertexCount > 0) {
+    v053BindGeometry(v053RailBuffer)
+    gl.drawArrays(gl.TRIANGLES, 0, v053RailVertexCount)
   }
 
   updateScale()
   requestAnimationFrame(render)
 }
 
-window.ProceduralCityV052Prototype = {
+window.ProceduralCityV053Traffic = {
   getState: () => ({
     moving: true,
-    vehicleCount: v052TrafficAgents.length,
-    types: [...new Set(v052TrafficAgents.map((agent) => agent.type))],
-    vehicles: v052TrafficAgents.map((agent) => ({
+    routed: true,
+    vehicleCount: v053TrafficAgents.length,
+    graphNodes: v053Graph?.nodes.length || 0,
+    graphEdges: v053Graph?.edges.length || 0,
+    vehicles: v053TrafficAgents.map((agent) => ({
       id: agent.id,
       type: agent.type,
       progress: agent.progress,
-      direction: agent.direction,
-      roadClass: agent.road?.class || null,
+      routeRemaining: Math.max(0, agent.route.length - agent.routeIndex),
+      dwelling: agent.dwell > 0,
     })),
+    rail: v053Rail ? {
+      progress: v053Rail.progress,
+      direction: v053Rail.direction,
+      dwelling: v053Rail.dwell > 0,
+      stations: [...v053Rail.stations],
+    } : null,
   }),
 }
+window.ProceduralCityV052Prototype = window.ProceduralCityV053Traffic
+window.ProceduralCityV052Rail = window.ProceduralCityV053Traffic
 
 updateLabels()
 rebuildCity()
