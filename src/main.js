@@ -1,4 +1,4 @@
-const BUILD_ID = 'v083-runtime-recovery-20260801'
+const BUILD_ID = 'v091-dual-system-render-20260801'
 const sourceParts = [
   './main.part1.js.txt',
   './main.part2.js.txt',
@@ -22,6 +22,9 @@ const sourceParts = [
   './main.part3p.js.txt',
   './main.part3o.js.txt',
   './main.part3q.js.txt',
+  './v09-terrain-system.js.txt',
+  './v09-urban-system.js.txt',
+  './v09-render-integration.js.txt',
 ]
 
 function versionedUrl(path) {

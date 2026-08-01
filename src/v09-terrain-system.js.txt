@@ -1,0 +1,233 @@
+// Procedural City v0.9 — layered terrain generation system.
+// Produces geological, hydrological and development-suitability fields independently
+// from the legacy city mesh generator.
+
+(function () {
+  function clamp01(value) { return Math.max(0, Math.min(1, value)) }
+  function lerpValue(a, b, t) { return a + (b - a) * t }
+  function smooth(value) { return value * value * (3 - 2 * value) }
+
+  function hash32(x, z, seed) {
+    let n = Math.imul(x | 0, 374761393) ^ Math.imul(z | 0, 668265263) ^ Math.imul(seed | 0, 1442695041)
+    n = Math.imul(n ^ (n >>> 13), 1274126177)
+    return ((n ^ (n >>> 16)) >>> 0) / 4294967295
+  }
+
+  function valueNoise(x, z, seed) {
+    const x0 = Math.floor(x)
+    const z0 = Math.floor(z)
+    const tx = smooth(x - x0)
+    const tz = smooth(z - z0)
+    const a = hash32(x0, z0, seed) * 2 - 1
+    const b = hash32(x0 + 1, z0, seed) * 2 - 1
+    const c = hash32(x0, z0 + 1, seed) * 2 - 1
+    const d = hash32(x0 + 1, z0 + 1, seed) * 2 - 1
+    return lerpValue(lerpValue(a, b, tx), lerpValue(c, d, tx), tz)
+  }
+
+  function fbm(x, z, seed, octaves = 5) {
+    let amplitude = 0.52
+    let frequency = 1
+    let total = 0
+    let normalizer = 0
+    for (let octave = 0; octave < octaves; octave += 1) {
+      total += valueNoise(x * frequency, z * frequency, seed + octave * 1013) * amplitude
+      normalizer += amplitude
+      amplitude *= 0.5
+      frequency *= 2.03
+    }
+    return total / Math.max(normalizer, 1e-6)
+  }
+
+  function indexOf(x, z, size) { return z * size + x }
+
+  function sampleBilinear(field, size, x, z) {
+    const cx = Math.max(0, Math.min(size - 1.001, x))
+    const cz = Math.max(0, Math.min(size - 1.001, z))
+    const x0 = Math.floor(cx)
+    const z0 = Math.floor(cz)
+    const x1 = Math.min(size - 1, x0 + 1)
+    const z1 = Math.min(size - 1, z0 + 1)
+    const tx = cx - x0
+    const tz = cz - z0
+    const a = field[indexOf(x0, z0, size)]
+    const b = field[indexOf(x1, z0, size)]
+    const c = field[indexOf(x0, z1, size)]
+    const d = field[indexOf(x1, z1, size)]
+    return lerpValue(lerpValue(a, b, tx), lerpValue(c, d, tx), tz)
+  }
+
+  function buildBaseElevation(options) {
+    const { size, seed, relief, seaLevel } = options
+    const field = new Float32Array(size * size)
+    const phase = hash32(seed, seed >>> 3, seed) * Math.PI * 2
+    const ridgeAngle = hash32(seed + 11, seed + 29, seed) * Math.PI
+    const cosA = Math.cos(ridgeAngle)
+    const sinA = Math.sin(ridgeAngle)
+
+    for (let z = 0; z < size; z += 1) {
+      for (let x = 0; x < size; x += 1) {
+        const nx = x / (size - 1) * 2 - 1
+        const nz = z / (size - 1) * 2 - 1
+        const rx = nx * cosA - nz * sinA
+        const rz = nx * sinA + nz * cosA
+        const continental = fbm(nx * 1.35 + 7.1, nz * 1.35 - 3.7, seed, 5)
+        const detail = fbm(nx * 5.2 - 11.4, nz * 5.2 + 8.6, seed + 991, 4)
+        const ridgeNoise = 1 - Math.abs(fbm(rx * 3.1 + phase, rz * 1.75 - phase, seed + 2047, 4))
+        const ridgeBand = Math.exp(-Math.pow(rz * 1.18 + Math.sin(rx * 2.8 + phase) * 0.18, 2) * 3.4)
+        const basin = Math.exp(-(nx * nx + nz * nz) * 1.65)
+        const coastTilt = nx * (hash32(seed, 17, 91) - 0.5) * 0.42 + nz * (hash32(seed, 37, 71) - 0.5) * 0.42
+        const normalized = continental * 0.42 + detail * 0.12 + ridgeNoise * ridgeBand * 0.62 - basin * 0.11 + coastTilt
+        field[indexOf(x, z, size)] = seaLevel + normalized * relief
+      }
+    }
+    return field
+  }
+
+  function thermalErode(height, size, iterations, talus) {
+    const delta = new Float32Array(height.length)
+    const neighbors = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]
+    for (let iteration = 0; iteration < iterations; iteration += 1) {
+      delta.fill(0)
+      for (let z = 1; z < size - 1; z += 1) {
+        for (let x = 1; x < size - 1; x += 1) {
+          const centerIndex = indexOf(x, z, size)
+          const center = height[centerIndex]
+          let steepest = null
+          for (const [dx, dz] of neighbors) {
+            const neighborIndex = indexOf(x + dx, z + dz, size)
+            const drop = center - height[neighborIndex]
+            if (drop > talus && (!steepest || drop > steepest.drop)) steepest = { neighborIndex, drop }
+          }
+          if (steepest) {
+            const amount = (steepest.drop - talus) * 0.18
+            delta[centerIndex] -= amount
+            delta[steepest.neighborIndex] += amount
+          }
+        }
+      }
+      for (let i = 0; i < height.length; i += 1) height[i] += delta[i]
+    }
+  }
+
+  function deriveSlope(height, size, cellSize) {
+    const slope = new Float32Array(height.length)
+    const aspect = new Float32Array(height.length)
+    for (let z = 0; z < size; z += 1) {
+      for (let x = 0; x < size; x += 1) {
+        const xl = Math.max(0, x - 1)
+        const xr = Math.min(size - 1, x + 1)
+        const zd = Math.max(0, z - 1)
+        const zu = Math.min(size - 1, z + 1)
+        const dx = (height[indexOf(xr, z, size)] - height[indexOf(xl, z, size)]) / Math.max((xr - xl) * cellSize, 1e-6)
+        const dz = (height[indexOf(x, zu, size)] - height[indexOf(x, zd, size)]) / Math.max((zu - zd) * cellSize, 1e-6)
+        slope[indexOf(x, z, size)] = Math.atan(Math.hypot(dx, dz)) * 180 / Math.PI
+        aspect[indexOf(x, z, size)] = Math.atan2(dz, dx)
+      }
+    }
+    return { slope, aspect }
+  }
+
+  function deriveDrainage(height, size) {
+    const downstream = new Int32Array(height.length)
+    const accumulation = new Float32Array(height.length)
+    const order = Array.from({ length: height.length }, (_, i) => i).sort((a, b) => height[b] - height[a])
+    const neighbors = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]
+    accumulation.fill(1)
+
+    for (let z = 0; z < size; z += 1) {
+      for (let x = 0; x < size; x += 1) {
+        const i = indexOf(x, z, size)
+        let bestIndex = i
+        let bestHeight = height[i]
+        for (const [dx, dz] of neighbors) {
+          const nx = x + dx
+          const nz = z + dz
+          if (nx < 0 || nz < 0 || nx >= size || nz >= size) continue
+          const ni = indexOf(nx, nz, size)
+          if (height[ni] < bestHeight) {
+            bestHeight = height[ni]
+            bestIndex = ni
+          }
+        }
+        downstream[i] = bestIndex
+      }
+    }
+
+    for (const i of order) {
+      const target = downstream[i]
+      if (target !== i) accumulation[target] += accumulation[i]
+    }
+    return { downstream, accumulation }
+  }
+
+  function deriveSurfaceLayers(height, slope, accumulation, options) {
+    const { size, seaLevel } = options
+    const water = new Float32Array(height.length)
+    const soil = new Float32Array(height.length)
+    const vegetation = new Float32Array(height.length)
+    const buildability = new Float32Array(height.length)
+    const streamThreshold = Math.max(20, size * size * 0.006)
+
+    for (let i = 0; i < height.length; i += 1) {
+      const submerged = height[i] <= seaLevel ? 1 : 0
+      const stream = clamp01((accumulation[i] - streamThreshold) / (streamThreshold * 3.5))
+      const wetness = Math.max(submerged, stream)
+      const slopePenalty = clamp01(slope[i] / 28)
+      const valleySoil = clamp01(Math.log2(accumulation[i] + 1) / 11)
+      water[i] = wetness
+      soil[i] = clamp01(0.35 + valleySoil * 0.55 - slopePenalty * 0.42)
+      vegetation[i] = clamp01(soil[i] * 0.78 + (1 - slopePenalty) * 0.24 - submerged)
+      buildability[i] = clamp01((1 - slopePenalty) * (1 - wetness) * (0.45 + soil[i] * 0.55))
+    }
+    return { water, soil, vegetation, buildability }
+  }
+
+  function createTerrainSystem(input = {}) {
+    const size = Math.max(48, Math.min(192, Math.round(input.size || 112)))
+    const worldSize = Math.max(400, input.worldSize || 1600)
+    const options = {
+      size,
+      worldSize,
+      cellSize: worldSize / (size - 1),
+      seed: (input.seed || 1) >>> 0,
+      relief: Math.max(8, input.relief || 110),
+      seaLevel: Number.isFinite(input.seaLevel) ? input.seaLevel : -8,
+    }
+    const height = buildBaseElevation(options)
+    thermalErode(height, size, Math.max(4, Math.round(input.erosionIterations || 14)), options.relief / size * 0.42)
+    const { slope, aspect } = deriveSlope(height, size, options.cellSize)
+    const { downstream, accumulation } = deriveDrainage(height, size)
+    const layers = deriveSurfaceLayers(height, slope, accumulation, options)
+
+    function worldToGrid(x, z) {
+      return {
+        x: (x / worldSize + 0.5) * (size - 1),
+        z: (z / worldSize + 0.5) * (size - 1),
+      }
+    }
+    function sample(field, x, z) {
+      const point = worldToGrid(x, z)
+      return sampleBilinear(field, size, point.x, point.z)
+    }
+
+    return {
+      version: '0.9.0-terrain-core',
+      size,
+      worldSize,
+      cellSize: options.cellSize,
+      seaLevel: options.seaLevel,
+      fields: { height, slope, aspect, downstream, accumulation, ...layers },
+      heightAt: (x, z) => sample(height, x, z),
+      slopeAt: (x, z) => sample(slope, x, z),
+      waterAt: (x, z) => sample(layers.water, x, z),
+      buildabilityAt: (x, z) => sample(layers.buildability, x, z),
+      vegetationAt: (x, z) => sample(layers.vegetation, x, z),
+      toJSON() {
+        return { version: this.version, size, worldSize, cellSize: options.cellSize, seaLevel: options.seaLevel }
+      },
+    }
+  }
+
+  window.ProceduralTerrainSystemV09 = { create: createTerrainSystem }
+})()

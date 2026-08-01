@@ -1,0 +1,255 @@
+// Procedural City v0.9 — terrain-aware urban generation system.
+// Consumes ProceduralTerrainSystemV09 output and produces centers, road corridors,
+// development parcels and non-box building mass specifications.
+
+(function () {
+  function clamp01(value) { return Math.max(0, Math.min(1, value)) }
+  function distance(a, b) { return Math.hypot(a.x - b.x, a.z - b.z) }
+  function key(x, z) { return `${x}:${z}` }
+
+  function createRandom(seed) {
+    let state = seed >>> 0
+    return () => {
+      state += 0x6d2b79f5
+      let value = state
+      value = Math.imul(value ^ (value >>> 15), value | 1)
+      value ^= value + Math.imul(value ^ (value >>> 7), value | 61)
+      return ((value ^ (value >>> 14)) >>> 0) / 4294967296
+    }
+  }
+
+  function selectCenters(terrain, count, random) {
+    const candidates = []
+    const span = terrain.worldSize * 0.46
+    const samples = Math.max(18, Math.round(Math.sqrt(terrain.size) * 2.3))
+    for (let zi = 0; zi < samples; zi += 1) {
+      for (let xi = 0; xi < samples; xi += 1) {
+        const x = -span + (xi / (samples - 1)) * span * 2
+        const z = -span + (zi / (samples - 1)) * span * 2
+        const buildability = terrain.buildabilityAt(x, z)
+        const slope = terrain.slopeAt(x, z)
+        const water = terrain.waterAt(x, z)
+        const centrality = 1 - clamp01(Math.hypot(x, z) / (terrain.worldSize * 0.62))
+        const score = buildability * 0.58 + centrality * 0.24 + (1 - water) * 0.14 + random() * 0.04 - clamp01(slope / 24) * 0.32
+        candidates.push({ x, z, y: terrain.heightAt(x, z), score })
+      }
+    }
+    candidates.sort((a, b) => b.score - a.score)
+    const selected = []
+    for (const candidate of candidates) {
+      if (selected.every((center) => distance(center, candidate) > terrain.worldSize * 0.16)) selected.push(candidate)
+      if (selected.length >= count) break
+    }
+    return selected
+  }
+
+  function routeCost(terrain, x, z, roadClass) {
+    const slope = terrain.slopeAt(x, z)
+    const water = terrain.waterAt(x, z)
+    const buildability = terrain.buildabilityAt(x, z)
+    const slopeLimit = roadClass === 'arterial' ? 15 : roadClass === 'collector' ? 18 : 22
+    const slopePenalty = Math.pow(clamp01(slope / slopeLimit), 2) * 12
+    const waterPenalty = water > 0.5 ? (roadClass === 'arterial' ? 8 : 20) : water * 4
+    return 1 + slopePenalty + waterPenalty + (1 - buildability) * 1.6
+  }
+
+  function findTerrainRoute(terrain, from, to, roadClass) {
+    const resolution = Math.max(42, Math.min(96, Math.round(terrain.size * 0.62)))
+    const worldSize = terrain.worldSize
+    const cell = worldSize / (resolution - 1)
+    const toGrid = (point) => ({
+      x: Math.max(0, Math.min(resolution - 1, Math.round((point.x / worldSize + 0.5) * (resolution - 1)))),
+      z: Math.max(0, Math.min(resolution - 1, Math.round((point.z / worldSize + 0.5) * (resolution - 1)))),
+    })
+    const toWorld = (gx, gz) => ({ x: (gx / (resolution - 1) - 0.5) * worldSize, z: (gz / (resolution - 1) - 0.5) * worldSize })
+    const start = toGrid(from)
+    const goal = toGrid(to)
+    const open = [{ x: start.x, z: start.z, f: 0 }]
+    const gScore = new Map([[key(start.x, start.z), 0]])
+    const parent = new Map()
+    const closed = new Set()
+    const neighbors = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]
+
+    while (open.length) {
+      open.sort((a, b) => a.f - b.f)
+      const current = open.shift()
+      const currentKey = key(current.x, current.z)
+      if (closed.has(currentKey)) continue
+      closed.add(currentKey)
+      if (current.x === goal.x && current.z === goal.z) break
+
+      for (const [dx, dz] of neighbors) {
+        const nx = current.x + dx
+        const nz = current.z + dz
+        if (nx < 0 || nz < 0 || nx >= resolution || nz >= resolution) continue
+        const nextKey = key(nx, nz)
+        if (closed.has(nextKey)) continue
+        const world = toWorld(nx, nz)
+        const step = Math.hypot(dx, dz) * routeCost(terrain, world.x, world.z, roadClass)
+        const tentative = (gScore.get(currentKey) || 0) + step
+        if (tentative >= (gScore.get(nextKey) ?? Infinity)) continue
+        parent.set(nextKey, currentKey)
+        gScore.set(nextKey, tentative)
+        const heuristic = Math.hypot(goal.x - nx, goal.z - nz)
+        open.push({ x: nx, z: nz, f: tentative + heuristic })
+      }
+    }
+
+    const path = []
+    let cursor = key(goal.x, goal.z)
+    if (!parent.has(cursor)) return [from, to]
+    while (cursor) {
+      const [gx, gz] = cursor.split(':').map(Number)
+      const world = toWorld(gx, gz)
+      path.push({ ...world, y: terrain.heightAt(world.x, world.z) })
+      if (gx === start.x && gz === start.z) break
+      cursor = parent.get(cursor)
+    }
+    path.reverse()
+
+    const simplified = []
+    for (let i = 0; i < path.length; i += 1) {
+      if (i === 0 || i === path.length - 1 || i % 3 === 0) simplified.push(path[i])
+    }
+    return simplified
+  }
+
+  function buildRoadHierarchy(terrain, centers) {
+    const roads = []
+    if (!centers.length) return roads
+    for (let i = 1; i < centers.length; i += 1) {
+      roads.push({ id: `A-${i}`, class: 'arterial', points: findTerrainRoute(terrain, centers[0], centers[i], 'arterial') })
+    }
+    for (let i = 1; i < centers.length; i += 1) {
+      const next = centers[(i % (centers.length - 1)) + 1]
+      if (next && next !== centers[i]) roads.push({ id: `C-${i}`, class: 'collector', points: findTerrainRoute(terrain, centers[i], next, 'collector') })
+    }
+    return roads
+  }
+
+  function nearestRoadPoint(point, roads) {
+    let best = null
+    for (const road of roads) {
+      for (let i = 0; i < road.points.length - 1; i += 1) {
+        const a = road.points[i]
+        const b = road.points[i + 1]
+        const vx = b.x - a.x
+        const vz = b.z - a.z
+        const length2 = vx * vx + vz * vz || 1
+        const t = Math.max(0, Math.min(1, ((point.x - a.x) * vx + (point.z - a.z) * vz) / length2))
+        const x = a.x + vx * t
+        const z = a.z + vz * t
+        const d = Math.hypot(point.x - x, point.z - z)
+        if (!best || d < best.distance) best = { distance: d, x, z, angle: Math.atan2(vx, vz), roadClass: road.class }
+      }
+    }
+    return best
+  }
+
+  function createParcels(terrain, roads, centers, random) {
+    const parcels = []
+    const attempts = Math.round(terrain.size * 4.2)
+    const half = terrain.worldSize * 0.46
+    for (let i = 0; i < attempts; i += 1) {
+      const x = (random() * 2 - 1) * half
+      const z = (random() * 2 - 1) * half
+      const buildability = terrain.buildabilityAt(x, z)
+      if (buildability < 0.52 || terrain.waterAt(x, z) > 0.25) continue
+      const road = nearestRoadPoint({ x, z }, roads)
+      if (!road || road.distance > terrain.worldSize * 0.055) continue
+      const nearestCenter = centers.reduce((best, center) => !best || distance(center, { x, z }) < best.distance ? { center, distance: distance(center, { x, z }) } : best, null)
+      const urbanity = nearestCenter ? 1 - clamp01(nearestCenter.distance / (terrain.worldSize * 0.38)) : 0
+      const frontage = 18 + random() * 34
+      const depth = 22 + random() * 48
+      const skew = (random() - 0.5) * 0.42
+      parcels.push({
+        id: parcels.length,
+        x,
+        z,
+        y: terrain.heightAt(x, z),
+        rotation: road.angle + skew,
+        frontage,
+        depth,
+        buildability,
+        urbanity,
+        roadClass: road.roadClass,
+        polygon: null,
+      })
+    }
+    return parcels
+  }
+
+  function chooseBuildingProgram(parcel, random) {
+    if (parcel.urbanity > 0.76) return random() < 0.62 ? 'office' : 'mixed-use'
+    if (parcel.urbanity > 0.48) return random() < 0.55 ? 'apartment' : 'mixed-use'
+    if (parcel.roadClass === 'arterial' && random() < 0.28) return 'commercial'
+    return random() < 0.18 ? 'civic' : 'residential'
+  }
+
+  function createBuildingMass(parcel, random) {
+    const program = chooseBuildingProgram(parcel, random)
+    const density = parcel.urbanity
+    const floors = Math.max(2, Math.round(2 + density * density * 34 + random() * 8))
+    const podiumFloors = program === 'office' || program === 'mixed-use' ? Math.min(5, Math.max(2, Math.round(floors * 0.18))) : 1
+    const footprintWidth = parcel.frontage * (0.52 + random() * 0.25)
+    const footprintDepth = parcel.depth * (0.42 + random() * 0.28)
+    const towerWidth = footprintWidth * (0.56 + random() * 0.22)
+    const towerDepth = footprintDepth * (0.52 + random() * 0.24)
+    const crownType = floors > 18 ? ['setback', 'sloped', 'mechanical', 'terraced'][Math.floor(random() * 4)] : 'roof'
+    const facade = {
+      moduleWidth: 1.1 + random() * 1.7,
+      floorHeight: program === 'office' ? 3.8 : 3.05 + random() * 0.35,
+      glazingRatio: program === 'office' ? 0.68 + random() * 0.18 : 0.28 + random() * 0.28,
+      balconyRate: program === 'apartment' || program === 'residential' ? 0.35 + random() * 0.45 : random() * 0.12,
+      recessDepth: 0.18 + random() * 0.5,
+    }
+    return {
+      id: `B-${parcel.id}`,
+      parcelId: parcel.id,
+      program,
+      x: parcel.x,
+      y: parcel.y,
+      z: parcel.z,
+      rotation: parcel.rotation,
+      floors,
+      podium: { floors: podiumFloors, width: footprintWidth, depth: footprintDepth },
+      tower: floors > podiumFloors + 2 ? { floors: floors - podiumFloors, width: towerWidth, depth: towerDepth, offsetX: (random() - 0.5) * 4, offsetZ: (random() - 0.5) * 4 } : null,
+      crown: { type: crownType, height: 1.5 + random() * 5.5 },
+      facade,
+      serviceCore: { width: Math.max(2.4, towerWidth * 0.18), depth: Math.max(2.4, towerDepth * 0.2) },
+    }
+  }
+
+  function createUrbanSystem(terrain, input = {}) {
+    if (!terrain || typeof terrain.buildabilityAt !== 'function') throw new Error('A v0.9 terrain system is required')
+    const random = createRandom((input.seed || 1) >>> 0)
+    const centers = selectCenters(terrain, Math.max(3, input.centerCount || 5), random)
+    const roads = buildRoadHierarchy(terrain, centers)
+    const parcels = createParcels(terrain, roads, centers, random)
+    const buildings = parcels.map((parcel) => createBuildingMass(parcel, random))
+    return {
+      version: '0.9.0-urban-core',
+      terrainVersion: terrain.version,
+      centers,
+      roads,
+      parcels,
+      buildings,
+      infrastructure: {
+        bridges: roads.flatMap((road) => road.points).filter((point) => terrain.waterAt(point.x, point.z) > 0.5).length,
+        tunnelCandidates: roads.flatMap((road) => road.points).filter((point) => terrain.slopeAt(point.x, point.z) > 20).length,
+      },
+      toJSON() {
+        return {
+          version: this.version,
+          terrainVersion: this.terrainVersion,
+          centers: centers.length,
+          roads: roads.length,
+          parcels: parcels.length,
+          buildings: buildings.length,
+        }
+      },
+    }
+  }
+
+  window.ProceduralUrbanSystemV09 = { create: createUrbanSystem }
+})()
