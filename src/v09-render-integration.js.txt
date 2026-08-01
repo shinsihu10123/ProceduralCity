@@ -1,0 +1,280 @@
+// Procedural City v0.9 — renderer and legacy runtime integration.
+(function () {
+  const previousGenerateCity = generateCity
+
+  function colorMix(a, b, t) {
+    const f = Math.max(0, Math.min(1, t))
+    return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]
+  }
+
+  function seedFromSettings(settings) {
+    return hashString(`${settings.seed || 'city'}:${settings.profile || 'balanced'}:v09`)
+  }
+
+  function terrainColor(terrain, x, z, height) {
+    const water = terrain.waterAt(x, z)
+    if (water > 0.42 || height <= terrain.seaLevel + 0.15) {
+      return colorMix(COLORS.waterDeep, COLORS.waterShallow, Math.max(0, Math.min(1, water)))
+    }
+    const slope = terrain.slopeAt(x, z)
+    const vegetation = terrain.vegetationAt(x, z)
+    const altitude = Math.max(0, Math.min(1, (height - terrain.seaLevel) / 120))
+    let color = colorMix(COLORS.terrainLow, COLORS.terrainHigh, altitude)
+    color = colorMix(color, COLORS.park, vegetation * 0.42)
+    if (slope > 24) color = colorMix(color, COLORS.embankment, Math.min(0.58, (slope - 24) / 28))
+    return color
+  }
+
+  function pushTerrainMesh(vertices, terrain, detailLevel) {
+    const segments = detailLevel > 1 ? 72 : detailLevel > 0 ? 60 : 48
+    const half = terrain.worldSize * 0.5
+    const step = terrain.worldSize / segments
+    for (let zi = 0; zi < segments; zi += 1) {
+      for (let xi = 0; xi < segments; xi += 1) {
+        const x0 = -half + xi * step
+        const z0 = -half + zi * step
+        const x1 = x0 + step
+        const z1 = z0 + step
+        const y00 = terrain.heightAt(x0, z0)
+        const y10 = terrain.heightAt(x1, z0)
+        const y11 = terrain.heightAt(x1, z1)
+        const y01 = terrain.heightAt(x0, z1)
+        const colorA = terrainColor(terrain, (x0 + x1 + x1) / 3, (z0 + z0 + z1) / 3, (y00 + y10 + y11) / 3)
+        const colorB = terrainColor(terrain, (x0 + x1 + x0) / 3, (z0 + z1 + z1) / 3, (y00 + y11 + y01) / 3)
+        const normalA = calculateNormal([x0, y00, z0], [x1, y10, z0], [x1, y11, z1])
+        const normalB = calculateNormal([x0, y00, z0], [x1, y11, z1], [x0, y01, z1])
+        pushTriangle(vertices, [x0, y00, z0], [x1, y10, z0], [x1, y11, z1], normalA, colorA)
+        pushTriangle(vertices, [x0, y00, z0], [x1, y11, z1], [x0, y01, z1], normalB, colorB)
+      }
+    }
+  }
+
+  function roadWidth(roadClass) {
+    return roadClass === 'arterial' ? 19 : roadClass === 'collector' ? 12.5 : 8
+  }
+
+  function pushRoadSystem(vertices, terrain, urban, cityRoads, infrastructure) {
+    for (const road of urban.roads) {
+      for (let index = 0; index < road.points.length - 1; index += 1) {
+        const a = road.points[index]
+        const b = road.points[index + 1]
+        const dx = b.x - a.x
+        const dz = b.z - a.z
+        const length = Math.hypot(dx, dz)
+        if (length < 1) continue
+        const x = (a.x + b.x) * 0.5
+        const z = (a.z + b.z) * 0.5
+        const rotation = Math.atan2(dx, dz)
+        const width = roadWidth(road.class)
+        const water = terrain.waterAt(x, z)
+        const ground = Math.max(terrain.heightAt(a.x, a.z), terrain.heightAt(b.x, b.z))
+        const bridge = water > 0.42
+        const y = bridge ? Math.max(ground + 0.5, terrain.seaLevel + 5.2) : ground + 0.32
+        pushBox(vertices, x, y - 0.16, z, width + 4.4, 0.32, length + 1.4, COLORS.sidewalk, rotation)
+        pushBox(vertices, x, y + 0.03, z, width, 0.16, length + 1.6, COLORS[road.class] || COLORS.collector, rotation)
+        if (road.class !== 'local') pushBox(vertices, x, y + 0.13, z, 0.15, 0.025, length * 0.8, COLORS.roadMark, rotation)
+        if (bridge) {
+          const pierHeight = Math.max(3, y - terrain.seaLevel + 1)
+          const pierCount = Math.max(1, Math.floor(length / 34))
+          for (let p = 1; p <= pierCount; p += 1) {
+            const t = p / (pierCount + 1)
+            pushBox(vertices, a.x + dx * t, terrain.seaLevel - 0.4, a.z + dz * t, 1.4, pierHeight, 1.4, COLORS.embankment, rotation)
+          }
+          infrastructure.bridges += 1
+        }
+        cityRoads.push({
+          id: `${road.id}-${index}`,
+          x,
+          y,
+          z,
+          start: { x: a.x, y, z: a.z },
+          end: { x: b.x, y, z: b.z },
+          orientation: 'freeform',
+          class: road.class,
+          length,
+          rotation,
+          bridge,
+        })
+      }
+    }
+  }
+
+  function offsetPoint(building, localX, localZ) {
+    const c = Math.cos(building.rotation)
+    const s = Math.sin(building.rotation)
+    return [building.x + localX * c - localZ * s, building.z + localX * s + localZ * c]
+  }
+
+  function pushSlopedCrown(vertices, building, baseY, width, depth, height, color) {
+    const c = Math.cos(building.rotation)
+    const s = Math.sin(building.rotation)
+    const localToWorld = (lx, ly, lz) => [building.x + lx * c - lz * s, ly, building.z + lx * s + lz * c]
+    const p0 = localToWorld(-width / 2, baseY, -depth / 2)
+    const p1 = localToWorld(width / 2, baseY, -depth / 2)
+    const p2 = localToWorld(width / 2, baseY, depth / 2)
+    const p3 = localToWorld(-width / 2, baseY, depth / 2)
+    const ridgeA = localToWorld(0, baseY + height, -depth / 2)
+    const ridgeB = localToWorld(0, baseY + height, depth / 2)
+    pushTriangle(vertices, p0, p1, ridgeA, calculateNormal(p0, p1, ridgeA), color)
+    pushTriangle(vertices, p3, ridgeB, p2, calculateNormal(p3, ridgeB, p2), color)
+    pushTriangle(vertices, p0, ridgeA, ridgeB, calculateNormal(p0, ridgeA, ridgeB), color)
+    pushTriangle(vertices, p0, ridgeB, p3, calculateNormal(p0, ridgeB, p3), color)
+    pushTriangle(vertices, p1, p2, ridgeB, calculateNormal(p1, p2, ridgeB), color)
+    pushTriangle(vertices, p1, ridgeB, ridgeA, calculateNormal(p1, ridgeB, ridgeA), color)
+  }
+
+  function facadeColor(program) {
+    if (program === 'office') return COLORS.glassDark
+    if (program === 'mixed-use' || program === 'commercial') return COLORS.glassBlue
+    if (program === 'civic') return COLORS.concreteLight
+    return COLORS.concreteWarm
+  }
+
+  function pushFacadeModules(vertices, building, width, depth, baseY, height, facade, detailLevel) {
+    if (detailLevel <= 0 || height < 10) return
+    const floors = Math.max(2, Math.round(height / facade.floorHeight))
+    const bands = Math.min(12, floors)
+    const windowColor = building.program === 'office' ? COLORS.windowDay : COLORS.window
+    for (let floor = 1; floor < bands; floor += 1) {
+      const y = baseY + height * (floor / bands)
+      const [fx, fz] = offsetPoint(building, 0, -depth / 2 - 0.06)
+      const [bx, bz] = offsetPoint(building, 0, depth / 2 + 0.06)
+      pushBox(vertices, fx, y, fz, width * 0.84, 0.22, 0.08, windowColor, building.rotation)
+      pushBox(vertices, bx, y, bz, width * 0.84, 0.22, 0.08, windowColor, building.rotation)
+    }
+    if (facade.balconyRate > 0.4 && detailLevel > 1) {
+      const count = Math.min(8, Math.floor(floors / 2))
+      for (let i = 1; i <= count; i += 1) {
+        const y = baseY + height * (i / (count + 1))
+        const side = i % 2 ? -1 : 1
+        const [x, z] = offsetPoint(building, side * width * 0.28, -depth / 2 - 0.5)
+        pushBox(vertices, x, y, z, width * 0.32, 0.16, 0.9, COLORS.concreteLight, building.rotation)
+      }
+    }
+  }
+
+  function pushBuildingMass(vertices, terrain, spec, detailLevel) {
+    const ground = terrain.heightAt(spec.x, spec.z)
+    const floorHeight = spec.facade.floorHeight
+    const baseColor = facadeColor(spec.program)
+    const podiumHeight = spec.podium.floors * floorHeight
+    const building = { ...spec, y: ground }
+    pushBox(vertices, spec.x, ground, spec.z, spec.podium.width, podiumHeight, spec.podium.depth, baseColor, spec.rotation)
+    pushFacadeModules(vertices, building, spec.podium.width, spec.podium.depth, ground, podiumHeight, spec.facade, detailLevel)
+
+    let topY = ground + podiumHeight
+    let topWidth = spec.podium.width
+    let topDepth = spec.podium.depth
+    if (spec.tower) {
+      const [tx, tz] = offsetPoint(building, spec.tower.offsetX, spec.tower.offsetZ)
+      const towerHeight = spec.tower.floors * floorHeight
+      const towerBuilding = { ...building, x: tx, z: tz }
+      pushBox(vertices, tx, topY, tz, spec.tower.width, towerHeight, spec.tower.depth, colorMix(baseColor, COLORS.glassBlue, spec.facade.glazingRatio * 0.34), spec.rotation)
+      pushFacadeModules(vertices, towerBuilding, spec.tower.width, spec.tower.depth, topY, towerHeight, spec.facade, detailLevel)
+      topY += towerHeight
+      topWidth = spec.tower.width
+      topDepth = spec.tower.depth
+    }
+
+    if (spec.crown.type === 'sloped' || (spec.floors < 8 && spec.program === 'residential')) {
+      pushSlopedCrown(vertices, building, topY, topWidth, topDepth, Math.max(2.2, spec.crown.height), COLORS.roofWarm)
+    } else if (spec.crown.type === 'terraced') {
+      pushBox(vertices, spec.x, topY, spec.z, topWidth * 0.78, spec.crown.height * 0.55, topDepth * 0.78, COLORS.roof, spec.rotation)
+      pushBox(vertices, spec.x, topY + spec.crown.height * 0.55, spec.z, topWidth * 0.54, spec.crown.height * 0.45, topDepth * 0.54, COLORS.roof, spec.rotation)
+    } else {
+      pushBox(vertices, spec.x, topY, spec.z, Math.max(2.4, spec.serviceCore.width), Math.max(1.2, spec.crown.height), Math.max(2.4, spec.serviceCore.depth), COLORS.roof, spec.rotation)
+    }
+    if (detailLevel > 0 && spec.floors > 12) {
+      pushBox(vertices, spec.x, topY + spec.crown.height, spec.z, 0.22, 4 + spec.floors * 0.08, 0.22, COLORS.signal, spec.rotation)
+    }
+    return {
+      id: spec.id,
+      parcelId: spec.parcelId,
+      x: spec.x,
+      y: ground,
+      z: spec.z,
+      rotation: spec.rotation,
+      floors: spec.floors,
+      width: spec.podium.width,
+      depth: spec.podium.depth,
+      height: spec.floors * floorHeight + spec.crown.height,
+      zone: spec.program === 'office' || spec.program === 'commercial' || spec.program === 'mixed-use' ? 'commercial' : spec.program === 'civic' ? 'civic' : 'residential',
+      program: spec.program,
+    }
+  }
+
+  generateCity = function v09GenerateIntegratedCity(settings) {
+    try {
+      if (!window.ProceduralTerrainSystemV09 || !window.ProceduralUrbanSystemV09) return previousGenerateCity(settings)
+      const seed = seedFromSettings(settings)
+      const worldSize = Math.max(620, (settings.gridSize || 30) * (settings.cellSize || 28) * 1.18)
+      const terrain = window.ProceduralTerrainSystemV09.create({
+        seed,
+        size: Math.min(128, Math.max(72, (settings.gridSize || 30) * 3)),
+        worldSize,
+        relief: Math.max(24, (settings.roughness || 14) * 4.6),
+        erosionIterations: 16,
+        seaLevel: settings.profile === 'waterfront' ? -2 : -8,
+      })
+      const urban = window.ProceduralUrbanSystemV09.create(terrain, { seed, centerCount: settings.profile === 'metropolitan' ? 6 : 5 })
+      const legacy = previousGenerateCity(settings)
+      const vertices = []
+      const detailLevel = legacy.metrics?.detailLevel ?? 1
+      pushTerrainMesh(vertices, terrain, detailLevel)
+      const roads = []
+      const terrainEngineering = { bridges: 0, tunnels: urban.infrastructure.tunnelCandidates, retainingWalls: 0, embankments: 0 }
+      pushRoadSystem(vertices, terrain, urban, roads, terrainEngineering)
+      const buildings = urban.buildings.slice(0, detailLevel > 1 ? 280 : detailLevel > 0 ? 210 : 140).map((building) => pushBuildingMass(vertices, terrain, building, detailLevel))
+      const parcels = urban.parcels.slice(0, buildings.length).map((parcel, index) => ({
+        id: index,
+        x: parcel.x,
+        y: terrain.heightAt(parcel.x, parcel.z),
+        z: parcel.z,
+        width: parcel.frontage,
+        depth: parcel.depth,
+        rotation: parcel.rotation,
+        zone: buildings[index]?.zone || 'residential',
+        terrainBuildability: parcel.buildability,
+        streetAlignment: parcel.rotation,
+      }))
+      const centers = {
+        cbd: urban.centers[0] || { x: 0, z: 0 },
+        subcenters: urban.centers.slice(1, 3),
+        secondary: urban.centers[1] || urban.centers[0] || { x: 0, z: 0 },
+        industrial: urban.centers[urban.centers.length - 1] || urban.centers[0] || { x: 0, z: 0 },
+        parkAnchors: urban.centers.slice(2, 5),
+        civicAnchors: urban.centers.slice(1, 4),
+      }
+      const averageHeight = buildings.length ? buildings.reduce((sum, building) => sum + building.height, 0) / buildings.length : 0
+      const roadLength = roads.reduce((sum, road) => sum + road.length, 0) / 1000
+      legacy.vertices = new Float32Array(vertices)
+      legacy.roads = roads
+      legacy.parcels = parcels
+      legacy.buildings = buildings
+      legacy.centers = centers
+      legacy.extent = worldSize * 0.5
+      legacy.schemaVersion = 5
+      legacy.runtimeMode = 'v0.9-dual-system'
+      legacy.terrainSystem = terrain.toJSON()
+      legacy.urbanSystem = urban.toJSON()
+      legacy.metrics.vertexCount = vertices.length / 9
+      legacy.metrics.buildingCount = buildings.length
+      legacy.metrics.averageHeight = averageHeight
+      legacy.metrics.roadLengthKm = roadLength
+      legacy.metrics.population = Math.round(buildings.reduce((sum, building) => sum + (building.zone === 'residential' ? building.floors * building.width * building.depth * 0.045 : 0), 0))
+      legacy.metrics.jobs = Math.round(buildings.reduce((sum, building) => sum + (building.zone === 'commercial' ? building.floors * building.width * building.depth * 0.065 : 0), 0))
+      legacy.infrastructure = { ...legacy.infrastructure, terrainEngineering, curvedCorridors: urban.roads }
+      window.ProceduralCityV09LastScene = { terrain, urban, city: legacy }
+      return legacy
+    } catch (error) {
+      console.error('[ProceduralCity v0.9 integration fallback]', error)
+      if (typeof v083ReportRuntimeFailure === 'function') v083ReportRuntimeFailure('v0.9 통합 생성 실패 → v0.8.3 복구', error)
+      return previousGenerateCity(settings)
+    }
+  }
+
+  window.ProceduralCityV09Integration = {
+    version: '0.9.1-render-integration',
+    getLastScene: () => window.ProceduralCityV09LastScene || null,
+  }
+})()
