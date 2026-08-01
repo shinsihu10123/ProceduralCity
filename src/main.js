@@ -1,4 +1,4 @@
-const BUILD_ID = 'v060-traffic-buildings-20260801'
+const BUILD_ID = 'v074-mobility-pedestrians-fix-20260801'
 const sourceParts = [
   './main.part1.js.txt',
   './main.part2.js.txt',
@@ -12,6 +12,12 @@ const sourceParts = [
   './main.part3f.js.txt',
   './main.part3g.js.txt',
   './main.part3h.js.txt',
+  './main.part3i.js.txt',
+  './main.part3j.js.txt',
+  './main.part3k.js.txt',
+  './main.part3l0.js.txt',
+  './main.part3l.js.txt',
+  './main.part3m.js.txt',
 ]
 
 function versionedUrl(path) {
