@@ -1,0 +1,88 @@
+
+const v060BasePushBuilding = pushBuilding
+
+function v060BuildingOffset(building, localX, localZ) {
+  return buildingOffset(building, localX, localZ)
+}
+
+function v060PushFacadeRhythm(vertices, building, glassColor, frameColor) {
+  const floorHeight = building.height / Math.max(building.floors, 1)
+  const maxRows = Math.min(14, Math.max(3, building.floors - 1))
+  const rowStep = Math.max(1, Math.floor(building.floors / maxRows))
+  const columns = clamp(Math.round(building.width / 5), 2, 7)
+  for (let floor = 1; floor < building.floors; floor += rowStep) {
+    const y = building.y + floor * floorHeight
+    for (let column = 0; column < columns; column += 1) {
+      const localX = (column - (columns - 1) / 2) * (building.width * 0.72 / Math.max(columns - 1, 1))
+      const [frontX, frontZ] = v060BuildingOffset(building, localX, -building.depth / 2 - 0.09)
+      pushBox(vertices, frontX, y, frontZ, building.width / (columns * 1.7), Math.min(1.35, floorHeight * 0.46), 0.10, glassColor, building.rotation)
+    }
+    const [bandX, bandZ] = v060BuildingOffset(building, 0, -building.depth / 2 - 0.13)
+    pushBox(vertices, bandX, y - floorHeight * 0.32, bandZ, building.width * 0.82, 0.10, 0.08, frameColor, building.rotation)
+  }
+}
+
+function v060EnhanceBuilding(vertices, building, random, detailLevel) {
+  if (detailLevel <= 0) return
+  const roofY = building.y + building.height
+  const dark = tintColor(building.color, -0.16)
+  const light = tintColor(building.color, 0.16)
+
+  if (building.type === 'office-tower' || building.type === 'mixed-use') {
+    v060PushFacadeRhythm(vertices, building, COLORS.window, dark)
+    const [canopyX, canopyZ] = v060BuildingOffset(building, 0, -building.depth / 2 - 1.0)
+    pushBox(vertices, canopyX, building.y + 3.0, canopyZ, building.width * 0.62, 0.28, 2.1, COLORS.glassDark, building.rotation)
+    const finCount = clamp(Math.round(building.width / 7), 2, 5)
+    for (let i = 0; i < finCount; i += 1) {
+      const localX = (i - (finCount - 1) / 2) * building.width * 0.16
+      const [finX, finZ] = v060BuildingOffset(building, localX, -building.depth / 2 - 0.20)
+      pushBox(vertices, finX, building.y + building.height * 0.18, finZ, 0.18, building.height * 0.58, 0.34, light, building.rotation)
+    }
+  }
+
+  if (building.type === 'residential-tower' || building.type === 'apartment-slab') {
+    v060PushFacadeRhythm(vertices, COLORS.windowDay, tintColor(building.color, -0.10))
+    const [entryX, entryZ] = v060BuildingOffset(building, 0, -building.depth / 2 - 0.72)
+    pushBox(vertices, entryX, building.y + 1.8, entryZ, building.width * 0.34, 0.34, 1.45, light, building.rotation)
+    if (building.type === 'residential-tower') {
+      for (const side of [-1, 1]) {
+        const [wingX, wingZ] = v060BuildingOffset(building, side * building.width * 0.40, 0)
+        pushBox(vertices, wingX, building.y + building.height * 0.14, wingZ, building.width * 0.10, building.height * 0.54, building.depth * 0.76, tintColor(building.color, side * 0.05), building.rotation)
+      }
+    }
+  }
+
+  if (building.type === 'warehouse') {
+    const sawCount = clamp(Math.round(building.width / 8), 2, 5)
+    for (let i = 0; i < sawCount; i += 1) {
+      const localX = (i - (sawCount - 1) / 2) * building.width * 0.18
+      const [roofX, roofZ] = v060BuildingOffset(building, localX, 0)
+      pushBox(vertices, roofX, roofY, roofZ, building.width * 0.12, 1.35, building.depth * 0.82, tintColor(COLORS.roof, 0.12), building.rotation)
+    }
+    const [dockX, dockZ] = v060BuildingOffset(building, 0, -building.depth / 2 - 1.3)
+    pushBox(vertices, dockX, building.y + 0.65, dockZ, building.width * 0.72, 1.3, 2.6, dark, building.rotation)
+  }
+
+  if (building.type === 'civic-complex') {
+    const [porticoX, porticoZ] = v060BuildingOffset(building, 0, -building.depth * 0.43)
+    pushBox(vertices, porticoX, building.y + 2.4, porticoZ, building.width * 0.46, 0.42, 2.8, light, building.rotation)
+    for (const side of [-1, 0, 1]) {
+      const [columnX, columnZ] = v060BuildingOffset(building, side * building.width * 0.15, -building.depth * 0.45)
+      pushBox(vertices, columnX, building.y, columnZ, 0.48, 4.6, 0.48, light, building.rotation)
+    }
+  }
+
+  if (building.type !== 'detached-house') {
+    const mechanicalWidth = building.width * range(random, 0.18, 0.32)
+    const mechanicalDepth = building.depth * range(random, 0.20, 0.34)
+    pushBox(vertices, building.x, roofY, building.z, mechanicalWidth, range(random, 1.2, 2.8), mechanicalDepth, COLORS.roof, building.rotation)
+    if (building.height > 55) {
+      pushBox(vertices, building.x, roofY + 2.0, building.z, 0.22, range(random, 5, 11), 0.22, COLORS.signal, building.rotation)
+    }
+  }
+}
+
+pushBuilding = function v060PushBuilding(vertices, building, random, detailLevel) {
+  v060BasePushBuilding(vertices, building, random, detailLevel)
+  v060EnhanceBuilding(vertices, building, random, detailLevel)
+}
