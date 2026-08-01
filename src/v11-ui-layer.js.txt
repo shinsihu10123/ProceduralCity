@@ -1,0 +1,69 @@
+// Procedural City v1.1 — runtime labels and evidence-backed diagnostics.
+
+(function () {
+  const previousUpdateMetrics = updateMetrics
+
+  function setText(id, value) {
+    const element = document.querySelector(`#${id}`)
+    if (element) element.textContent = value
+  }
+
+  function percent(value) { return `${Math.round((Number(value) || 0) * 100)}%` }
+
+  function updateDistribution(city) {
+    const counts = city.zoneCounts || {}
+    const residential = (counts.residential || 0) + (counts.apartment || 0)
+    const commercial = (counts.commercial || 0) + (counts.office || 0) + (counts['mixed-use'] || 0)
+    const industrial = counts.industrial || 0
+    const civicGreen = (counts.civic || 0) + (counts.park || 0)
+    const total = Math.max(1, residential + commercial + industrial + civicGreen)
+    setText('landuse-residential', `${Math.round(residential / total * 100)}%`)
+    setText('landuse-commercial', `${Math.round(commercial / total * 100)}%`)
+    setText('landuse-industrial', `${Math.round(industrial / total * 100)}%`)
+    setText('landuse-civic', `${Math.round(civicGreen / total * 100)}%`)
+  }
+
+  function updateFacilities(city) {
+    const facilities = city.infrastructure?.facilities || {}
+    setText('facility-schools', `${facilities.schools || 0}개`)
+    setText('facility-hospitals', `${facilities.hospitals || 0}개`)
+    setText('facility-civic', `${facilities.civic || 0}개`)
+    setText('facility-parks', `${facilities.parks || 0}개`)
+    setText('infra-rail', `${(city.infrastructure?.railLengthKm || 0).toFixed(1)} km`)
+    setText('infra-cycle', `${(city.metrics.roadLengthKm * 0.34).toFixed(1)} km`)
+    setText('infra-bridges', `${city.infrastructure?.bridges || 0}개`)
+  }
+
+  updateMetrics = function v11UpdateMetrics(city) {
+    previousUpdateMetrics(city)
+    setText('metric-flood', percent(city.metrics.floodExposure))
+    setText('metric-network', percent(city.metrics.connectedRoadRatio))
+    setText('metric-slope', `${city.metrics.averageSlope.toFixed(1)}°`)
+    setText('metric-generation', `${Math.round(city.metrics.generationMs)} ms`)
+    setText('engine-runtime', city.runtimeMode === 'v1.1-reality-engine' ? '정상 작동' : '호환 모드')
+    setText('engine-parcels', `${city.parcels.length.toLocaleString('ko-KR')} 필지`)
+    setText('engine-roads', `${city.urbanSystem?.roads || 0}개 회랑`)
+    setText('engine-lod', city.realism?.cityGmlTargetLod || 'LOD1')
+    updateDistribution(city)
+    updateFacilities(city)
+    window.dispatchEvent(new CustomEvent('procedural-city:v11-generated', { detail: { city, runtimeMode: city.runtimeMode } }))
+  }
+
+  const versionChip = document.querySelector('.version-chip')
+  if (versionChip) versionChip.textContent = 'v1.1 α'
+  const status = document.querySelector('.status-badge')
+  if (status) status.textContent = 'Urban Reality Engine v1.1 · WebGL2 · Deterministic GIS'
+  const quality = document.querySelector('.quality-note')
+  if (quality) quality.textContent = '수문 연결 지형·경사 비용 도로·가로 정렬 필지·형태 문법 건축을 동일한 공간 모델에서 생성합니다.'
+
+  window.setTimeout(() => {
+    const label = document.querySelector('.v5-brand small')
+    if (label) label.textContent = 'v1.1 reality engine'
+  }, 0)
+
+  window.ProceduralCityV11 = {
+    version: '1.1.0-alpha',
+    getCity: () => currentCity,
+    getScene: () => window.ProceduralCityV11LastScene || null,
+  }
+})()

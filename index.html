@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#101820" />
   <meta name="description" content="시간·기후·기상과 도시 기반시설을 통합한 절차적 3D 도시 시뮬레이션" />
-  <title>Procedural City · Urban Systems Lab</title>
+  <title>Procedural City v1.1 · Urban Reality Engine</title>
   <link rel="stylesheet" href="./src/style.css" />
   <link rel="stylesheet" href="./src/simulation.css" />
 </head>
@@ -15,9 +15,9 @@
       <header class="brand-block">
         <div class="brand-row">
           <div><p class="eyebrow">PROCEDURAL URBAN SYSTEMS LAB</p><h1>Procedural City</h1></div>
-          <span class="version-chip">v0.4 α</span>
+          <span class="version-chip">v1.1 α</span>
         </div>
-        <p class="description">지형·교통·건축·환경·기후를 통합적으로 생성하고 시간에 따라 변화시키는 도시 시뮬레이션입니다.</p>
+        <p class="description">수문 연결 지형에서 도로·필지·토지이용·건축을 인과적으로 생성하는 결정론적 3D 도시 시뮬레이션입니다.</p>
       </header>
 
       <section class="panel-section scenario-section">
@@ -25,6 +25,12 @@
         <div class="seed-row"><input id="seed" type="text" value="seoul-2040" spellcheck="false" aria-label="도시 시드" /><button id="generate" type="button" class="primary-button">도시 생성</button></div>
         <label class="field-label" for="profile">도시 유형</label>
         <select id="profile"><option value="balanced">균형형 광역 중심지</option><option value="metropolitan">고밀도 대도시</option><option value="eco">녹지·대중교통 중심</option><option value="waterfront">수변 복합도시</option><option value="industrial">산업·물류 거점</option></select>
+      </section>
+
+      <section class="reality-engine-card" aria-label="현실성 엔진 상태">
+        <div class="reality-card-head"><span>REALITY ENGINE</span><strong id="engine-runtime">초기화 중</strong></div>
+        <div class="reality-card-grid"><span><b>수문</b> Priority-Flood</span><span><b>도로</b> 지형비용 경로</span><span><b>필지</b> 가로 정렬</span><span><b>건축</b> <i id="engine-lod">LOD2-like</i></span></div>
+        <div class="reality-card-foot"><span id="engine-parcels">— 필지</span><span id="engine-roads">— 회랑</span></div>
       </section>
 
       <section class="panel-section controls-grid">
@@ -51,13 +57,13 @@
 
       <section class="panel-section">
         <div class="section-heading"><h2>분석 모드</h2></div>
-        <div class="tab-row"><button type="button" data-analysis="none" class="active">기본</button><button type="button" data-analysis="traffic">교통</button><button type="button" data-analysis="heat">열섬</button><button type="button" data-analysis="flood">침수</button><button type="button" data-analysis="none">토지이용</button><button type="button" data-analysis="none">접근성</button></div>
+        <div class="tab-row"><button type="button" data-analysis="none" class="active">기본</button><button type="button" data-analysis="traffic">교통</button><button type="button" data-analysis="heat">열섬</button><button type="button" data-analysis="flood">침수</button><button type="button" data-analysis="none">토지이용</button><button type="button" data-analysis="service">시설권역</button></div>
         <label class="field-label" for="district-focus">구역 탐색</label><select id="district-focus" class="district-select"><option value="overview">광역 전체</option><option value="cbd">중심업무지구</option><option value="waterfront">수변지구</option><option value="industrial">산업·물류지구</option><option value="green">생태·공원지구</option></select>
       </section>
 
       <section class="metrics panel-section">
         <div class="section-heading"><h2>도시 성능 지표</h2><button id="export" type="button" class="ghost-button">JSON 내보내기</button></div>
-        <dl class="metric-grid"><div><dt>건축물</dt><dd id="metric-buildings">0</dd></div><div><dt>거주 인구</dt><dd id="metric-population">0</dd></div><div><dt>일자리</dt><dd id="metric-jobs">0</dd></div><div><dt>평균 높이</dt><dd id="metric-height">0 m</dd></div><div><dt>녹지율</dt><dd id="metric-green">0%</dd></div><div><dt>도로 연장</dt><dd id="metric-roads">0 km</dd></div><div><dt>대중교통 접근</dt><dd id="metric-transit">0%</dd></div><div><dt>직주 균형</dt><dd id="metric-balance">0.00</dd></div></dl>
+        <dl class="metric-grid"><div><dt>건축물</dt><dd id="metric-buildings">0</dd></div><div><dt>거주 인구</dt><dd id="metric-population">0</dd></div><div><dt>일자리</dt><dd id="metric-jobs">0</dd></div><div><dt>평균 높이</dt><dd id="metric-height">0 m</dd></div><div><dt>녹지율</dt><dd id="metric-green">0%</dd></div><div><dt>도로 연장</dt><dd id="metric-roads">0 km</dd></div><div><dt>대중교통 접근</dt><dd id="metric-transit">0%</dd></div><div><dt>직주 균형</dt><dd id="metric-balance">0.00</dd></div><div><dt>평균 침수 노출</dt><dd id="metric-flood">0%</dd></div><div><dt>도로망 연결</dt><dd id="metric-network">0%</dd></div><div><dt>개발지 평균 경사</dt><dd id="metric-slope">0°</dd></div><div><dt>생성 시간</dt><dd id="metric-generation">0 ms</dd></div></dl>
       </section>
 
       <section class="panel-section legend" aria-label="도시 요소 범례"><span><i class="residential"></i>주거</span><span><i class="commercial"></i>상업·업무</span><span><i class="industrial"></i>산업·물류</span><span><i class="civic"></i>공공시설</span><span><i class="park"></i>공원·녹지</span><span><i class="water"></i>수공간</span></section>
@@ -69,10 +75,10 @@
       <div class="simulation-hud"><div class="sim-kpi"><span>인구</span><strong id="kpi-pop">—</strong></div><div class="sim-kpi"><span>일자리</span><strong id="kpi-jobs">—</strong></div><div class="sim-kpi"><span>밀도</span><strong id="kpi-density">—</strong></div><div class="sim-kpi"><span>녹지율</span><strong id="kpi-green">—</strong></div><div class="sim-kpi"><span>대중교통 접근</span><strong id="kpi-transit">—</strong></div><div class="sim-kpi"><span>직주 균형</span><strong id="kpi-balance">—</strong></div></div>
       <div class="environment-card"><div class="env-chip"><span>◉</span><div><b id="env-temp">—</b><br><span id="env-weather">—</span></div></div><div class="env-chip"><span>◷</span><div><b id="env-clock">—</b><br><span id="env-date">—</span></div></div></div>
       <div id="layer-panel" class="floating-panel layer-panel"><div class="floating-title"><span>레이어</span><button id="layer-collapse" type="button" class="icon-button">−</button></div><div class="layer-list"><label class="layer-row"><input type="checkbox" checked>지형·수계</label><label class="layer-row"><input type="checkbox" checked>도로망</label><label class="layer-row"><input type="checkbox" checked>건축물</label><label class="layer-row"><input type="checkbox" checked>대중교통</label><label class="layer-row"><input type="checkbox" checked>녹지·공공시설</label><label class="layer-row"><input type="checkbox">행정구역</label><label class="layer-row"><input type="checkbox">POI</label></div></div>
-      <div class="analysis-dock"><div class="analysis-card"><h3>용도 분포</h3><div class="analysis-list"><div><span>주거</span><b>42%</b></div><div><span>상업·업무</span><b>21%</b></div><div><span>산업·물류</span><b>14%</b></div><div><span>공공·녹지</span><b>23%</b></div></div></div><div class="analysis-card"><h3>교통 인프라</h3><div class="analysis-list"><div><span>도로</span><b id="infra-road">—</b></div><div><span>철도</span><b id="infra-rail">—</b></div><div><span>자전거도로</span><b id="infra-cycle">—</b></div><div><span>교량</span><b id="infra-bridges">—</b></div></div></div><div class="analysis-card"><h3>시설 현황</h3><div class="analysis-list"><div><span>학교</span><b>38개</b></div><div><span>병원</span><b>14개</b></div><div><span>문화시설</span><b>22개</b></div><div><span>광장·공원</span><b>31개</b></div></div></div><div class="analysis-card"><h3>환경 지표</h3><div class="analysis-list"><div><span>공기 질</span><b id="env-air">—</b></div><div><span>유출 위험</span><b id="env-runoff">—</b></div><div><span>열섬 강도</span><b>보통</b></div><div><span>탄소 배출</span><b>2.8 t/인</b></div></div></div></div>
+      <div class="analysis-dock"><div class="analysis-card"><h3>용도 분포</h3><div class="analysis-list"><div><span>주거</span><b id="landuse-residential">—</b></div><div><span>상업·업무</span><b id="landuse-commercial">—</b></div><div><span>산업·물류</span><b id="landuse-industrial">—</b></div><div><span>공공·녹지</span><b id="landuse-civic">—</b></div></div></div><div class="analysis-card"><h3>교통 인프라</h3><div class="analysis-list"><div><span>도로</span><b id="infra-road">—</b></div><div><span>철도</span><b id="infra-rail">—</b></div><div><span>자전거도로</span><b id="infra-cycle">—</b></div><div><span>교량</span><b id="infra-bridges">—</b></div></div></div><div class="analysis-card"><h3>시설 현황</h3><div class="analysis-list"><div><span>학교</span><b id="facility-schools">—</b></div><div><span>병원</span><b id="facility-hospitals">—</b></div><div><span>공공시설</span><b id="facility-civic">—</b></div><div><span>광장·공원</span><b id="facility-parks">—</b></div></div></div><div class="analysis-card"><h3>환경 지표</h3><div class="analysis-list"><div><span>공기 질</span><b id="env-air">—</b></div><div><span>유출 위험</span><b id="env-runoff">—</b></div><div><span>열섬 강도</span><b>보통</b></div><div><span>모델 유형</span><b>합성 도시</b></div></div></div></div>
       <div class="floating-panel mini-map"><div class="floating-title"><span>미니맵</span><span>1:8,000</span></div><canvas id="mini-map-canvas"></canvas><div class="mini-meta"><span>37.54°N</span><span>127.07°E</span></div></div>
       <div class="viewport-topbar"><div class="location-badge"><span class="pulse-dot"></span><span id="district-label">CENTRAL DISTRICT</span></div><div class="compass" aria-label="북쪽 방향"><span>N</span><i id="compass-needle"></i></div></div>
-      <div class="scale-wrap"><div id="scale-line" class="scale-line"></div><span id="scale-label">100 m</span></div><div class="status-badge">Urban Simulation v0.4 · WebGL2 · Procedural GIS</div><div class="quality-note">시간·기상·도시 운영 상태가 실시간으로 갱신됩니다.</div>
+      <div class="scale-wrap"><div id="scale-line" class="scale-line"></div><span id="scale-label">100 m</span></div><div class="status-badge">Urban Reality Engine v1.1 · WebGL2 · Deterministic GIS</div><div class="quality-note">수문 연결 지형·경사 비용 도로·가로 정렬 필지·형태 문법 건축을 동일한 공간 모델에서 생성합니다.</div>
     </section>
   </main>
   <script type="module" src="./src/main.js"></script>

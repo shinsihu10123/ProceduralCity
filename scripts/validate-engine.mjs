@@ -9,13 +9,30 @@ const indexPath = join(root, 'index.html')
 const loader = await readFile(loaderPath, 'utf8')
 const html = await readFile(indexPath, 'utf8')
 
-const partMatches = [...loader.matchAll(/['"]\.\/(main\.part[^'"]+\.js\.txt)['"]/g)]
-const partNames = partMatches.map((match) => match[1])
-if (partNames.length === 0) throw new Error('No engine source parts are declared in src/main.js')
-if (new Set(partNames).size !== partNames.length) throw new Error('Duplicate engine source part in src/main.js')
+const sourceMatches = [...loader.matchAll(/['"]\.\/([^'"]+\.js\.txt)['"]/g)]
+const sourceNames = sourceMatches.map((match) => match[1])
+if (sourceNames.length === 0) throw new Error('No engine source parts are declared in src/main.js')
+if (new Set(sourceNames).size !== sourceNames.length) throw new Error('Duplicate engine source part in src/main.js')
+
+const requiredOrder = [
+  'v10-shader-patch.js.txt',
+  'main.part1.js.txt',
+  'v09-terrain-system.js.txt',
+  'v11-terrain-hydrology.js.txt',
+  'v11-urban-morphology.js.txt',
+  'v11-render-pipeline.js.txt',
+  'v11-ui-layer.js.txt',
+]
+let previousIndex = -1
+for (const name of requiredOrder) {
+  const index = sourceNames.indexOf(name)
+  if (index < 0) throw new Error(`Required engine layer is missing: ${name}`)
+  if (index <= previousIndex) throw new Error(`Engine layer order is invalid at ${name}`)
+  previousIndex = index
+}
 
 const parts = []
-for (const name of partNames) {
+for (const name of sourceNames) {
   const path = join(root, 'src', name)
   try {
     parts.push(await readFile(path, 'utf8'))
@@ -56,7 +73,18 @@ try {
   const absentRequired = required.filter((id) => !ids.has(id))
   if (absentRequired.length) throw new Error(`Required DOM IDs are absent: ${absentRequired.join(', ')}`)
 
-  console.log(`Validated ${partNames.length} engine parts and ${targets.length} JavaScript modules.`)
+  const combined = parts.join('')
+  const invariants = [
+    ['priority-flood-d8', 'drainage conditioning'],
+    ['contourAlignedStreetTensor', 'terrain-aligned street morphology'],
+    ['streetFrontingParcels', 'street-fronting parcel generation'],
+    ['v1.1-reality-engine', 'v1.1 runtime marker'],
+  ]
+  for (const [token, label] of invariants) {
+    if (!combined.includes(token)) throw new Error(`Missing ${label} invariant: ${token}`)
+  }
+
+  console.log(`Validated ${sourceNames.length} engine layers and ${targets.length} JavaScript modules.`)
   console.log(`Combined engine size: ${parts.join('').length.toLocaleString()} characters.`)
 } finally {
   await rm(temporary, { recursive: true, force: true })

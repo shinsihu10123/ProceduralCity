@@ -1,0 +1,599 @@
+// Procedural City v1.1 — terrain-aware street, parcel, land-use and massing system.
+
+(function () {
+  const ROAD = {
+    arterial: { width: 20, lanes: 4, sidewalk: 3.6, speedKph: 50 },
+    collector: { width: 13, lanes: 2, sidewalk: 3.0, speedKph: 40 },
+    local: { width: 7.2, lanes: 2, sidewalk: 2.2, speedKph: 30 },
+  }
+
+  function clamp(value, min, max) { return Math.max(min, Math.min(max, value)) }
+  function clamp01(value) { return clamp(value, 0, 1) }
+  function distance(a, b) { return Math.hypot(a.x - b.x, a.z - b.z) }
+  function pointKey(x, z, scale = 1) { return `${Math.round(x * scale)}:${Math.round(z * scale)}` }
+
+  function hashString(value) {
+    let hash = 2166136261
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index)
+      hash = Math.imul(hash, 16777619)
+    }
+    return hash >>> 0
+  }
+
+  function createRandom(seed) {
+    let state = seed >>> 0
+    return () => {
+      state += 0x6d2b79f5
+      let value = state
+      value = Math.imul(value ^ (value >>> 15), value | 1)
+      value ^= value + Math.imul(value ^ (value >>> 7), value | 61)
+      return ((value ^ (value >>> 14)) >>> 0) / 4294967296
+    }
+  }
+
+  class MinHeap {
+    constructor() { this.items = [] }
+    push(item) {
+      const items = this.items
+      items.push(item)
+      let index = items.length - 1
+      while (index > 0) {
+        const parent = (index - 1) >> 1
+        if (items[parent].priority <= item.priority) break
+        items[index] = items[parent]
+        index = parent
+      }
+      items[index] = item
+    }
+    pop() {
+      const items = this.items
+      if (!items.length) return null
+      const root = items[0]
+      const tail = items.pop()
+      if (items.length && tail) {
+        let index = 0
+        while (true) {
+          const left = index * 2 + 1
+          if (left >= items.length) break
+          const right = left + 1
+          const child = right < items.length && items[right].priority < items[left].priority ? right : left
+          if (items[child].priority >= tail.priority) break
+          items[index] = items[child]
+          index = child
+        }
+        items[index] = tail
+      }
+      return root
+    }
+    get length() { return this.items.length }
+  }
+
+  function selectCenters(terrain, count, random, profile) {
+    const candidates = []
+    const span = terrain.worldSize * 0.43
+    const samples = clamp(Math.round(Math.sqrt(terrain.size) * 2.65), 24, 34)
+    for (let zi = 0; zi < samples; zi += 1) {
+      for (let xi = 0; xi < samples; xi += 1) {
+        const x = -span + xi / (samples - 1) * span * 2
+        const z = -span + zi / (samples - 1) * span * 2
+        const buildability = terrain.buildabilityAt(x, z)
+        const slope = terrain.slopeAt(x, z)
+        const flood = terrain.floodRiskAt?.(x, z) || 0
+        const waterDistance = terrain.distanceToWaterAt?.(x, z) ?? terrain.worldSize
+        const centrality = 1 - clamp01(Math.hypot(x, z) / (terrain.worldSize * 0.58))
+        const waterfrontAmenity = profile === 'waterfront' ? Math.exp(-waterDistance / 145) * (1 - flood) : 0
+        const score = buildability * 0.55 + centrality * 0.28 + waterfrontAmenity * 0.13
+          - clamp01(slope / 18) * 0.35 - flood * 0.38 + random() * 0.035
+        if (buildability > 0.42 && slope < 18) candidates.push({ x, z, y: terrain.heightAt(x, z), score })
+      }
+    }
+    candidates.sort((a, b) => b.score - a.score)
+    const selected = []
+    const minimumDistance = terrain.worldSize * (count > 5 ? 0.135 : 0.16)
+    for (const candidate of candidates) {
+      if (selected.every((center) => distance(center, candidate) > minimumDistance)) selected.push(candidate)
+      if (selected.length >= count) break
+    }
+    selected.forEach((center, index) => {
+      center.id = `CENTER-${index + 1}`
+      center.role = index === 0 ? 'cbd' : index === selected.length - 1 ? 'employment' : 'subcenter'
+      center.weight = index === 0 ? 1 : 0.56 + random() * 0.20
+    })
+    return selected
+  }
+
+  function roadCost(terrain, x, z, roadClass) {
+    const slope = terrain.slopeAt(x, z)
+    const water = terrain.waterAt(x, z)
+    const flood = terrain.floodRiskAt?.(x, z) || 0
+    const vegetation = terrain.vegetationAt(x, z)
+    const slopeLimit = roadClass === 'arterial' ? 11 : roadClass === 'collector' ? 13 : 16
+    const gradePenalty = Math.pow(clamp01(slope / slopeLimit), 2.2) * 18
+    const waterPenalty = water > 0.55 ? (roadClass === 'arterial' ? 10 : 56) : water * 8
+    const floodPenalty = flood * (roadClass === 'arterial' ? 4.8 : 8.5)
+    const habitatPenalty = vegetation > 0.78 ? (vegetation - 0.78) * 2.8 : 0
+    return 1 + gradePenalty + waterPenalty + floodPenalty + habitatPenalty
+  }
+
+  function routeBetween(terrain, from, to, roadClass) {
+    const resolution = clamp(Math.round(terrain.size * 0.68), 58, 92)
+    const worldSize = terrain.worldSize
+    const cellSize = worldSize / (resolution - 1)
+    const toGrid = (point) => ({
+      x: clamp(Math.round((point.x / worldSize + 0.5) * (resolution - 1)), 0, resolution - 1),
+      z: clamp(Math.round((point.z / worldSize + 0.5) * (resolution - 1)), 0, resolution - 1),
+    })
+    const toWorld = (x, z) => ({ x: (x / (resolution - 1) - 0.5) * worldSize, z: (z / (resolution - 1) - 0.5) * worldSize })
+    const start = toGrid(from)
+    const goal = toGrid(to)
+    const startKey = pointKey(start.x, start.z)
+    const goalKey = pointKey(goal.x, goal.z)
+    const queue = new MinHeap()
+    const gScore = new Map([[startKey, 0]])
+    const parent = new Map()
+    const closed = new Set()
+    queue.push({ x: start.x, z: start.z, priority: 0 })
+    const neighbors = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]
+
+    while (queue.length) {
+      const current = queue.pop()
+      const currentKey = pointKey(current.x, current.z)
+      if (closed.has(currentKey)) continue
+      closed.add(currentKey)
+      if (currentKey === goalKey) break
+      for (const [dx, dz] of neighbors) {
+        const nx = current.x + dx
+        const nz = current.z + dz
+        if (nx < 0 || nz < 0 || nx >= resolution || nz >= resolution) continue
+        const nextKey = pointKey(nx, nz)
+        if (closed.has(nextKey)) continue
+        const world = toWorld(nx, nz)
+        const step = Math.hypot(dx, dz) * roadCost(terrain, world.x, world.z, roadClass)
+        const tentative = (gScore.get(currentKey) ?? Infinity) + step
+        if (tentative >= (gScore.get(nextKey) ?? Infinity)) continue
+        parent.set(nextKey, currentKey)
+        gScore.set(nextKey, tentative)
+        const heuristic = Math.hypot(goal.x - nx, goal.z - nz) * 0.92
+        queue.push({ x: nx, z: nz, priority: tentative + heuristic })
+      }
+    }
+
+    if (!parent.has(goalKey)) return [from, to]
+    const path = []
+    let cursor = goalKey
+    while (cursor) {
+      const [gx, gz] = cursor.split(':').map(Number)
+      const point = toWorld(gx, gz)
+      path.push({ ...point, y: terrain.heightAt(point.x, point.z) })
+      if (cursor === startKey) break
+      cursor = parent.get(cursor)
+    }
+    path.reverse()
+
+    const sparse = path.filter((point, index) => index === 0 || index === path.length - 1 || index % 2 === 0)
+    let smoothed = sparse
+    for (let iteration = 0; iteration < 2; iteration += 1) {
+      const next = [smoothed[0]]
+      for (let index = 0; index < smoothed.length - 1; index += 1) {
+        const a = smoothed[index]
+        const b = smoothed[index + 1]
+        for (const t of [0.25, 0.75]) {
+          const x = a.x + (b.x - a.x) * t
+          const z = a.z + (b.z - a.z) * t
+          next.push({ x, z, y: terrain.heightAt(x, z) })
+        }
+      }
+      next.push(smoothed[smoothed.length - 1])
+      smoothed = next
+    }
+    return smoothed
+  }
+
+  function roadLength(road) {
+    let length = 0
+    for (let index = 0; index < road.points.length - 1; index += 1) length += distance(road.points[index], road.points[index + 1])
+    return length
+  }
+
+  function createRoad(id, roadClass, points, role = 'street') {
+    const spec = ROAD[roadClass]
+    return { id, class: roadClass, role, points, width: spec.width, lanes: spec.lanes, sidewalk: spec.sidewalk, speedKph: spec.speedKph }
+  }
+
+  function buildRegionalRoads(terrain, centers) {
+    const roads = []
+    if (!centers.length) return roads
+    for (let index = 1; index < centers.length; index += 1) {
+      roads.push(createRoad(`A-${index}`, 'arterial', routeBetween(terrain, centers[0], centers[index], 'arterial'), 'center-connector'))
+    }
+    for (let index = 1; index < centers.length; index += 1) {
+      const next = centers[index === centers.length - 1 ? 1 : index + 1]
+      if (next && next !== centers[index]) roads.push(createRoad(`C-${index}`, 'collector', routeBetween(terrain, centers[index], next, 'collector'), 'subcenter-link'))
+    }
+    return roads
+  }
+
+  function splitValidRuns(points, terrain, minimumPoints = 3) {
+    const runs = []
+    let current = []
+    for (const point of points) {
+      const valid = terrain.waterAt(point.x, point.z) < 0.38
+        && terrain.slopeAt(point.x, point.z) < 18
+        && terrain.buildabilityAt(point.x, point.z) > 0.28
+      if (valid) current.push(point)
+      else {
+        if (current.length >= minimumPoints) runs.push(current)
+        current = []
+      }
+    }
+    if (current.length >= minimumPoints) runs.push(current)
+    return runs
+  }
+
+  function buildLocalRoads(terrain, centers, random) {
+    const roads = []
+    let sequence = 0
+    centers.forEach((center, centerIndex) => {
+      const contourAngle = (terrain.aspectAt?.(center.x, center.z) || 0) + Math.PI * 0.5
+      const cityBias = Math.atan2(center.z, center.x) * 0.16
+      const baseAngle = contourAngle * 0.72 + cityBias * 0.28 + (random() - 0.5) * 0.20
+      const radius = terrain.worldSize * (centerIndex === 0 ? 0.245 : 0.175)
+      const spacing = centerIndex === 0 ? 74 : 88
+      const lineCount = centerIndex === 0 ? 7 : 5
+
+      for (let family = 0; family < 2; family += 1) {
+        const angle = baseAngle + family * Math.PI * 0.5
+        const cos = Math.cos(angle)
+        const sin = Math.sin(angle)
+        for (let line = -Math.floor(lineCount / 2); line <= Math.floor(lineCount / 2); line += 1) {
+          const offset = line * spacing
+          const points = []
+          const samples = 12
+          for (let step = 0; step <= samples; step += 1) {
+            const along = -radius + step / samples * radius * 2
+            const curve = Math.sin((along / radius) * Math.PI) * radius * (0.035 + random() * 0.022)
+            const across = offset + curve
+            const x = center.x + along * cos - across * sin
+            const z = center.z + along * sin + across * cos
+            points.push({ x, z, y: terrain.heightAt(x, z) })
+          }
+          const roadClass = line === 0 && centerIndex > 0 ? 'collector' : 'local'
+          for (const run of splitValidRuns(points, terrain)) {
+            roads.push(createRoad(`L-${sequence++}`, roadClass, run, `center-${centerIndex + 1}`))
+          }
+        }
+      }
+    })
+    return roads
+  }
+
+  function buildRingRoad(terrain, center) {
+    if (!center) return []
+    const radius = terrain.worldSize * 0.19
+    const points = []
+    const count = 30
+    for (let index = 0; index <= count; index += 1) {
+      const angle = index / count * Math.PI * 2
+      const modulation = 1 + Math.sin(angle * 3.0) * 0.045
+      const x = center.x + Math.cos(angle) * radius * modulation
+      const z = center.z + Math.sin(angle) * radius * modulation
+      points.push({ x, z, y: terrain.heightAt(x, z) })
+    }
+    return splitValidRuns(points, terrain, 5).map((run, index) => createRoad(`R-${index}`, 'collector', run, 'inner-ring'))
+  }
+
+  function removeDuplicateRoads(roads) {
+    const seen = new Set()
+    return roads.filter((road) => {
+      if (road.points.length < 2 || roadLength(road) < 28) return false
+      const first = road.points[0]
+      const last = road.points[road.points.length - 1]
+      const forward = `${pointKey(first.x, first.z, 0.02)}>${pointKey(last.x, last.z, 0.02)}:${road.class}`
+      const reverse = `${pointKey(last.x, last.z, 0.02)}>${pointKey(first.x, first.z, 0.02)}:${road.class}`
+      if (seen.has(forward) || seen.has(reverse)) return false
+      seen.add(forward)
+      return true
+    })
+  }
+
+  function pointAlongPolyline(points, distanceAlong) {
+    let remaining = distanceAlong
+    for (let index = 0; index < points.length - 1; index += 1) {
+      const a = points[index]
+      const b = points[index + 1]
+      const length = distance(a, b)
+      if (remaining <= length) {
+        const t = length > 0 ? remaining / length : 0
+        return { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t, y: a.y + (b.y - a.y) * t }
+      }
+      remaining -= length
+    }
+    return points[points.length - 1]
+  }
+
+  function createTransit(terrain, roads, centers) {
+    const candidates = roads.filter((road) => road.class === 'arterial').sort((a, b) => roadLength(b) - roadLength(a))
+    const primary = candidates[0]
+    if (!primary) return { lines: [], stations: [] }
+    const length = roadLength(primary)
+    const stations = []
+    const spacing = clamp(length / 4, 220, 360)
+    for (let distanceAlong = spacing * 0.42; distanceAlong < length; distanceAlong += spacing) {
+      const point = pointAlongPolyline(primary.points, distanceAlong)
+      stations.push({ id: `ST-${stations.length + 1}`, ...point, mode: 'tram', catchmentRadius: 500 })
+    }
+    for (const center of centers) {
+      const nearest = primary.points.reduce((best, point) => !best || distance(center, point) < distance(center, best) ? point : best, null)
+      if (nearest && stations.every((station) => distance(station, nearest) > 155)) stations.push({ id: `ST-${stations.length + 1}`, ...nearest, mode: 'tram', catchmentRadius: 500 })
+    }
+    return {
+      lines: [{ id: 'T1', mode: 'tram', name: '중심 순환선', points: primary.points, length }],
+      stations,
+    }
+  }
+
+  function nearestDistance(point, collection) {
+    let best = Infinity
+    for (const target of collection) best = Math.min(best, distance(point, target))
+    return best
+  }
+
+  function polygonForParcel(center, tangent, normal, frontage, depth, chamfer) {
+    const halfFrontage = frontage * 0.5
+    const halfDepth = depth * 0.5
+    const local = chamfer > 0
+      ? [
+          [-halfFrontage + chamfer, -halfDepth], [halfFrontage - chamfer, -halfDepth],
+          [halfFrontage, -halfDepth + chamfer], [halfFrontage, halfDepth - chamfer],
+          [halfFrontage - chamfer, halfDepth], [-halfFrontage + chamfer, halfDepth],
+          [-halfFrontage, halfDepth - chamfer], [-halfFrontage, -halfDepth + chamfer],
+        ]
+      : [[-halfFrontage, -halfDepth], [halfFrontage, -halfDepth], [halfFrontage, halfDepth], [-halfFrontage, halfDepth]]
+    return local.map(([along, across]) => [
+      center.x + tangent.x * along + normal.x * across,
+      center.z + tangent.z * along + normal.z * across,
+    ])
+  }
+
+  function createParcels(terrain, roads, centers, transit, settings, random) {
+    const parcels = []
+    const occupied = new Map()
+    const binSize = 58
+    const limit = settings.gridSize <= 30 ? 260 : settings.gridSize <= 38 ? 225 : 180
+
+    function nearby(center, radius) {
+      const bx = Math.floor(center.x / binSize)
+      const bz = Math.floor(center.z / binSize)
+      for (let dz = -1; dz <= 1; dz += 1) {
+        for (let dx = -1; dx <= 1; dx += 1) {
+          for (const item of occupied.get(`${bx + dx}:${bz + dz}`) || []) {
+            if (distance(center, item.center) < (radius + item.radius) * 0.78) return true
+          }
+        }
+      }
+      return false
+    }
+
+    function reserve(center, radius) {
+      const key = `${Math.floor(center.x / binSize)}:${Math.floor(center.z / binSize)}`
+      if (!occupied.has(key)) occupied.set(key, [])
+      occupied.get(key).push({ center, radius })
+    }
+
+    const sortedRoads = [...roads].sort((a, b) => ({ local: 0, collector: 1, arterial: 2 }[a.class] - ({ local: 0, collector: 1, arterial: 2 }[b.class])))
+    for (const road of sortedRoads) {
+      const spec = ROAD[road.class]
+      for (let segment = 0; segment < road.points.length - 1; segment += 1) {
+        const a = road.points[segment]
+        const b = road.points[segment + 1]
+        const dx = b.x - a.x
+        const dz = b.z - a.z
+        const length = Math.hypot(dx, dz)
+        if (length < 18) continue
+        const tangent = { x: dx / length, z: dz / length }
+        const normal = { x: -tangent.z, z: tangent.x }
+        const frontageBase = road.class === 'arterial' ? 35 : road.class === 'collector' ? 29 : 23
+        const count = Math.max(1, Math.floor(length / frontageBase))
+        for (let slot = 0; slot < count; slot += 1) {
+          const t = (slot + 0.5) / count
+          const frontage = clamp(length / count * (0.76 + random() * 0.16), 16, road.class === 'arterial' ? 48 : 38)
+          for (const side of [-1, 1]) {
+            if (parcels.length >= limit) return parcels
+            const depth = road.class === 'arterial' ? 42 + random() * 20 : road.class === 'collector' ? 34 + random() * 18 : 27 + random() * 16
+            const setback = spec.width * 0.5 + spec.sidewalk + depth * 0.5 + (road.class === 'arterial' ? 5 : 2.5)
+            const point = { x: a.x + dx * t + normal.x * setback * side, z: a.z + dz * t + normal.z * setback * side }
+            const slope = terrain.slopeAt(point.x, point.z)
+            const floodRisk = terrain.floodRiskAt?.(point.x, point.z) || 0
+            const buildability = terrain.buildabilityAt(point.x, point.z)
+            if (terrain.waterAt(point.x, point.z) > 0.28 || slope > 17.5 || buildability < 0.40) continue
+            const radius = Math.hypot(frontage, depth) * 0.5
+            if (nearby(point, radius)) continue
+            const centerDistance = nearestDistance(point, centers)
+            const transitDistance = nearestDistance(point, transit.stations)
+            const waterDistance = terrain.distanceToWaterAt?.(point.x, point.z) ?? terrain.worldSize
+            const urbanity = clamp01(
+              (1 - centerDistance / (terrain.worldSize * 0.48)) * 0.58
+              + (1 - Math.min(transitDistance, 800) / 800) * 0.26
+              + (road.class === 'arterial' ? 0.16 : road.class === 'collector' ? 0.09 : 0.03),
+            )
+            const rotation = Math.atan2(tangent.z, tangent.x) + (side < 0 ? Math.PI : 0)
+            const chamfer = road.class !== 'local' && random() < 0.42 ? Math.min(4.5, frontage * 0.10) : 0
+            const parcel = {
+              id: `P-${parcels.length + 1}`,
+              x: point.x,
+              y: terrain.heightAt(point.x, point.z),
+              z: point.z,
+              rotation,
+              tangent,
+              normal: { x: normal.x * side, z: normal.z * side },
+              frontage,
+              depth,
+              area: frontage * depth,
+              polygon: polygonForParcel(point, tangent, { x: normal.x * side, z: normal.z * side }, frontage, depth, chamfer),
+              chamfer,
+              roadId: road.id,
+              roadClass: road.class,
+              slope,
+              floodRisk,
+              buildability,
+              waterDistance,
+              centerDistance,
+              transitDistance,
+              urbanity,
+            }
+            parcels.push(parcel)
+            reserve(point, radius)
+          }
+        }
+      }
+    }
+    return parcels
+  }
+
+  function chooseProgram(parcel, centers, settings, random) {
+    const profile = settings.profile
+    const employmentCenter = centers.find((center) => center.role === 'employment') || centers[centers.length - 1]
+    const employmentAccess = employmentCenter ? 1 - clamp01(distance(parcel, employmentCenter) / (settings.worldSize * 0.32)) : 0
+    const nearWater = Math.exp(-parcel.waterDistance / 130)
+    const greenRate = profile === 'eco' ? 0.19 : profile === 'waterfront' ? 0.13 : 0.09
+    if (parcel.floodRisk > 0.56 || parcel.slope > 13.5 || random() < greenRate * (1 - parcel.urbanity * 0.62)) return 'park'
+    if (profile === 'industrial' && employmentAccess > 0.52 && parcel.roadClass !== 'local' && random() < 0.64) return 'industrial'
+    if (parcel.urbanity > 0.74) return random() < 0.58 ? 'office' : 'mixed-use'
+    if (parcel.transitDistance < 420 && parcel.urbanity > 0.46) return random() < 0.56 ? 'mixed-use' : 'apartment'
+    if (profile === 'waterfront' && nearWater > 0.45 && parcel.floodRisk < 0.42) return random() < 0.62 ? 'apartment' : 'mixed-use'
+    if (parcel.roadClass === 'arterial' && parcel.urbanity > 0.38 && random() < 0.32) return 'commercial'
+    if (random() < 0.055 + parcel.urbanity * 0.025) return 'civic'
+    if (parcel.urbanity > 0.35) return random() < 0.68 ? 'apartment' : 'residential'
+    return 'residential'
+  }
+
+  function createBuilding(parcel, program, settings, random) {
+    const densityInput = clamp01(settings.density ?? 0.68)
+    const baseFar = {
+      office: 3.8, 'mixed-use': 3.2, commercial: 2.2, apartment: 2.6,
+      residential: 0.95, civic: 1.35, industrial: 0.75,
+    }[program] || 1
+    const transitBonus = parcel.transitDistance < 500 ? (1 - parcel.transitDistance / 500) * 2.1 : 0
+    const far = clamp(baseFar + parcel.urbanity * 3.6 + transitBonus, 0.55, settings.profile === 'metropolitan' ? 8.7 : 7.2) * (0.62 + densityInput * 0.64)
+    const coverage = clamp({ office: 0.52, 'mixed-use': 0.58, commercial: 0.54, apartment: 0.38, residential: 0.42, civic: 0.44, industrial: 0.62 }[program] + (random() - 0.5) * 0.12, 0.28, 0.72)
+    const floorHeight = program === 'office' || program === 'commercial' || program === 'mixed-use' ? 3.7 : program === 'industrial' ? 5.2 : 3.15
+    const floors = clamp(Math.round(far / coverage * (0.88 + random() * 0.22)), 1, settings.profile === 'metropolitan' ? 58 : 46)
+    const footprintArea = parcel.area * coverage
+    const aspect = clamp(parcel.frontage / Math.max(parcel.depth, 1), 0.55, 1.8)
+    let width = Math.min(parcel.frontage * 0.84, Math.sqrt(footprintArea * aspect))
+    let depth = Math.min(parcel.depth * 0.76, footprintArea / Math.max(width, 1))
+    width = Math.max(7.5, width)
+    depth = Math.max(7.0, depth)
+    let footprintType = 'chamfered'
+    if (program === 'industrial') footprintType = 'shed'
+    else if (floors > 24 && width > 13 && depth > 13) footprintType = random() < 0.55 ? 'elliptical-tower' : 'stepped-tower'
+    else if ((program === 'apartment' || program === 'residential') && floors > 8) footprintType = random() < 0.58 ? 'slab' : 'l-court'
+    else if (width > 20 && depth > 20 && floors < 14) footprintType = random() < 0.55 ? 'courtyard' : 'l-court'
+    else if (program === 'civic') footprintType = 'civic-court'
+    const podiumFloors = ['office', 'mixed-use', 'commercial'].includes(program) && floors > 8 ? clamp(Math.round(floors * 0.13), 2, 5) : Math.min(2, floors)
+    return {
+      id: `B-${parcel.id.slice(2)}`,
+      parcelId: parcel.id,
+      x: parcel.x,
+      y: parcel.y,
+      z: parcel.z,
+      rotation: parcel.rotation,
+      program,
+      zone: ['office', 'mixed-use', 'commercial'].includes(program) ? 'commercial' : program,
+      floors,
+      floorHeight,
+      height: floors * floorHeight,
+      width,
+      depth,
+      far,
+      coverage,
+      grossFloorArea: parcel.area * far * 0.82,
+      footprintType,
+      podiumFloors,
+      setback: Math.max(2.5, (parcel.depth - depth) * 0.26),
+      facade: {
+        bayWidth: program === 'office' ? 1.45 + random() * 0.55 : 2.1 + random() * 0.9,
+        glazing: program === 'office' ? 0.72 + random() * 0.14 : program === 'mixed-use' ? 0.54 + random() * 0.15 : 0.28 + random() * 0.20,
+        balconyRate: program === 'apartment' || program === 'residential' ? 0.44 + random() * 0.38 : 0.04,
+      },
+    }
+  }
+
+  function assignLandUse(parcels, centers, settings, random) {
+    const buildings = []
+    const greenSpaces = []
+    const zoneCounts = { residential: 0, apartment: 0, commercial: 0, office: 0, 'mixed-use': 0, industrial: 0, civic: 0, park: 0 }
+    for (const parcel of parcels) {
+      const program = chooseProgram(parcel, centers, settings, random)
+      parcel.program = program
+      zoneCounts[program] = (zoneCounts[program] || 0) + 1
+      if (program === 'park') {
+        greenSpaces.push({ id: `G-${greenSpaces.length + 1}`, x: parcel.x, y: parcel.y, z: parcel.z, area: parcel.area, polygon: parcel.polygon, type: parcel.floodRisk > 0.48 ? 'floodable-park' : 'neighborhood-park' })
+      } else {
+        buildings.push(createBuilding(parcel, program, settings, random))
+      }
+    }
+    return { buildings, greenSpaces, zoneCounts }
+  }
+
+  function createUrbanSystem(terrain, input = {}) {
+    if (!terrain || typeof terrain.buildabilityAt !== 'function') throw new Error('A terrain system is required')
+    const settings = {
+      seed: input.seed || 'city',
+      profile: input.profile || 'balanced',
+      density: input.density ?? 0.68,
+      gridSize: input.gridSize || 30,
+      worldSize: terrain.worldSize,
+    }
+    const random = createRandom(hashString(`${settings.seed}:${settings.profile}:v11-urban`))
+    const centerCount = settings.profile === 'metropolitan' ? 6 : 5
+    const centers = selectCenters(terrain, centerCount, random, settings.profile)
+    const roads = removeDuplicateRoads([
+      ...buildRegionalRoads(terrain, centers),
+      ...buildRingRoad(terrain, centers[0]),
+      ...buildLocalRoads(terrain, centers, random),
+    ])
+    const transit = createTransit(terrain, roads, centers)
+    const parcels = createParcels(terrain, roads, centers, transit, settings, random)
+    const { buildings, greenSpaces, zoneCounts } = assignLandUse(parcels, centers, settings, random)
+    const floodExposure = parcels.length ? parcels.reduce((sum, parcel) => sum + parcel.floodRisk, 0) / parcels.length : 0
+    const averageSlope = parcels.length ? parcels.reduce((sum, parcel) => sum + parcel.slope, 0) / parcels.length : 0
+    const transitCoverage = parcels.length ? parcels.filter((parcel) => parcel.transitDistance <= 500).length / parcels.length : 0
+    const totalRoadLength = roads.reduce((sum, road) => sum + roadLength(road), 0)
+    return {
+      version: '1.1.0-urban-morphology',
+      terrainVersion: terrain.version,
+      settings,
+      centers,
+      roads,
+      transit,
+      parcels,
+      buildings,
+      greenSpaces,
+      zoneCounts,
+      infrastructure: {
+        bridges: roads.reduce((sum, road) => sum + road.points.filter((point) => terrain.waterAt(point.x, point.z) > 0.48).length, 0),
+        tunnelCandidates: roads.reduce((sum, road) => sum + road.points.filter((point) => terrain.slopeAt(point.x, point.z) > 17).length, 0),
+        roadLength: totalRoadLength,
+        stations: transit.stations,
+      },
+      diagnostics: { floodExposure, averageSlope, transitCoverage, roadCount: roads.length, parcelCount: parcels.length },
+      toJSON() {
+        return {
+          version: this.version,
+          terrainVersion: this.terrainVersion,
+          centers: centers.length,
+          roads: roads.length,
+          parcels: parcels.length,
+          buildings: buildings.length,
+          parks: greenSpaces.length,
+          stations: transit.stations.length,
+          diagnostics: this.diagnostics,
+        }
+      },
+    }
+  }
+
+  window.ProceduralUrbanSystemV11 = { create: createUrbanSystem, roadStandards: ROAD }
+})()
