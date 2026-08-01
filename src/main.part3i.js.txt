@@ -1,0 +1,165 @@
+
+// v0.7 realism layer: architecture, streetscape and vehicle dynamics.
+const v070OriginalPushBuilding = pushBuilding
+const v070OriginalPushRoadCell = pushRoadCell
+const v070OriginalAdvanceAgent = typeof v053AdvanceAgent === 'function' ? v053AdvanceAgent : null
+
+function v070SeededUnit(value) {
+  const x = Math.sin(value * 12.9898 + 78.233) * 43758.5453
+  return x - Math.floor(x)
+}
+
+function v070PushFacadeGrid(vertices, building, detailLevel) {
+  if (detailLevel <= 0 || building.height < 8) return
+  const floorHeight = building.height / Math.max(building.floors, 1)
+  const visibleFloors = Math.min(building.floors - 1, detailLevel > 1 ? 18 : 10)
+  const floorStep = Math.max(1, Math.ceil((building.floors - 1) / Math.max(visibleFloors, 1)))
+  const columns = Math.max(2, Math.min(8, Math.floor(building.width / 3.5)))
+  const windowColor = building.zone === 'commercial' ? [0.12, 0.24, 0.31] : [0.28, 0.38, 0.43]
+  for (let floor = 1; floor < building.floors; floor += floorStep) {
+    const y = building.y + floor * floorHeight + floorHeight * 0.46
+    for (let column = 0; column < columns; column += 1) {
+      const localX = ((column + 0.5) / columns - 0.5) * building.width * 0.82
+      const [frontX, frontZ] = buildingOffset(building, localX, -building.depth / 2 - 0.07)
+      pushBox(vertices, frontX, y, frontZ, Math.max(0.7, building.width / columns * 0.56), Math.min(1.25, floorHeight * 0.42), 0.10, windowColor, building.rotation)
+      if (detailLevel > 1) {
+        const [rearX, rearZ] = buildingOffset(building, -localX, building.depth / 2 + 0.07)
+        pushBox(vertices, rearX, y, rearZ, Math.max(0.7, building.width / columns * 0.56), Math.min(1.25, floorHeight * 0.42), 0.10, tintColor(windowColor, -0.04), building.rotation)
+      }
+    }
+  }
+}
+
+function v070PushGroundFloor(vertices, building, detailLevel) {
+  if (detailLevel <= 0) return
+  const commercial = building.zone === 'commercial' || building.type === 'mixed-use'
+  const civic = building.zone === 'civic'
+  const depth = commercial ? 1.15 : 0.65
+  const [x, z] = buildingOffset(building, 0, -building.depth / 2 - depth * 0.45)
+  pushBox(vertices, x, building.y + 1.7, z, building.width * (commercial ? 0.84 : 0.48), commercial ? 2.45 : 2.15, depth, commercial ? [0.11, 0.22, 0.28] : tintColor(building.color, -0.10), building.rotation)
+  if (commercial) {
+    const [canopyX, canopyZ] = buildingOffset(building, 0, -building.depth / 2 - 1.05)
+    pushBox(vertices, canopyX, building.y + 3.18, canopyZ, building.width * 0.90, 0.18, 1.55, tintColor(building.color, -0.14), building.rotation)
+  }
+  if (civic) {
+    for (let column = -2; column <= 2; column += 1) {
+      const [cx, cz] = buildingOffset(building, column * building.width * 0.12, -building.depth / 2 - 0.48)
+      pushBox(vertices, cx, building.y + 0.2, cz, 0.38, Math.min(5.2, building.height * 0.34), 0.38, tintColor(building.color, 0.08), building.rotation)
+    }
+  }
+}
+
+function v070PushRoofPlant(vertices, building, detailLevel) {
+  if (detailLevel <= 0 || building.height < 14) return
+  const roofY = building.y + building.height
+  const seed = building.id * 17 + building.floors * 7
+  const count = detailLevel > 1 ? 3 : 2
+  for (let index = 0; index < count; index += 1) {
+    const rx = (v070SeededUnit(seed + index * 2) - 0.5) * building.width * 0.45
+    const rz = (v070SeededUnit(seed + index * 2 + 1) - 0.5) * building.depth * 0.45
+    const [x, z] = buildingOffset(building, rx, rz)
+    pushBox(vertices, x, roofY + 0.15, z, Math.max(1.4, building.width * 0.13), 1.15 + index * 0.28, Math.max(1.3, building.depth * 0.12), [0.34, 0.38, 0.39], building.rotation)
+  }
+  if (building.type === 'office-tower' || building.type === 'residential-tower') {
+    pushBox(vertices, building.x, roofY + 1.0, building.z, 0.22, Math.min(8, 2.8 + building.floors * 0.08), 0.22, [0.28, 0.30, 0.31], building.rotation)
+  }
+}
+
+function v070PushServiceArea(vertices, building, detailLevel) {
+  if (detailLevel <= 1 || building.type === 'detached-house') return
+  const [rearX, rearZ] = buildingOffset(building, building.width * 0.28, building.depth / 2 + 1.0)
+  pushBox(vertices, rearX, building.y + 0.15, rearZ, Math.max(2.4, building.width * 0.18), 1.45, 1.9, [0.30, 0.32, 0.31], building.rotation)
+  const [binX, binZ] = buildingOffset(building, -building.width * 0.30, building.depth / 2 + 0.75)
+  pushBox(vertices, binX, building.y + 0.1, binZ, 1.1, 1.15, 0.85, [0.18, 0.28, 0.22], building.rotation)
+}
+
+pushBuilding = function v070PushBuilding(vertices, building, random, detailLevel) {
+  v070OriginalPushBuilding(vertices, building, random, detailLevel)
+  v070PushGroundFloor(vertices, building, detailLevel)
+  v070PushFacadeGrid(vertices, building, detailLevel)
+  v070PushRoofPlant(vertices, building, detailLevel)
+  v070PushServiceArea(vertices, building, detailLevel)
+}
+
+function v070PushParkedCar(vertices, x, y, z, orientation, seed) {
+  const colors = [[0.18,0.34,0.52],[0.62,0.18,0.16],[0.72,0.74,0.76],[0.22,0.24,0.27]]
+  const color = colors[Math.abs(seed) % colors.length]
+  pushBox(vertices, x, y + 0.18, z, 1.82, 0.62, 4.25, color, orientation)
+  pushBox(vertices, x, y + 0.72, z, 1.48, 0.58, 2.25, [0.12,0.22,0.28], orientation)
+}
+
+function v070PushBusStop(vertices, x, y, z, orientation) {
+  pushBox(vertices, x, y + 0.15, z, orientation === 0 ? 5.8 : 1.2, 0.12, orientation === 0 ? 1.2 : 5.8, [0.56,0.57,0.55], orientation)
+  pushBox(vertices, x, y + 0.15, z, 0.18, 3.0, 0.18, [0.24,0.30,0.32])
+  pushBox(vertices, x, y + 2.85, z, orientation === 0 ? 4.8 : 1.1, 0.16, orientation === 0 ? 1.1 : 4.8, [0.24,0.35,0.39], orientation)
+}
+
+pushRoadCell = function v070PushRoadCell(vertices, roads, settings, terrain, cell, random, detailLevel) {
+  v070OriginalPushRoadCell(vertices, roads, settings, terrain, cell, random, detailLevel)
+  if (detailLevel <= 0) return
+  const { x, z, xClass, zClass } = cell
+  if (xClass && zClass) return
+  const roadClass = xClass || zClass
+  if (!roadClass) return
+  const roadY = terrain.height(x, z) + 0.30
+  const vertical = Boolean(xClass)
+  const width = ROAD_WIDTH[roadClass]
+  const seed = Math.round(x * 0.17 + z * 0.31)
+  if (roadClass !== 'arterial' && Math.abs(seed) % 5 === 0) {
+    const side = seed % 2 === 0 ? -1 : 1
+    if (vertical) v070PushParkedCar(vertices, x + side * (width / 2 + 2.0), roadY, z, 0, seed)
+    else v070PushParkedCar(vertices, x, roadY, z + side * (width / 2 + 2.0), Math.PI / 2, seed)
+  }
+  if (roadClass === 'collector' && Math.abs(seed) % 11 === 0) {
+    if (vertical) v070PushBusStop(vertices, x + width / 2 + 4.0, roadY, z, Math.PI / 2)
+    else v070PushBusStop(vertices, x, roadY, z + width / 2 + 4.0, 0)
+  }
+  if (Math.abs(seed) % 3 === 0) {
+    const offset = width / 2 + (roadClass === 'arterial' ? 5.2 : 4.0)
+    if (vertical) {
+      pushTree(vertices, x - offset, roadY, z, 0.62, random)
+      pushTree(vertices, x + offset, roadY, z, 0.62, random)
+    } else {
+      pushTree(vertices, x, roadY, z - offset, 0.62, random)
+      pushTree(vertices, x, roadY, z + offset, 0.62, random)
+    }
+  }
+}
+
+function v070LeaderGap(agent) {
+  if (!v053TrafficAgents?.length || !agent.edge) return Infinity
+  let gap = Infinity
+  for (const other of v053TrafficAgents) {
+    if (other === agent || other.edge !== agent.edge) continue
+    const delta = other.progress - agent.progress
+    if (delta > 0 && delta * agent.edge.length < gap) gap = delta * agent.edge.length
+  }
+  return gap
+}
+
+if (v070OriginalAdvanceAgent) {
+  v053AdvanceAgent = function v070AdvanceAgent(agent, deltaSeconds, index) {
+    if (!Number.isFinite(agent.currentSpeed)) agent.currentSpeed = 0
+    if (!Number.isFinite(agent.targetSpeed)) agent.targetSpeed = agent.speed
+    const edge = agent.edge
+    const approachingIntersection = edge && agent.progress > 0.78 && edge.end?.edges?.length > 2
+    const gap = v070LeaderGap(agent)
+    const typeFactor = agent.type === 'bus' ? 0.82 : agent.type === 'truck' ? 0.76 : 1
+    let desired = agent.speed * typeFactor
+    if (approachingIntersection) desired *= 0.62
+    if (gap < 18) desired *= clamp((gap - 5) / 13, 0, 1)
+    const acceleration = agent.type === 'truck' ? 2.0 : agent.type === 'bus' ? 2.4 : 3.5
+    const braking = 5.8
+    const change = desired > agent.currentSpeed ? acceleration : braking
+    agent.currentSpeed += clamp(desired - agent.currentSpeed, -change * deltaSeconds, change * deltaSeconds)
+    const originalSpeed = agent.speed
+    agent.speed = Math.max(0, agent.currentSpeed)
+    v070OriginalAdvanceAgent(agent, deltaSeconds, index)
+    agent.speed = originalSpeed
+  }
+}
+
+window.ProceduralCityV070Realism = {
+  version: '0.7-alpha',
+  features: ['architectural-detail','streetscape','parked-cars','bus-stops','street-trees','vehicle-acceleration','car-following','intersection-slowdown'],
+}
