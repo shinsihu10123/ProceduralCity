@@ -1,4 +1,4 @@
-const BUILD_ID = 'v103-road-surface-realism-20260802'
+const BUILD_ID = 'v104-atmosphere-materials-20260802'
 const sourceParts = [
   './main.part1.js.txt',
   './main.part2.js.txt',
@@ -28,6 +28,7 @@ const sourceParts = [
   './v10-realism-layer.js.txt',
   './v10-architecture-materials.js.txt',
   './v10-road-surface-layer.js.txt',
+  './v10-atmosphere-materials.js.txt',
 ]
 
 function versionedUrl(path) {
