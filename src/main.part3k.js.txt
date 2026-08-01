@@ -1,0 +1,128 @@
+
+// v0.7 phase 3: occupancy-based building lights, lit streetscape and richer parcels.
+const v073OriginalPushBuilding = pushBuilding
+const v073OriginalPushRoadCell = pushRoadCell
+
+function v073Hash(id, a, b = 0) {
+  return v070SeededUnit(id * 91.17 + a * 17.31 + b * 7.13)
+}
+
+function v073WindowSchedule(building, floor, column) {
+  const noise = v073Hash(building.id + 1, floor, column)
+  if (building.zone === 'residential') return noise > 0.42
+  if (building.zone === 'commercial') return noise > 0.26
+  if (building.zone === 'civic') return noise > 0.68
+  if (building.zone === 'industrial') return noise > 0.76
+  return noise > 0.52
+}
+
+function v073WindowColor(building, floor, column) {
+  const variation = v073Hash(building.id + 9, floor, column)
+  if (building.zone === 'commercial') return variation > 0.46 ? [1.0, 0.83, 0.46] : [0.82, 0.91, 1.0]
+  if (building.zone === 'residential') return variation > 0.22 ? [1.0, 0.75, 0.36] : [1.0, 0.88, 0.58]
+  if (building.zone === 'civic') return [0.92, 0.91, 0.74]
+  return [0.90, 0.80, 0.52]
+}
+
+function v073PushLitWindows(vertices, building, detailLevel) {
+  if (detailLevel <= 0 || building.height < 6 || building.type === 'warehouse') return
+  const floorHeight = building.height / Math.max(1, building.floors)
+  const floorLimit = Math.min(building.floors - 1, detailLevel > 1 ? 22 : 12)
+  const floorStep = Math.max(1, Math.ceil((building.floors - 1) / Math.max(1, floorLimit)))
+  const columns = Math.max(2, Math.min(detailLevel > 1 ? 10 : 6, Math.floor(building.width / 2.8)))
+  const windowWidth = Math.max(0.58, building.width / columns * 0.44)
+  const windowHeight = Math.min(1.18, floorHeight * 0.38)
+
+  for (let floor = 1; floor < building.floors; floor += floorStep) {
+    for (let column = 0; column < columns; column += 1) {
+      if (!v073WindowSchedule(building, floor, column)) continue
+      const localX = ((column + 0.5) / columns - 0.5) * building.width * 0.84
+      const y = building.y + floor * floorHeight + floorHeight * 0.45
+      const color = v073WindowColor(building, floor, column)
+      const [frontX, frontZ] = buildingOffset(building, localX, -building.depth / 2 - 0.095)
+      pushBox(vertices, frontX, y, frontZ, windowWidth, windowHeight, 0.07, color, building.rotation)
+      if (detailLevel > 1 && v073Hash(building.id + 13, floor, column) > 0.38) {
+        const [rearX, rearZ] = buildingOffset(building, -localX, building.depth / 2 + 0.095)
+        pushBox(vertices, rearX, y, rearZ, windowWidth, windowHeight, 0.07, tintColor(color, -0.03), building.rotation)
+      }
+    }
+  }
+}
+
+function v073PushRetailLighting(vertices, building, detailLevel) {
+  if (detailLevel <= 0 || !(building.zone === 'commercial' || building.type === 'mixed-use')) return
+  const bayCount = Math.max(2, Math.min(6, Math.floor(building.width / 4)))
+  for (let bay = 0; bay < bayCount; bay += 1) {
+    const localX = ((bay + 0.5) / bayCount - 0.5) * building.width * 0.78
+    const [x, z] = buildingOffset(building, localX, -building.depth / 2 - 0.16)
+    const color = bay % 3 === 0 ? [1.0, 0.60, 0.26] : bay % 3 === 1 ? [1.0, 0.88, 0.52] : [0.82, 0.93, 1.0]
+    pushBox(vertices, x, building.y + 1.75, z, Math.max(1.1, building.width / bayCount * 0.66), 2.25, 0.09, color, building.rotation)
+  }
+  const [signX, signZ] = buildingOffset(building, 0, -building.depth / 2 - 0.36)
+  pushBox(vertices, signX, building.y + 3.45, signZ, building.width * 0.54, 0.36, 0.13, [1.0, 0.67, 0.28], building.rotation)
+}
+
+function v073PushCompoundElements(vertices, building, detailLevel) {
+  if (detailLevel <= 1 || building.type === 'detached-house') return
+  const seed = building.id * 23 + building.floors
+  if ((building.type === 'apartment-slab' || building.type === 'residential-tower') && v073Hash(seed, 1) > 0.35) {
+    const side = v073Hash(seed, 2) > 0.5 ? 1 : -1
+    const [annexX, annexZ] = buildingOffset(building, side * building.width * 0.52, building.depth * 0.14)
+    pushBox(vertices, annexX, building.y, annexZ, building.width * 0.32, Math.min(8.5, building.height * 0.22), building.depth * 0.52, tintColor(building.color, -0.06), building.rotation)
+    const [courtX, courtZ] = buildingOffset(building, -side * building.width * 0.36, building.depth * 0.38)
+    pushBox(vertices, courtX, building.y + 0.04, courtZ, building.width * 0.34, 0.05, building.depth * 0.22, [0.35, 0.48, 0.32], building.rotation)
+  }
+  if (building.zone === 'industrial') {
+    const [yardX, yardZ] = buildingOffset(building, 0, building.depth * 0.62)
+    pushBox(vertices, yardX, building.y + 0.03, yardZ, building.width * 0.72, 0.05, building.depth * 0.26, [0.33, 0.34, 0.33], building.rotation)
+    for (let bay = -1; bay <= 1; bay += 1) {
+      const [dockX, dockZ] = buildingOffset(building, bay * building.width * 0.22, building.depth / 2 + 0.18)
+      pushBox(vertices, dockX, building.y + 0.38, dockZ, building.width * 0.14, 1.45, 0.28, [0.18, 0.20, 0.21], building.rotation)
+    }
+  }
+}
+
+pushBuilding = function v073PushBuilding(vertices, building, random, detailLevel) {
+  v073OriginalPushBuilding(vertices, building, random, detailLevel)
+  v073PushLitWindows(vertices, building, detailLevel)
+  v073PushRetailLighting(vertices, building, detailLevel)
+  v073PushCompoundElements(vertices, building, detailLevel)
+}
+
+function v073PushLampGlow(vertices, x, y, z) {
+  pushBox(vertices, x, y + 4.65, z, 0.28, 0.28, 0.28, [1.0, 0.78, 0.36])
+  pushBox(vertices, x, y + 4.55, z, 0.95, 0.05, 0.95, [1.0, 0.72, 0.30])
+}
+
+function v073PushParkingLights(vertices, x, y, z, vertical, width, seed) {
+  if (Math.abs(seed) % 7 !== 0) return
+  const side = seed % 2 === 0 ? -1 : 1
+  if (vertical) v073PushLampGlow(vertices, x + side * (width / 2 + 4.8), y, z)
+  else v073PushLampGlow(vertices, x, y, z + side * (width / 2 + 4.8))
+}
+
+pushRoadCell = function v073PushRoadCell(vertices, roads, settings, terrain, cell, random, detailLevel) {
+  v073OriginalPushRoadCell(vertices, roads, settings, terrain, cell, random, detailLevel)
+  if (detailLevel <= 0) return
+  const { x, z, xClass, zClass } = cell
+  if ((xClass && zClass) || (!xClass && !zClass)) return
+  const roadClass = xClass || zClass
+  const roadY = terrain.height(x, z) + 0.30
+  const width = ROAD_WIDTH[roadClass]
+  const seed = Math.round(x * 0.23 + z * 0.41)
+  v073PushParkingLights(vertices, x, roadY, z, Boolean(xClass), width, seed)
+
+  if (roadClass === 'collector' && Math.abs(seed) % 13 === 0) {
+    const vertical = Boolean(xClass)
+    const side = seed % 2 === 0 ? -1 : 1
+    const px = vertical ? x + side * (width / 2 + 5.8) : x
+    const pz = vertical ? z : z + side * (width / 2 + 5.8)
+    pushBox(vertices, px, roadY + 1.65, pz, vertical ? 0.12 : 3.8, 2.8, vertical ? 3.8 : 0.12, [0.72, 0.87, 0.94])
+    v073PushLampGlow(vertices, px, roadY, pz)
+  }
+}
+
+window.ProceduralCityV073Lighting = {
+  version: '0.7-alpha-phase-3',
+  features: ['occupancy-window-lights','residential-warm-lights','office-cool-lights','retail-lighting','lit-signage','streetlight-glow','parking-lights','building-compounds'],
+}
