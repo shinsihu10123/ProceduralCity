@@ -1,4 +1,4 @@
-const BUILD_ID = 'v105-physical-shader-20260802'
+const BUILD_ID = 'v110-reality-engine-20260802'
 const sourceParts = [
   './v10-shader-patch.js.txt',
   './main.part1.js.txt',
@@ -30,6 +30,10 @@ const sourceParts = [
   './v10-architecture-materials.js.txt',
   './v10-road-surface-layer.js.txt',
   './v10-atmosphere-materials.js.txt',
+  './v11-terrain-hydrology.js.txt',
+  './v11-urban-morphology.js.txt',
+  './v11-render-pipeline.js.txt',
+  './v11-ui-layer.js.txt',
 ]
 
 function versionedUrl(path) {

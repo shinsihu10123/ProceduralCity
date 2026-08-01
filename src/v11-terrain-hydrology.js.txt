@@ -1,0 +1,285 @@
+// Procedural City v1.1 — drainage-conditioned terrain and hydrology.
+// Augments the v0.9 terrain object without changing its public sampling contract.
+
+(function () {
+  const NEIGHBORS = [
+    [1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1],
+    [1, 1, Math.SQRT2], [-1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, -1, Math.SQRT2],
+  ]
+
+  function clamp01(value) { return Math.max(0, Math.min(1, value)) }
+  function indexOf(x, z, size) { return z * size + x }
+
+  class MinHeap {
+    constructor() { this.items = [] }
+    push(item) {
+      const items = this.items
+      items.push(item)
+      let index = items.length - 1
+      while (index > 0) {
+        const parent = (index - 1) >> 1
+        if (items[parent].height <= item.height) break
+        items[index] = items[parent]
+        index = parent
+      }
+      items[index] = item
+    }
+    pop() {
+      const items = this.items
+      if (!items.length) return null
+      const root = items[0]
+      const tail = items.pop()
+      if (items.length && tail) {
+        let index = 0
+        while (true) {
+          const left = index * 2 + 1
+          if (left >= items.length) break
+          const right = left + 1
+          let child = right < items.length && items[right].height < items[left].height ? right : left
+          if (items[child].height >= tail.height) break
+          items[index] = items[child]
+          index = child
+        }
+        items[index] = tail
+      }
+      return root
+    }
+    get length() { return this.items.length }
+  }
+
+  function sampleBilinear(field, terrain, x, z) {
+    const size = terrain.size
+    const gx = Math.max(0, Math.min(size - 1.001, (x / terrain.worldSize + 0.5) * (size - 1)))
+    const gz = Math.max(0, Math.min(size - 1.001, (z / terrain.worldSize + 0.5) * (size - 1)))
+    const x0 = Math.floor(gx)
+    const z0 = Math.floor(gz)
+    const x1 = Math.min(size - 1, x0 + 1)
+    const z1 = Math.min(size - 1, z0 + 1)
+    const tx = gx - x0
+    const tz = gz - z0
+    const a = field[indexOf(x0, z0, size)]
+    const b = field[indexOf(x1, z0, size)]
+    const c = field[indexOf(x0, z1, size)]
+    const d = field[indexOf(x1, z1, size)]
+    return (a + (b - a) * tx) + ((c + (d - c) * tx) - (a + (b - a) * tx)) * tz
+  }
+
+  function priorityFlood(height, size, epsilon) {
+    const filled = new Float32Array(height)
+    const receiver = new Int32Array(height.length)
+    const visited = new Uint8Array(height.length)
+    const heap = new MinHeap()
+    receiver.fill(-1)
+
+    function seed(x, z) {
+      const index = indexOf(x, z, size)
+      if (visited[index]) return
+      visited[index] = 1
+      heap.push({ index, x, z, height: filled[index] })
+    }
+
+    for (let x = 0; x < size; x += 1) {
+      seed(x, 0)
+      seed(x, size - 1)
+    }
+    for (let z = 1; z < size - 1; z += 1) {
+      seed(0, z)
+      seed(size - 1, z)
+    }
+
+    while (heap.length) {
+      const cell = heap.pop()
+      for (const [dx, dz] of NEIGHBORS) {
+        const nx = cell.x + dx
+        const nz = cell.z + dz
+        if (nx < 0 || nz < 0 || nx >= size || nz >= size) continue
+        const next = indexOf(nx, nz, size)
+        if (visited[next]) continue
+        visited[next] = 1
+        receiver[next] = cell.index
+        filled[next] = Math.max(filled[next], cell.height + epsilon)
+        heap.push({ index: next, x: nx, z: nz, height: filled[next] })
+      }
+    }
+    return { filled, receiver }
+  }
+
+  function deriveSlopeAspect(height, size, cellSize) {
+    const slope = new Float32Array(height.length)
+    const aspect = new Float32Array(height.length)
+    for (let z = 0; z < size; z += 1) {
+      for (let x = 0; x < size; x += 1) {
+        const xl = Math.max(0, x - 1)
+        const xr = Math.min(size - 1, x + 1)
+        const zd = Math.max(0, z - 1)
+        const zu = Math.min(size - 1, z + 1)
+        const dx = (height[indexOf(xr, z, size)] - height[indexOf(xl, z, size)]) / Math.max(cellSize * (xr - xl), 1e-5)
+        const dz = (height[indexOf(x, zu, size)] - height[indexOf(x, zd, size)]) / Math.max(cellSize * (zu - zd), 1e-5)
+        const index = indexOf(x, z, size)
+        slope[index] = Math.atan(Math.hypot(dx, dz)) * 180 / Math.PI
+        aspect[index] = Math.atan2(dz, dx)
+      }
+    }
+    return { slope, aspect }
+  }
+
+  function deriveFlow(height, filled, floodReceiver, size, cellSize) {
+    const downstream = new Int32Array(height.length)
+    const accumulation = new Float32Array(height.length)
+    accumulation.fill(1)
+
+    for (let z = 0; z < size; z += 1) {
+      for (let x = 0; x < size; x += 1) {
+        const index = indexOf(x, z, size)
+        let target = -1
+        let bestGradient = 0
+        for (const [dx, dz, distance] of NEIGHBORS) {
+          const nx = x + dx
+          const nz = z + dz
+          if (nx < 0 || nz < 0 || nx >= size || nz >= size) continue
+          const neighbor = indexOf(nx, nz, size)
+          const gradient = (filled[index] - filled[neighbor]) / (cellSize * distance)
+          if (gradient > bestGradient) {
+            bestGradient = gradient
+            target = neighbor
+          }
+        }
+        downstream[index] = target >= 0 ? target : floodReceiver[index] >= 0 ? floodReceiver[index] : index
+      }
+    }
+
+    const order = Array.from({ length: height.length }, (_, index) => index)
+      .sort((a, b) => filled[b] - filled[a])
+    for (const index of order) {
+      const target = downstream[index]
+      if (target !== index && target >= 0) accumulation[target] += accumulation[index]
+    }
+    return { downstream, accumulation }
+  }
+
+  function distanceTransform(mask, size, cellSize) {
+    const distance = new Float32Array(mask.length)
+    distance.fill(Infinity)
+    const heap = new MinHeap()
+    for (let index = 0; index < mask.length; index += 1) {
+      if (mask[index] > 0.5) {
+        distance[index] = 0
+        heap.push({ index, height: 0 })
+      }
+    }
+    while (heap.length) {
+      const current = heap.pop()
+      const index = current.index
+      if (current.height > distance[index] + 0.001) continue
+      const x = index % size
+      const z = Math.floor(index / size)
+      for (const [dx, dz, step] of NEIGHBORS) {
+        const nx = x + dx
+        const nz = z + dz
+        if (nx < 0 || nz < 0 || nx >= size || nz >= size) continue
+        const next = indexOf(nx, nz, size)
+        const candidate = distance[index] + cellSize * step
+        if (candidate + 0.001 >= distance[next]) continue
+        distance[next] = candidate
+        heap.push({ index: next, height: candidate })
+      }
+    }
+    return distance
+  }
+
+  function copyInto(target, source) {
+    if (target && typeof target.set === 'function' && target.length === source.length) {
+      target.set(source)
+      return target
+    }
+    return source
+  }
+
+  function augmentTerrain(terrain, input = {}) {
+    if (!terrain?.fields?.height || !terrain.size || !terrain.worldSize) throw new Error('A terrain grid is required')
+    const { size, cellSize, seaLevel } = terrain
+    const height = terrain.fields.height
+    const epsilon = Math.max(0.0005, cellSize * 0.00002)
+    const { filled, receiver } = priorityFlood(height, size, epsilon)
+    const { slope, aspect } = deriveSlopeAspect(height, size, cellSize)
+    const { downstream, accumulation } = deriveFlow(height, filled, receiver, size, cellSize)
+    const channelStrength = new Float32Array(height.length)
+    const water = new Float32Array(height.length)
+    const streamThreshold = Math.max(28, size * size * (input.streamDensity || 0.0048))
+
+    for (let index = 0; index < height.length; index += 1) {
+      const channel = clamp01(Math.log1p(accumulation[index] / streamThreshold) / Math.log(7.5))
+      channelStrength[index] = channel
+      const submerged = height[index] <= seaLevel + 0.08 ? 1 : 0
+      water[index] = Math.max(submerged, channel > 0.58 ? clamp01((channel - 0.58) / 0.30) : 0)
+    }
+
+    const distanceToWater = distanceTransform(water, size, cellSize)
+    const floodRisk = new Float32Array(height.length)
+    const vegetation = new Float32Array(height.length)
+    const soil = new Float32Array(height.length)
+    const buildability = new Float32Array(height.length)
+
+    for (let index = 0; index < height.length; index += 1) {
+      const slopePenalty = clamp01(slope[index] / 24)
+      const nearWater = Math.exp(-distanceToWater[index] / Math.max(28, cellSize * 4.2))
+      const drainage = clamp01(Math.log2(accumulation[index] + 1) / 12)
+      const lowRelief = 1 - clamp01(Math.abs(height[index] - seaLevel) / 52)
+      floodRisk[index] = clamp01(nearWater * 0.68 + drainage * 0.24 + lowRelief * 0.15 - slopePenalty * 0.36)
+      soil[index] = clamp01(0.30 + drainage * 0.48 + nearWater * 0.20 - slopePenalty * 0.48)
+      vegetation[index] = clamp01(0.18 + soil[index] * 0.66 + (1 - slopePenalty) * 0.24 - water[index] * 0.95)
+      const stableSlope = 1 - clamp01(Math.max(0, slope[index] - 5) / 17)
+      const floodPenalty = 1 - clamp01(Math.max(0, floodRisk[index] - 0.28) / 0.62)
+      buildability[index] = clamp01(stableSlope * floodPenalty * (1 - water[index]) * (0.52 + soil[index] * 0.48))
+    }
+
+    terrain.fields.filledHeight = filled
+    terrain.fields.slope = copyInto(terrain.fields.slope, slope)
+    terrain.fields.aspect = copyInto(terrain.fields.aspect, aspect)
+    terrain.fields.downstream = copyInto(terrain.fields.downstream, downstream)
+    terrain.fields.accumulation = copyInto(terrain.fields.accumulation, accumulation)
+    terrain.fields.water = copyInto(terrain.fields.water, water)
+    terrain.fields.soil = copyInto(terrain.fields.soil, soil)
+    terrain.fields.vegetation = copyInto(terrain.fields.vegetation, vegetation)
+    terrain.fields.buildability = copyInto(terrain.fields.buildability, buildability)
+    terrain.fields.channelStrength = channelStrength
+    terrain.fields.distanceToWater = distanceToWater
+    terrain.fields.floodRisk = floodRisk
+    terrain.version = '1.1.0-hydrology-core'
+    terrain.channelAt = (x, z) => sampleBilinear(channelStrength, terrain, x, z)
+    terrain.floodRiskAt = (x, z) => sampleBilinear(floodRisk, terrain, x, z)
+    terrain.distanceToWaterAt = (x, z) => sampleBilinear(distanceToWater, terrain, x, z)
+    terrain.aspectAt = (x, z) => sampleBilinear(aspect, terrain, x, z)
+    terrain.soilAt = (x, z) => sampleBilinear(soil, terrain, x, z)
+    terrain.hydrology = {
+      method: 'priority-flood-d8',
+      depressionConditioned: true,
+      streamThreshold,
+      outletCount: size * 4 - 4,
+    }
+    terrain.traceFlow = function traceFlow(x, z, maxSteps = 256) {
+      let gx = Math.max(0, Math.min(size - 1, Math.round((x / terrain.worldSize + 0.5) * (size - 1))))
+      let gz = Math.max(0, Math.min(size - 1, Math.round((z / terrain.worldSize + 0.5) * (size - 1))))
+      const path = []
+      const visited = new Set()
+      for (let step = 0; step < maxSteps; step += 1) {
+        const index = indexOf(gx, gz, size)
+        if (visited.has(index)) break
+        visited.add(index)
+        path.push({
+          x: (gx / (size - 1) - 0.5) * terrain.worldSize,
+          z: (gz / (size - 1) - 0.5) * terrain.worldSize,
+          y: height[index],
+        })
+        const next = downstream[index]
+        if (next === index || next < 0) break
+        gx = next % size
+        gz = Math.floor(next / size)
+      }
+      return path
+    }
+    return terrain
+  }
+
+  window.ProceduralTerrainSystemV11 = { augment: augmentTerrain }
+})()

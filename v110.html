@@ -7,7 +7,7 @@
   <title>Procedural City v1.1</title>
 </head>
 <body>
-  <p style="font-family:system-ui;padding:24px">최신 도시 엔진을 불러오는 중입니다.</p>
+  <p style="font-family:system-ui;padding:24px">v1.1 현실성 엔진을 불러오는 중입니다.</p>
   <script>
     const build = 'v110-reality-engine-20260802';
     fetch(`./index.html?v=${build}`, { cache: 'no-store' })
@@ -29,7 +29,7 @@
       })
       .catch((error) => {
         console.error(error);
-        document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">최신 엔진을 불러오지 못했습니다.</p>';
+        document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">v1.1 엔진을 불러오지 못했습니다.</p>';
       });
   </script>
 </body>

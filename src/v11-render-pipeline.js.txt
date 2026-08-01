@@ -1,0 +1,699 @@
+// Procedural City v1.1 — coherent terrain, infrastructure and architectural renderer.
+
+(function () {
+  const previousGenerateCity = generateCity
+  const PALETTE = {
+    groundLow: [0.29, 0.38, 0.25],
+    groundHigh: [0.48, 0.49, 0.39],
+    rock: [0.41, 0.40, 0.36],
+    wetland: [0.22, 0.39, 0.28],
+    water: [0.19, 0.43, 0.59],
+    waterLight: [0.31, 0.62, 0.71],
+    lot: [0.42, 0.43, 0.39],
+    lotResidential: [0.38, 0.46, 0.34],
+    asphalt: [0.075, 0.083, 0.089],
+    sidewalk: [0.56, 0.57, 0.55],
+    curb: [0.69, 0.69, 0.66],
+    shadow: [0.12, 0.14, 0.13],
+    glass: [0.22, 0.43, 0.58],
+    glassLight: [0.35, 0.57, 0.69],
+    concrete: [0.66, 0.63, 0.57],
+    concreteWarm: [0.69, 0.57, 0.45],
+    brick: [0.55, 0.30, 0.24],
+    civic: [0.68, 0.44, 0.35],
+    industrial: [0.47, 0.49, 0.47],
+    roof: [0.22, 0.25, 0.26],
+    roofLight: [0.43, 0.46, 0.46],
+    window: [0.34, 0.53, 0.63],
+    windowWarm: [0.92, 0.69, 0.35],
+    park: [0.20, 0.47, 0.24],
+    trunk: [0.28, 0.20, 0.12],
+    canopy: [0.14, 0.37, 0.18],
+    canopyLight: [0.25, 0.49, 0.23],
+    rail: [0.43, 0.47, 0.48],
+    platform: [0.64, 0.63, 0.59],
+    mark: [0.90, 0.86, 0.67],
+    crosswalk: [0.89, 0.91, 0.89],
+  }
+
+  function clamp01(value) { return Math.max(0, Math.min(1, value)) }
+  function mix(a, b, t) {
+    const factor = clamp01(t)
+    return [a[0] + (b[0] - a[0]) * factor, a[1] + (b[1] - a[1]) * factor, a[2] + (b[2] - a[2]) * factor]
+  }
+  function distance(a, b) { return Math.hypot(a.x - b.x, a.z - b.z) }
+  function seeded(seed) {
+    let state = seed >>> 0
+    return () => {
+      state += 0x6d2b79f5
+      let value = state
+      value = Math.imul(value ^ (value >>> 15), value | 1)
+      value ^= value + Math.imul(value ^ (value >>> 7), value | 61)
+      return ((value ^ (value >>> 14)) >>> 0) / 4294967296
+    }
+  }
+
+  function pushDisc(vertices, x, y, z, radiusX, radiusZ, color, segments = 16, rotation = 0) {
+    const center = [x, y, z]
+    const cos = Math.cos(rotation)
+    const sin = Math.sin(rotation)
+    for (let index = 0; index < segments; index += 1) {
+      const a0 = index / segments * Math.PI * 2
+      const a1 = (index + 1) / segments * Math.PI * 2
+      const local0 = [Math.cos(a0) * radiusX, Math.sin(a0) * radiusZ]
+      const local1 = [Math.cos(a1) * radiusX, Math.sin(a1) * radiusZ]
+      const p0 = [x + local0[0] * cos - local0[1] * sin, y, z + local0[0] * sin + local0[1] * cos]
+      const p1 = [x + local1[0] * cos - local1[1] * sin, y, z + local1[0] * sin + local1[1] * cos]
+      pushTriangle(vertices, center, p0, p1, [0, 1, 0], color)
+    }
+  }
+
+  function pushCylinder(vertices, x, y, z, radius, height, color, segments = 8) {
+    const top = y + height
+    for (let index = 0; index < segments; index += 1) {
+      const a0 = index / segments * Math.PI * 2
+      const a1 = (index + 1) / segments * Math.PI * 2
+      const p0 = [x + Math.cos(a0) * radius, y, z + Math.sin(a0) * radius]
+      const p1 = [x + Math.cos(a1) * radius, y, z + Math.sin(a1) * radius]
+      const p2 = [x + Math.cos(a1) * radius, top, z + Math.sin(a1) * radius]
+      const p3 = [x + Math.cos(a0) * radius, top, z + Math.sin(a0) * radius]
+      pushQuad(vertices, p0, p1, p2, p3, calculateNormal(p0, p1, p2), color)
+      pushTriangle(vertices, [x, top, z], p3, p2, [0, 1, 0], color)
+    }
+  }
+
+  function pushEllipsoid(vertices, x, y, z, rx, ry, rz, color, rings = 4, segments = 8) {
+    for (let ring = 0; ring < rings; ring += 1) {
+      const phi0 = -Math.PI / 2 + ring / rings * Math.PI
+      const phi1 = -Math.PI / 2 + (ring + 1) / rings * Math.PI
+      for (let segment = 0; segment < segments; segment += 1) {
+        const a0 = segment / segments * Math.PI * 2
+        const a1 = (segment + 1) / segments * Math.PI * 2
+        const point = (phi, angle) => [x + Math.cos(phi) * Math.cos(angle) * rx, y + Math.sin(phi) * ry, z + Math.cos(phi) * Math.sin(angle) * rz]
+        const p0 = point(phi0, a0)
+        const p1 = point(phi0, a1)
+        const p2 = point(phi1, a1)
+        const p3 = point(phi1, a0)
+        pushQuad(vertices, p0, p1, p2, p3, calculateNormal(p0, p1, p2), color)
+      }
+    }
+  }
+
+  function worldPoint(item, localX, localZ, y) {
+    const cos = Math.cos(item.rotation || 0)
+    const sin = Math.sin(item.rotation || 0)
+    return [item.x + localX * cos - localZ * sin, y, item.z + localX * sin + localZ * cos]
+  }
+
+  function pushConvexPrism(vertices, polygon, baseY, height, wallColor, roofColor = wallColor) {
+    if (!polygon || polygon.length < 3 || height <= 0) return
+    const topY = baseY + height
+    const center = polygon.reduce((sum, point) => [sum[0] + point[0] / polygon.length, sum[1] + point[1] / polygon.length], [0, 0])
+    for (let index = 0; index < polygon.length; index += 1) {
+      const a = polygon[index]
+      const b = polygon[(index + 1) % polygon.length]
+      const p0 = [a[0], baseY, a[1]]
+      const p1 = [b[0], baseY, b[1]]
+      const p2 = [b[0], topY, b[1]]
+      const p3 = [a[0], topY, a[1]]
+      pushQuad(vertices, p0, p1, p2, p3, calculateNormal(p0, p1, p2), wallColor)
+      pushTriangle(vertices, [center[0], topY, center[1]], p3, p2, [0, 1, 0], roofColor)
+    }
+  }
+
+  function pushChamferedMass(vertices, building, width, depth, baseY, height, color, inset = 0) {
+    const w = width * 0.5
+    const d = depth * 0.5
+    const c = Math.min(Math.min(w, d) * 0.34, Math.max(1.3, Math.min(width, depth) * 0.12 + inset))
+    const local = [[-w + c, -d], [w - c, -d], [w, -d + c], [w, d - c], [w - c, d], [-w + c, d], [-w, d - c], [-w, -d + c]]
+    pushConvexPrism(vertices, local.map(([x, z]) => {
+      const point = worldPoint(building, x, z, baseY)
+      return [point[0], point[2]]
+    }), baseY, height, color, PALETTE.roof)
+  }
+
+  function pushTaperedMass(vertices, building, width, depth, baseY, height, topScale, color, offsetX = 0, offsetZ = 0) {
+    const bottom = [[-width / 2, -depth / 2], [width / 2, -depth / 2], [width / 2, depth / 2], [-width / 2, depth / 2]]
+    const top = bottom.map(([x, z]) => [x * topScale + offsetX, z * topScale + offsetZ])
+    for (let index = 0; index < 4; index += 1) {
+      const next = (index + 1) % 4
+      const p0 = worldPoint(building, bottom[index][0], bottom[index][1], baseY)
+      const p1 = worldPoint(building, bottom[next][0], bottom[next][1], baseY)
+      const p2 = worldPoint(building, top[next][0], top[next][1], baseY + height)
+      const p3 = worldPoint(building, top[index][0], top[index][1], baseY + height)
+      pushQuad(vertices, p0, p1, p2, p3, calculateNormal(p0, p1, p2), color)
+    }
+    const polygon = top.map(([x, z]) => {
+      const point = worldPoint(building, x, z, baseY + height)
+      return [point[0], point[2]]
+    })
+    const center = polygon.reduce((sum, point) => [sum[0] + point[0] / polygon.length, sum[1] + point[1] / polygon.length], [0, 0])
+    for (let index = 0; index < polygon.length; index += 1) {
+      pushTriangle(vertices, [center[0], baseY + height, center[1]], [polygon[index][0], baseY + height, polygon[index][1]], [polygon[(index + 1) % polygon.length][0], baseY + height, polygon[(index + 1) % polygon.length][1]], [0, 1, 0], PALETTE.roof)
+    }
+  }
+
+  function pushEllipticalMass(vertices, building, width, depth, baseY, height, bottomScale, topScale, color, segments = 18) {
+    for (let index = 0; index < segments; index += 1) {
+      const a0 = index / segments * Math.PI * 2
+      const a1 = (index + 1) / segments * Math.PI * 2
+      const local = (angle, scale) => [Math.cos(angle) * width * 0.5 * scale, Math.sin(angle) * depth * 0.5 * scale]
+      const b0 = local(a0, bottomScale)
+      const b1 = local(a1, bottomScale)
+      const t0 = local(a0, topScale)
+      const t1 = local(a1, topScale)
+      const p0 = worldPoint(building, b0[0], b0[1], baseY)
+      const p1 = worldPoint(building, b1[0], b1[1], baseY)
+      const p2 = worldPoint(building, t1[0], t1[1], baseY + height)
+      const p3 = worldPoint(building, t0[0], t0[1], baseY + height)
+      pushQuad(vertices, p0, p1, p2, p3, calculateNormal(p0, p1, p2), color)
+      pushTriangle(vertices, [building.x, baseY + height, building.z], p3, p2, [0, 1, 0], PALETTE.roof)
+    }
+  }
+
+  function terrainColor(terrain, x, z, height) {
+    const water = terrain.waterAt(x, z)
+    const flood = terrain.floodRiskAt?.(x, z) || 0
+    if (water > 0.48 || height <= terrain.seaLevel + 0.12) return mix(PALETTE.water, PALETTE.waterLight, water * 0.46)
+    const vegetation = terrain.vegetationAt(x, z)
+    const slope = terrain.slopeAt(x, z)
+    const altitude = clamp01((height - terrain.seaLevel) / 115)
+    let color = mix(PALETTE.groundLow, PALETTE.groundHigh, altitude)
+    color = mix(color, PALETTE.park, vegetation * 0.39)
+    color = mix(color, PALETTE.wetland, flood * 0.22)
+    if (slope > 22) color = mix(color, PALETTE.rock, Math.min(0.62, (slope - 22) / 24))
+    return color
+  }
+
+  function pushTerrain(vertices, terrain, detailLevel) {
+    const segments = detailLevel > 1 ? 78 : detailLevel > 0 ? 68 : 56
+    const half = terrain.worldSize * 0.5
+    const step = terrain.worldSize / segments
+    for (let zi = 0; zi < segments; zi += 1) {
+      for (let xi = 0; xi < segments; xi += 1) {
+        const x0 = -half + xi * step
+        const z0 = -half + zi * step
+        const x1 = x0 + step
+        const z1 = z0 + step
+        const y00 = terrain.heightAt(x0, z0)
+        const y10 = terrain.heightAt(x1, z0)
+        const y11 = terrain.heightAt(x1, z1)
+        const y01 = terrain.heightAt(x0, z1)
+        const colorA = terrainColor(terrain, (x0 + x1 + x1) / 3, (z0 + z0 + z1) / 3, (y00 + y10 + y11) / 3)
+        const colorB = terrainColor(terrain, (x0 + x1 + x0) / 3, (z0 + z1 + z1) / 3, (y00 + y11 + y01) / 3)
+        const p00 = [x0, y00, z0]
+        const p10 = [x1, y10, z0]
+        const p11 = [x1, y11, z1]
+        const p01 = [x0, y01, z1]
+        pushTriangle(vertices, p00, p10, p11, calculateNormal(p00, p10, p11), colorA)
+        pushTriangle(vertices, p00, p11, p01, calculateNormal(p00, p11, p01), colorB)
+        const channel = terrain.channelAt?.((x0 + x1) * 0.5, (z0 + z1) * 0.5) || 0
+        const water = terrain.waterAt((x0 + x1) * 0.5, (z0 + z1) * 0.5)
+        if (water > 0.52 && (channel > 0.52 || Math.min(y00, y10, y11, y01) <= terrain.seaLevel + 0.2)) {
+          const waterY = Math.min(y00, y10, y11, y01) <= terrain.seaLevel + 0.2
+            ? terrain.seaLevel + 0.18
+            : (y00 + y10 + y11 + y01) * 0.25 + 0.16
+          pushQuad(vertices, [x0, waterY, z0], [x1, waterY, z0], [x1, waterY, z1], [x0, waterY, z1], [0, 1, 0], mix(PALETTE.water, PALETTE.waterLight, channel * 0.34))
+        }
+      }
+    }
+  }
+
+  function pointWithRoadHeight(terrain, point) {
+    const ground = terrain.heightAt(point.x, point.z)
+    const bridge = terrain.waterAt(point.x, point.z) > 0.46
+    return { ...point, y: bridge ? Math.max(ground + 0.6, terrain.seaLevel + 5.8) : ground + 0.24, bridge }
+  }
+
+  function pushStrip(vertices, a, b, width, elevation, color) {
+    const dx = b.x - a.x
+    const dz = b.z - a.z
+    const length = Math.hypot(dx, dz) || 1
+    const nx = -dz / length
+    const nz = dx / length
+    const half = width * 0.5
+    const p0 = [a.x + nx * half, a.y + elevation, a.z + nz * half]
+    const p1 = [b.x + nx * half, b.y + elevation, b.z + nz * half]
+    const p2 = [b.x - nx * half, b.y + elevation, b.z - nz * half]
+    const p3 = [a.x - nx * half, a.y + elevation, a.z - nz * half]
+    pushQuad(vertices, p0, p1, p2, p3, calculateNormal(p0, p1, p2), color)
+  }
+
+  function offsetSegment(a, b, offset) {
+    const dx = b.x - a.x
+    const dz = b.z - a.z
+    const length = Math.hypot(dx, dz) || 1
+    const nx = -dz / length
+    const nz = dx / length
+    return [{ ...a, x: a.x + nx * offset, z: a.z + nz * offset }, { ...b, x: b.x + nx * offset, z: b.z + nz * offset }]
+  }
+
+  function interpolatePoint(a, b, t) { return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t } }
+
+  function pushRoadSegment(vertices, terrain, road, sourceA, sourceB, roadIndex, segmentIndex, flattened, engineering, detailLevel) {
+    const a = pointWithRoadHeight(terrain, sourceA)
+    const b = pointWithRoadHeight(terrain, sourceB)
+    const length = distance(a, b)
+    if (length < 1.5) return
+    const width = road.width
+    pushStrip(vertices, a, b, width + road.sidewalk * 2, 0.02, PALETTE.sidewalk)
+    pushStrip(vertices, a, b, width, 0.09, road.class === 'local' ? mix(PALETTE.asphalt, [0.18, 0.18, 0.17], 0.24) : PALETTE.asphalt)
+    for (const side of [-1, 1]) {
+      const [ca, cb] = offsetSegment(a, b, side * (width * 0.5 + 0.18))
+      pushStrip(vertices, ca, cb, 0.34, 0.16, PALETTE.curb)
+    }
+
+    const laneOffsets = road.lanes === 4 ? [-width * 0.25, width * 0.25] : [0]
+    if (road.class !== 'local' || detailLevel > 0) {
+      for (const laneOffset of laneOffsets) {
+        const dashPeriod = road.class === 'arterial' ? 12 : 10
+        const dashCount = Math.max(1, Math.floor(length / dashPeriod))
+        for (let dash = 0; dash < dashCount; dash += 1) {
+          const t0 = (dash + 0.18) / dashCount
+          const t1 = Math.min(1, t0 + 0.46 / dashCount)
+          const da = interpolatePoint(a, b, t0)
+          const db = interpolatePoint(a, b, t1)
+          const [oa, ob] = offsetSegment(da, db, laneOffset)
+          pushStrip(vertices, oa, ob, 0.16, 0.145, PALETTE.mark)
+        }
+      }
+    }
+    if (road.lanes === 4) {
+      const [ma, mb] = offsetSegment(a, b, 0)
+      pushStrip(vertices, ma, mb, 0.82, 0.135, mix(PALETTE.park, PALETTE.curb, 0.30))
+    }
+
+    if (a.bridge || b.bridge) {
+      engineering.bridges += 1
+      const midpoint = interpolatePoint(a, b, 0.5)
+      const pierHeight = Math.max(2.5, midpoint.y - terrain.seaLevel + 0.4)
+      if (length > 18) pushCylinder(vertices, midpoint.x, terrain.seaLevel - 0.7, midpoint.z, 0.72, pierHeight, PALETTE.concrete, 8)
+    }
+
+    if (detailLevel > 0 && road.class !== 'local' && segmentIndex % 3 === 0) {
+      const midpoint = interpolatePoint(a, b, 0.5)
+      const dx = b.x - a.x
+      const dz = b.z - a.z
+      const angle = Math.atan2(dz, dx)
+      const cos = Math.cos(angle)
+      const sin = Math.sin(angle)
+      for (const side of [-1, 1]) {
+        const offset = side * (width * 0.5 + road.sidewalk * 0.72)
+        const x = midpoint.x - sin * offset
+        const z = midpoint.z + cos * offset
+        pushCylinder(vertices, x, midpoint.y + 0.12, z, 0.10, 5.6, PALETTE.roof, 7)
+        pushBox(vertices, x + cos * 0.32, midpoint.y + 5.52, z + sin * 0.32, 0.72, 0.16, 0.22, PALETTE.windowWarm, -angle)
+        engineering.streetLights += 1
+      }
+    }
+
+    flattened.push({
+      id: `${road.id}-${segmentIndex}`,
+      roadId: road.id,
+      class: road.class,
+      role: road.role,
+      x: (a.x + b.x) * 0.5,
+      y: (a.y + b.y) * 0.5,
+      z: (a.z + b.z) * 0.5,
+      start: { x: a.x, y: a.y, z: a.z },
+      end: { x: b.x, y: b.y, z: b.z },
+      length,
+      width,
+      lanes: road.lanes,
+      speedKph: road.speedKph,
+      rotation: Math.atan2(-(b.x - a.x), b.z - a.z),
+      bridge: a.bridge || b.bridge,
+    })
+  }
+
+  function pushRoads(vertices, terrain, urban, detailLevel) {
+    const flattened = []
+    const engineering = { bridges: 0, tunnels: urban.infrastructure.tunnelCandidates, retainingWalls: 0, embankments: 0, streetLights: 0 }
+    urban.roads.forEach((road, roadIndex) => {
+      for (let segment = 0; segment < road.points.length - 1; segment += 1) {
+        pushRoadSegment(vertices, terrain, road, road.points[segment], road.points[segment + 1], roadIndex, segment, flattened, engineering, detailLevel)
+      }
+    })
+    return { roads: flattened, engineering }
+  }
+
+  function buildingColor(building) {
+    if (building.program === 'office') return PALETTE.glass
+    if (building.program === 'mixed-use' || building.program === 'commercial') return mix(PALETTE.glass, PALETTE.concrete, 0.30)
+    if (building.program === 'industrial') return PALETTE.industrial
+    if (building.program === 'civic') return PALETTE.civic
+    if (building.program === 'apartment') return PALETTE.concrete
+    return PALETTE.concreteWarm
+  }
+
+  function addFacadeBands(vertices, building, width, depth, baseY, height, detailLevel) {
+    if (detailLevel <= 0 || height < 12) return
+    const floors = Math.max(2, Math.round(height / building.floorHeight))
+    const bands = Math.min(14, floors - 1)
+    const color = building.facade.glazing > 0.55 ? PALETTE.glassLight : PALETTE.window
+    for (let band = 1; band <= bands; band += 1) {
+      const y = baseY + height * band / (bands + 1)
+      for (const side of [-1, 1]) {
+        const front = worldPoint(building, 0, side * (depth * 0.5 + 0.045), y)
+        pushBox(vertices, front[0], y, front[2], width * 0.86, 0.16, 0.075, color, building.rotation)
+      }
+    }
+    if (detailLevel > 1 && building.facade.balconyRate > 0.35) {
+      const balconyCount = Math.min(8, Math.floor(floors / 2))
+      for (let index = 1; index <= balconyCount; index += 1) {
+        const side = index % 2 ? -1 : 1
+        const y = baseY + height * index / (balconyCount + 1)
+        const point = worldPoint(building, side * width * 0.23, -depth * 0.5 - 0.55, y)
+        pushBox(vertices, point[0], y, point[2], width * 0.30, 0.14, 1.05, PALETTE.concrete, building.rotation)
+      }
+    }
+  }
+
+  function addRoofDetails(vertices, building, topY, width, depth, random, detailLevel) {
+    const coreWidth = Math.max(2.8, width * 0.19)
+    const coreDepth = Math.max(2.8, depth * 0.20)
+    pushBox(vertices, building.x, topY, building.z, coreWidth, Math.max(1.6, building.height * 0.025), coreDepth, PALETTE.roof, building.rotation)
+    if (detailLevel > 0 && width > 12 && depth > 10) {
+      for (const side of [-1, 1]) {
+        const panel = worldPoint(building, side * width * 0.22, 0, topY + 0.32)
+        pushBox(vertices, panel[0], topY + 0.30, panel[2], width * 0.24, 0.10, depth * 0.30, [0.12, 0.25, 0.31], building.rotation)
+      }
+    }
+    if (building.floors > 20 && random() < 0.72) pushCylinder(vertices, building.x, topY + 1.2, building.z, 0.12, 4.5 + building.floors * 0.08, PALETTE.roofLight, 7)
+  }
+
+  function pushBuilding(vertices, terrain, building, random, detailLevel) {
+    const ground = terrain.heightAt(building.x, building.z) + 0.12
+    const color = buildingColor(building)
+    const totalHeight = building.height
+    const podiumHeight = Math.min(totalHeight, building.podiumFloors * building.floorHeight)
+    pushDisc(vertices, building.x + 1.2, ground + 0.025, building.z + 1.4, building.width * 0.62, building.depth * 0.62, PALETTE.shadow, 14, building.rotation)
+
+    let topY = ground
+    let topWidth = building.width
+    let topDepth = building.depth
+    if (building.footprintType === 'shed') {
+      pushBox(vertices, building.x, ground, building.z, building.width, totalHeight, building.depth, color, building.rotation, PALETTE.roofLight)
+      pushGableRoof(vertices, building.x, ground + totalHeight, building.z, building.width, building.depth, Math.max(2.2, totalHeight * 0.15), PALETTE.roofLight, building.rotation)
+      const skylights = Math.max(2, Math.min(5, Math.floor(building.width / 10)))
+      for (let index = 0; index < skylights; index += 1) {
+        const point = worldPoint(building, (index - (skylights - 1) / 2) * building.width / skylights, 0, ground + totalHeight + 0.28)
+        pushBox(vertices, point[0], ground + totalHeight + 0.20, point[2], 1.5, 0.10, building.depth * 0.58, PALETTE.glassLight, building.rotation)
+      }
+      return { ...building, y: ground, height: totalHeight }
+    }
+
+    if (building.footprintType === 'courtyard' || building.footprintType === 'civic-court') {
+      const wing = Math.max(4.2, Math.min(building.width, building.depth) * 0.22)
+      const height = totalHeight * (building.footprintType === 'civic-court' ? 0.72 : 1)
+      const components = [
+        [0, -building.depth * 0.5 + wing * 0.5, building.width, wing],
+        [0, building.depth * 0.5 - wing * 0.5, building.width, wing],
+        [-building.width * 0.5 + wing * 0.5, 0, wing, building.depth - wing * 2],
+        [building.width * 0.5 - wing * 0.5, 0, wing, building.depth - wing * 2],
+      ]
+      for (const [lx, lz, width, depth] of components) {
+        const point = worldPoint(building, lx, lz, ground)
+        pushBox(vertices, point[0], ground, point[2], width, height, depth, color, building.rotation, PALETTE.roof)
+      }
+      if (building.footprintType === 'civic-court') pushCylinder(vertices, building.x, ground, building.z, Math.min(building.width, building.depth) * 0.18, totalHeight, mix(color, PALETTE.concrete, 0.36), 16)
+      topY = ground + totalHeight
+    } else if (building.footprintType === 'l-court') {
+      const wing = Math.max(5.5, Math.min(building.width, building.depth) * 0.38)
+      const first = worldPoint(building, 0, -building.depth * 0.5 + wing * 0.5, ground)
+      const second = worldPoint(building, -building.width * 0.5 + wing * 0.5, wing * 0.35, ground)
+      pushBox(vertices, first[0], ground, first[2], building.width, totalHeight, wing, color, building.rotation, PALETTE.roof)
+      pushBox(vertices, second[0], ground, second[2], wing, totalHeight * 0.92, building.depth - wing * 0.70, mix(color, PALETTE.concrete, 0.12), building.rotation, PALETTE.roof)
+      topY = ground + totalHeight
+    } else if (building.footprintType === 'elliptical-tower') {
+      pushChamferedMass(vertices, building, building.width, building.depth, ground, podiumHeight, mix(color, PALETTE.concrete, 0.28))
+      const towerHeight = Math.max(8, totalHeight - podiumHeight)
+      pushEllipticalMass(vertices, building, building.width * 0.66, building.depth * 0.68, ground + podiumHeight, towerHeight, 1, 0.78, color, 20)
+      topY = ground + totalHeight
+      topWidth = building.width * 0.52
+      topDepth = building.depth * 0.54
+      addFacadeBands(vertices, building, building.width * 0.66, building.depth * 0.68, ground + podiumHeight, towerHeight, detailLevel)
+    } else if (building.footprintType === 'stepped-tower') {
+      pushChamferedMass(vertices, building, building.width, building.depth, ground, podiumHeight, mix(color, PALETTE.concrete, 0.24))
+      const remaining = totalHeight - podiumHeight
+      const levels = 3
+      for (let level = 0; level < levels; level += 1) {
+        const scale = 1 - level * 0.16
+        const height = remaining / levels + 0.08
+        pushTaperedMass(vertices, building, building.width * 0.72 * scale, building.depth * 0.72 * scale, ground + podiumHeight + level * remaining / levels, height, 0.90, mix(color, PALETTE.glassLight, level * 0.10), (level - 1) * 0.8, level * 0.36)
+      }
+      topY = ground + totalHeight
+      topWidth = building.width * 0.48
+      topDepth = building.depth * 0.48
+    } else if (building.footprintType === 'slab') {
+      pushTaperedMass(vertices, building, building.width, building.depth, ground, totalHeight, 0.93, color)
+      if (building.floors > 14) {
+        const crownPoint = worldPoint(building, building.width * 0.12, 0, ground + totalHeight)
+        pushBox(vertices, crownPoint[0], ground + totalHeight, crownPoint[2], building.width * 0.54, 2.4, building.depth * 0.64, PALETTE.roof, building.rotation)
+      }
+      topY = ground + totalHeight
+    } else {
+      pushChamferedMass(vertices, building, building.width, building.depth, ground, totalHeight, color, building.width * 0.015)
+      topY = ground + totalHeight
+    }
+
+    if (!['courtyard', 'civic-court', 'l-court', 'elliptical-tower'].includes(building.footprintType)) addFacadeBands(vertices, building, building.width, building.depth, ground, totalHeight, detailLevel)
+    addRoofDetails(vertices, building, topY, topWidth, topDepth, random, detailLevel)
+    const entrance = worldPoint(building, 0, -building.depth * 0.5 - 0.9, ground + 0.4)
+    pushBox(vertices, entrance[0], ground + 0.38, entrance[2], Math.min(5.5, building.width * 0.32), 0.22, 1.8, PALETTE.glassLight, building.rotation)
+    return { ...building, y: ground, height: totalHeight }
+  }
+
+  function pushTree(vertices, terrain, x, z, scale, random) {
+    const y = terrain.heightAt(x, z) + 0.12
+    const trunkHeight = (3.1 + random() * 2.2) * scale
+    pushCylinder(vertices, x, y, z, 0.18 * scale, trunkHeight, PALETTE.trunk, 7)
+    const color = mix(PALETTE.canopy, PALETTE.canopyLight, random() * 0.65)
+    pushEllipsoid(vertices, x, y + trunkHeight + 1.0 * scale, z, 1.35 * scale, 1.75 * scale, 1.25 * scale, color, 4, 8)
+    if (random() > 0.52) pushEllipsoid(vertices, x + 0.65 * scale, y + trunkHeight + 0.65 * scale, z - 0.28 * scale, 0.90 * scale, 1.18 * scale, 0.85 * scale, color, 4, 8)
+  }
+
+  function pushGreenNetwork(vertices, terrain, urban, random, detailLevel) {
+    const parks = urban.greenSpaces.slice(0, detailLevel > 0 ? 52 : 34)
+    for (const park of parks) {
+      const parcel = urban.parcels.find((candidate) => candidate.id === park.id.replace('G-', 'P-')) || urban.parcels.find((candidate) => candidate.x === park.x && candidate.z === park.z)
+      if (parcel?.polygon) pushConvexPrism(vertices, parcel.polygon, park.y + 0.08, 0.12, park.type === 'floodable-park' ? PALETTE.wetland : PALETTE.park)
+      const count = detailLevel > 1 ? 8 : detailLevel > 0 ? 6 : 4
+      for (let index = 0; index < count; index += 1) {
+        const angle = random() * Math.PI * 2
+        const radius = Math.sqrt(random()) * Math.min(Math.sqrt(park.area) * 0.36, 18)
+        const x = park.x + Math.cos(angle) * radius
+        const z = park.z + Math.sin(angle) * radius
+        if (terrain.waterAt(x, z) < 0.35) pushTree(vertices, terrain, x, z, 0.72 + random() * 0.42, random)
+      }
+    }
+    const half = terrain.worldSize * 0.44
+    const step = terrain.worldSize / 18
+    let greenwayTrees = 0
+    for (let z = -half; z <= half && greenwayTrees < 95; z += step) {
+      for (let x = -half; x <= half && greenwayTrees < 95; x += step) {
+        const waterDistance = terrain.distanceToWaterAt?.(x, z) ?? Infinity
+        if (waterDistance > 10 && waterDistance < 58 && terrain.slopeAt(x, z) < 12 && terrain.waterAt(x, z) < 0.35 && random() < 0.58) {
+          pushTree(vertices, terrain, x + (random() - 0.5) * 10, z + (random() - 0.5) * 10, 0.65 + random() * 0.42, random)
+          greenwayTrees += 1
+        }
+      }
+    }
+    return { parkCount: parks.length, greenwayTrees }
+  }
+
+  function pushTransit(vertices, terrain, urban, detailLevel) {
+    const line = urban.transit.lines[0]
+    if (!line) return { railLength: 0, stations: [] }
+    function stationFrame(station) {
+      let best = { distance: Infinity, rotation: 0 }
+      for (let index = 0; index < line.points.length - 1; index += 1) {
+        const a = line.points[index]
+        const b = line.points[index + 1]
+        const dx = b.x - a.x
+        const dz = b.z - a.z
+        const length2 = dx * dx + dz * dz || 1
+        const t = Math.max(0, Math.min(1, ((station.x - a.x) * dx + (station.z - a.z) * dz) / length2))
+        const d = Math.hypot(station.x - (a.x + dx * t), station.z - (a.z + dz * t))
+        if (d < best.distance) best = { distance: d, rotation: Math.atan2(-dx, dz) }
+      }
+      return best
+    }
+    for (let index = 0; index < line.points.length - 1; index += 1) {
+      const a = pointWithRoadHeight(terrain, line.points[index])
+      const b = pointWithRoadHeight(terrain, line.points[index + 1])
+      for (const offset of [-1.55, 1.55]) {
+        const [ra, rb] = offsetSegment(a, b, offset)
+        pushStrip(vertices, ra, rb, 0.18, 0.32, PALETTE.rail)
+      }
+      if (detailLevel > 0) {
+        const length = distance(a, b)
+        const sleepers = Math.max(1, Math.floor(length / 5))
+        for (let sleeper = 0; sleeper < sleepers; sleeper += 1) {
+          const point = interpolatePoint(a, b, (sleeper + 0.5) / sleepers)
+          const rotation = Math.atan2(b.x - a.x, b.z - a.z)
+          pushBox(vertices, point.x, point.y + 0.22, point.z, 4.2, 0.10, 0.24, PALETTE.roof, rotation)
+        }
+      }
+    }
+    for (const station of urban.transit.stations) {
+      const y = pointWithRoadHeight(terrain, station).y + 0.36
+      const { rotation } = stationFrame(station)
+      const cos = Math.cos(rotation)
+      const sin = Math.sin(rotation)
+      for (const side of [-1, 1]) {
+        const x = station.x + cos * side * 3.4
+        const z = station.z + sin * side * 3.4
+        pushBox(vertices, x, y, z, 3.2, 0.42, 24, PALETTE.platform, rotation)
+        pushCylinder(vertices, x, y + 0.4, z, 0.11, 2.9, PALETTE.roof, 7)
+      }
+      pushBox(vertices, station.x, y + 3.3, station.z, 10.2, 0.28, 14, PALETTE.glassLight, rotation)
+    }
+    return { railLength: line.length / 1000, stations: urban.transit.stations }
+  }
+
+  function calculateMetrics(terrain, urban, buildings, roads) {
+    let population = 0
+    let jobs = 0
+    for (const building of buildings) {
+      const area = building.grossFloorArea || building.width * building.depth * building.floors
+      if (building.program === 'residential') population += area / 43
+      else if (building.program === 'apartment') population += area / 38
+      else if (building.program === 'mixed-use') {
+        population += area * 0.52 / 40
+        jobs += area * 0.38 / 30
+      } else if (building.program === 'office') jobs += area / 23
+      else if (building.program === 'commercial') jobs += area / 32
+      else if (building.program === 'industrial') jobs += area / 58
+      else if (building.program === 'civic') jobs += area / 62
+    }
+    let naturalCells = 0
+    const buildability = terrain.fields.buildability
+    for (let index = 0; index < buildability.length; index += 1) if (buildability[index] < 0.34 || terrain.fields.water[index] > 0.5) naturalCells += 1
+    const naturalRatio = naturalCells / Math.max(1, buildability.length)
+    const parkArea = urban.greenSpaces.reduce((sum, park) => sum + park.area, 0)
+    const worldArea = terrain.worldSize * terrain.worldSize
+    const greenRatio = clamp01(naturalRatio * 0.48 + parkArea / worldArea)
+    const roadLengthKm = roads.reduce((sum, road) => sum + road.length, 0) / 1000
+    const averageHeight = buildings.length ? buildings.reduce((sum, building) => sum + building.height, 0) / buildings.length : 0
+    const transitAccess = urban.diagnostics.transitCoverage
+    const balance = Math.min(population, jobs) / Math.max(1, Math.max(population, jobs))
+    return {
+      buildings: buildings.length,
+      buildingCount: buildings.length,
+      population: Math.round(population),
+      jobs: Math.round(jobs),
+      averageHeight,
+      greenRatio,
+      roadLengthKm,
+      transitAccess,
+      jobHousingBalance: balance,
+      floodExposure: urban.diagnostics.floodExposure,
+      averageSlope: urban.diagnostics.averageSlope,
+      connectedRoadRatio: urban.roads.length ? urban.roads.filter((road) => road.points.length > 2).length / urban.roads.length : 0,
+    }
+  }
+
+  function centerContract(urban) {
+    return {
+      cbd: urban.centers[0] || { x: 0, z: 0 },
+      subcenters: urban.centers.filter((center) => center.role === 'subcenter').slice(0, 3),
+      secondary: urban.centers[1] || urban.centers[0] || { x: 0, z: 0 },
+      industrial: urban.centers.find((center) => center.role === 'employment') || urban.centers[urban.centers.length - 1] || { x: 0, z: 0 },
+      parkAnchors: urban.greenSpaces.slice(0, 3),
+      civicAnchors: urban.buildings.filter((building) => building.program === 'civic').slice(0, 3),
+    }
+  }
+
+  function buildV11City(settings) {
+    const startedAt = performance.now()
+    const engineSettings = { ...settings, cellSize: 28 }
+    const seed = hashString(`${engineSettings.seed || 'city'}:${engineSettings.profile || 'balanced'}:v11`)
+    const worldSize = Math.max(680, (engineSettings.gridSize || 30) * engineSettings.cellSize * 1.32)
+    engineSettings.extent = worldSize
+    const terrain = window.ProceduralTerrainSystemV09.create({
+      seed,
+      size: Math.min(136, Math.max(78, (engineSettings.gridSize || 30) * 3)),
+      worldSize,
+      relief: Math.max(22, (engineSettings.roughness || 14) * 4.2),
+      erosionIterations: 18,
+      seaLevel: engineSettings.profile === 'waterfront' ? -2 : -9,
+    })
+    window.ProceduralTerrainSystemV11.augment(terrain, { streamDensity: engineSettings.profile === 'waterfront' ? 0.0039 : 0.0052 })
+    const urban = window.ProceduralUrbanSystemV11.create(terrain, engineSettings)
+    const detailLevel = engineSettings.gridSize <= 30 ? 2 : engineSettings.gridSize <= 38 ? 1 : 0
+    const random = seeded(hashString(`${engineSettings.seed}:v11-render`))
+    const vertices = []
+    pushTerrain(vertices, terrain, detailLevel)
+    const { roads, engineering } = pushRoads(vertices, terrain, urban, detailLevel)
+    const parcels = urban.parcels.map((parcel) => ({ ...parcel, width: parcel.frontage, zone: parcel.program, terrainBuildability: parcel.buildability, streetAlignment: parcel.rotation }))
+    const buildings = urban.buildings.slice(0, detailLevel > 1 ? 250 : detailLevel > 0 ? 215 : 170).map((building) => pushBuilding(vertices, terrain, building, random, detailLevel))
+    const landscape = pushGreenNetwork(vertices, terrain, urban, random, detailLevel)
+    const transit = pushTransit(vertices, terrain, urban, detailLevel)
+    const metrics = calculateMetrics(terrain, urban, buildings, roads)
+    metrics.vertexCount = vertices.length / 9
+    metrics.detailLevel = detailLevel
+    metrics.generationMs = performance.now() - startedAt
+    const city = {
+      schemaVersion: 6,
+      runtimeMode: 'v1.1-reality-engine',
+      settings: engineSettings,
+      extent: worldSize * 0.5,
+      centers: centerContract(urban),
+      centerList: urban.centers,
+      buildings,
+      parcels,
+      roads,
+      greenSpaces: urban.greenSpaces,
+      infrastructure: {
+        stations: transit.stations,
+        bridges: engineering.bridges,
+        streetLights: engineering.streetLights,
+        terrainEngineering: engineering,
+        transitLines: urban.transit.lines,
+        railLengthKm: transit.railLength,
+        landscape,
+        facilities: {
+          schools: Math.max(1, Math.round(metrics.population / 1500)),
+          hospitals: Math.max(1, Math.round(metrics.population / 9000)),
+          civic: urban.buildings.filter((building) => building.program === 'civic').length,
+          parks: urban.greenSpaces.length,
+        },
+      },
+      zoneCounts: urban.zoneCounts,
+      metrics,
+      terrainSystem: { ...terrain.toJSON(), version: terrain.version, hydrology: terrain.hydrology },
+      urbanSystem: urban.toJSON(),
+      realism: {
+        drainageConditionedTerrain: true,
+        terrainCostRoadRouting: true,
+        contourAlignedStreetTensor: true,
+        streetFrontingParcels: true,
+        accessibilityDrivenLandUse: true,
+        compoundBuildingGrammar: true,
+        proceduralFacadeMaterials: true,
+        floodAwareOpenSpace: true,
+        cityGmlTargetLod: 'LOD2-like',
+      },
+      vertices: new Float32Array(vertices),
+    }
+    window.ProceduralCityV11LastScene = { terrain, urban, city }
+    window.ProceduralCityV09LastScene = { terrain, urban, city }
+    return city
+  }
+
+  generateCity = function v11GenerateRealityCity(settings) {
+    try {
+      if (!window.ProceduralTerrainSystemV09 || !window.ProceduralTerrainSystemV11 || !window.ProceduralUrbanSystemV11) return previousGenerateCity(settings)
+      return buildV11City(settings)
+    } catch (error) {
+      console.error('[ProceduralCity v1.1 reality engine fallback]', error)
+      return previousGenerateCity(settings)
+    }
+  }
+
+  window.ProceduralCityV11Renderer = {
+    version: '1.1.0-reality-renderer',
+    getLastScene: () => window.ProceduralCityV11LastScene || null,
+  }
+})()

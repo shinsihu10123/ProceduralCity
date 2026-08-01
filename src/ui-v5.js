@@ -8,7 +8,7 @@ document.head.appendChild(stylesheet)
 const toolbar=document.createElement('nav')
 toolbar.className='v5-toolbar'
 toolbar.setAttribute('aria-label','도시 화면 도구')
-toolbar.innerHTML=`<div class="v5-brand">Procedural City <small>v0.5 renderer lab</small></div>
+toolbar.innerHTML=`<div class="v5-brand">Procedural City <small>v1.1 reality engine</small></div>
 <button class="v5-tool" data-v5-toggle="panel" aria-pressed="false">생성</button>
 <button class="v5-tool" data-v5-toggle="kpi" aria-pressed="false">지표</button>
 <button class="v5-tool" data-v5-toggle="environment" aria-pressed="false">환경</button>

@@ -132,6 +132,9 @@ const locations = {
   fogNear: gl.getUniformLocation(program, 'uFogNear'),
   fogFar: gl.getUniformLocation(program, 'uFogFar'),
   nightFactor: gl.getUniformLocation(program, 'uNightFactor'),
+  cameraPosition: gl.getUniformLocation(program, 'uCameraPosition'),
+  time: gl.getUniformLocation(program, 'uTime'),
+  wetness: gl.getUniformLocation(program, 'uWetness'),
 }
 
 const vertexBuffer = gl.createBuffer()
