@@ -1,4 +1,4 @@
-const BUILD_ID = 'v082-centers-contract-hotfix-20260801'
+const BUILD_ID = 'v083-runtime-recovery-20260801'
 const sourceParts = [
   './main.part1.js.txt',
   './main.part2.js.txt',
@@ -21,6 +21,7 @@ const sourceParts = [
   './main.part3n.js.txt',
   './main.part3p.js.txt',
   './main.part3o.js.txt',
+  './main.part3q.js.txt',
 ]
 
 function versionedUrl(path) {
@@ -53,7 +54,7 @@ try {
   console.error(error)
   const loading = document.querySelector('#loading')
   if (loading) {
-    loading.textContent = '도시 엔진을 불러오지 못했습니다.'
+    loading.textContent = `도시 엔진을 불러오지 못했습니다: ${error?.message || error}`
     loading.classList.add('visible')
   }
 }
