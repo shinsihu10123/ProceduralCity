@@ -1,0 +1,200 @@
+
+// v0.7 phase 4: lane intentions, protected turns and pedestrian crossings.
+const v071OriginalAssignRoute = typeof v053AssignRoute === 'function' ? v053AssignRoute : null
+const v071OriginalAdvanceAgent = typeof v053AdvanceAgent === 'function' ? v053AdvanceAgent : null
+const v071OriginalBuildTraffic = typeof v053BuildTraffic === 'function' ? v053BuildTraffic : null
+
+let v071Pedestrians = []
+let v071PedestrianVertexCount = 0
+const v071PedestrianBuffer = gl.createBuffer()
+
+function v071SignalPhase(nowSeconds = performance.now() / 1000) {
+  const cycle = nowSeconds % 32
+  if (cycle < 11) return { vehicles: 'horizontal', pedestrians: 'vertical', protectedTurn: false }
+  if (cycle < 14) return { vehicles: 'horizontal', pedestrians: 'none', protectedTurn: true }
+  if (cycle < 25) return { vehicles: 'vertical', pedestrians: 'horizontal', protectedTurn: false }
+  if (cycle < 28) return { vehicles: 'vertical', pedestrians: 'none', protectedTurn: true }
+  return { vehicles: 'all-red', pedestrians: 'all', protectedTurn: false }
+}
+
+function v071EdgeHeading(edge) {
+  if (!edge) return 0
+  return Math.atan2(edge.end.x - edge.start.x, edge.end.z - edge.start.z)
+}
+
+function v071TurnType(fromEdge, toEdge) {
+  if (!fromEdge || !toEdge) return 'straight'
+  const a = v071EdgeHeading(fromEdge)
+  const b = v071EdgeHeading(toEdge)
+  let delta = b - a
+  while (delta > Math.PI) delta -= Math.PI * 2
+  while (delta < -Math.PI) delta += Math.PI * 2
+  if (Math.abs(delta) < 0.45) return 'straight'
+  return delta > 0 ? 'left' : 'right'
+}
+
+function v071AllowedTurn(agent, edge, nextEdge) {
+  const turn = v071TurnType(edge, nextEdge)
+  const roadClass = edge?.roadClass || 'local'
+  if (roadClass === 'arterial' && agent.type === 'truck' && turn === 'left') return false
+  if (roadClass === 'local' && agent.type === 'bus' && turn === 'left') return false
+  return true
+}
+
+function v071AnnotateRoute(agent) {
+  if (!agent?.route?.length) return
+  agent.turnPlan = []
+  for (let index = 0; index < agent.route.length; index += 1) {
+    const current = agent.route[index]
+    const next = agent.route[index + 1]
+    agent.turnPlan.push(v071TurnType(current, next))
+  }
+  agent.turnIntent = agent.turnPlan[agent.routeIndex] || 'straight'
+}
+
+if (v071OriginalAssignRoute) {
+  v053AssignRoute = function v071AssignRoute(agent, index) {
+    v071OriginalAssignRoute(agent, index)
+    if (agent.route?.length > 1) {
+      for (let cursor = 0; cursor < agent.route.length - 1; cursor += 1) {
+        if (!v071AllowedTurn(agent, agent.route[cursor], agent.route[cursor + 1])) {
+          const origin = agent.route[cursor].start
+          const alternatives = origin.edges.filter((edge) => edge !== agent.route[cursor] && v071AllowedTurn(agent, agent.route[cursor], edge))
+          if (alternatives.length) agent.route[cursor + 1] = alternatives[(index + cursor) % alternatives.length]
+        }
+      }
+    }
+    v071AnnotateRoute(agent)
+  }
+}
+
+function v071VehicleAxis(edge) {
+  if (!edge) return 'none'
+  return Math.abs(edge.end.x - edge.start.x) > Math.abs(edge.end.z - edge.start.z) ? 'horizontal' : 'vertical'
+}
+
+function v071PedestrianConflict(edge, phase) {
+  const axis = v071VehicleAxis(edge)
+  if (phase.pedestrians === 'all') return true
+  return phase.pedestrians === axis
+}
+
+function v071TrafficPermission(agent, phase) {
+  if (!agent.edge) return true
+  const axis = v071VehicleAxis(agent.edge)
+  const approaching = agent.progress > 0.72
+  if (!approaching) return true
+  agent.turnIntent = agent.turnPlan?.[agent.routeIndex] || agent.turnIntent || 'straight'
+  if (v071PedestrianConflict(agent.edge, phase)) return false
+  if (agent.turnIntent === 'left') return phase.vehicles === axis && phase.protectedTurn
+  if (agent.turnIntent === 'right') return phase.vehicles === axis || phase.vehicles === 'all-red'
+  return phase.vehicles === axis
+}
+
+function v071LeftTurnQueue(agent) {
+  if (agent.turnIntent !== 'left' || !agent.edge) return 0
+  let ahead = 0
+  for (const other of v053TrafficAgents || []) {
+    if (other === agent || other.edge !== agent.edge || other.turnIntent !== 'left') continue
+    if (other.progress > agent.progress && other.progress - agent.progress < 0.22) ahead += 1
+  }
+  return ahead
+}
+
+if (v071OriginalAdvanceAgent) {
+  v053AdvanceAgent = function v071AdvanceAgent(agent, deltaSeconds, index) {
+    const phase = v071SignalPhase()
+    const permission = v071TrafficPermission(agent, phase)
+    const queueAhead = v071LeftTurnQueue(agent)
+    if (!Number.isFinite(agent.signalWait)) agent.signalWait = 0
+    if ((!permission || queueAhead > 0) && agent.progress > 0.72) {
+      agent.signalWait += deltaSeconds
+      agent.currentSpeed = Math.max(0, (agent.currentSpeed || 0) - deltaSeconds * 6.5)
+      if (agent.signalWait < 14) return
+    }
+    agent.signalWait = 0
+    v071OriginalAdvanceAgent(agent, deltaSeconds, index)
+    agent.turnIntent = agent.turnPlan?.[agent.routeIndex] || 'straight'
+  }
+}
+
+function v071ResetPedestrians(city) {
+  v071Pedestrians = []
+  const nodes = v053Graph?.nodes || []
+  const intersections = nodes.filter((node) => node.edges?.length >= 3)
+  const count = Math.min(52, Math.max(12, Math.round(intersections.length * 0.65)))
+  for (let index = 0; index < count; index += 1) {
+    const node = intersections[(index * 7) % Math.max(intersections.length, 1)]
+    if (!node) continue
+    const axis = index % 2 === 0 ? 'horizontal' : 'vertical'
+    v071Pedestrians.push({
+      node,
+      axis,
+      progress: (index * 0.173) % 1,
+      speed: 0.14 + (index % 5) * 0.018,
+      offset: ((index % 4) - 1.5) * 0.75,
+      color: index % 3 === 0 ? [0.82, 0.34, 0.24] : index % 3 === 1 ? [0.20, 0.38, 0.70] : [0.76, 0.72, 0.62],
+    })
+  }
+}
+
+function v071PushPedestrian(vertices, pedestrian, x, y, z) {
+  pushBox(vertices, x, y + 0.1, z, 0.38, 1.25, 0.34, pedestrian.color)
+  pushBox(vertices, x, y + 1.42, z, 0.42, 0.42, 0.42, [0.70, 0.54, 0.42])
+}
+
+function v071BuildPedestrians(city, deltaSeconds) {
+  if (!city || !v053Graph) {
+    v071PedestrianVertexCount = 0
+    return
+  }
+  if (!v071Pedestrians.length || v071Pedestrians[0]?.city !== city) {
+    v071ResetPedestrians(city)
+    for (const pedestrian of v071Pedestrians) pedestrian.city = city
+  }
+  const phase = v071SignalPhase()
+  const vertices = []
+  for (const pedestrian of v071Pedestrians) {
+    const allowed = phase.pedestrians === 'all' || phase.pedestrians === pedestrian.axis
+    if (allowed) pedestrian.progress = (pedestrian.progress + deltaSeconds * pedestrian.speed) % 1
+    const t = pedestrian.progress
+    const span = 17
+    let x = pedestrian.node.x
+    let z = pedestrian.node.z
+    if (pedestrian.axis === 'horizontal') {
+      x += -span / 2 + t * span
+      z += pedestrian.offset
+    } else {
+      z += -span / 2 + t * span
+      x += pedestrian.offset
+    }
+    v071PushPedestrian(vertices, pedestrian, x, pedestrian.node.y + 0.22, z)
+  }
+  const data = new Float32Array(vertices)
+  gl.bindBuffer(gl.ARRAY_BUFFER, v071PedestrianBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW)
+  v071PedestrianVertexCount = data.length / 9
+}
+
+if (v071OriginalBuildTraffic) {
+  v053BuildTraffic = function v071BuildTraffic(city, deltaSeconds = 0) {
+    v071OriginalBuildTraffic(city, deltaSeconds)
+    v071BuildPedestrians(city, deltaSeconds)
+  }
+}
+
+const v071OriginalRender = render
+render = function v071Render(frameTime = performance.now()) {
+  v071OriginalRender(frameTime)
+  if (v071PedestrianVertexCount > 0) {
+    gl.useProgram(program)
+    v053BindGeometry(v071PedestrianBuffer)
+    gl.drawArrays(gl.TRIANGLES, 0, v071PedestrianVertexCount)
+  }
+}
+
+window.ProceduralCityV071Mobility = {
+  version: '0.7-alpha-phase-4',
+  getSignal: () => v071SignalPhase(),
+  features: ['lane-intentions','turn-restrictions','protected-left-turns','left-turn-queues','pedestrian-signals','pedestrian-crossings','vehicle-pedestrian-conflict-control'],
+}
