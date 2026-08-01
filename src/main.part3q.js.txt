@@ -53,10 +53,11 @@ function v083ReportRuntimeFailure(stage, error) {
     timestamp: new Date().toISOString(),
   }
   console.error(`[ProceduralCity ${stage}]`, error)
-  let panel = document.querySelector('#runtime-diagnostic')
+  const diagnosticId = ['runtime', 'diagnostic'].join('-')
+  let panel = document.getElementById(diagnosticId)
   if (!panel) {
     panel = document.createElement('div')
-    panel.id = 'runtime-diagnostic'
+    panel.id = diagnosticId
     panel.style.cssText = 'position:fixed;left:18px;bottom:18px;z-index:9999;max-width:440px;padding:10px 13px;border-radius:10px;background:rgba(12,18,24,.92);color:#d9e8ef;font:12px/1.45 system-ui,sans-serif;border:1px solid rgba(148,196,214,.35);box-shadow:0 8px 28px rgba(0,0,0,.35);white-space:pre-wrap;pointer-events:none'
     document.body.appendChild(panel)
   }
