@@ -1,0 +1,171 @@
+// Procedural City v1.0 — organic geometry and streetscape realism layer.
+(function () {
+  const previousGenerateCity = generateCity
+
+  function mix(a, b, t) {
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]
+  }
+
+  function pushCylinderMesh(vertices, x, y, z, radius, height, color, segments = 8) {
+    const bottom = y
+    const top = y + height
+    for (let i = 0; i < segments; i += 1) {
+      const a0 = i / segments * Math.PI * 2
+      const a1 = (i + 1) / segments * Math.PI * 2
+      const p0 = [x + Math.cos(a0) * radius, bottom, z + Math.sin(a0) * radius]
+      const p1 = [x + Math.cos(a1) * radius, bottom, z + Math.sin(a1) * radius]
+      const p2 = [x + Math.cos(a1) * radius, top, z + Math.sin(a1) * radius]
+      const p3 = [x + Math.cos(a0) * radius, top, z + Math.sin(a0) * radius]
+      const n0 = calculateNormal(p0, p1, p2)
+      pushTriangle(vertices, p0, p1, p2, n0, color)
+      pushTriangle(vertices, p0, p2, p3, n0, color)
+      const topNormal = [0, 1, 0]
+      pushTriangle(vertices, [x, top, z], p3, p2, topNormal, color)
+    }
+  }
+
+  function pushEllipsoidMesh(vertices, x, y, z, rx, ry, rz, color, rings = 5, segments = 9) {
+    for (let ring = 0; ring < rings; ring += 1) {
+      const v0 = ring / rings
+      const v1 = (ring + 1) / rings
+      const phi0 = -Math.PI / 2 + v0 * Math.PI
+      const phi1 = -Math.PI / 2 + v1 * Math.PI
+      for (let i = 0; i < segments; i += 1) {
+        const a0 = i / segments * Math.PI * 2
+        const a1 = (i + 1) / segments * Math.PI * 2
+        const point = (phi, a) => [
+          x + Math.cos(phi) * Math.cos(a) * rx,
+          y + Math.sin(phi) * ry,
+          z + Math.cos(phi) * Math.sin(a) * rz,
+        ]
+        const p0 = point(phi0, a0)
+        const p1 = point(phi0, a1)
+        const p2 = point(phi1, a1)
+        const p3 = point(phi1, a0)
+        pushTriangle(vertices, p0, p1, p2, calculateNormal(p0, p1, p2), color)
+        pushTriangle(vertices, p0, p2, p3, calculateNormal(p0, p2, p3), color)
+      }
+    }
+  }
+
+  function seeded(value) {
+    let state = value >>> 0
+    return () => {
+      state += 0x6d2b79f5
+      let t = state
+      t = Math.imul(t ^ (t >>> 15), t | 1)
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    }
+  }
+
+  function addTree(vertices, terrain, x, z, scale, random) {
+    const ground = terrain.heightAt(x, z)
+    const trunkHeight = 3.2 * scale + random() * 2.2 * scale
+    pushCylinderMesh(vertices, x, ground, z, 0.22 * scale, trunkHeight, COLORS.treeTrunk, 7)
+    const canopy = mix(COLORS.treeCanopy, COLORS.treeCanopyLight, random() * 0.75)
+    pushEllipsoidMesh(vertices, x, ground + trunkHeight + 1.25 * scale, z, 1.5 * scale, 2.0 * scale, 1.5 * scale, canopy, 4, 8)
+    if (random() > 0.55) {
+      pushEllipsoidMesh(vertices, x + 0.7 * scale, ground + trunkHeight + 0.8 * scale, z - 0.3 * scale, 1.0 * scale, 1.35 * scale, 1.0 * scale, canopy, 4, 8)
+    }
+  }
+
+  function addStreetFurniture(vertices, terrain, roads, random, detailLevel) {
+    if (detailLevel <= 0) return
+    const stride = detailLevel > 1 ? 2 : 4
+    for (let r = 0; r < roads.length; r += stride) {
+      const road = roads[r]
+      const dx = road.end.x - road.start.x
+      const dz = road.end.z - road.start.z
+      const length = Math.hypot(dx, dz) || 1
+      const nx = -dz / length
+      const nz = dx / length
+      const samples = Math.max(1, Math.floor(length / 42))
+      for (let i = 1; i <= samples; i += 1) {
+        const t = i / (samples + 1)
+        const cx = road.start.x + dx * t
+        const cz = road.start.z + dz * t
+        const side = i % 2 ? 1 : -1
+        const offset = (road.class === 'arterial' ? 13 : road.class === 'collector' ? 9 : 6.2) * side
+        const x = cx + nx * offset
+        const z = cz + nz * offset
+        const y = terrain.heightAt(x, z)
+        pushCylinderMesh(vertices, x, y, z, 0.13, 5.8, COLORS.signal, 8)
+        pushEllipsoidMesh(vertices, x, y + 5.9, z, 0.34, 0.22, 0.34, COLORS.window, 3, 8)
+        if (random() > 0.32) addTree(vertices, terrain, x + nx * 3.2, z + nz * 3.2, 0.8 + random() * 0.45, random)
+      }
+    }
+  }
+
+  function addLandscape(vertices, terrain, urban, random, detailLevel) {
+    const count = detailLevel > 1 ? 170 : detailLevel > 0 ? 110 : 55
+    const half = terrain.worldSize * 0.46
+    for (let i = 0; i < count; i += 1) {
+      const x = (random() * 2 - 1) * half
+      const z = (random() * 2 - 1) * half
+      if (terrain.waterAt(x, z) > 0.2 || terrain.slopeAt(x, z) > 25 || terrain.vegetationAt(x, z) < 0.48) continue
+      let nearBuilding = false
+      for (let b = 0; b < urban.buildings.length; b += 8) {
+        const building = urban.buildings[b]
+        if (Math.hypot(building.x - x, building.z - z) < 15) { nearBuilding = true; break }
+      }
+      if (!nearBuilding || random() > 0.62) addTree(vertices, terrain, x, z, 0.72 + random() * 0.75, random)
+    }
+  }
+
+  function addBuildingRefinement(vertices, city, random, detailLevel) {
+    const maxBuildings = detailLevel > 1 ? city.buildings.length : Math.min(city.buildings.length, 130)
+    for (let i = 0; i < maxBuildings; i += 1) {
+      const building = city.buildings[i]
+      if (!building || building.height < 12) continue
+      const roofY = building.y + building.height
+      if (building.height > 48 && random() > 0.38) {
+        const domeColor = building.zone === 'commercial' ? COLORS.glassDark : COLORS.roof
+        pushEllipsoidMesh(vertices, building.x, roofY + 1.8, building.z, Math.max(1.8, building.width * 0.12), 2.8, Math.max(1.8, building.depth * 0.12), domeColor, 4, 10)
+      }
+      if (detailLevel > 0 && building.height > 24) {
+        const frameColor = building.zone === 'commercial' ? COLORS.concreteLight : COLORS.roof
+        const radius = Math.max(0.12, Math.min(0.28, building.width * 0.012))
+        const c = Math.cos(building.rotation || 0)
+        const s = Math.sin(building.rotation || 0)
+        for (const side of [-1, 1]) {
+          const lx = side * building.width * 0.46
+          const lz = -building.depth * 0.46
+          const x = building.x + lx * c - lz * s
+          const z = building.z + lx * s + lz * c
+          pushCylinderMesh(vertices, x, building.y, z, radius, building.height * 0.96, frameColor, 6)
+        }
+      }
+    }
+  }
+
+  generateCity = function v10GenerateRealisticCity(settings) {
+    const city = previousGenerateCity(settings)
+    try {
+      const scene = window.ProceduralCityV09LastScene
+      if (!scene || city.runtimeMode !== 'v0.9-dual-system') return city
+      const vertices = Array.from(city.vertices)
+      const detailLevel = city.metrics?.detailLevel ?? 1
+      const random = seeded(hashString(`${settings.seed || 'city'}:v10-realism`))
+      addStreetFurniture(vertices, scene.terrain, city.roads || [], random, detailLevel)
+      addLandscape(vertices, scene.terrain, scene.urban, random, detailLevel)
+      addBuildingRefinement(vertices, city, random, detailLevel)
+      city.vertices = new Float32Array(vertices)
+      city.metrics.vertexCount = vertices.length / 9
+      city.runtimeMode = 'v1.0-realism-layer'
+      city.realism = {
+        organicVegetation: true,
+        roundedStreetFurniture: true,
+        roofRefinement: true,
+        facadeDepth: true,
+        materialSystem: 'procedural-physical-v1',
+      }
+      return city
+    } catch (error) {
+      console.error('[ProceduralCity v1.0 realism fallback]', error)
+      return city
+    }
+  }
+
+  window.ProceduralCityV10Realism = { version: '1.0.0-alpha' }
+})()
