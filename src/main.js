@@ -1,4 +1,4 @@
-const BUILD_ID = 'v0811-terrain-centers-hotfix-20260801'
+const BUILD_ID = 'v082-centers-contract-hotfix-20260801'
 const sourceParts = [
   './main.part1.js.txt',
   './main.part2.js.txt',
@@ -19,6 +19,7 @@ const sourceParts = [
   './main.part3l.js.txt',
   './main.part3m.js.txt',
   './main.part3n.js.txt',
+  './main.part3p.js.txt',
   './main.part3o.js.txt',
 ]
 
