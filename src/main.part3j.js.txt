@@ -1,0 +1,141 @@
+
+// v0.7 phase 2: lane trajectories, traffic signals and parcel-scale realism.
+const v071OriginalAdvanceAgent = v053AdvanceAgent
+const v071OriginalPushBuilding = pushBuilding
+
+function v071SignalAllows(edge, timeSeconds) {
+  if (!edge?.end || edge.end.edges.length < 3) return true
+  const horizontal = edge.orientation === 'horizontal'
+  const cycle = 24
+  const phase = timeSeconds % cycle
+  const horizontalGreen = phase < 10 || phase >= 22
+  const verticalGreen = phase >= 12 && phase < 22
+  return horizontal ? horizontalGreen : verticalGreen
+}
+
+function v071NextEdge(agent) {
+  if (!agent?.route?.length) return null
+  return agent.route[Math.min(agent.routeIndex + 1, agent.route.length - 1)] || null
+}
+
+function v071LaneOffset(edge, laneSign) {
+  const laneWidth = edge.roadClass === 'arterial' ? 4.8 : edge.roadClass === 'local' ? 1.55 : 2.65
+  const dx = edge.end.x - edge.start.x
+  const dz = edge.end.z - edge.start.z
+  const length = Math.max(Math.hypot(dx, dz), 0.001)
+  return { x: (dz / length) * laneWidth * laneSign, z: (-dx / length) * laneWidth * laneSign }
+}
+
+function v071PointOnEdge(edge, progress, laneSign) {
+  const offset = v071LaneOffset(edge, laneSign)
+  return {
+    x: lerp(edge.start.x, edge.end.x, progress) + offset.x,
+    y: lerp(edge.start.y, edge.end.y, progress) + 0.62,
+    z: lerp(edge.start.z, edge.end.z, progress) + offset.z,
+  }
+}
+
+function v071CurvePoint(agent) {
+  const edge = agent.edge
+  const next = v071NextEdge(agent)
+  const t = clamp(agent.progress, 0, 1)
+  if (!edge || !next || edge.end !== next.start || edge.end.edges.length < 3 || t < 0.72) {
+    const point = v071PointOnEdge(edge, t, agent.laneSign)
+    const dx = edge.end.x - edge.start.x
+    const dz = edge.end.z - edge.start.z
+    return { ...point, rotation: Math.atan2(dx, dz) }
+  }
+
+  const blend = smoothstep(0.72, 1, t)
+  const entry = v071PointOnEdge(edge, 0.72, agent.laneSign)
+  const junction = { x: edge.end.x, y: edge.end.y + 0.62, z: edge.end.z }
+  const exit = v071PointOnEdge(next, 0.18, agent.laneSign)
+  const u = blend
+  const one = 1 - u
+  const x = one * one * entry.x + 2 * one * u * junction.x + u * u * exit.x
+  const y = one * one * entry.y + 2 * one * u * junction.y + u * u * exit.y
+  const z = one * one * entry.z + 2 * one * u * junction.z + u * u * exit.z
+  const tangentX = 2 * one * (junction.x - entry.x) + 2 * u * (exit.x - junction.x)
+  const tangentZ = 2 * one * (junction.z - entry.z) + 2 * u * (exit.z - junction.z)
+  return { x, y, z, rotation: Math.atan2(tangentX, tangentZ) }
+}
+
+v053AdvanceAgent = function v071AdvanceAgent(agent, deltaSeconds, index) {
+  const timeSeconds = performance.now() / 1000
+  const edge = agent.edge
+  const signalStop = edge && edge.end?.edges?.length > 2 && agent.progress > 0.70 && !v071SignalAllows(edge, timeSeconds)
+  if (signalStop && agent.progress < 0.84) {
+    if (!Number.isFinite(agent.currentSpeed)) agent.currentSpeed = 0
+    agent.currentSpeed = Math.max(0, agent.currentSpeed - 7.5 * deltaSeconds)
+    const originalSpeed = agent.speed
+    agent.speed = agent.currentSpeed
+    v071OriginalAdvanceAgent(agent, deltaSeconds, index)
+    agent.speed = originalSpeed
+    if (agent.progress > 0.82) agent.progress = 0.82
+    agent.signalWaiting = true
+    return
+  }
+  agent.signalWaiting = false
+  v071OriginalAdvanceAgent(agent, deltaSeconds, index)
+}
+
+v053BuildTraffic = function v071BuildTraffic(city, deltaSeconds = 0) {
+  if (city !== v053TrafficCity) v053ResetTraffic(city)
+  if (!v053TrafficAgents.length) {
+    v053TrafficVertexCount = 0
+    return
+  }
+  const vertices = []
+  v053TrafficAgents.forEach((agent, index) => {
+    v053AdvanceAgent(agent, deltaSeconds, index)
+    if (!agent.edge) return
+    const pose = v071CurvePoint(agent)
+    v053PushVehicle(vertices, agent, pose.x, pose.y, pose.z, pose.rotation)
+  })
+  const data = new Float32Array(vertices)
+  gl.bindBuffer(gl.ARRAY_BUFFER, v053TrafficBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW)
+  v053TrafficVertexCount = data.length / 9
+}
+
+function v071PushParkingLot(vertices, building, detailLevel) {
+  if (detailLevel <= 0 || building.type === 'office-tower' || building.type === 'residential-tower') return
+  const seed = building.id * 29 + building.floors
+  if (v070SeededUnit(seed) > 0.42) return
+  const side = v070SeededUnit(seed + 1) > 0.5 ? 1 : -1
+  const localX = side * building.width * 0.72
+  const [lotX, lotZ] = buildingOffset(building, localX, 0)
+  const lotWidth = Math.max(5.5, building.width * 0.34)
+  const lotDepth = Math.max(7.5, building.depth * 0.76)
+  pushBox(vertices, lotX, building.y - 0.02, lotZ, lotWidth, 0.08, lotDepth, [0.23, 0.24, 0.24], building.rotation)
+  const spaces = Math.max(2, Math.min(5, Math.floor(lotDepth / 4.4)))
+  for (let space = 0; space < spaces; space += 1) {
+    const offset = (space - (spaces - 1) / 2) * 4.2
+    const [carX, carZ] = buildingOffset(building, localX, offset)
+    if ((space + building.id) % 3 !== 0) v070PushParkedCar(vertices, carX, building.y + 0.05, carZ, building.rotation, seed + space)
+  }
+}
+
+function v071PushAccessoryMass(vertices, building, detailLevel) {
+  if (detailLevel <= 0 || building.type === 'detached-house') return
+  const seed = building.id * 41
+  if (v070SeededUnit(seed) > 0.55) return
+  const [x, z] = buildingOffset(building, -building.width * 0.48, building.depth * 0.30)
+  const width = Math.max(3.2, building.width * 0.24)
+  const depth = Math.max(4.0, building.depth * 0.32)
+  const height = Math.max(3.0, Math.min(8.0, building.height * 0.16))
+  pushBox(vertices, x, building.y, z, width, height, depth, tintColor(building.color, -0.08), building.rotation, COLORS.roof)
+  const [serviceX, serviceZ] = buildingOffset(building, -building.width * 0.48, building.depth * 0.60)
+  pushBox(vertices, serviceX, building.y - 0.01, serviceZ, Math.max(3.0, width * 0.75), 0.06, Math.max(5.0, depth * 1.25), [0.31, 0.30, 0.28], building.rotation)
+}
+
+pushBuilding = function v071PushBuilding(vertices, building, random, detailLevel) {
+  v071OriginalPushBuilding(vertices, building, random, detailLevel)
+  v071PushParkingLot(vertices, building, detailLevel)
+  v071PushAccessoryMass(vertices, building, detailLevel)
+}
+
+window.ProceduralCityV071Realism = {
+  version: '0.7-alpha.2',
+  features: ['lane-offsets','curved-intersection-turns','traffic-signals','stop-lines','parking-lots','accessory-buildings','service-drives'],
+}
