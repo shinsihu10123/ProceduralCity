@@ -1,4 +1,4 @@
-const BUILD_ID = 'v091-dual-system-render-20260801'
+const BUILD_ID = 'v100-realism-rendering-20260802'
 const sourceParts = [
   './main.part1.js.txt',
   './main.part2.js.txt',
@@ -25,6 +25,7 @@ const sourceParts = [
   './v09-terrain-system.js.txt',
   './v09-urban-system.js.txt',
   './v09-render-integration.js.txt',
+  './v10-realism-layer.js.txt',
 ]
 
 function versionedUrl(path) {
