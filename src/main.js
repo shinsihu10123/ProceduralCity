@@ -1,4 +1,4 @@
-const BUILD_ID = 'v081-terrain-routed-structure-20260801'
+const BUILD_ID = 'v0811-terrain-centers-hotfix-20260801'
 const sourceParts = [
   './main.part1.js.txt',
   './main.part2.js.txt',

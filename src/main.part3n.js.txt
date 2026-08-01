@@ -169,20 +169,28 @@ createUrbanCenters = function v080CreateUrbanCenters(settings, random, extent, t
   candidates.sort((a, b) => b.score - a.score)
   const cbd = candidates[0]
   if (!cbd || cbd.score < 0.26) return v080OriginalCreateUrbanCenters(settings, random, extent, terrain)
-  const secondary = candidates.find((candidate) => Math.hypot(candidate.x - cbd.x, candidate.z - cbd.z) > extent * 0.22) || candidates[1]
+  const secondary = candidates.find((candidate) => Math.hypot(candidate.x - cbd.x, candidate.z - cbd.z) > extent * 0.22) || candidates[1] || cbd
+  const tertiary = candidates.find((candidate) => (
+    Math.hypot(candidate.x - cbd.x, candidate.z - cbd.z) > extent * 0.18
+    && Math.hypot(candidate.x - secondary.x, candidate.z - secondary.z) > extent * 0.16
+  )) || secondary
   const industrial = [...candidates].reverse().find((candidate) => {
     const slope = terrain.slopeDegrees(candidate.x, candidate.z)
     return slope < 12 && Math.hypot(candidate.x - cbd.x, candidate.z - cbd.z) > extent * 0.26
   }) || secondary
-  return {
+  const subcenters = [secondary, tertiary].map((center) => ({ x: center.x, z: center.z }))
+  const result = {
     cbd: { x: cbd.x, z: cbd.z },
-    secondary: { x: secondary.x, z: secondary.z },
+    subcenters,
+    secondary: subcenters[0],
     industrial: { x: industrial.x, z: industrial.z },
   }
+  if (!Array.isArray(result.subcenters)) result.subcenters = []
+  return result
 }
 
 window.ProceduralCityV080Terrain = {
-  version: '0.8-alpha-phase-1',
+  version: '0.8-alpha-phase-1-hotfix-1',
   warp: v080DomainWarp,
   features: [
     'domain-warped-urban-form',
@@ -193,5 +201,6 @@ window.ProceduralCityV080Terrain = {
     'floodplain-shaping',
     'slope-and-aspect-analysis',
     'terrain-selected-urban-centers',
+    'legacy-center-schema-compatible',
   ],
 }
