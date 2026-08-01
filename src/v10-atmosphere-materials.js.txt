@@ -1,0 +1,115 @@
+// Procedural City v1.0 — atmospheric perspective and reflective material augmentation.
+(function () {
+  const previousGenerateCity = generateCity
+
+  function blend(a, b, t) {
+    const f = Math.max(0, Math.min(1, t))
+    return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]
+  }
+
+  function weatherMode() {
+    return document.querySelector('#weather-mode')?.value || 'auto'
+  }
+
+  function timeValue() {
+    return Number(document.querySelector('#time-of-day')?.value || 15)
+  }
+
+  function addWetRoadHighlights(vertices, city, wetness) {
+    if (wetness <= 0.05) return
+    for (let i = 0; i < (city.roads || []).length; i += 1) {
+      const road = city.roads[i]
+      if (!road?.start || !road?.end || road.length < 5) continue
+      const width = road.class === 'arterial' ? 15.2 : road.class === 'collector' ? 9.4 : 5.7
+      const y = (road.y || road.start.y || 0) + 0.22
+      const reflective = blend([0.10, 0.12, 0.14], [0.24, 0.34, 0.42], wetness * 0.72)
+      pushBox(vertices, road.x, y, road.z, width * 0.92, 0.018, Math.max(2, road.length * 0.94), reflective, road.rotation || 0)
+      if (road.class !== 'local') {
+        const glint = blend([0.32, 0.38, 0.42], [0.55, 0.66, 0.72], wetness)
+        pushBox(vertices, road.x, y + 0.015, road.z, Math.max(0.12, width * 0.025), 0.012, Math.max(2, road.length * 0.7), glint, road.rotation || 0)
+      }
+    }
+  }
+
+  function addGlassSpecularBands(vertices, city, time) {
+    const sunWarmth = Math.max(0, 1 - Math.abs(time - 18) / 6)
+    const highlight = blend([0.34, 0.48, 0.58], [0.88, 0.58, 0.32], sunWarmth * 0.72)
+    const count = Math.min((city.buildings || []).length, 180)
+    for (let i = 0; i < count; i += 1) {
+      const building = city.buildings[i]
+      if (!building || building.zone !== 'commercial' || building.height < 22) continue
+      const rotation = building.rotation || 0
+      const c = Math.cos(rotation)
+      const s = Math.sin(rotation)
+      const side = (i % 2 ? 1 : -1)
+      const localX = side * building.width * 0.34
+      const localZ = -building.depth * 0.505
+      const x = building.x + localX * c - localZ * s
+      const z = building.z + localX * s + localZ * c
+      const bandHeight = Math.max(6, building.height * 0.62)
+      pushBox(vertices, x, building.y + building.height * 0.18, z, Math.max(0.18, building.width * 0.035), bandHeight, 0.045, highlight, rotation)
+    }
+  }
+
+  function ensureAtmosphereLayer() {
+    let layer = document.querySelector('[data-v10-atmosphere]')
+    if (!layer) {
+      layer = document.createElement('div')
+      layer.dataset.v10Atmosphere = 'true'
+      layer.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:3;mix-blend-mode:screen;transition:background 800ms ease,opacity 800ms ease;'
+      document.querySelector('.viewport')?.appendChild(layer)
+    }
+    return layer
+  }
+
+  function updateAtmosphere() {
+    const layer = ensureAtmosphereLayer()
+    if (!layer) return
+    const mode = weatherMode()
+    const hour = timeValue()
+    const night = hour < 6 || hour > 20
+    const sunset = Math.max(0, 1 - Math.min(Math.abs(hour - 6), Math.abs(hour - 18)) / 2.5)
+    let opacity = night ? 0.15 : 0.10
+    let fog = 'rgba(155,190,210,.20)'
+    if (mode === 'fog') { opacity = 0.44; fog = 'rgba(200,215,220,.48)' }
+    else if (mode === 'rain' || mode === 'overcast') { opacity = 0.23; fog = 'rgba(120,150,170,.30)' }
+    else if (mode === 'snow') { opacity = 0.28; fog = 'rgba(218,230,235,.34)' }
+    const warm = `rgba(255,156,86,${(sunset * 0.28).toFixed(3)})`
+    layer.style.opacity = String(opacity)
+    layer.style.background = `linear-gradient(to bottom, ${fog} 0%, rgba(150,180,200,.08) 42%, rgba(20,28,36,.03) 75%), radial-gradient(circle at 72% 18%, ${warm}, transparent 38%)`
+  }
+
+  generateCity = function v10GenerateAtmosphericCity(settings) {
+    const city = previousGenerateCity(settings)
+    try {
+      if (!city?.vertices || !String(city.runtimeMode || '').startsWith('v1.0')) return city
+      const vertices = Array.from(city.vertices)
+      const mode = weatherMode()
+      const wetness = mode === 'rain' ? 1 : mode === 'overcast' ? 0.42 : mode === 'auto' ? 0.14 : 0
+      addWetRoadHighlights(vertices, city, wetness)
+      addGlassSpecularBands(vertices, city, timeValue())
+      city.vertices = new Float32Array(vertices)
+      city.metrics.vertexCount = vertices.length / 9
+      city.runtimeMode = 'v1.0-atmosphere-materials'
+      city.realism = {
+        ...(city.realism || {}),
+        atmosphericPerspective: true,
+        wetRoadResponse: true,
+        glassSpecularBands: true,
+        weatherTinting: true,
+      }
+      updateAtmosphere()
+      return city
+    } catch (error) {
+      console.error('[ProceduralCity v1.0 atmosphere fallback]', error)
+      return city
+    }
+  }
+
+  document.querySelector('#weather-mode')?.addEventListener('change', updateAtmosphere)
+  document.querySelector('#time-of-day')?.addEventListener('input', updateAtmosphere)
+  window.setInterval(updateAtmosphere, 1500)
+  updateAtmosphere()
+
+  window.ProceduralCityV10Atmosphere = { version: '1.0.3-alpha', update: updateAtmosphere }
+})()
