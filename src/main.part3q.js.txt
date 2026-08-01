@@ -1,0 +1,99 @@
+
+// v0.8.3: staged runtime recovery and visible diagnostics.
+const v083FullGenerateCity = generateCity
+
+function v083LegacyTerrainModel(settings, seedValue, extent) {
+  const phase = (seedValue % 6283) / 1000
+  const waterEnabled = settings.profile === 'waterfront' || settings.profile === 'eco' || seedValue % 5 === 0
+  const waterY = -Math.max(2.8, settings.roughness * 0.18)
+  const waterWidth = settings.profile === 'waterfront' ? 30 : 18
+  function riverCenterZ(x) {
+    return Math.sin(x / Math.max(extent, 1) * Math.PI * 2.2 + phase) * extent * 0.08
+      + Math.sin(x / Math.max(extent, 1) * Math.PI * 5.1 - phase * 0.7) * extent * 0.018
+  }
+  function waterDistance(x, z) {
+    if (!waterEnabled) return Infinity
+    return Math.abs(z - riverCenterZ(x))
+  }
+  function rawHeight(x, z) {
+    const nx = x / Math.max(extent, 1)
+    const nz = z / Math.max(extent, 1)
+    const broad = fbm(nx * 2.2 + phase, nz * 2.2 - phase, seedValue, 4)
+    const ridge = Math.abs(fbm(nx * 4.5 - phase, nz * 4.5 + phase, seedValue + 991, 3))
+    const urbanBasin = 1 - smoothstep(0.12, 0.66, Math.hypot(nx, nz))
+    const profileScale = settings.profile === 'metropolitan' ? 0.72 : settings.profile === 'eco' ? 1.12 : 1
+    return (broad * 0.76 + ridge * 0.24 - urbanBasin * 0.12) * settings.roughness * profileScale
+  }
+  function height(x, z) {
+    const raw = rawHeight(x, z)
+    const distance = waterDistance(x, z)
+    if (!Number.isFinite(distance)) return raw
+    const carve = 1 - smoothstep(waterWidth * 0.48, waterWidth * 1.65, distance)
+    return lerp(raw, waterY - 3.8, carve)
+  }
+  function slopeDegrees(x, z) {
+    const sample = 5
+    const dx = (height(x + sample, z) - height(x - sample, z)) / (sample * 2)
+    const dz = (height(x, z + sample) - height(x, z - sample)) / (sample * 2)
+    return Math.atan(Math.hypot(dx, dz)) * 180 / Math.PI
+  }
+  function isWater(x, z) {
+    return waterDistance(x, z) < waterWidth * 0.52
+  }
+  return { height, rawHeight, slopeDegrees, waterDistance, isWater, waterEnabled, waterWidth, waterY, riverCenterZ }
+}
+
+function v083ReportRuntimeFailure(stage, error) {
+  const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+  window.ProceduralCityRuntimeError = {
+    stage,
+    message,
+    stack: error instanceof Error ? error.stack : '',
+    build: 'v0.8.3',
+    timestamp: new Date().toISOString(),
+  }
+  console.error(`[ProceduralCity ${stage}]`, error)
+  let panel = document.querySelector('#runtime-diagnostic')
+  if (!panel) {
+    panel = document.createElement('div')
+    panel.id = 'runtime-diagnostic'
+    panel.style.cssText = 'position:fixed;left:18px;bottom:18px;z-index:9999;max-width:440px;padding:10px 13px;border-radius:10px;background:rgba(12,18,24,.92);color:#d9e8ef;font:12px/1.45 system-ui,sans-serif;border:1px solid rgba(148,196,214,.35);box-shadow:0 8px 28px rgba(0,0,0,.35);white-space:pre-wrap;pointer-events:none'
+    document.body.appendChild(panel)
+  }
+  panel.textContent = `복구 모드: ${stage}\n${message}`
+}
+
+generateCity = function v083GenerateCityWithRecovery(settings) {
+  try {
+    const city = v083FullGenerateCity(settings)
+    city.runtimeMode = 'v0.8.3-full'
+    return city
+  } catch (fullError) {
+    v083ReportRuntimeFailure('v0.8 확장 구조 실패 → 지형 전용 복구', fullError)
+    try {
+      const city = v081OriginalGenerateCity(settings)
+      city.runtimeMode = 'v0.8-terrain-fallback'
+      return city
+    } catch (terrainError) {
+      v083ReportRuntimeFailure('v0.8 지형 실패 → v0.7 안정 모드', terrainError)
+      const activeTerrain = createTerrainModel
+      const activeCenters = createUrbanCenters
+      try {
+        createTerrainModel = v083LegacyTerrainModel
+        createUrbanCenters = v080OriginalCreateUrbanCenters
+        const city = v081OriginalGenerateCity(settings)
+        city.runtimeMode = 'v0.7-stable-fallback'
+        return city
+      } finally {
+        createTerrainModel = activeTerrain
+        createUrbanCenters = activeCenters
+      }
+    }
+  }
+}
+
+window.ProceduralCityV083Recovery = {
+  version: '0.8.3-runtime-recovery',
+  modes: ['v0.8.3-full', 'v0.8-terrain-fallback', 'v0.7-stable-fallback'],
+  getLastError: () => window.ProceduralCityRuntimeError || null,
+}
