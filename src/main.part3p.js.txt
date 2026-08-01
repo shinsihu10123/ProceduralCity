@@ -1,0 +1,36 @@
+
+// v0.8 runtime contract guard for terrain-selected urban centers.
+const v082OriginalCreateUrbanCenters = createUrbanCenters
+createUrbanCenters = function v082CreateUrbanCenters(settings, random, extent, terrain) {
+  const centers = v082OriginalCreateUrbanCenters(settings, random, extent, terrain) || {}
+  const fallback = v080OriginalCreateUrbanCenters(settings, random, extent, terrain)
+  const cbd = centers.cbd || fallback.cbd
+  const subcenters = Array.isArray(centers.subcenters) && centers.subcenters.length
+    ? centers.subcenters
+    : (Array.isArray(fallback.subcenters) ? fallback.subcenters : [])
+  const industrial = centers.industrial || fallback.industrial || cbd
+  const parkAnchors = Array.isArray(centers.parkAnchors) && centers.parkAnchors.length
+    ? centers.parkAnchors
+    : (Array.isArray(fallback.parkAnchors) ? fallback.parkAnchors : [cbd])
+  const civicAnchors = Array.isArray(centers.civicAnchors) && centers.civicAnchors.length
+    ? centers.civicAnchors
+    : (Array.isArray(fallback.civicAnchors) ? fallback.civicAnchors : [cbd])
+  const normalized = {
+    ...centers,
+    cbd,
+    subcenters,
+    secondary: centers.secondary || subcenters[0] || cbd,
+    industrial,
+    parkAnchors,
+    civicAnchors,
+  }
+  if (!normalized.cbd || !normalized.subcenters.length || !normalized.parkAnchors.length || !normalized.civicAnchors.length) {
+    throw new Error('Invalid urban center schema')
+  }
+  return normalized
+}
+
+window.ProceduralCityV082CenterContract = {
+  version: '0.8.2-hotfix',
+  requiredFields: ['cbd', 'subcenters', 'industrial', 'parkAnchors', 'civicAnchors'],
+}
