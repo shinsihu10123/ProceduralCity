@@ -1,0 +1,148 @@
+
+function v060BuildRoadGraph(city) {
+  const roads = (city?.roads || []).filter((road) => road.length > 8)
+  const nodeMap = new Map()
+  const roadPoints = new Map()
+  const cellSize = Math.max(20, Math.min(40, city?.settings?.cellSize || 28))
+  const intersectionGap = cellSize * 0.58
+
+  function ensureNode(x, y, z) {
+    const key = v053NodeKey(x, z)
+    if (!nodeMap.has(key)) nodeMap.set(key, { id: key, x, y, z, edges: [] })
+    const node = nodeMap.get(key)
+    node.y = Math.max(node.y, y)
+    return node
+  }
+
+  roads.forEach((road, index) => {
+    const range = v053RoadRange(road)
+    roadPoints.set(index, road.orientation === 'horizontal'
+      ? [{ x: range.minX, z: road.z }, { x: range.maxX, z: road.z }]
+      : [{ x: road.x, z: range.minZ }, { x: road.x, z: range.maxZ }])
+  })
+
+  for (let a = 0; a < roads.length; a += 1) {
+    const roadA = roads[a]
+    for (let b = a + 1; b < roads.length; b += 1) {
+      const roadB = roads[b]
+      if (roadA.orientation === roadB.orientation) continue
+      const horizontal = roadA.orientation === 'horizontal' ? roadA : roadB
+      const vertical = roadA.orientation === 'vertical' ? roadA : roadB
+      const hRange = v053RoadRange(horizontal)
+      const vRange = v053RoadRange(vertical)
+      const xGap = vertical.x < hRange.minX ? hRange.minX - vertical.x : vertical.x > hRange.maxX ? vertical.x - hRange.maxX : 0
+      const zGap = horizontal.z < vRange.minZ ? vRange.minZ - horizontal.z : horizontal.z > vRange.maxZ ? horizontal.z - vRange.maxZ : 0
+      if (xGap > intersectionGap || zGap > intersectionGap) continue
+      const point = { x: vertical.x, z: horizontal.z }
+      roadPoints.get(a).push(point)
+      roadPoints.get(b).push(point)
+    }
+  }
+
+  const edges = []
+  roads.forEach((road, roadIndex) => {
+    const points = roadPoints.get(roadIndex)
+    points.sort((a, b) => road.orientation === 'horizontal' ? a.x - b.x : a.z - b.z)
+    const unique = []
+    for (const point of points) {
+      if (!unique.length || Math.hypot(point.x - unique[unique.length - 1].x, point.z - unique[unique.length - 1].z) > 0.75) unique.push(point)
+    }
+    for (let index = 0; index < unique.length - 1; index += 1) {
+      const startPoint = unique[index]
+      const endPoint = unique[index + 1]
+      const length = Math.hypot(endPoint.x - startPoint.x, endPoint.z - startPoint.z)
+      if (length < 3 || length > cellSize * 1.8) continue
+      const start = ensureNode(startPoint.x, road.y || 0, startPoint.z)
+      const end = ensureNode(endPoint.x, road.y || 0, endPoint.z)
+      const forward = { id: `V060-E-${edges.length + 1}`, start, end, length, roadClass: road.class || 'local', orientation: road.orientation }
+      const reverse = { ...forward, id: `${forward.id}R`, start: end, end: start }
+      start.edges.push(forward)
+      end.edges.push(reverse)
+      edges.push(forward, reverse)
+    }
+  })
+
+  const connectedNodes = [...nodeMap.values()].filter((node) => node.edges.length > 0)
+  return { nodes: connectedNodes, edges }
+}
+
+v053BuildRoadGraph = v060BuildRoadGraph
+
+const v060BaseAssignRoute = v053AssignRoute
+v053AssignRoute = function v060AssignRoute(agent, index) {
+  v060BaseAssignRoute(agent, index)
+  if (agent.edge) return
+  const nodes = v053Graph?.nodes?.filter((node) => node.edges.length) || []
+  if (!nodes.length) return
+  const origin = nodes[(index * 19 + agent.stopsPassed * 7) % nodes.length]
+  const edge = origin.edges[(index + agent.stopsPassed) % origin.edges.length]
+  agent.route = [edge]
+  agent.routeIndex = 0
+  agent.edge = edge
+  agent.progress = 0
+  agent.dwell = 0
+}
+
+const v060BaseAdvanceAgent = v053AdvanceAgent
+v053AdvanceAgent = function v060AdvanceAgent(agent, deltaSeconds, index) {
+  const beforeProgress = agent.progress
+  const beforeEdge = agent.edge
+  v060BaseAdvanceAgent(agent, deltaSeconds, index)
+  if (!agent.edge) {
+    v053AssignRoute(agent, index + 37)
+    return
+  }
+  if (agent.dwell <= 0 && beforeEdge === agent.edge && Math.abs(agent.progress - beforeProgress) < 0.000001) {
+    agent.stallTime = (agent.stallTime || 0) + deltaSeconds
+  } else {
+    agent.stallTime = 0
+  }
+  if (agent.stallTime > 1.2) {
+    agent.edge = null
+    agent.route = []
+    agent.routeIndex = 0
+    agent.progress = 0
+    agent.dwell = 0
+    agent.stallTime = 0
+    v053AssignRoute(agent, index + agent.stopsPassed + 71)
+  }
+}
+
+const v060BaseResetTraffic = v053ResetTraffic
+v053ResetTraffic = function v060ResetTraffic(city) {
+  v060BaseResetTraffic(city)
+  const validAgents = v053TrafficAgents.filter((agent) => agent.edge && agent.edge.length > 2)
+  v053TrafficAgents = validAgents
+  const target = Math.max(12, Math.min(48, Math.round((v053Graph?.nodes.length || 20) * 0.16)))
+  while (v053TrafficAgents.length < target && v053Graph?.nodes.length) {
+    const index = v053TrafficAgents.length
+    const type = index % 10 === 0 ? 'bus' : index % 7 === 0 ? 'truck' : 'car'
+    const agent = {
+      id: `V060-${index + 1}`,
+      type,
+      speed: type === 'bus' ? 8.5 : type === 'truck' ? 7.2 : 11.0 + (index % 4),
+      color: v053TrafficColors[index % v053TrafficColors.length],
+      laneSign: index % 2 === 0 ? 1 : -1,
+      edge: null,
+      route: [],
+      routeIndex: 0,
+      progress: (index * 0.113) % 0.72,
+      dwell: index * 0.03,
+      stopsPassed: 0,
+      stallTime: 0,
+    }
+    v053AssignRoute(agent, index + 101)
+    if (agent.edge) v053TrafficAgents.push(agent)
+    else break
+  }
+  window.dispatchEvent(new CustomEvent('procedural-city:v060-traffic-ready', {
+    detail: {
+      vehicles: v053TrafficAgents.length,
+      nodes: v053Graph?.nodes.length || 0,
+      edges: v053Graph?.edges.length || 0,
+      intersectionRepair: true,
+    },
+  }))
+}
+
+if (currentCity) v053ResetTraffic(currentCity)

@@ -1,14 +1,16 @@
-const BUILD_ID = 'v053-networked-traffic-20260801'
+const BUILD_ID = 'v060-traffic-buildings-20260801'
 const sourceParts = [
   './main.part1.js.txt',
   './main.part2.js.txt',
   './main.part3a.js.txt',
+  './main.part3a2.js.txt',
   './main.part3b.js.txt',
   './main.part3c.js.txt',
   './main.part3d.js.txt',
   './main.part3e1.js.txt',
   './main.part3e2.js.txt',
   './main.part3f.js.txt',
+  './main.part3g.js.txt',
   './main.part3h.js.txt',
 ]
 
