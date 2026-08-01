@@ -1,0 +1,261 @@
+
+// v0.8 phase 2: terrain-routed corridors, freeform graph edges and civil structures.
+const v081OriginalGenerateCity = generateCity
+const v081OriginalBuildRoadGraph = typeof v053BuildRoadGraph === 'function' ? v053BuildRoadGraph : null
+const v081OriginalPushRoadCell = pushRoadCell
+
+function v081SeedUnit(value) {
+  const n = Math.sin(value * 91.731 + 17.171) * 43758.5453123
+  return n - Math.floor(n)
+}
+
+function v081KeepGridRoad(cell, settings) {
+  const roadClass = strongestRoad(cell.xClass, cell.zClass)
+  if (!roadClass || roadClass !== 'local') return true
+  const gx = Math.round(cell.x / Math.max(settings.cellSize, 1))
+  const gz = Math.round(cell.z / Math.max(settings.cellSize, 1))
+  const score = v081SeedUnit(gx * 37 + gz * 71 + settings.gridSize * 13)
+  return score > 0.34
+}
+
+pushRoadCell = function v081PushRoadCell(vertices, roads, settings, terrain, cell, random, detailLevel) {
+  if (!v081KeepGridRoad(cell, settings)) return
+  v081OriginalPushRoadCell(vertices, roads, settings, terrain, cell, random, detailLevel)
+}
+
+function v081Bezier(a, c, b, t) {
+  const u = 1 - t
+  return {
+    x: u * u * a.x + 2 * u * t * c.x + t * t * b.x,
+    z: u * u * a.z + 2 * u * t * c.z + t * t * b.z,
+  }
+}
+
+function v081RouteControl(a, b, terrain, seed) {
+  const mx = (a.x + b.x) * 0.5
+  const mz = (a.z + b.z) * 0.5
+  const dx = b.x - a.x
+  const dz = b.z - a.z
+  const length = Math.max(Math.hypot(dx, dz), 1)
+  const nx = -dz / length
+  const nz = dx / length
+  const aspect = terrain.aspect ? terrain.aspect(mx, mz) : 0
+  const contourX = -Math.sin(aspect)
+  const contourZ = Math.cos(aspect)
+  const side = v081SeedUnit(seed) > 0.5 ? 1 : -1
+  const bend = Math.min(length * 0.24, 92) * (0.55 + v081SeedUnit(seed + 11) * 0.55)
+  return {
+    x: mx + (nx * 0.58 + contourX * 0.42) * bend * side,
+    z: mz + (nz * 0.58 + contourZ * 0.42) * bend * side,
+  }
+}
+
+function v081RoadWidth(roadClass) {
+  return roadClass === 'arterial' ? 18 : roadClass === 'collector' ? 12 : 8
+}
+
+function v081AppendSegmentGeometry(vertices, terrain, start, end, roadClass, detailLevel, structures) {
+  const dx = end.x - start.x
+  const dz = end.z - start.z
+  const length = Math.hypot(dx, dz)
+  if (length < 1) return null
+  const x = (start.x + end.x) * 0.5
+  const z = (start.z + end.z) * 0.5
+  const groundA = terrain.height(start.x, start.z)
+  const groundB = terrain.height(end.x, end.z)
+  const waterA = terrain.isWater(start.x, start.z)
+  const waterB = terrain.isWater(end.x, end.z)
+  const slope = Math.max(terrain.slopeDegrees(start.x, start.z), terrain.slopeDegrees(end.x, end.z))
+  const isBridge = waterA || waterB
+  const isTunnel = !isBridge && slope > 25 && length > 8
+  const gradeY = isBridge
+    ? terrain.waterY + 5.8
+    : (groundA + groundB) * 0.5 + 0.42
+  const rotation = Math.atan2(dx, dz)
+  const width = v081RoadWidth(roadClass)
+
+  pushBox(vertices, x, gradeY - 0.08, z, width + 4.2, 0.16, length + 1.0, COLORS.sidewalk, rotation)
+  pushBox(vertices, x, gradeY + 0.06, z, width, 0.13, length + 1.2, COLORS[roadClass], rotation)
+  if (roadClass !== 'local') {
+    pushBox(vertices, x, gradeY + 0.16, z, 0.16, 0.025, length * 0.82, COLORS.roadMark, rotation)
+  }
+
+  const cutDepth = Math.max(0, ((groundA + groundB) * 0.5) - gradeY)
+  const fillDepth = Math.max(0, gradeY - ((groundA + groundB) * 0.5))
+  if (isBridge) {
+    const pierHeight = Math.max(2, gradeY - terrain.waterY + 0.8)
+    pushBox(vertices, x, terrain.waterY - 0.5, z, 1.35, pierHeight, 1.35, COLORS.embankment, rotation)
+    structures.bridges += 1
+  } else if (isTunnel) {
+    for (const point of [start, end]) {
+      const py = terrain.height(point.x, point.z)
+      pushBox(vertices, point.x, py - 0.4, point.z, width + 5.4, 5.8, 3.0, tintColor(COLORS.embankment, -0.08), rotation)
+      pushBox(vertices, point.x, py + 0.3, point.z, width * 0.72, 4.2, 3.2, COLORS.signal, rotation)
+    }
+    structures.tunnels += 1
+  } else if (detailLevel > 0 && (cutDepth > 1.1 || slope > 17)) {
+    const side = width * 0.62
+    const ox = Math.cos(rotation) * side
+    const oz = -Math.sin(rotation) * side
+    pushBox(vertices, x + ox, gradeY - 1.2, z + oz, 0.55, 3.0, length * 0.92, COLORS.embankment, rotation)
+    pushBox(vertices, x - ox, gradeY - 1.2, z - oz, 0.55, 3.0, length * 0.92, COLORS.embankment, rotation)
+    structures.retainingWalls += 2
+  } else if (detailLevel > 0 && fillDepth > 1.4) {
+    pushBox(vertices, x, gradeY - fillDepth, z, width + 7.5, fillDepth, length * 0.88, tintColor(COLORS.embankment, 0.05), rotation)
+    structures.embankments += 1
+  }
+
+  return {
+    x,
+    y: gradeY,
+    z,
+    start: { x: start.x, y: gradeY, z: start.z },
+    end: { x: end.x, y: gradeY, z: end.z },
+    orientation: 'freeform',
+    class: roadClass,
+    length,
+    bridge: isBridge,
+    tunnel: isTunnel,
+    rotation,
+  }
+}
+
+function v081BuildCorridor(city, terrain, from, to, roadClass, seed, vertices, structures) {
+  const control = v081RouteControl(from, to, terrain, seed)
+  const distance = Math.hypot(to.x - from.x, to.z - from.z)
+  const steps = Math.max(8, Math.min(34, Math.ceil(distance / 22)))
+  let previous = v081Bezier(from, control, to, 0)
+  const segments = []
+  for (let index = 1; index <= steps; index += 1) {
+    const point = v081Bezier(from, control, to, index / steps)
+    const segment = v081AppendSegmentGeometry(vertices, terrain, previous, point, roadClass, city.metrics.detailLevel, structures)
+    if (segment) segments.push(segment)
+    previous = point
+  }
+  city.roads.push(...segments)
+  return { from, to, control, roadClass, segments: segments.length }
+}
+
+function v081TerrainFromCity(city) {
+  const seedValue = hashString(`${city.settings.seed}:${city.settings.profile}`)
+  return createTerrainModel(city.settings, seedValue, city.extent)
+}
+
+generateCity = function v081GenerateCity(settings) {
+  const city = v081OriginalGenerateCity(settings)
+  const terrain = v081TerrainFromCity(city)
+  const extraVertices = []
+  const structures = {
+    bridges: 0,
+    tunnels: 0,
+    retainingWalls: 0,
+    embankments: 0,
+  }
+  const centers = [city.centers.cbd, city.centers.secondary, city.centers.industrial].filter(Boolean)
+  const extent = city.extent
+  const outerA = { x: -extent * 0.42, z: extent * 0.08 }
+  const outerB = { x: extent * 0.41, z: -extent * 0.13 }
+  const corridors = []
+
+  if (centers.length >= 2) corridors.push(v081BuildCorridor(city, terrain, centers[0], centers[1], 'arterial', 801, extraVertices, structures))
+  if (centers.length >= 3) {
+    corridors.push(v081BuildCorridor(city, terrain, centers[0], centers[2], 'collector', 823, extraVertices, structures))
+    corridors.push(v081BuildCorridor(city, terrain, centers[1], centers[2], 'collector', 857, extraVertices, structures))
+  }
+  corridors.push(v081BuildCorridor(city, terrain, outerA, centers[0] || { x: 0, z: 0 }, 'arterial', 881, extraVertices, structures))
+  corridors.push(v081BuildCorridor(city, terrain, centers[0] || { x: 0, z: 0 }, outerB, 'arterial', 907, extraVertices, structures))
+
+  const merged = new Float32Array(city.vertices.length + extraVertices.length)
+  merged.set(city.vertices, 0)
+  merged.set(new Float32Array(extraVertices), city.vertices.length)
+  city.vertices = merged
+  city.metrics.vertexCount = merged.length / 9
+  const addedLength = corridors.reduce((sum, corridor) => sum + corridor.segments * 22, 0)
+  city.metrics.roadLengthKm += addedLength / 1000
+  city.infrastructure.terrainEngineering = structures
+  city.infrastructure.curvedCorridors = corridors
+  city.schemaVersion = 4
+
+  const nearestCorridorAngle = (x, z) => {
+    let best = null
+    for (const road of city.roads) {
+      if (road.orientation !== 'freeform') continue
+      const distance = Math.hypot(x - road.x, z - road.z)
+      if (!best || distance < best.distance) best = { distance, angle: road.rotation }
+    }
+    return best
+  }
+  for (const parcel of city.parcels) {
+    const nearest = nearestCorridorAngle(parcel.x, parcel.z)
+    parcel.terrainBuildability = terrain.buildability ? terrain.buildability(parcel.x, parcel.z) : 1
+    parcel.terrainAspect = terrain.aspect ? terrain.aspect(parcel.x, parcel.z) : 0
+    parcel.streetAlignment = nearest && nearest.distance < 75 ? nearest.angle : parcel.terrainAspect + Math.PI / 2
+    parcel.irregularity = 0.08 + v081SeedUnit(parcel.id * 17 + 3) * 0.22
+  }
+  for (const building of city.buildings) {
+    const parcel = city.parcels[building.parcelId]
+    if (parcel) building.terrainAlignment = parcel.streetAlignment
+  }
+
+  return city
+}
+
+if (v081OriginalBuildRoadGraph) {
+  v053BuildRoadGraph = function v081BuildRoadGraph(city) {
+    const graph = v081OriginalBuildRoadGraph(city)
+    const freeform = (city?.roads || []).filter((road) => road.orientation === 'freeform' && road.start && road.end)
+    if (!freeform.length) return graph
+
+    const nodeMap = new Map(graph.nodes.map((node) => [node.id, node]))
+    const keyFor = (point) => `${Math.round(point.x * 10) / 10}:${Math.round(point.z * 10) / 10}`
+    const nearestNode = (point, radius = 17) => {
+      let best = null
+      for (const node of nodeMap.values()) {
+        const distance = Math.hypot(node.x - point.x, node.z - point.z)
+        if (distance <= radius && (!best || distance < best.distance)) best = { node, distance }
+      }
+      return best?.node || null
+    }
+    const ensureNode = (point) => {
+      const nearby = nearestNode(point)
+      if (nearby) return nearby
+      const id = keyFor(point)
+      if (!nodeMap.has(id)) nodeMap.set(id, { id, x: point.x, y: point.y || 0, z: point.z, edges: [] })
+      return nodeMap.get(id)
+    }
+
+    for (const road of freeform) {
+      const start = ensureNode(road.start)
+      const end = ensureNode(road.end)
+      if (start === end) continue
+      const edge = {
+        id: `F-${graph.edges.length + 1}`,
+        start,
+        end,
+        length: road.length,
+        roadClass: road.class || 'collector',
+        orientation: 'freeform',
+      }
+      const reverse = { ...edge, id: `${edge.id}R`, start: end, end: start }
+      start.edges.push(edge)
+      end.edges.push(reverse)
+      graph.edges.push(edge, reverse)
+    }
+    graph.nodes = [...nodeMap.values()]
+    return graph
+  }
+}
+
+window.ProceduralCityV081Structure = {
+  version: '0.8-alpha-phase-2',
+  features: [
+    'terrain-routed-curved-corridors',
+    'freeform-traffic-graph-edges',
+    'selective-grid-road-removal',
+    'bridges',
+    'tunnel-portals',
+    'retaining-walls',
+    'cut-and-fill-embankments',
+    'terrain-aware-parcel-metadata',
+  ],
+}
