@@ -1,0 +1,98 @@
+// Procedural City v1.0 — physically inspired shader patch.
+// Loaded before the legacy engine so its WebGL shader source can be upgraded
+// without changing the renderer's existing uniforms or draw contract.
+(function () {
+  const originalShaderSource = WebGL2RenderingContext.prototype.shaderSource
+
+  const enhancedFragmentShader = `#version 300 es
+precision highp float;
+in vec3 vWorldPosition;
+in vec3 vNormal;
+in vec3 vColor;
+in float vFogDepth;
+uniform vec3 uLightDirection;
+uniform vec3 uSunColor;
+uniform vec3 uFogColor;
+uniform float uAmbient;
+uniform float uFogNear;
+uniform float uFogFar;
+uniform float uNightFactor;
+out vec4 outColor;
+
+float saturate(float value) { return clamp(value, 0.0, 1.0); }
+float colorDistance(vec3 a, vec3 b) { return length(a - b); }
+
+void main() {
+  vec3 normal = normalize(vNormal);
+  vec3 lightDir = normalize(uLightDirection);
+  vec3 viewDir = normalize(vec3(0.0, 0.34, 1.0));
+  vec3 halfDir = normalize(lightDir + viewDir);
+
+  float ndl = max(dot(normal, lightDir), 0.0);
+  float ndh = max(dot(normal, halfDir), 0.0);
+  float upFacing = saturate(normal.y * 0.5 + 0.5);
+
+  float luminance = dot(vColor, vec3(0.299, 0.587, 0.114));
+  float blueBias = vColor.b - (vColor.r + vColor.g) * 0.5;
+  float greenBias = vColor.g - max(vColor.r, vColor.b);
+  float chroma = max(vColor.r, max(vColor.g, vColor.b)) - min(vColor.r, min(vColor.g, vColor.b));
+
+  float glassMask = saturate(smoothstep(0.015, 0.13, blueBias) * smoothstep(0.18, 0.72, luminance));
+  float vegetationMask = saturate(smoothstep(0.025, 0.18, greenBias) * smoothstep(0.12, 0.62, luminance));
+  float asphaltMask = saturate((1.0 - smoothstep(0.13, 0.27, luminance)) * (1.0 - smoothstep(0.08, 0.22, chroma)) * upFacing);
+  float metalMask = saturate((1.0 - glassMask) * smoothstep(0.24, 0.58, luminance) * (1.0 - smoothstep(0.05, 0.2, chroma)));
+  float emissiveWindow = smoothstep(0.70, 0.92, luminance) * smoothstep(0.12, 0.52, vColor.r - vColor.b);
+
+  float roughness = mix(0.76, 0.22, glassMask);
+  roughness = mix(roughness, 0.34, metalMask);
+  roughness = mix(roughness, 0.48, asphaltMask);
+  roughness = mix(roughness, 0.88, vegetationMask);
+
+  float specularPower = mix(10.0, 112.0, 1.0 - roughness);
+  float specular = pow(ndh, specularPower);
+  float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
+  float glassReflection = glassMask * (0.16 + fresnel * 0.72);
+  float asphaltReflection = asphaltMask * pow(ndh, 36.0) * (0.12 + uNightFactor * 0.24);
+  float metalReflection = metalMask * specular * 0.34;
+
+  float hemisphere = mix(0.42, 1.0, upFacing);
+  float terrainHeightShade = clamp(0.84 + vWorldPosition.y * 0.00115, 0.72, 1.08);
+  vec3 ambientLight = vec3(uAmbient) * mix(vec3(0.78, 0.86, 0.94), vec3(1.0), upFacing);
+  vec3 directLight = uSunColor * ndl * 0.79;
+  vec3 diffuseColor = vColor * (ambientLight + directLight) * hemisphere * terrainHeightShade;
+
+  vec3 skyReflection = mix(uFogColor, vec3(0.68, 0.79, 0.91), 0.42 + upFacing * 0.3);
+  vec3 reflected = skyReflection * glassReflection
+    + uSunColor * metalReflection
+    + mix(uFogColor, uSunColor, 0.35) * asphaltReflection;
+
+  float vegetationVariation = 0.93 + 0.07 * sin(vWorldPosition.x * 0.17 + vWorldPosition.z * 0.13);
+  diffuseColor *= mix(1.0, vegetationVariation, vegetationMask);
+
+  vec3 warmEmission = vec3(1.0, 0.63, 0.25) * emissiveWindow * uNightFactor * 1.42;
+  vec3 coolGlass = vec3(0.18, 0.34, 0.52) * glassMask * (0.08 + uNightFactor * 0.12);
+  vec3 lit = diffuseColor + reflected + warmEmission + coolGlass;
+
+  float distanceFog = smoothstep(uFogNear, uFogFar, vFogDepth);
+  float altitudeHaze = saturate((18.0 - vWorldPosition.y) / 135.0) * distanceFog * 0.18;
+  float aerialPerspective = saturate(distanceFog * 0.88 + altitudeHaze);
+  vec3 fogged = mix(lit, uFogColor, aerialPerspective);
+
+  // Filmic compression keeps highlights readable and avoids flat clipping.
+  vec3 mapped = fogged / (fogged + vec3(0.82));
+  mapped = pow(max(mapped, vec3(0.0)), vec3(1.0 / 2.2));
+  outColor = vec4(mapped, 1.0);
+}`
+
+  WebGL2RenderingContext.prototype.shaderSource = function patchedShaderSource(shader, source) {
+    if (typeof source === 'string' && source.includes('uniform float uNightFactor;') && source.includes('warmWindow')) {
+      return originalShaderSource.call(this, shader, enhancedFragmentShader)
+    }
+    return originalShaderSource.call(this, shader, source)
+  }
+
+  window.ProceduralCityV10ShaderPatch = {
+    version: '1.0.4-physical-lighting',
+    active: true,
+  }
+})()
