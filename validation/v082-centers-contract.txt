@@ -1,0 +1,1 @@
+Validation marker for v0.8.2 complete urban center schema contract.
