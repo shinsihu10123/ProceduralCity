@@ -1,0 +1,197 @@
+
+// v0.8 phase 1: geomorphic terrain and terrain-adaptive urban coordinate field.
+const v080OriginalPushVertex = pushVertex
+
+function v080DomainWarp(x, z) {
+  const scale = 0.0032
+  const broadX = fbm(x * scale, z * scale, 8101, 3)
+  const broadZ = fbm(x * scale + 17.3, z * scale - 11.7, 9209, 3)
+  const localX = fbm(x * scale * 2.25 - 4.2, z * scale * 2.25 + 8.1, 10301, 2)
+  const localZ = fbm(x * scale * 2.25 + 9.4, z * scale * 2.25 - 3.6, 11717, 2)
+  const radial = clamp(Math.hypot(x, z) / 680, 0, 1)
+  const strength = 12 + radial * 17
+  return {
+    x: x + broadX * strength + localX * 5.5,
+    z: z + broadZ * strength + localZ * 5.5,
+  }
+}
+
+pushVertex = function v080PushVertex(target, position, normal, color) {
+  const warped = v080DomainWarp(position[0], position[2])
+  v080OriginalPushVertex(target, [warped.x, position[1], warped.z], normal, color)
+}
+
+createTerrainModel = function v080CreateTerrainModel(settings, seedValue, extent) {
+  const phase = (seedValue % 65521) / 65521 * Math.PI * 2
+  const waterEnabled = settings.profile !== 'industrial' || seedValue % 3 !== 1
+  const waterY = -Math.max(2.4, settings.roughness * 0.17)
+  const waterWidth = settings.profile === 'waterfront' ? 38 : settings.profile === 'eco' ? 29 : 22
+  const coastEnabled = settings.profile === 'waterfront' || seedValue % 7 === 0
+  const coastDirection = seedValue % 2 === 0 ? 1 : -1
+  const coastLimit = extent * (0.36 + ((seedValue >>> 7) % 9) * 0.008)
+
+  function mainRiverCenterZ(x) {
+    const nx = x / Math.max(extent, 1)
+    return extent * 0.12
+      + Math.sin(nx * Math.PI * 1.55 + phase) * extent * 0.11
+      + Math.sin(nx * Math.PI * 4.3 - phase * 0.62) * extent * 0.028
+  }
+
+  function tributaryCenterX(z, branch) {
+    const nz = z / Math.max(extent, 1)
+    const side = branch === 0 ? -1 : 1
+    return side * extent * 0.19
+      + Math.sin(nz * Math.PI * 2.15 + phase * (branch + 1)) * extent * 0.075
+      + Math.sin(nz * Math.PI * 5.1 - phase) * extent * 0.018
+  }
+
+  function coastDistance(x, z) {
+    if (!coastEnabled) return Infinity
+    const coast = coastDirection * (x + Math.sin(z / extent * Math.PI * 2.4 + phase) * extent * 0.055)
+    return coastLimit - coast
+  }
+
+  function waterDistance(x, z) {
+    if (!waterEnabled) return Infinity
+    const main = Math.abs(z - mainRiverCenterZ(x))
+    const tributaryA = Math.abs(x - tributaryCenterX(z, 0)) + waterWidth * 0.55
+    const tributaryB = Math.abs(x - tributaryCenterX(z, 1)) + waterWidth * 0.72
+    const coast = coastDistance(x, z)
+    return Math.min(main, tributaryA, tributaryB, coast)
+  }
+
+  function baseRelief(x, z) {
+    const nx = x / Math.max(extent, 1)
+    const nz = z / Math.max(extent, 1)
+    const continental = fbm(nx * 1.45 + phase, nz * 1.45 - phase, seedValue + 101, 5)
+    const ridgeNoise = fbm(nx * 3.1 - phase * 0.3, nz * 3.1 + phase * 0.5, seedValue + 911, 4)
+    const ridges = Math.pow(1 - Math.abs(ridgeNoise), 1.55)
+    const foothills = fbm(nx * 7.2 + 4.1, nz * 7.2 - 2.3, seedValue + 1877, 3)
+    const basinX = nx + Math.sin(nz * 3.2 + phase) * 0.09
+    const basinZ = nz + Math.sin(nx * 2.7 - phase) * 0.07
+    const basin = 1 - smoothstep(0.06, 0.58, Math.hypot(basinX, basinZ))
+    const profileScale = settings.profile === 'metropolitan' ? 0.82 : settings.profile === 'eco' ? 1.18 : 1
+    return (
+      continental * 0.58
+      + ridges * 0.56
+      + foothills * 0.13
+      - basin * 0.34
+      - 0.21
+    ) * settings.roughness * profileScale
+  }
+
+  function rawHeight(x, z) {
+    const warped = v080DomainWarp(x, z)
+    const relief = baseRelief(warped.x, warped.z)
+    const valleyDistance = waterDistance(x, z)
+    const valley = Number.isFinite(valleyDistance)
+      ? 1 - smoothstep(waterWidth * 0.85, waterWidth * 4.8, valleyDistance)
+      : 0
+    const floodplain = Number.isFinite(valleyDistance)
+      ? 1 - smoothstep(waterWidth * 1.7, waterWidth * 6.4, valleyDistance)
+      : 0
+    return relief - valley * settings.roughness * 0.24 - floodplain * settings.roughness * 0.10
+  }
+
+  function height(x, z) {
+    const raw = rawHeight(x, z)
+    const distance = waterDistance(x, z)
+    if (!Number.isFinite(distance)) return raw
+    const channel = 1 - smoothstep(waterWidth * 0.42, waterWidth * 1.18, distance)
+    const bank = 1 - smoothstep(waterWidth * 0.95, waterWidth * 2.8, distance)
+    const channelBed = waterY - 4.6 - fbm(x * 0.012, z * 0.012, seedValue + 4409, 2) * 0.7
+    return lerp(raw - bank * 1.25, channelBed, channel)
+  }
+
+  function slopeDegrees(x, z) {
+    const sample = 4
+    const dx = (height(x + sample, z) - height(x - sample, z)) / (sample * 2)
+    const dz = (height(x, z + sample) - height(x, z - sample)) / (sample * 2)
+    return Math.atan(Math.hypot(dx, dz)) * 180 / Math.PI
+  }
+
+  function aspect(x, z) {
+    const sample = 5
+    const dx = height(x + sample, z) - height(x - sample, z)
+    const dz = height(x, z + sample) - height(x, z - sample)
+    return Math.atan2(dz, dx)
+  }
+
+  function isWater(x, z) {
+    return waterDistance(x, z) < waterWidth * 0.54
+  }
+
+  function buildability(x, z) {
+    if (isWater(x, z)) return 0
+    const slope = slopeDegrees(x, z)
+    const waterProximity = waterDistance(x, z)
+    const slopeScore = 1 - smoothstep(7, 28, slope)
+    const floodPenalty = Number.isFinite(waterProximity)
+      ? smoothstep(waterWidth * 0.9, waterWidth * 3.4, waterProximity)
+      : 1
+    return clamp(slopeScore * (0.38 + floodPenalty * 0.62), 0, 1)
+  }
+
+  return {
+    height,
+    rawHeight,
+    slopeDegrees,
+    aspect,
+    buildability,
+    waterDistance,
+    isWater,
+    waterEnabled,
+    waterWidth,
+    waterY,
+    riverCenterZ: mainRiverCenterZ,
+    tributaryCenterX,
+    coastEnabled,
+  }
+}
+
+const v080OriginalCreateUrbanCenters = createUrbanCenters
+createUrbanCenters = function v080CreateUrbanCenters(settings, random, extent, terrain) {
+  const candidates = []
+  const steps = 17
+  for (let ix = 1; ix < steps - 1; ix += 1) {
+    for (let iz = 1; iz < steps - 1; iz += 1) {
+      const x = (ix / (steps - 1) - 0.5) * extent * 0.82
+      const z = (iz / (steps - 1) - 0.5) * extent * 0.82
+      const buildability = terrain.buildability ? terrain.buildability(x, z) : 1
+      const centrality = 1 - clamp(Math.hypot(x, z) / (extent * 0.62), 0, 1)
+      const waterAccess = Number.isFinite(terrain.waterDistance(x, z))
+        ? 1 - smoothstep(terrain.waterWidth * 1.4, terrain.waterWidth * 7.5, terrain.waterDistance(x, z))
+        : 0
+      const score = buildability * 0.62 + centrality * 0.26 + waterAccess * 0.12
+      candidates.push({ x, z, score })
+    }
+  }
+  candidates.sort((a, b) => b.score - a.score)
+  const cbd = candidates[0]
+  if (!cbd || cbd.score < 0.26) return v080OriginalCreateUrbanCenters(settings, random, extent, terrain)
+  const secondary = candidates.find((candidate) => Math.hypot(candidate.x - cbd.x, candidate.z - cbd.z) > extent * 0.22) || candidates[1]
+  const industrial = [...candidates].reverse().find((candidate) => {
+    const slope = terrain.slopeDegrees(candidate.x, candidate.z)
+    return slope < 12 && Math.hypot(candidate.x - cbd.x, candidate.z - cbd.z) > extent * 0.26
+  }) || secondary
+  return {
+    cbd: { x: cbd.x, z: cbd.z },
+    secondary: { x: secondary.x, z: secondary.z },
+    industrial: { x: industrial.x, z: industrial.z },
+  }
+}
+
+window.ProceduralCityV080Terrain = {
+  version: '0.8-alpha-phase-1',
+  warp: v080DomainWarp,
+  features: [
+    'domain-warped-urban-form',
+    'multi-ridge-relief',
+    'erosional-valleys',
+    'main-river-and-tributaries',
+    'optional-coastline',
+    'floodplain-shaping',
+    'slope-and-aspect-analysis',
+    'terrain-selected-urban-centers',
+  ],
+}
