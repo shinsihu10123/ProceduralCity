@@ -1,0 +1,184 @@
+// Procedural City v1.0 — non-orthogonal architecture and material refinement.
+(function () {
+  const previousGenerateCity = generateCity
+
+  function mixColor(a, b, t) {
+    const f = Math.max(0, Math.min(1, t))
+    return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]
+  }
+
+  function rotatePoint(x, z, rotation) {
+    const c = Math.cos(rotation)
+    const s = Math.sin(rotation)
+    return [x * c - z * s, x * s + z * c]
+  }
+
+  function worldPolygon(building, localPoints) {
+    return localPoints.map(([x, z]) => {
+      const [rx, rz] = rotatePoint(x, z, building.rotation || 0)
+      return [building.x + rx, building.z + rz]
+    })
+  }
+
+  function pushPolygonPrism(vertices, polygon, baseY, height, color, roofColor = color) {
+    if (!polygon || polygon.length < 3 || height <= 0) return
+    const topY = baseY + height
+    const center = polygon.reduce((acc, point) => [acc[0] + point[0] / polygon.length, acc[1] + point[1] / polygon.length], [0, 0])
+    for (let i = 0; i < polygon.length; i += 1) {
+      const a = polygon[i]
+      const b = polygon[(i + 1) % polygon.length]
+      const p0 = [a[0], baseY, a[1]]
+      const p1 = [b[0], baseY, b[1]]
+      const p2 = [b[0], topY, b[1]]
+      const p3 = [a[0], topY, a[1]]
+      const normal = calculateNormal(p0, p1, p2)
+      pushTriangle(vertices, p0, p1, p2, normal, color)
+      pushTriangle(vertices, p0, p2, p3, normal, color)
+      pushTriangle(vertices, [center[0], topY, center[1]], p3, p2, [0, 1, 0], roofColor)
+    }
+  }
+
+  function pushEllipsePrism(vertices, x, y, z, rx, rz, height, color, segments = 18, rotation = 0) {
+    const polygon = []
+    for (let i = 0; i < segments; i += 1) {
+      const angle = i / segments * Math.PI * 2
+      const [px, pz] = rotatePoint(Math.cos(angle) * rx, Math.sin(angle) * rz, rotation)
+      polygon.push([x + px, z + pz])
+    }
+    pushPolygonPrism(vertices, polygon, y, height, color, mixColor(color, COLORS.roof, 0.45))
+  }
+
+  function pushRingFacade(vertices, building, width, depth, baseY, height, frameColor, glassColor, segments = 12) {
+    const floors = Math.max(3, Math.min(18, Math.round(height / 4)))
+    for (let floor = 1; floor < floors; floor += 1) {
+      const y = baseY + height * floor / floors
+      const rx = width * 0.505
+      const rz = depth * 0.505
+      for (let i = 0; i < segments; i += 1) {
+        const a0 = i / segments * Math.PI * 2
+        const a1 = (i + 1) / segments * Math.PI * 2
+        const [x0, z0] = rotatePoint(Math.cos(a0) * rx, Math.sin(a0) * rz, building.rotation || 0)
+        const [x1, z1] = rotatePoint(Math.cos(a1) * rx, Math.sin(a1) * rz, building.rotation || 0)
+        const p0 = [building.x + x0, y - 0.08, building.z + z0]
+        const p1 = [building.x + x1, y - 0.08, building.z + z1]
+        const p2 = [building.x + x1, y + 0.08, building.z + z1]
+        const p3 = [building.x + x0, y + 0.08, building.z + z0]
+        const normal = calculateNormal(p0, p1, p2)
+        pushTriangle(vertices, p0, p1, p2, normal, glassColor)
+        pushTriangle(vertices, p0, p2, p3, normal, glassColor)
+      }
+    }
+    const postCount = Math.max(6, Math.round(segments * 0.65))
+    for (let i = 0; i < postCount; i += 1) {
+      const angle = i / postCount * Math.PI * 2
+      const [px, pz] = rotatePoint(Math.cos(angle) * width * 0.51, Math.sin(angle) * depth * 0.51, building.rotation || 0)
+      if (typeof pushCylinderMesh === 'function') pushCylinderMesh(vertices, building.x + px, baseY, building.z + pz, 0.1, height, frameColor, 6)
+    }
+  }
+
+  function addCourtyardBuilding(vertices, building, random) {
+    const w = building.width * 0.92
+    const d = building.depth * 0.92
+    const h = Math.min(building.height * 0.62, 28)
+    const wing = Math.max(4.5, Math.min(w, d) * 0.22)
+    const color = building.zone === 'commercial' ? COLORS.concreteLight : COLORS.concreteWarm
+    const roof = mixColor(color, COLORS.roof, 0.5)
+    const shapes = [
+      [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, -d / 2 + wing], [-w / 2, -d / 2 + wing]],
+      [[-w / 2, d / 2 - wing], [w / 2, d / 2 - wing], [w / 2, d / 2], [-w / 2, d / 2]],
+      [[-w / 2, -d / 2 + wing], [-w / 2 + wing, -d / 2 + wing], [-w / 2 + wing, d / 2 - wing], [-w / 2, d / 2 - wing]],
+    ]
+    if (random() > 0.42) shapes.push([[w / 2 - wing, -d / 2 + wing], [w / 2, -d / 2 + wing], [w / 2, d / 2 - wing], [w / 2 - wing, d / 2 - wing]])
+    for (const shape of shapes) pushPolygonPrism(vertices, worldPolygon(building, shape), building.y + 0.05, h, color, roof)
+  }
+
+  function addSteppedBuilding(vertices, building, random) {
+    const color = building.zone === 'commercial' ? COLORS.glassBlue : COLORS.concreteWarm
+    const levels = building.height > 55 ? 4 : 3
+    for (let level = 0; level < levels; level += 1) {
+      const t = level / levels
+      const width = building.width * (1 - t * 0.42)
+      const depth = building.depth * (1 - t * 0.32)
+      const height = building.height / levels
+      const offset = (level - (levels - 1) / 2) * Math.min(3.2, building.width * 0.08)
+      const [ox, oz] = rotatePoint(offset, offset * 0.35, building.rotation || 0)
+      const proxy = { ...building, x: building.x + ox, z: building.z + oz }
+      const skew = width * (0.08 + random() * 0.08)
+      const shape = [[-width / 2 + skew, -depth / 2], [width / 2, -depth / 2], [width / 2 - skew, depth / 2], [-width / 2, depth / 2]]
+      pushPolygonPrism(vertices, worldPolygon(proxy, shape), building.y + level * height, height + 0.08, mixColor(color, COLORS.glassDark, t * 0.3), COLORS.roof)
+    }
+  }
+
+  function addEllipticalTower(vertices, building) {
+    const base = building.y + Math.min(8, building.height * 0.14)
+    const height = Math.max(16, building.height * 0.84)
+    const width = Math.max(7, building.width * 0.58)
+    const depth = Math.max(7, building.depth * 0.64)
+    const color = building.zone === 'commercial' ? COLORS.glassBlue : COLORS.concreteLight
+    pushEllipsePrism(vertices, building.x, base, building.z, width / 2, depth / 2, height, color, 20, building.rotation || 0)
+    pushRingFacade(vertices, building, width, depth, base, height, COLORS.concreteLight, COLORS.windowDay, 16)
+    if (typeof pushEllipsoidMesh === 'function') pushEllipsoidMesh(vertices, building.x, base + height + 1.4, building.z, width * 0.24, 2.4, depth * 0.24, COLORS.roof, 4, 12)
+  }
+
+  function addMaterialDetails(vertices, building, detailLevel, random) {
+    if (detailLevel <= 0) return
+    const floorHeight = building.zone === 'commercial' ? 3.8 : 3.15
+    const floors = Math.max(2, Math.min(16, Math.round(building.height / floorHeight)))
+    const facade = building.zone === 'commercial' ? COLORS.windowDay : COLORS.window
+    for (let floor = 1; floor < floors; floor += 1) {
+      const y = building.y + building.height * floor / floors
+      const [fx, fz] = rotatePoint(0, -building.depth * 0.505, building.rotation || 0)
+      pushBox(vertices, building.x + fx, y, building.z + fz, building.width * (0.72 + random() * 0.1), 0.18, 0.08, facade, building.rotation || 0)
+    }
+    if (detailLevel > 1 && building.zone === 'residential') {
+      const count = Math.min(7, Math.max(2, Math.floor(floors / 2)))
+      for (let i = 1; i <= count; i += 1) {
+        const y = building.y + building.height * i / (count + 1)
+        const side = i % 2 ? -0.28 : 0.28
+        const [bx, bz] = rotatePoint(building.width * side, -building.depth * 0.54, building.rotation || 0)
+        pushBox(vertices, building.x + bx, y, building.z + bz, building.width * 0.28, 0.16, 1.0, COLORS.concreteLight, building.rotation || 0)
+      }
+    }
+  }
+
+  function refineArchitecture(vertices, city, random, detailLevel) {
+    const limit = detailLevel > 1 ? city.buildings.length : Math.min(city.buildings.length, 150)
+    for (let i = 0; i < limit; i += 1) {
+      const building = city.buildings[i]
+      if (!building || building.width < 7 || building.depth < 7 || building.height < 7) continue
+      const selector = ((building.id?.toString().length || 0) + i * 7 + Math.floor(random() * 100)) % 6
+      if (building.height > 46 && (selector === 0 || selector === 3)) addEllipticalTower(vertices, building)
+      else if (building.height > 26 && selector <= 2) addSteppedBuilding(vertices, building, random)
+      else if (building.height <= 34 && selector >= 3) addCourtyardBuilding(vertices, building, random)
+      addMaterialDetails(vertices, building, detailLevel, random)
+    }
+  }
+
+  generateCity = function v102GenerateArchitecture(settings) {
+    const city = previousGenerateCity(settings)
+    try {
+      if (!city || !city.vertices || !Array.isArray(city.buildings) || !city.buildings.length) return city
+      const vertices = Array.from(city.vertices)
+      const detailLevel = city.metrics?.detailLevel ?? 1
+      const random = typeof seeded === 'function' ? seeded(hashString(`${settings.seed || 'city'}:v102-architecture`)) : Math.random
+      refineArchitecture(vertices, city, random, detailLevel)
+      city.vertices = new Float32Array(vertices)
+      city.metrics.vertexCount = vertices.length / 9
+      city.runtimeMode = 'v1.0.2-architecture-materials'
+      city.realism = {
+        ...(city.realism || {}),
+        nonOrthogonalFootprints: true,
+        courtyardAndSteppedForms: true,
+        ellipticalTowers: true,
+        facadeMaterialSeparation: true,
+        balconyAndTerraceDepth: true,
+      }
+      return city
+    } catch (error) {
+      console.error('[ProceduralCity v1.0.2 architecture fallback]', error)
+      return city
+    }
+  }
+
+  window.ProceduralCityV102Architecture = { version: '1.0.2-alpha' }
+})()

@@ -1,0 +1,147 @@
+// Procedural City v1.0 — detailed road surface and engineering layer.
+(function () {
+  const previousGenerateCity = generateCity
+
+  function roadDimensions(roadClass) {
+    if (roadClass === 'arterial') return { width: 19, lanes: 4, shoulder: 1.2 }
+    if (roadClass === 'collector') return { width: 12.5, lanes: 2, shoulder: 0.9 }
+    return { width: 8, lanes: 2, shoulder: 0.65 }
+  }
+
+  function segmentFrame(road) {
+    const dx = road.end.x - road.start.x
+    const dz = road.end.z - road.start.z
+    const length = Math.hypot(dx, dz) || 1
+    return {
+      dx, dz, length,
+      tx: dx / length,
+      tz: dz / length,
+      nx: -dz / length,
+      nz: dx / length,
+      rotation: Math.atan2(dx, dz),
+    }
+  }
+
+  function pointAlong(road, frame, t, lateral = 0) {
+    return {
+      x: road.start.x + frame.dx * t + frame.nx * lateral,
+      z: road.start.z + frame.dz * t + frame.nz * lateral,
+    }
+  }
+
+  function addDashedLine(vertices, road, frame, lateral, y, color, dash = 5.2, gap = 5.0) {
+    const period = dash + gap
+    const count = Math.max(1, Math.floor(frame.length / period))
+    for (let i = 0; i < count; i += 1) {
+      const startDistance = i * period + gap * 0.45
+      const centerDistance = Math.min(frame.length - dash * 0.5, startDistance + dash * 0.5)
+      if (centerDistance <= 0 || centerDistance >= frame.length) continue
+      const p = pointAlong(road, frame, centerDistance / frame.length, lateral)
+      pushBox(vertices, p.x, y, p.z, 0.16, 0.025, Math.min(dash, frame.length - startDistance), color, frame.rotation)
+    }
+  }
+
+  function addContinuousLine(vertices, road, frame, lateral, y, color, thickness = 0.14) {
+    const p = pointAlong(road, frame, 0.5, lateral)
+    pushBox(vertices, p.x, y, p.z, thickness, 0.025, frame.length * 0.94, color, frame.rotation)
+  }
+
+  function addCurbsAndDrainage(vertices, road, frame, dimensions, y) {
+    for (const side of [-1, 1]) {
+      const edge = dimensions.width * 0.5 + 0.52
+      const curb = pointAlong(road, frame, 0.5, side * edge)
+      pushBox(vertices, curb.x, y + 0.08, curb.z, 0.34, 0.20, frame.length + 0.8, COLORS.sidewalkEdge, frame.rotation)
+      const gutter = pointAlong(road, frame, 0.5, side * (dimensions.width * 0.5 - 0.25))
+      pushBox(vertices, gutter.x, y + 0.015, gutter.z, 0.36, 0.035, frame.length * 0.98, [0.075, 0.082, 0.086], frame.rotation)
+    }
+  }
+
+  function addMedian(vertices, road, frame, dimensions, y) {
+    if (road.class !== 'arterial' || frame.length < 18) return
+    const p = pointAlong(road, frame, 0.5, 0)
+    pushBox(vertices, p.x, y + 0.10, p.z, 1.05, 0.22, frame.length * 0.88, COLORS.median, frame.rotation)
+    const count = Math.max(1, Math.floor(frame.length / 28))
+    for (let i = 1; i <= count; i += 1) {
+      const q = pointAlong(road, frame, i / (count + 1), 0)
+      pushCylinderMesh(vertices, q.x, y + 0.18, q.z, 0.10, 0.9, COLORS.signal, 6)
+    }
+  }
+
+  function addBridgeBarriers(vertices, road, frame, dimensions, y) {
+    if (!road.bridge) return
+    for (const side of [-1, 1]) {
+      const p = pointAlong(road, frame, 0.5, side * (dimensions.width * 0.5 + 1.45))
+      pushBox(vertices, p.x, y + 0.42, p.z, 0.34, 0.84, frame.length + 1.5, COLORS.concreteLight, frame.rotation)
+    }
+  }
+
+  function addCrosswalk(vertices, road, frame, dimensions, y) {
+    if (frame.length < 20 || road.class === 'local') return
+    const stripeCount = Math.max(5, Math.min(10, Math.floor(dimensions.width / 1.6)))
+    const spacing = dimensions.width / stripeCount
+    for (const t of [0.10, 0.90]) {
+      const center = pointAlong(road, frame, t, 0)
+      for (let i = 0; i < stripeCount; i += 1) {
+        const lateral = -dimensions.width * 0.5 + spacing * (i + 0.5)
+        const p = { x: center.x + frame.nx * lateral, z: center.z + frame.nz * lateral }
+        pushBox(vertices, p.x, y + 0.035, p.z, Math.max(0.55, spacing * 0.56), 0.025, 2.4, COLORS.crosswalk, frame.rotation)
+      }
+      const stop = pointAlong(road, frame, t + (t < 0.5 ? 0.045 : -0.045), 0)
+      pushBox(vertices, stop.x, y + 0.04, stop.z, dimensions.width * 0.86, 0.025, 0.28, COLORS.crosswalk, frame.rotation)
+    }
+  }
+
+  function addRoadSurfaceDetail(vertices, city, detailLevel) {
+    const stride = detailLevel > 1 ? 1 : detailLevel > 0 ? 2 : 4
+    for (let index = 0; index < (city.roads || []).length; index += stride) {
+      const road = city.roads[index]
+      if (!road?.start || !road?.end) continue
+      const frame = segmentFrame(road)
+      if (frame.length < 2) continue
+      const dimensions = roadDimensions(road.class)
+      const y = (road.y || 0) + 0.16
+
+      addCurbsAndDrainage(vertices, road, frame, dimensions, y)
+      addContinuousLine(vertices, road, frame, -dimensions.width * 0.5 + 0.55, y + 0.025, COLORS.crosswalk, 0.12)
+      addContinuousLine(vertices, road, frame, dimensions.width * 0.5 - 0.55, y + 0.025, COLORS.crosswalk, 0.12)
+
+      if (dimensions.lanes === 4) {
+        addDashedLine(vertices, road, frame, -dimensions.width * 0.25, y + 0.03, COLORS.roadMark)
+        addDashedLine(vertices, road, frame, dimensions.width * 0.25, y + 0.03, COLORS.roadMark)
+      } else {
+        addDashedLine(vertices, road, frame, 0, y + 0.03, COLORS.roadMark)
+      }
+      addMedian(vertices, road, frame, dimensions, y)
+      addBridgeBarriers(vertices, road, frame, dimensions, y)
+      if (detailLevel > 0) addCrosswalk(vertices, road, frame, dimensions, y)
+    }
+  }
+
+  generateCity = function v10GenerateDetailedRoadCity(settings) {
+    const city = previousGenerateCity(settings)
+    try {
+      if (!city || !city.vertices || !Array.isArray(city.roads)) return city
+      const vertices = Array.from(city.vertices)
+      const detailLevel = city.metrics?.detailLevel ?? 1
+      addRoadSurfaceDetail(vertices, city, detailLevel)
+      city.vertices = new Float32Array(vertices)
+      city.metrics.vertexCount = vertices.length / 9
+      city.runtimeMode = 'v1.0-road-and-architecture-realism'
+      city.realism = {
+        ...(city.realism || {}),
+        laneMarkings: true,
+        curbs: true,
+        drainage: true,
+        bridgeBarriers: true,
+        medians: true,
+        crosswalks: true,
+      }
+      return city
+    } catch (error) {
+      console.error('[ProceduralCity v1.0 road detail fallback]', error)
+      return city
+    }
+  }
+
+  window.ProceduralCityV10RoadSurface = { version: '1.0.0-alpha' }
+})()

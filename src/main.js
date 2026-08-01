@@ -1,5 +1,6 @@
-const BUILD_ID = 'v091-dual-system-render-20260801'
+const BUILD_ID = 'v105-physical-shader-20260802'
 const sourceParts = [
+  './v10-shader-patch.js.txt',
   './main.part1.js.txt',
   './main.part2.js.txt',
   './main.part3a.js.txt',
@@ -25,6 +26,10 @@ const sourceParts = [
   './v09-terrain-system.js.txt',
   './v09-urban-system.js.txt',
   './v09-render-integration.js.txt',
+  './v10-realism-layer.js.txt',
+  './v10-architecture-materials.js.txt',
+  './v10-road-surface-layer.js.txt',
+  './v10-atmosphere-materials.js.txt',
 ]
 
 function versionedUrl(path) {
