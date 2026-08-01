@@ -1,5 +1,6 @@
-const BUILD_ID = 'v104-atmosphere-materials-20260802'
+const BUILD_ID = 'v105-physical-shader-20260802'
 const sourceParts = [
+  './v10-shader-patch.js.txt',
   './main.part1.js.txt',
   './main.part2.js.txt',
   './main.part3a.js.txt',
