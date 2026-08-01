@@ -1,4 +1,4 @@
-const BUILD_ID = 'v073-lighting-realism-20260801'
+const BUILD_ID = 'v074-mobility-pedestrians-20260801'
 const sourceParts = [
   './main.part1.js.txt',
   './main.part2.js.txt',
@@ -15,6 +15,7 @@ const sourceParts = [
   './main.part3i.js.txt',
   './main.part3j.js.txt',
   './main.part3k.js.txt',
+  './main.part3l.js.txt',
 ]
 
 function versionedUrl(path) {
