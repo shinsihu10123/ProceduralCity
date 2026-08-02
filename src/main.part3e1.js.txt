@@ -1,6 +1,6 @@
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = `procedural-city-v3-${currentCity.settings.seed.replace(/[^a-z0-9-_]+/gi, '-')}.json`
+  anchor.download = `procedural-city-v2-living-world-${currentCity.settings.seed.replace(/[^a-z0-9-_]+/gi, '-')}.json`
   anchor.click()
   URL.revokeObjectURL(url)
 })
@@ -86,4 +86,3 @@ canvas.addEventListener('pointermove', (event) => {
     previousPinch = { center, distance }
   }
 })
-

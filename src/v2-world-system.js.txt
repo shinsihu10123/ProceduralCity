@@ -1,0 +1,657 @@
+// Procedural City v2.0 — multi-scale physical world, nations and trade graph.
+
+(function () {
+  const BIOMES = [
+    'ocean', 'ice', 'tundra', 'boreal-forest', 'temperate-forest',
+    'grassland', 'desert', 'savanna', 'rainforest', 'alpine', 'wetland',
+  ]
+
+  function clamp(value, min, max) { return Math.max(min, Math.min(max, value)) }
+  function clamp01(value) { return clamp(value, 0, 1) }
+  function lerp(a, b, t) { return a + (b - a) * t }
+  function smoothstep(a, b, value) {
+    const t = clamp01((value - a) / Math.max(1e-9, b - a))
+    return t * t * (3 - 2 * t)
+  }
+  function hashString(value) {
+    let hash = 2166136261
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index)
+      hash = Math.imul(hash, 16777619)
+    }
+    return hash >>> 0
+  }
+  function createRandom(seed) {
+    let state = seed >>> 0
+    return () => {
+      state += 0x6d2b79f5
+      let value = state
+      value = Math.imul(value ^ (value >>> 15), value | 1)
+      value ^= value + Math.imul(value ^ (value >>> 7), value | 61)
+      return ((value ^ (value >>> 14)) >>> 0) / 4294967296
+    }
+  }
+  function hash2(x, z, seed) {
+    let value = Math.imul(x, 374761393) + Math.imul(z, 668265263) + Math.imul(seed, 1442695041)
+    value = Math.imul(value ^ (value >>> 13), 1274126177)
+    return ((value ^ (value >>> 16)) >>> 0) / 4294967295
+  }
+  function valueNoise(x, z, seed) {
+    const x0 = Math.floor(x)
+    const z0 = Math.floor(z)
+    const fx = x - x0
+    const fz = z - z0
+    const ux = fx * fx * (3 - 2 * fx)
+    const uz = fz * fz * (3 - 2 * fz)
+    const a = hash2(x0, z0, seed) * 2 - 1
+    const b = hash2(x0 + 1, z0, seed) * 2 - 1
+    const c = hash2(x0, z0 + 1, seed) * 2 - 1
+    const d = hash2(x0 + 1, z0 + 1, seed) * 2 - 1
+    return lerp(lerp(a, b, ux), lerp(c, d, ux), uz)
+  }
+  function fbm(x, z, seed, octaves = 5) {
+    let value = 0
+    let amplitude = 0.54
+    let frequency = 1
+    let total = 0
+    for (let octave = 0; octave < octaves; octave += 1) {
+      value += valueNoise(x * frequency, z * frequency, seed + octave * 1013) * amplitude
+      total += amplitude
+      amplitude *= 0.5
+      frequency *= 2.03
+    }
+    return value / total
+  }
+
+  class MinHeap {
+    constructor() { this.items = [] }
+    push(item) {
+      const items = this.items
+      items.push(item)
+      let index = items.length - 1
+      while (index > 0) {
+        const parent = (index - 1) >> 1
+        if (items[parent].priority <= item.priority) break
+        items[index] = items[parent]
+        index = parent
+      }
+      items[index] = item
+    }
+    pop() {
+      const items = this.items
+      if (!items.length) return null
+      const root = items[0]
+      const tail = items.pop()
+      if (items.length && tail) {
+        let index = 0
+        while (true) {
+          const left = index * 2 + 1
+          if (left >= items.length) break
+          const right = left + 1
+          const child = right < items.length && items[right].priority < items[left].priority ? right : left
+          if (items[child].priority >= tail.priority) break
+          items[index] = items[child]
+          index = child
+        }
+        items[index] = tail
+      }
+      return root
+    }
+    get length() { return this.items.length }
+  }
+
+  const NEIGHBORS_8 = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]]
+  const NEIGHBORS_4 = [[0, -1], [-1, 0], [1, 0], [0, 1]]
+  function cellIndex(x, z, size) { return z * size + x }
+  function cellCoords(index, size) { return { x: index % size, z: Math.floor(index / size) } }
+
+  function createPlates(size, count, random) {
+    return Array.from({ length: count }, (_, id) => {
+      const angle = random() * Math.PI * 2
+      return {
+        id,
+        x: random() * (size - 1),
+        z: random() * (size - 1),
+        vx: Math.cos(angle) * (0.35 + random() * 0.65),
+        vz: Math.sin(angle) * (0.35 + random() * 0.65),
+        continental: random() > 0.44,
+      }
+    })
+  }
+
+  function nearestPlates(x, z, plates) {
+    let first = null
+    let second = null
+    let firstDistance = Infinity
+    let secondDistance = Infinity
+    for (const plate of plates) {
+      const distance = Math.hypot(x - plate.x, z - plate.z)
+      if (distance < firstDistance) {
+        second = first
+        secondDistance = firstDistance
+        first = plate
+        firstDistance = distance
+      } else if (distance < secondDistance) {
+        second = plate
+        secondDistance = distance
+      }
+    }
+    return { first, second, firstDistance, secondDistance }
+  }
+
+  function createContinentalField(size, random) {
+    const count = 4 + Math.floor(random() * 3)
+    return Array.from({ length: count }, () => ({
+      x: size * (0.10 + random() * 0.80),
+      z: size * (0.08 + random() * 0.84),
+      rx: size * (0.16 + random() * 0.18),
+      rz: size * (0.14 + random() * 0.22),
+      rotation: random() * Math.PI,
+      strength: 0.72 + random() * 0.45,
+    }))
+  }
+
+  function continentalValue(x, z, continents) {
+    let field = -1.05
+    for (const continent of continents) {
+      const dx = x - continent.x
+      const dz = z - continent.z
+      const cos = Math.cos(continent.rotation)
+      const sin = Math.sin(continent.rotation)
+      const rx = (dx * cos - dz * sin) / continent.rx
+      const rz = (dx * sin + dz * cos) / continent.rz
+      const distance2 = rx * rx + rz * rz
+      field = Math.max(field, continent.strength - distance2 * 1.16)
+    }
+    return field
+  }
+
+  function buildElevation(size, seed, random) {
+    const length = size * size
+    const raw = new Float64Array(length)
+    const plateId = new Int16Array(length)
+    const uplift = new Float32Array(length)
+    const plates = createPlates(size, 11 + Math.floor(random() * 5), random)
+    const continents = createContinentalField(size, random)
+
+    for (let z = 0; z < size; z += 1) {
+      for (let x = 0; x < size; x += 1) {
+        const index = cellIndex(x, z, size)
+        const nearest = nearestPlates(x, z, plates)
+        const boundary = Math.exp(-Math.pow((nearest.secondDistance - nearest.firstDistance) / 2.35, 2))
+        const dx = nearest.second.x - nearest.first.x
+        const dz = nearest.second.z - nearest.first.z
+        const distance = Math.hypot(dx, dz) || 1
+        const relativeVx = nearest.first.vx - nearest.second.vx
+        const relativeVz = nearest.first.vz - nearest.second.vz
+        const convergence = Math.max(0, (relativeVx * dx + relativeVz * dz) / distance)
+        const divergence = Math.max(0, -(relativeVx * dx + relativeVz * dz) / distance)
+        const crustBias = nearest.first.continental ? 0.16 : -0.13
+        const continental = continentalValue(x, z, continents)
+        const largeNoise = fbm(x / size * 3.1, z / size * 3.1, seed + 17, 5)
+        const regionalNoise = fbm(x / size * 10.5, z / size * 10.5, seed + 911, 4)
+        const tectonic = boundary * (convergence * 0.52 - divergence * 0.18)
+        raw[index] = continental * 0.78 + largeNoise * 0.34 + regionalNoise * 0.12 + tectonic + crustBias
+        uplift[index] = tectonic
+        plateId[index] = nearest.first.id
+      }
+    }
+
+    const sorted = Array.from(raw).sort((a, b) => a - b)
+    const seaLevelRaw = sorted[Math.floor(sorted.length * (0.55 + random() * 0.055))]
+    const elevation = new Float32Array(length)
+    for (let index = 0; index < length; index += 1) {
+      const relative = raw[index] - seaLevelRaw
+      elevation[index] = relative >= 0
+        ? Math.pow(relative, 1.22) * 3150
+        : -Math.pow(-relative, 1.08) * 3900
+    }
+
+    // A conservative thermal-relaxation pass removes noise spikes while retaining plate-scale relief.
+    for (let iteration = 0; iteration < 7; iteration += 1) {
+      const next = new Float32Array(elevation)
+      for (let z = 1; z < size - 1; z += 1) {
+        for (let x = 1; x < size - 1; x += 1) {
+          const index = cellIndex(x, z, size)
+          if (elevation[index] <= 0) continue
+          let lower = index
+          for (const [dx, dz] of NEIGHBORS_8) {
+            const candidate = cellIndex(x + dx, z + dz, size)
+            if (elevation[candidate] < elevation[lower]) lower = candidate
+          }
+          const difference = elevation[index] - elevation[lower]
+          if (difference > 720) {
+            const transfer = (difference - 720) * 0.11
+            next[index] -= transfer
+            next[lower] += transfer
+          }
+        }
+      }
+      elevation.set(next)
+    }
+    return { elevation, plateId, uplift, plates, continents, seaLevelRaw }
+  }
+
+  function oceanDistance(elevation, size) {
+    const length = elevation.length
+    const distance = new Float32Array(length)
+    distance.fill(Infinity)
+    const queue = new Int32Array(length)
+    let head = 0
+    let tail = 0
+    for (let index = 0; index < length; index += 1) {
+      if (elevation[index] <= 0) {
+        distance[index] = 0
+        queue[tail++] = index
+      }
+    }
+    while (head < tail) {
+      const index = queue[head++]
+      const { x, z } = cellCoords(index, size)
+      for (const [dx, dz] of NEIGHBORS_4) {
+        const nx = x + dx
+        const nz = z + dz
+        if (nx < 0 || nz < 0 || nx >= size || nz >= size) continue
+        const next = cellIndex(nx, nz, size)
+        if (distance[next] <= distance[index] + 1) continue
+        distance[next] = distance[index] + 1
+        queue[tail++] = next
+      }
+    }
+    return distance
+  }
+
+  function conditionDrainage(elevation, precipitation, size) {
+    const length = elevation.length
+    const filled = new Float32Array(elevation)
+    const visited = new Uint8Array(length)
+    const queue = new MinHeap()
+    function enqueue(index, value) {
+      visited[index] = 1
+      filled[index] = value
+      queue.push({ index, priority: value })
+    }
+    for (let x = 0; x < size; x += 1) {
+      enqueue(cellIndex(x, 0, size), elevation[cellIndex(x, 0, size)])
+      enqueue(cellIndex(x, size - 1, size), elevation[cellIndex(x, size - 1, size)])
+    }
+    for (let z = 1; z < size - 1; z += 1) {
+      enqueue(cellIndex(0, z, size), elevation[cellIndex(0, z, size)])
+      enqueue(cellIndex(size - 1, z, size), elevation[cellIndex(size - 1, z, size)])
+    }
+    while (queue.length) {
+      const current = queue.pop()
+      const { x, z } = cellCoords(current.index, size)
+      for (const [dx, dz] of NEIGHBORS_8) {
+        const nx = x + dx
+        const nz = z + dz
+        if (nx < 0 || nz < 0 || nx >= size || nz >= size) continue
+        const next = cellIndex(nx, nz, size)
+        if (visited[next]) continue
+        enqueue(next, Math.max(elevation[next], current.priority + 0.001))
+      }
+    }
+
+    const downstream = new Int32Array(length)
+    downstream.fill(-1)
+    const accumulation = new Float64Array(length)
+    for (let index = 0; index < length; index += 1) accumulation[index] = elevation[index] > 0 ? 0.35 + precipitation[index] / 1800 : 0
+    for (let z = 1; z < size - 1; z += 1) {
+      for (let x = 1; x < size - 1; x += 1) {
+        const index = cellIndex(x, z, size)
+        if (elevation[index] <= 0) continue
+        let best = -1
+        let bestHeight = filled[index]
+        for (const [dx, dz] of NEIGHBORS_8) {
+          const next = cellIndex(x + dx, z + dz, size)
+          const diagonal = dx !== 0 && dz !== 0 ? 0.0002 : 0
+          const candidate = filled[next] + diagonal + hash2(x + dx, z + dz, 771) * 0.00005
+          if (candidate < bestHeight) {
+            bestHeight = candidate
+            best = next
+          }
+        }
+        downstream[index] = best
+      }
+    }
+    const order = Array.from({ length }, (_, index) => index).sort((a, b) => filled[b] - filled[a])
+    for (const index of order) {
+      const next = downstream[index]
+      if (next >= 0) accumulation[next] += accumulation[index]
+    }
+    const river = new Float32Array(length)
+    for (let index = 0; index < length; index += 1) {
+      if (elevation[index] <= 0) continue
+      river[index] = clamp01((Math.log1p(accumulation[index]) - Math.log(12)) / (Math.log(950) - Math.log(12)))
+    }
+    return { filled, downstream, accumulation, river }
+  }
+
+  function classifyBiome(temperature, precipitation, elevation, river, oceanDistanceCells) {
+    if (elevation <= 0) return 0
+    if (elevation > 3300) return 9
+    if (temperature < -8) return 1
+    if (temperature < 3) return precipitation > 650 ? 3 : 2
+    if (river > 0.72 && oceanDistanceCells < 4) return 10
+    if (precipitation < 260) return 6
+    if (temperature > 23 && precipitation > 1900) return 8
+    if (temperature > 20 && precipitation > 650) return 7
+    if (precipitation > 1050) return temperature > 10 ? 4 : 3
+    if (precipitation > 430) return 5
+    return 6
+  }
+
+  function createClimate(elevation, size, seed, cellKm) {
+    const length = elevation.length
+    const distanceToOcean = oceanDistance(elevation, size)
+    const temperature = new Float32Array(length)
+    const precipitation = new Float32Array(length)
+    const moisture = new Float32Array(length)
+    const biome = new Uint8Array(length)
+    const slope = new Float32Array(length)
+
+    for (let z = 0; z < size; z += 1) {
+      const latitude = Math.abs((z / (size - 1)) * 2 - 1)
+      for (let x = 0; x < size; x += 1) {
+        const index = cellIndex(x, z, size)
+        const altitude = Math.max(0, elevation[index])
+        const climateNoise = fbm(x / size * 5.2, z / size * 5.2, seed + 2081, 3)
+        temperature[index] = 29 - latitude * 43 - altitude * 0.0063 + climateNoise * 2.4
+        const maritime = Math.exp(-distanceToOcean[index] * cellKm / 390)
+        const tropical = Math.exp(-Math.pow(latitude / 0.34, 2))
+        const rainShadow = clamp01(altitude / 2800) * (0.22 + Math.max(0, climateNoise) * 0.18)
+        precipitation[index] = clamp(160 + maritime * 1120 + tropical * 720 + climateNoise * 330 - rainShadow * 760, 70, 3200)
+        moisture[index] = clamp01(precipitation[index] / 1550)
+        const left = elevation[cellIndex(Math.max(0, x - 1), z, size)]
+        const right = elevation[cellIndex(Math.min(size - 1, x + 1), z, size)]
+        const top = elevation[cellIndex(x, Math.max(0, z - 1), size)]
+        const bottom = elevation[cellIndex(x, Math.min(size - 1, z + 1), size)]
+        slope[index] = Math.atan(Math.hypot(right - left, bottom - top) / Math.max(1, cellKm * 2000)) * 180 / Math.PI
+      }
+    }
+    const hydrology = conditionDrainage(elevation, precipitation, size)
+    for (let index = 0; index < length; index += 1) {
+      biome[index] = classifyBiome(temperature[index], precipitation[index], elevation[index], hydrology.river[index], distanceToOcean[index])
+    }
+    return { distanceToOcean, temperature, precipitation, moisture, biome, slope, hydrology }
+  }
+
+  function suitabilityAt(index, fields) {
+    if (fields.elevation[index] <= 0) return 0
+    const temperate = 1 - clamp01(Math.abs(fields.temperature[index] - 16) / 31)
+    const rain = 1 - clamp01(Math.abs(fields.precipitation[index] - 950) / 1500)
+    const flat = 1 - clamp01(fields.slope[index] / 18)
+    const waterAccess = Math.max(fields.river[index] * 0.92, Math.exp(-fields.distanceToOcean[index] / 2.7) * 0.74)
+    const biome = fields.biome[index]
+    const biomePenalty = biome === 6 || biome === 1 || biome === 9 ? 0.34 : biome === 2 ? 0.18 : 0
+    return clamp01(temperate * 0.30 + rain * 0.19 + flat * 0.30 + waterAccess * 0.21 - biomePenalty)
+  }
+
+  function selectCountrySeeds(fields, size, count, random) {
+    const candidates = []
+    for (let z = 2; z < size - 2; z += 1) {
+      for (let x = 2; x < size - 2; x += 1) {
+        const index = cellIndex(x, z, size)
+        const suitability = suitabilityAt(index, fields)
+        if (suitability > 0.38) candidates.push({ index, x, z, score: suitability + random() * 0.12 })
+      }
+    }
+    candidates.sort((a, b) => b.score - a.score)
+    const seeds = []
+    const minimumDistance = size * 0.17
+    for (const candidate of candidates) {
+      if (seeds.every((seed) => Math.hypot(seed.x - candidate.x, seed.z - candidate.z) > minimumDistance)) seeds.push(candidate)
+      if (seeds.length >= count) break
+    }
+    if (seeds.length < Math.max(5, count - 2)) {
+      for (const candidate of candidates) {
+        if (seeds.some((seed) => seed.index === candidate.index)) continue
+        if (seeds.every((seed) => Math.hypot(seed.x - candidate.x, seed.z - candidate.z) > minimumDistance * 0.66)) seeds.push(candidate)
+        if (seeds.length >= count) break
+      }
+    }
+    return seeds
+  }
+
+  const NAME_START = ['Ar', 'Bel', 'Cal', 'Dae', 'Eri', 'Fal', 'Gye', 'Han', 'Ily', 'Jun', 'Kor', 'Lum', 'Mer', 'Nor', 'Or', 'Pra', 'Rin', 'Sol', 'Tae', 'Val']
+  const NAME_END = ['avia', 'edor', 'enia', 'ara', 'oria', 'ustan', 'mere', 'land', 'on', 'ia', 'eon', 'ara', 'ess', 'ova']
+  function countryName(index, random, used) {
+    let name = ''
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      name = `${NAME_START[Math.floor(random() * NAME_START.length)]}${NAME_END[Math.floor(random() * NAME_END.length)]}`
+      if (!used.has(name)) break
+    }
+    if (used.has(name)) name = `${name}-${index + 1}`
+    used.add(name)
+    return name
+  }
+
+  function buildCountries(fields, size, cellKm, random) {
+    const desired = clamp(Math.round(size / 8), 8, 14)
+    const seeds = selectCountrySeeds(fields, size, desired, random)
+    const countryId = new Int16Array(size * size)
+    countryId.fill(-1)
+    for (let z = 0; z < size; z += 1) {
+      for (let x = 0; x < size; x += 1) {
+        const index = cellIndex(x, z, size)
+        if (fields.elevation[index] <= 0) continue
+        let best = -1
+        let bestCost = Infinity
+        for (let id = 0; id < seeds.length; id += 1) {
+          const seed = seeds[id]
+          const dx = x - seed.x
+          const dz = z - seed.z
+          const plateBarrier = fields.plateId[index] === fields.plateId[seed.index] ? 0.86 : 1.14
+          const mountainBarrier = 1 + clamp01(fields.elevation[index] / 3200) * 0.33
+          const bias = 0.82 + hash2(id, index, 9631) * 0.34
+          const cost = Math.hypot(dx, dz) * plateBarrier * mountainBarrier * bias
+          if (cost < bestCost) { bestCost = cost; best = id }
+        }
+        countryId[index] = best
+      }
+    }
+
+    const usedNames = new Set()
+    const systems = ['parliamentary republic', 'presidential republic', 'constitutional monarchy', 'federal republic', 'council republic']
+    const countries = seeds.map((seed, id) => ({
+      id,
+      name: countryName(id, random, usedNames),
+      capitalIndex: seed.index,
+      governmentSystem: systems[Math.floor(random() * systems.length)],
+      taxRate: 0.17 + random() * 0.16,
+      publicInvestmentRate: 0.12 + random() * 0.13,
+      tradeOpenness: 0.30 + random() * 0.58,
+      institutionalQuality: 0.42 + random() * 0.48,
+      cells: 0,
+      areaKm2: 0,
+      ports: 0,
+      meanSuitability: 0,
+      resources: { agriculture: 0, timber: 0, minerals: 0, energy: 0, hydro: 0 },
+    }))
+    const border = new Uint8Array(size * size)
+    for (let z = 0; z < size; z += 1) {
+      for (let x = 0; x < size; x += 1) {
+        const index = cellIndex(x, z, size)
+        const id = countryId[index]
+        if (id < 0) continue
+        const country = countries[id]
+        country.cells += 1
+        country.areaKm2 += cellKm * cellKm
+        country.meanSuitability += suitabilityAt(index, fields)
+        const oceanAdjacent = NEIGHBORS_4.some(([dx, dz]) => {
+          const nx = x + dx
+          const nz = z + dz
+          return nx >= 0 && nz >= 0 && nx < size && nz < size && fields.elevation[cellIndex(nx, nz, size)] <= 0
+        })
+        if (oceanAdjacent) country.ports += 1
+        const biome = fields.biome[index]
+        country.resources.agriculture += [4, 5, 7, 8, 10].includes(biome) ? suitabilityAt(index, fields) : 0.08
+        country.resources.timber += [3, 4, 8].includes(biome) ? 1 : 0.08
+        country.resources.minerals += clamp01((fields.uplift[index] + 0.08) * 2.5) + clamp01(fields.elevation[index] / 3600)
+        country.resources.energy += 0.18 + hash2(x, z, 1709) * 0.72
+        country.resources.hydro += fields.river[index] * Math.max(0.1, fields.slope[index] / 8)
+        for (const [dx, dz] of NEIGHBORS_4) {
+          const nx = x + dx
+          const nz = z + dz
+          if (nx < 0 || nz < 0 || nx >= size || nz >= size) continue
+          const neighborId = countryId[cellIndex(nx, nz, size)]
+          if (neighborId >= 0 && neighborId !== id) border[index] = 1
+        }
+      }
+    }
+    for (const country of countries) {
+      country.meanSuitability /= Math.max(1, country.cells)
+      const scale = Math.max(1, country.cells)
+      for (const key of Object.keys(country.resources)) country.resources[key] = country.resources[key] / scale
+      const habitablePopulation = country.areaKm2 * (8 + country.meanSuitability * 38)
+      country.population = Math.round(habitablePopulation * (0.48 + random() * 0.92))
+      country.gdpPerCapita = Math.round(5200 + country.institutionalQuality * 41000 + country.tradeOpenness * 9000 + random() * 5000)
+      country.gdp = country.population * country.gdpPerCapita
+      country.capital = cellCoords(country.capitalIndex, size)
+      country.color = [0.24 + random() * 0.38, 0.28 + random() * 0.34, 0.29 + random() * 0.32]
+    }
+    return { countries, countryId, border }
+  }
+
+  function buildTrade(countries, size, random) {
+    const candidates = []
+    for (let a = 0; a < countries.length; a += 1) {
+      for (let b = a + 1; b < countries.length; b += 1) {
+        const left = countries[a]
+        const right = countries[b]
+        const distanceCells = Math.hypot(left.capital.x - right.capital.x, left.capital.z - right.capital.z)
+        const resourceDifference = Object.keys(left.resources).reduce((sum, key) => sum + Math.abs(left.resources[key] - right.resources[key]), 0) / 5
+        const sizeTerm = Math.sqrt(left.gdp * right.gdp) / 1e10
+        const maritime = left.ports > 0 && right.ports > 0 ? 1.24 : 1
+        const score = sizeTerm * (0.45 + resourceDifference) * maritime * (left.tradeOpenness + right.tradeOpenness) / Math.pow(3 + distanceCells, 1.15)
+        candidates.push({ a, b, distanceCells, score, relation: 0.40 + random() * 0.55 })
+      }
+    }
+    candidates.sort((a, b) => b.score - a.score)
+    const degree = new Uint8Array(countries.length)
+    const edges = []
+    for (const candidate of candidates) {
+      if (degree[candidate.a] >= 4 && degree[candidate.b] >= 4) continue
+      if (degree[candidate.a] >= 5 || degree[candidate.b] >= 5) continue
+      const left = countries[candidate.a]
+      const right = countries[candidate.b]
+      const volume = Math.min(left.gdp, right.gdp) * 0.012 * clamp(candidate.score * 3.6, 0.16, 2.2)
+      edges.push({ ...candidate, volume, tariff: 0.015 + (1 - candidate.relation) * 0.11 })
+      degree[candidate.a] += 1
+      degree[candidate.b] += 1
+      if (edges.length >= countries.length * 2) break
+    }
+    return edges
+  }
+
+  function selectSettlement(fields, countries, countryId, size, random) {
+    const viableCountries = countries.filter((country) => country.cells > 12 && country.meanSuitability > 0.38)
+    const host = viableCountries[Math.floor(random() * viableCountries.length)] || countries[0]
+    let best = null
+    for (let z = 2; z < size - 2; z += 1) {
+      for (let x = 2; x < size - 2; x += 1) {
+        const index = cellIndex(x, z, size)
+        if (countryId[index] !== host.id) continue
+        const suitability = suitabilityAt(index, fields)
+        const water = Math.max(fields.river[index], Math.exp(-fields.distanceToOcean[index] / 2.2))
+        const hazard = clamp01(fields.slope[index] / 18) + (fields.river[index] > 0.82 ? 0.22 : 0)
+        const score = suitability * 0.62 + water * 0.28 - hazard * 0.22 + random() * 0.055
+        if (!best || score > best.score) best = { index, x, z, score }
+      }
+    }
+    return {
+      ...best,
+      countryId: host.id,
+      countryName: host.name,
+      elevationM: fields.elevation[best.index],
+      temperatureC: fields.temperature[best.index],
+      precipitationMm: fields.precipitation[best.index],
+      biome: BIOMES[fields.biome[best.index]],
+      riverStrength: fields.river[best.index],
+      coastal: fields.distanceToOcean[best.index] <= 1.5,
+      suitability: suitabilityAt(best.index, fields),
+    }
+  }
+
+  function createWorld(input = {}) {
+    const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    const seed = String(input.seed || 'living-world')
+    const size = clamp(Math.round(input.size || 96), 64, 144)
+    const spanKm = clamp(Number(input.spanKm) || 2400, 1200, 4800)
+    const cellKm = spanKm / (size - 1)
+    const seedValue = hashString(`${seed}:v2-world`)
+    const random = createRandom(seedValue)
+    const physical = buildElevation(size, seedValue, random)
+    const climate = createClimate(physical.elevation, size, seedValue, cellKm)
+    const fields = {
+      ...physical,
+      ...climate,
+      river: climate.hydrology.river,
+    }
+    const political = buildCountries(fields, size, cellKm, random)
+    const trade = buildTrade(political.countries, size, random)
+    const settlement = selectSettlement(fields, political.countries, political.countryId, size, random)
+    const landCells = Array.from(physical.elevation).filter((height) => height > 0).length
+    const riverCells = Array.from(fields.river).filter((value) => value > 0.18).length
+    const borderCells = Array.from(political.border).filter(Boolean).length
+    const endedAt = typeof performance !== 'undefined' ? performance.now() : Date.now()
+
+    const world = {
+      schemaVersion: 7,
+      version: '2.0.0-living-world-alpha',
+      seed,
+      size,
+      spanKm,
+      cellKm,
+      areaKm2: spanKm * spanKm,
+      fields,
+      countries: political.countries,
+      countryId: political.countryId,
+      border: political.border,
+      trade,
+      settlement,
+      diagnostics: {
+        landRatio: landCells / (size * size),
+        countryCount: political.countries.length,
+        riverCells,
+        borderCells,
+        tradeLinks: trade.length,
+        generationMs: endedAt - startedAt,
+        tectonicPlates: physical.plates.length,
+        drainageConditioned: true,
+      },
+      sample(x, z) {
+        const xi = clamp(Math.round(x), 0, size - 1)
+        const zi = clamp(Math.round(z), 0, size - 1)
+        const index = cellIndex(xi, zi, size)
+        return {
+          index,
+          elevationM: fields.elevation[index],
+          temperatureC: fields.temperature[index],
+          precipitationMm: fields.precipitation[index],
+          river: fields.river[index],
+          biome: BIOMES[fields.biome[index]],
+          countryId: political.countryId[index],
+        }
+      },
+      toJSON() {
+        return {
+          schemaVersion: this.schemaVersion,
+          version: this.version,
+          seed: this.seed,
+          size: this.size,
+          spanKm: this.spanKm,
+          cellKm: this.cellKm,
+          areaKm2: this.areaKm2,
+          countries: this.countries.map((country) => ({ ...country })),
+          trade: this.trade.map((edge) => ({ ...edge })),
+          settlement: { ...this.settlement },
+          diagnostics: { ...this.diagnostics },
+        }
+      },
+    }
+    return world
+  }
+
+  window.ProceduralWorldSystemV2 = { create: createWorld, biomes: [...BIOMES] }
+})()

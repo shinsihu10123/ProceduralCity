@@ -1,0 +1,784 @@
+// Procedural City v2.0 — endogenous settlement society and stock-flow engine.
+
+(function () {
+  const SECTOR_ORDER = ['agriculture', 'materials', 'construction', 'retail', 'services', 'manufacturing', 'logistics', 'energy']
+  const SECTOR_LABELS = {
+    agriculture: '농림·식품', materials: '자재', construction: '건설', retail: '소매',
+    services: '생활 서비스', manufacturing: '제조', logistics: '물류', energy: '에너지',
+  }
+  const BASE_PRODUCTIVITY = {
+    agriculture: 2850, materials: 3450, construction: 4200, retail: 3300,
+    services: 3900, manufacturing: 5200, logistics: 4300, energy: 6100,
+  }
+
+  function clamp(value, min, max) { return Math.max(min, Math.min(max, value)) }
+  function clamp01(value) { return clamp(value, 0, 1) }
+  function safeDivide(a, b, fallback = 0) { return Number.isFinite(a / b) && b !== 0 ? a / b : fallback }
+  function hashString(value) {
+    let hash = 2166136261
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index)
+      hash = Math.imul(hash, 16777619)
+    }
+    return hash >>> 0
+  }
+  function createRandom(seed) {
+    let state = seed >>> 0
+    const random = () => {
+      state += 0x6d2b79f5
+      let value = state
+      value = Math.imul(value ^ (value >>> 15), value | 1)
+      value ^= value + Math.imul(value ^ (value >>> 7), value | 61)
+      return ((value ^ (value >>> 14)) >>> 0) / 4294967296
+    }
+    random.getState = () => state >>> 0
+    return random
+  }
+  function stochasticRound(value, random) {
+    const base = Math.floor(Math.max(0, value))
+    return base + (random() < value - base ? 1 : 0)
+  }
+  function weightedChoice(random, entries) {
+    const total = entries.reduce((sum, entry) => sum + Math.max(0, entry.weight), 0)
+    let cursor = random() * Math.max(total, 1e-9)
+    for (const entry of entries) {
+      cursor -= Math.max(0, entry.weight)
+      if (cursor <= 0) return entry.value
+    }
+    return entries[entries.length - 1].value
+  }
+  function round(value, digits = 3) {
+    const factor = 10 ** digits
+    return Math.round(value * factor) / factor
+  }
+
+  function createHouseholds(random, count) {
+    const households = []
+    for (let index = 0; index < count; index += 1) {
+      const size = weightedChoice(random, [
+        { value: 1, weight: 0.10 }, { value: 2, weight: 0.22 }, { value: 3, weight: 0.30 },
+        { value: 4, weight: 0.27 }, { value: 5, weight: 0.11 },
+      ])
+      households.push({
+        id: `HH-${index + 1}`,
+        weight: 1,
+        size,
+        workers: clamp(Math.round(size * (0.40 + random() * 0.26)), 0, size),
+        children: clamp(Math.round(size * (0.12 + random() * 0.25)), 0, Math.max(0, size - 1)),
+        education: random(),
+        savings: 4000 + random() * 21000,
+        tenure: random() < 0.38 ? 'owner' : 'renter',
+        income: 0,
+        satisfaction: 0.58 + random() * 0.18,
+        dwellingId: `DW-${index + 1}`,
+      })
+    }
+    return households
+  }
+
+  function createFirm(id, sector, employees, random) {
+    return {
+      id: `F-${String(id).padStart(4, '0')}`,
+      sector,
+      employees,
+      desiredEmployees: employees,
+      productivity: BASE_PRODUCTIVITY[sector] * (0.82 + random() * 0.34),
+      capital: employees * BASE_PRODUCTIVITY[sector] * (2.2 + random() * 2.6),
+      cash: employees * BASE_PRODUCTIVITY[sector] * (0.8 + random() * 1.6),
+      output: 0,
+      revenue: 0,
+      profit: 0,
+      lossMonths: 0,
+      ageMonths: 0,
+    }
+  }
+
+  function initialFirms(random) {
+    return [
+      createFirm(1, 'agriculture', 8, random),
+      createFirm(2, 'materials', 3, random),
+      createFirm(3, 'construction', 4, random),
+      createFirm(4, 'retail', 3, random),
+      createFirm(5, 'services', 3, random),
+      createFirm(6, 'energy', 2, random),
+    ]
+  }
+
+  function hostCountry(world) {
+    return world?.countries?.find((country) => country.id === world.settlement.countryId) || world?.countries?.[0] || {
+      id: 0,
+      name: 'Host Country',
+      population: 12000000,
+      gdpPerCapita: 21000,
+      tradeOpenness: 0.5,
+      institutionalQuality: 0.65,
+      taxRate: 0.24,
+      publicInvestmentRate: 0.18,
+      governmentSystem: 'parliamentary republic',
+      resources: { agriculture: 0.5, timber: 0.5, minerals: 0.5, energy: 0.5, hydro: 0.5 },
+    }
+  }
+
+  function initialState(world, seed, options, random) {
+    const host = hostCountry(world)
+    const hostTradeVolume = (world.trade || []).filter((edge) => edge.a === host.id || edge.b === host.id).reduce((sum, edge) => sum + edge.volume, 0)
+    const networkTradeAccess = clamp(host.tradeOpenness * 0.62 + Math.log1p(hostTradeVolume / Math.max(1, host.gdp) * 100) * 0.13, 0.18, 0.96)
+    const initialHouseholds = clamp(Math.round(options.initialHouseholds || 14), 8, 30)
+    const households = createHouseholds(random, initialHouseholds)
+    const population = households.reduce((sum, household) => sum + household.size, 0)
+    const initialUnits = initialHouseholds + Math.max(3, Math.round(initialHouseholds * 0.22))
+    return {
+      schemaVersion: 7,
+      version: '2.0.0-living-society-alpha',
+      seed,
+      foundingYear: Number(options.foundingYear || 2026),
+      year: 0,
+      month: 0,
+      elapsedMonths: 0,
+      population,
+      households,
+      householdCount: initialHouseholds,
+      firms: initialFirms(random),
+      nextFirmId: 7,
+      nextHouseholdId: initialHouseholds + 1,
+      hostCountryId: host.id,
+      hostCountryName: host.name,
+      macro: {
+        population: host.population,
+        gdpPerCapita: host.gdpPerCapita,
+        productivityIndex: 1,
+        interestRate: 0.045,
+        inflation: 0.022,
+        tradeAccess: networkTradeAccess,
+        institutionalQuality: host.institutionalQuality,
+      },
+      labor: { workforce: population * 0.58, employment: 23, jobs: 23, unemploymentRate: 0.08, averageWage: 3180 },
+      economy: {
+        monthlyGdp: 0,
+        annualizedGdp: 0,
+        gdpPerCapita: 0,
+        priceIndex: 1,
+        productivity: 1,
+        exports: 0,
+        imports: 0,
+        tradeBalance: 0,
+        investment: 0,
+        consumption: population * 1450,
+        sectorOutput: Object.fromEntries(SECTOR_ORDER.map((sector) => [sector, 0])),
+      },
+      housing: {
+        units: initialUnits,
+        occupiedUnits: initialHouseholds,
+        vacancyRate: safeDivide(initialUnits - initialHouseholds, initialUnits),
+        monthlyRent: 510,
+        medianPrice: 76000,
+        landPricePerM2: 21,
+        underConstructionUnits: 0,
+        informalHouseholds: 0,
+      },
+      government: {
+        system: host.governmentSystem,
+        taxRate: clamp(host.taxRate * 0.68, 0.12, 0.25),
+        businessTaxRate: 0.14,
+        propertyTaxPerUnit: 16,
+        cash: 560000,
+        debt: 0,
+        revenue: 0,
+        expenditure: 0,
+        balance: 0,
+        approval: 0.67,
+        electionCycleMonths: 48,
+        lastElectionMonth: 0,
+        priorities: { housing: 0.18, utilities: 0.24, education: 0.18, health: 0.17, transport: 0.13, environment: 0.10 },
+      },
+      utilities: {
+        electricity: { capacity: 0.095, demand: 0.052, reliability: 0.98, renewableShare: 0.38, maintenance: 0.90 },
+        water: { capacity: 24, demand: 13, reliability: 0.98, maintenance: 0.92 },
+        sewage: { capacity: 20, demand: 10, reliability: 0.97, maintenance: 0.90 },
+        waste: { capacity: 0.095, demand: 0.045, reliability: 0.96, maintenance: 0.88 },
+        drainage: { capacity: 0.40, demand: 0.16, reliability: 0.92, maintenance: 0.88 },
+      },
+      services: {
+        schoolSeats: 28,
+        clinicCapacity: 140,
+        emergencyCapacity: 260,
+        parkAreaHa: 1.7,
+        educationAccess: 0.92,
+        healthAccess: 0.94,
+        emergencyAccess: 0.91,
+        greenAccess: 0.90,
+      },
+      environment: {
+        airQuality: 94,
+        waterQuality: 92,
+        emissionsTonnesCo2: 0,
+        cumulativeEmissions: 0,
+        imperviousShare: 0.012,
+        ecosystemHealth: 0.91,
+        floodExposure: clamp(world?.settlement?.riverStrength * 0.22 + (world?.settlement?.coastal ? 0.10 : 0), 0.04, 0.42),
+        annualDamage: 0,
+      },
+      development: {
+        stage: 'hamlet',
+        constructedBuildings: 7,
+        occupiedBuildings: 6,
+        roadShare: 0.06,
+        transitOpen: false,
+        servicedLandHa: 7.5,
+        constructionPipeline: [],
+        publicProjects: [],
+        cumulativeConstructionCost: 0,
+      },
+      politics: {
+        councilSeats: 5,
+        legitimacy: 0.71,
+        policyStability: host.institutionalQuality,
+        lastDecision: '기초 상수도·전력망 유지',
+      },
+      flows: { births: 0, deaths: 0, netMigration: 0, populationBefore: population, populationAfter: population },
+      history: [],
+      events: [{ month: 0, type: 'founding', severity: 'info', message: `${host.name}의 정착 적합지에 ${population}명이 마을을 세웠습니다.` }],
+      diagnostics: { endogenousDevelopment: true, representativeHouseholds: true, accountingErrors: [], eventCounts: { founding: 1 } },
+    }
+  }
+
+  function recordEvent(state, type, message, severity = 'info') {
+    const last = state.events[0]
+    if (last && last.type === type && last.message === message && state.elapsedMonths - last.month < 6) return
+    state.events.unshift({ month: state.elapsedMonths, type, severity, message })
+    state.diagnostics.eventCounts[type] = (state.diagnostics.eventCounts[type] || 0) + 1
+    if (state.events.length > 36) state.events.length = 36
+  }
+
+  function stageForPopulation(population) {
+    if (population < 120) return 'hamlet'
+    if (population < 650) return 'village'
+    if (population < 2800) return 'small-town'
+    if (population < 12000) return 'town'
+    if (population < 55000) return 'city'
+    return 'regional-city'
+  }
+
+  function updateMacro(state, host, random) {
+    if (state.month !== 0) return
+    const tradeImpulse = (host.tradeOpenness - 0.5) * 0.006
+    const institutionalImpulse = (host.institutionalQuality - 0.55) * 0.009
+    const cycle = Math.sin(state.year / 5.8 + host.id) * 0.008
+    const growth = clamp(0.014 + tradeImpulse + institutionalImpulse + cycle + (random() - 0.5) * 0.006, -0.018, 0.045)
+    state.macro.population *= 1 + clamp(0.006 + growth * 0.24, -0.004, 0.018)
+    state.macro.gdpPerCapita *= 1 + growth
+    state.macro.productivityIndex *= 1 + Math.max(-0.012, growth * 0.58)
+    state.macro.inflation = clamp(0.021 + cycle * 0.7 + (random() - 0.5) * 0.012, -0.006, 0.095)
+    state.macro.interestRate = clamp(0.027 + state.macro.inflation * 0.82 + (random() - 0.5) * 0.01, 0.005, 0.15)
+  }
+
+  function utilityReliability(state) {
+    const values = Object.values(state.utilities).map((utility) => utility.reliability)
+    return values.reduce((sum, value) => sum + value, 0) / values.length
+  }
+
+  function serviceScore(state) {
+    return (state.services.educationAccess + state.services.healthAccess + state.services.emergencyAccess + state.services.greenAccess) / 4
+  }
+
+  function sectorResource(host, sector) {
+    if (sector === 'agriculture') return 0.62 + (host.resources?.agriculture || 0.5) * 0.70
+    if (sector === 'materials') return 0.58 + (host.resources?.minerals || 0.5) * 0.72
+    if (sector === 'energy') return 0.58 + Math.max(host.resources?.energy || 0.5, host.resources?.hydro || 0.4) * 0.68
+    return 0.92 + (host.institutionalQuality - 0.5) * 0.20
+  }
+
+  function allocateLabor(state) {
+    const population = state.population
+    const workforce = population * clamp(0.51 + state.services.educationAccess * 0.10, 0.50, 0.66)
+    const demand = state.firms.reduce((sum, firm) => sum + Math.max(0, firm.desiredEmployees), 0)
+    const employment = Math.min(workforce, demand)
+    const factor = demand > 0 ? employment / demand : 0
+    for (const firm of state.firms) firm.employees = firm.desiredEmployees * factor
+    state.labor.workforce = workforce
+    state.labor.jobs = demand
+    state.labor.employment = employment
+    state.labor.unemploymentRate = clamp01(1 - safeDivide(employment, workforce, 0))
+  }
+
+  function desiredSectorDemand(state, sector) {
+    const perPerson = {
+      agriculture: 560, materials: 125, construction: 220, retail: 520,
+      services: 680, manufacturing: 390, logistics: 220, energy: 150,
+    }[sector]
+    const urbanFactor = 0.72 + Math.log1p(state.population) / 12
+    return state.population * perPerson * urbanFactor * state.economy.priceIndex
+  }
+
+  function runFirmsAndMarkets(state, host, random) {
+    allocateLabor(state)
+    const infrastructure = utilityReliability(state)
+    const agglomeration = 1 + clamp(Math.log1p(state.population / 80) * 0.035, 0, 0.28)
+    const sectorOutput = Object.fromEntries(SECTOR_ORDER.map((sector) => [sector, 0]))
+    const sectorSupply = Object.fromEntries(SECTOR_ORDER.map((sector) => [sector, 0]))
+    let wages = 0
+    let profits = 0
+    let investment = 0
+    let monthlyGdp = 0
+
+    for (const firm of state.firms) {
+      firm.ageMonths += 1
+      const resource = sectorResource(host, firm.sector)
+      const capitalFactor = Math.pow(Math.max(0.2, firm.capital / Math.max(1, firm.employees * firm.productivity * 3)), 0.18)
+      const output = firm.employees * firm.productivity * state.macro.productivityIndex * state.economy.productivity
+        * infrastructure * agglomeration * resource * capitalFactor
+      const demand = desiredSectorDemand(state, firm.sector)
+      const totalSectorCapacity = state.firms.filter((candidate) => candidate.sector === firm.sector).reduce((sum, candidate) => sum + Math.max(1, candidate.employees), 0)
+      const firmShare = firm.employees / Math.max(1, totalSectorCapacity)
+      const marketDemand = demand * firmShare * (0.86 + state.macro.tradeAccess * 0.28)
+      const sold = Math.min(output, marketDemand * (0.92 + random() * 0.16))
+      const wagePerWorker = state.labor.averageWage * (firm.sector === 'manufacturing' || firm.sector === 'energy' ? 1.12 : firm.sector === 'agriculture' ? 0.82 : 1)
+      const wageBill = firm.employees * wagePerWorker
+      const operatingCost = output * (firm.sector === 'construction' ? 0.29 : firm.sector === 'manufacturing' ? 0.34 : 0.22)
+      const revenue = sold
+      const taxableProfit = Math.max(0, revenue - wageBill - operatingCost)
+      const tax = taxableProfit * state.government.businessTaxRate
+      const profit = revenue - wageBill - operatingCost - tax
+      const reinvestment = Math.max(0, profit) * (0.18 + random() * 0.24)
+      firm.output = output
+      firm.revenue = revenue
+      firm.profit = profit
+      firm.cash += profit - reinvestment
+      firm.capital += reinvestment
+      firm.lossMonths = profit < 0 ? firm.lossMonths + 1 : Math.max(0, firm.lossMonths - 2)
+      const demandPressure = clamp(safeDivide(marketDemand, Math.max(1, output), 1), 0.55, 1.65)
+      const hiringSignal = (demandPressure - 0.96) * 0.11 + (profit > 0 ? 0.012 : -0.018)
+      firm.desiredEmployees = clamp(firm.desiredEmployees * (1 + hiringSignal), 1.2, Math.max(9, state.population * 0.025))
+      sectorOutput[firm.sector] += revenue
+      sectorSupply[firm.sector] += output
+      wages += wageBill
+      profits += Math.max(0, profit)
+      investment += reinvestment
+      monthlyGdp += wageBill + taxableProfit + operatingCost * 0.32
+    }
+
+    const consumption = state.population * (1040 + state.labor.averageWage * 0.17) * state.economy.priceIndex
+    const importNeed = SECTOR_ORDER.reduce((sum, sector) => sum + Math.max(0, desiredSectorDemand(state, sector) - sectorSupply[sector]), 0)
+    const exportCapacity = SECTOR_ORDER.reduce((sum, sector) => sum + Math.max(0, sectorSupply[sector] - desiredSectorDemand(state, sector)), 0)
+    // A small settlement imports most goods it cannot yet make; trade access controls
+    // the residual shortage instead of forcing local autarky and runaway inflation.
+    const imports = importNeed * clamp(0.72 + state.macro.tradeAccess * 0.24, 0.76, 0.95)
+    const exports = exportCapacity * state.macro.tradeAccess * 0.57
+    const aggregateDemand = SECTOR_ORDER.reduce((sum, sector) => sum + desiredSectorDemand(state, sector), 0)
+    const aggregateSupply = SECTOR_ORDER.reduce((sum, sector) => sum + sectorSupply[sector], 0) + imports
+    const pricePressure = clamp(safeDivide(aggregateDemand, Math.max(1, aggregateSupply), 1) - 1, -0.14, 0.18)
+    const monthlyMacroInflation = state.macro.inflation / 12
+    state.economy.priceIndex *= 1 + clamp(pricePressure * 0.009 + monthlyMacroInflation, -0.006, 0.010)
+    state.labor.averageWage *= 1 + clamp(monthlyMacroInflation * 0.82 + (state.labor.unemploymentRate < 0.045 ? 0.003 : state.labor.unemploymentRate > 0.14 ? -0.002 : 0), -0.006, 0.012)
+    state.economy.monthlyGdp = monthlyGdp
+    state.economy.annualizedGdp = monthlyGdp * 12
+    state.economy.gdpPerCapita = safeDivide(monthlyGdp * 12, state.population)
+    state.economy.sectorOutput = sectorOutput
+    state.economy.exports = exports
+    state.economy.imports = imports
+    state.economy.tradeBalance = exports - imports
+    state.economy.investment = investment
+    state.economy.consumption = consumption
+    return { wages, profits, investment, importNeed, aggregateDemand, aggregateSupply }
+  }
+
+  function maybeCreateFirm(state, random) {
+    if (state.firms.length > Math.max(24, state.population / 22)) return
+    const candidates = SECTOR_ORDER.map((sector) => {
+      const supply = state.firms.filter((firm) => firm.sector === sector).reduce((sum, firm) => sum + firm.output, 0)
+      const demand = desiredSectorDemand(state, sector)
+      const gap = clamp(safeDivide(demand - supply, Math.max(demand, 1), 0), -1, 1)
+      return { value: sector, weight: Math.max(0.01, gap + 0.16) }
+    })
+    const gapStrength = candidates.reduce((sum, candidate) => sum + candidate.weight, 0) / candidates.length
+    const entryChance = clamp(0.024 + gapStrength * 0.105 + Math.max(0, 0.08 - state.labor.unemploymentRate) * 0.18, 0, 0.26)
+    if (random() > entryChance) return
+    const sector = weightedChoice(random, candidates)
+    const employees = clamp(1.5 + random() * Math.min(8, 2 + state.population / 90), 1.5, 12)
+    const firm = createFirm(state.nextFirmId++, sector, employees, random)
+    state.firms.push(firm)
+    recordEvent(state, 'firm-entry', `${SECTOR_LABELS[sector]} 부문에 새로운 기업이 진입했습니다.`)
+  }
+
+  function removeFailedFirms(state) {
+    const survivors = []
+    for (const firm of state.firms) {
+      const essential = ['agriculture', 'construction', 'retail', 'services', 'energy'].includes(firm.sector)
+        && !survivors.some((candidate) => candidate.sector === firm.sector)
+      if (firm.lossMonths > 14 && firm.cash < -firm.productivity * 2 && !essential) {
+        recordEvent(state, 'firm-exit', `${SECTOR_LABELS[firm.sector]} 기업이 누적 손실로 폐업했습니다.`, 'warning')
+      } else survivors.push(firm)
+    }
+    state.firms = survivors
+  }
+
+  function demographicFlows(state, world, random) {
+    const populationBefore = state.population
+    const healthcare = state.services.healthAccess
+    const prosperity = clamp(state.economy.gdpPerCapita / Math.max(14000, state.macro.gdpPerCapita), 0.42, 1.55)
+    const annualBirthRate = clamp(0.021 - Math.log1p(populationBefore / 1200) * 0.0018 - prosperity * 0.003 + (1 - healthcare) * 0.004, 0.007, 0.026)
+    const annualDeathRate = clamp(0.0115 - healthcare * 0.004 + (1 - state.environment.airQuality / 100) * 0.006, 0.0045, 0.019)
+    const births = stochasticRound(populationBefore * annualBirthRate / 12, random)
+    const deaths = Math.min(Math.floor(populationBefore), stochasticRound(populationBefore * annualDeathRate / 12, random))
+    const housingCapacityPeople = Math.max(0, state.housing.units - state.householdCount * 0.96) * 2.48
+    const wageAttraction = clamp(state.labor.averageWage / Math.max(1, state.macro.gdpPerCapita / 12 * 0.92), 0.45, 1.65)
+    const housingCostBurden = clamp(state.housing.monthlyRent / Math.max(1, state.labor.averageWage), 0.08, 0.72)
+    const attraction = wageAttraction * 0.26 + (1 - state.labor.unemploymentRate) * 0.25 + serviceScore(state) * 0.24
+      + state.politics.legitimacy * 0.10 + utilityReliability(state) * 0.15 - housingCostBurden * 0.42
+    const migrationPool = Math.max(0.3, Math.sqrt(populationBefore) * 1.08 + state.firms.length * 0.05)
+    const netMigrationPotential = (attraction - 0.49) * migrationPool
+    const disasterRepulsion = state.environment.annualDamage > state.economy.annualizedGdp * 0.03 ? populationBefore * 0.0025 : 0
+    let netMigration = stochasticRound(Math.max(0, Math.min(housingCapacityPeople, netMigrationPotential)), random)
+      - stochasticRound(Math.max(0, -netMigrationPotential) + disasterRepulsion, random)
+    if (state.labor.unemploymentRate > 0.24) netMigration -= stochasticRound(populationBefore * 0.0018, random)
+    netMigration = clamp(netMigration, -Math.max(1, populationBefore * 0.014), Math.max(2, populationBefore * 0.026))
+    state.population = Math.max(1, populationBefore + births - deaths + netMigration)
+    state.householdCount = Math.max(1, state.population / clamp(2.62 - prosperity * 0.17, 2.18, 2.55))
+    state.flows = { births, deaths, netMigration, populationBefore, populationAfter: state.population }
+  }
+
+  function updateRepresentativeHouseholds(state, random) {
+    const desiredRepresentatives = clamp(Math.ceil(Math.sqrt(state.householdCount) * 4.2), 12, 420)
+    while (state.households.length < desiredRepresentatives) {
+      const template = createHouseholds(random, 1)[0]
+      template.id = `HH-${state.nextHouseholdId++}`
+      template.dwellingId = null
+      state.households.push(template)
+    }
+    if (state.households.length > desiredRepresentatives) state.households.length = desiredRepresentatives
+    const weight = state.householdCount / state.households.length
+    const employmentRate = 1 - state.labor.unemploymentRate
+    for (const household of state.households) {
+      household.weight = weight
+      household.income = household.workers * state.labor.averageWage * employmentRate
+      const rent = household.tenure === 'renter' ? state.housing.monthlyRent : state.housing.medianPrice * 0.0032
+      const consumption = household.size * 520 * state.economy.priceIndex
+      household.savings += household.income - rent - consumption
+      household.satisfaction = clamp01(0.24 + serviceScore(state) * 0.28 + utilityReliability(state) * 0.21
+        + employmentRate * 0.18 + state.environment.airQuality / 100 * 0.12 - clamp(rent / Math.max(1, household.income), 0, 1) * 0.22)
+    }
+  }
+
+  function queueProject(state, project) {
+    const duplicate = state.development.publicProjects.some((candidate) => candidate.type === project.type)
+    if (duplicate || state.government.cash < project.cost * 0.38) return false
+    const upfront = project.cost * 0.35
+    state.government.cash -= upfront
+    state.development.publicProjects.push({ ...project, remainingMonths: project.duration, paid: upfront })
+    recordEvent(state, 'public-project', `${project.label} 사업이 착공됐습니다.`)
+    return true
+  }
+
+  function completeProjects(state) {
+    const active = []
+    for (const project of state.development.publicProjects) {
+      project.remainingMonths -= 1
+      if (project.remainingMonths > 0) { active.push(project); continue }
+      state.government.cash -= Math.max(0, project.cost - project.paid)
+      if (project.utility) state.utilities[project.utility].capacity += project.addCapacity
+      if (project.service) state.services[project.service] += project.addCapacity
+      if (project.type === 'roads') state.development.servicedLandHa += project.addCapacity
+      if (project.type === 'parks') state.services.parkAreaHa += project.addCapacity
+      state.development.constructedBuildings += project.buildings || 1
+      recordEvent(state, 'project-complete', `${project.label} 사업이 준공됐습니다.`)
+    }
+    state.development.publicProjects = active
+  }
+
+  function planInfrastructure(state) {
+    const electricityLoad = safeDivide(state.utilities.electricity.demand, state.utilities.electricity.capacity, 1)
+    const waterLoad = safeDivide(state.utilities.water.demand, state.utilities.water.capacity, 1)
+    const sewageLoad = safeDivide(state.utilities.sewage.demand, state.utilities.sewage.capacity, 1)
+    const drainageLoad = safeDivide(state.utilities.drainage.demand, state.utilities.drainage.capacity, 1)
+    if (electricityLoad > 0.82) queueProject(state, { type: 'power', label: '분산형 전력·배전 증설', utility: 'electricity', addCapacity: Math.max(0.08, state.utilities.electricity.demand * 0.48), cost: 220000 + state.population * 310, duration: 14, buildings: 1 })
+    if (waterLoad > 0.82) queueProject(state, { type: 'water', label: '취수·정수 시설 증설', utility: 'water', addCapacity: Math.max(28, state.utilities.water.demand * 0.45), cost: 185000 + state.population * 260, duration: 12, buildings: 1 })
+    if (sewageLoad > 0.84) queueProject(state, { type: 'sewage', label: '하수처리 용량 확충', utility: 'sewage', addCapacity: Math.max(24, state.utilities.sewage.demand * 0.48), cost: 205000 + state.population * 275, duration: 14, buildings: 1 })
+    if (drainageLoad > 0.78 || state.environment.floodExposure > 0.30) queueProject(state, { type: 'drainage', label: '우수관·저류지 확충', utility: 'drainage', addCapacity: Math.max(0.24, state.utilities.drainage.demand * 0.55), cost: 195000 + state.population * 190, duration: 13, buildings: 0 })
+    const children = state.population * 0.19
+    if (state.services.schoolSeats < children * 1.08) queueProject(state, { type: 'school', label: '학교 신설·증축', service: 'schoolSeats', addCapacity: Math.max(48, children * 0.55), cost: 310000 + state.population * 220, duration: 18, buildings: 1 })
+    if (state.services.clinicCapacity < state.population * 1.03) queueProject(state, { type: 'clinic', label: '보건소·진료시설 확충', service: 'clinicCapacity', addCapacity: Math.max(220, state.population * 0.42), cost: 360000 + state.population * 260, duration: 20, buildings: 1 })
+    if (state.development.servicedLandHa < state.population / 31) queueProject(state, { type: 'roads', label: '집산도로·상하수관 동시 확장', addCapacity: Math.max(8, state.population / 65), cost: 260000 + state.population * 290, duration: 16, buildings: 0 })
+    if (state.services.parkAreaHa < state.population / 520) queueProject(state, { type: 'parks', label: '근린공원·생태축 조성', addCapacity: Math.max(1.5, state.population / 900), cost: 120000 + state.population * 95, duration: 10, buildings: 0 })
+  }
+
+  function updateUtilities(state) {
+    const industrialJobs = state.firms.filter((firm) => ['materials', 'manufacturing', 'construction'].includes(firm.sector)).reduce((sum, firm) => sum + firm.employees, 0)
+    state.utilities.electricity.demand = state.population * 0.00105 + industrialJobs * 0.0034
+    state.utilities.water.demand = state.population * 0.245 + industrialJobs * 0.085
+    state.utilities.sewage.demand = state.utilities.water.demand * 0.81
+    state.utilities.waste.demand = state.population * 0.00115 + industrialJobs * 0.00065
+    state.environment.imperviousShare = clamp(0.008 + state.development.constructedBuildings * 0.0017 + state.development.roadShare * 0.22, 0.01, 0.76)
+    state.utilities.drainage.demand = state.environment.imperviousShare * (0.34 + state.environment.floodExposure * 0.88)
+    for (const [key, utility] of Object.entries(state.utilities)) {
+      const load = safeDivide(utility.demand, utility.capacity, 2)
+      const maintenanceDecay = 0.00055 + Math.max(0, load - 0.75) * 0.0025
+      utility.maintenance = clamp(utility.maintenance - maintenanceDecay + (state.government.expenditure > 0 ? 0.00042 : 0), 0.42, 1)
+      utility.reliability = clamp(Math.min(1, safeDivide(utility.capacity, Math.max(utility.demand, 1e-6), 1)) * (0.68 + utility.maintenance * 0.32), 0.25, 1)
+      if (load > 1.05) recordEvent(state, `utility-${key}`, `${key} 수요가 현재 설계 용량을 초과했습니다.`, 'warning')
+    }
+  }
+
+  function updateServices(state) {
+    const children = state.population * 0.19
+    state.services.educationAccess = clamp01(safeDivide(state.services.schoolSeats, Math.max(1, children), 1))
+    state.services.healthAccess = clamp01(safeDivide(state.services.clinicCapacity, Math.max(1, state.population), 1))
+    state.services.emergencyAccess = clamp01(safeDivide(state.services.emergencyCapacity, Math.max(1, state.population * 0.85), 1))
+    state.services.greenAccess = clamp01(0.35 + safeDivide(state.services.parkAreaHa, Math.max(0.1, state.population / 420), 1) * 0.65)
+  }
+
+  function updateHousingAndDevelopment(state, random) {
+    completeProjects(state)
+    const pipeline = []
+    for (const project of state.development.constructionPipeline) {
+      project.remainingMonths -= 1
+      if (project.remainingMonths > 0) { pipeline.push(project); continue }
+      state.housing.units += project.units
+      state.housing.underConstructionUnits -= project.units
+      state.development.constructedBuildings += project.buildings
+      state.development.cumulativeConstructionCost += project.cost
+      recordEvent(state, 'housing-complete', `주택 ${Math.round(project.units)}호가 준공되어 입주를 시작했습니다.`)
+    }
+    state.development.constructionPipeline = pipeline
+    state.housing.occupiedUnits = Math.min(state.housing.units, state.householdCount)
+    state.housing.vacancyRate = clamp01(safeDivide(state.housing.units - state.housing.occupiedUnits, state.housing.units, 0))
+    state.housing.informalHouseholds = Math.max(0, state.householdCount - state.housing.units)
+    const rentPressure = clamp(0.075 - state.housing.vacancyRate, -0.12, 0.12) + state.macro.inflation / 12
+    state.housing.monthlyRent *= 1 + rentPressure * 0.035
+    const capRate = clamp(0.058 + state.macro.interestRate * 0.35, 0.045, 0.12)
+    state.housing.medianPrice = state.housing.monthlyRent * 12 / capRate
+    state.housing.landPricePerM2 *= 1 + clamp(rentPressure * 0.014 + Math.max(0, state.population - 250) / 1000000, -0.003, 0.012)
+
+    const expectedYield = state.housing.monthlyRent * 12 / Math.max(1, 64000 * state.economy.priceIndex + state.housing.landPricePerM2 * 170)
+    const housingShortage = state.householdCount * 1.08 - state.housing.units - state.housing.underConstructionUnits
+    const constructionWorkers = state.firms.filter((firm) => firm.sector === 'construction').reduce((sum, firm) => sum + firm.employees, 0)
+    const feasibleUnits = Math.max(1, constructionWorkers * 0.58)
+    if (housingShortage > 1.2 && expectedYield > state.macro.interestRate + 0.012 && state.development.constructionPipeline.length < 4) {
+      const units = clamp(Math.ceil(Math.min(housingShortage * 0.68, feasibleUnits)), 2, Math.max(5, state.population / 35))
+      const density = clamp(Math.log1p(state.population) / 8.5 + state.housing.landPricePerM2 / 600, 0.18, 1)
+      const unitsPerBuilding = density < 0.42 ? 1.6 : density < 0.68 ? 5.5 : 18
+      const buildings = Math.max(1, Math.ceil(units / unitsPerBuilding))
+      const cost = units * (56000 + state.housing.landPricePerM2 * 105) * state.economy.priceIndex
+      state.development.constructionPipeline.push({ units, buildings, cost, remainingMonths: Math.round(6 + units * 0.34 + random() * 5) })
+      state.housing.underConstructionUnits += units
+      state.economy.investment += cost / 12
+      recordEvent(state, 'housing-start', `시장 수요와 사업성에 따라 주택 ${units}호가 착공됐습니다.`)
+    }
+    if (state.housing.informalHouseholds > 1) recordEvent(state, 'housing-shortage', `주택 부족으로 ${Math.ceil(state.housing.informalHouseholds)}가구가 비정규 거처를 사용합니다.`, 'warning')
+  }
+
+  function updateGovernment(state, market) {
+    const wageTax = market.wages * state.government.taxRate
+    const businessTax = market.profits * state.government.businessTaxRate
+    const propertyTax = state.housing.units * state.government.propertyTaxPerUnit
+    const intergovernmentalTransfer = Math.max(1800, state.population * 28 * state.macro.institutionalQuality)
+    const revenue = wageTax + businessTax + propertyTax + intergovernmentalTransfer
+    const operations = state.population * (31 + serviceScore(state) * 18)
+    const maintenance = state.development.constructedBuildings * 65 + state.development.servicedLandHa * 42
+    const debtService = state.government.debt * state.macro.interestRate / 12
+    const expenditure = operations + maintenance + debtService
+    const balance = revenue - expenditure
+    state.government.revenue = revenue
+    state.government.expenditure = expenditure
+    state.government.balance = balance
+    state.government.cash += balance
+    if (state.government.cash < -Math.max(100000, state.economy.monthlyGdp * 0.65)) {
+      const borrowing = -state.government.cash + state.economy.monthlyGdp * 0.15
+      state.government.debt += borrowing
+      state.government.cash += borrowing
+      recordEvent(state, 'municipal-debt', '기반시설·운영 적자를 충당하기 위해 지방채가 발행됐습니다.', 'warning')
+    }
+    const maintenanceShare = clamp(expenditure * 0.20 / Math.max(1, revenue), 0, 0.03)
+    for (const utility of Object.values(state.utilities)) utility.maintenance = clamp(utility.maintenance + maintenanceShare, 0.42, 1)
+  }
+
+  function updateEnvironment(state, world, random) {
+    const industrialOutput = (state.economy.sectorOutput.materials || 0) + (state.economy.sectorOutput.manufacturing || 0)
+    const fossilShare = 1 - state.utilities.electricity.renewableShare
+    const emissions = state.utilities.electricity.demand * 0.42 * fossilShare + industrialOutput / 900000 + state.population * 0.0021
+    state.environment.emissionsTonnesCo2 = emissions
+    state.environment.cumulativeEmissions += emissions
+    const pollutionLoad = emissions / Math.max(1, state.population) * 16 + state.utilities.waste.demand / Math.max(state.utilities.waste.capacity, 0.01) * 3
+    state.environment.airQuality = clamp(98 - pollutionLoad - state.environment.imperviousShare * 18, 24, 99)
+    state.environment.waterQuality = clamp(96 - (1 - state.utilities.sewage.reliability) * 46 - state.environment.imperviousShare * 10, 28, 98)
+    state.environment.ecosystemHealth = clamp(state.environment.ecosystemHealth + state.services.greenAccess * 0.0008 - state.environment.imperviousShare * 0.00065 - emissions * 0.000018, 0.25, 0.96)
+    state.environment.annualDamage *= 0.91
+    const siteRain = world?.settlement?.precipitationMm || 900
+    const seasonalRainChance = clamp(siteRain / 18000, 0.025, 0.19)
+    if (random() < seasonalRainChance) {
+      const runoff = state.environment.imperviousShare * (0.55 + random() * 0.85)
+      const drainageDeficit = Math.max(0, 1 - state.utilities.drainage.reliability)
+      const hazard = state.environment.floodExposure * (0.35 + random() * 0.95)
+      if (runoff + drainageDeficit + hazard > 0.64) {
+        const damage = state.economy.monthlyGdp * clamp((runoff + drainageDeficit + hazard - 0.64) * 0.16, 0.002, 0.12)
+        state.environment.annualDamage += damage
+        state.government.cash -= damage * 0.28
+        recordEvent(state, 'flood', `집중호우로 약 ${Math.round(damage).toLocaleString('ko-KR')} 크레딧의 피해가 발생했습니다.`, 'warning')
+      }
+    }
+  }
+
+  function updatePolitics(state) {
+    const employment = 1 - state.labor.unemploymentRate
+    const housing = clamp01(1 - state.housing.informalHouseholds / Math.max(1, state.householdCount) - Math.max(0, 0.04 - state.housing.vacancyRate) * 3)
+    const environment = (state.environment.airQuality + state.environment.waterQuality) / 200
+    const fiscalPenalty = clamp01(state.government.debt / Math.max(1, state.economy.annualizedGdp * 1.2))
+    const targetApproval = clamp01(serviceScore(state) * 0.29 + utilityReliability(state) * 0.20 + employment * 0.19
+      + housing * 0.13 + environment * 0.11 + state.politics.policyStability * 0.08 - fiscalPenalty * 0.16)
+    state.government.approval = state.government.approval * 0.90 + targetApproval * 0.10
+    state.politics.legitimacy = clamp01(state.politics.legitimacy * 0.96 + state.government.approval * 0.04 - fiscalPenalty * 0.008)
+    if (state.elapsedMonths - state.government.lastElectionMonth >= state.government.electionCycleMonths) {
+      state.government.lastElectionMonth = state.elapsedMonths
+      const weak = state.government.approval < 0.48
+      if (weak) {
+        const failing = [
+          { key: 'housing', value: housing }, { key: 'utilities', value: utilityReliability(state) },
+          { key: 'education', value: state.services.educationAccess }, { key: 'health', value: state.services.healthAccess },
+          { key: 'environment', value: environment },
+        ].sort((a, b) => a.value - b.value)[0]
+        state.government.priorities[failing.key] += 0.06
+        const total = Object.values(state.government.priorities).reduce((sum, value) => sum + value, 0)
+        for (const key of Object.keys(state.government.priorities)) state.government.priorities[key] /= total
+        state.politics.lastDecision = `${failing.key} 부문 우선투자 전환`
+        recordEvent(state, 'election', `낮은 만족도로 지방정부가 ${failing.key} 우선 정책으로 전환했습니다.`, 'warning')
+      } else {
+        state.politics.lastDecision = '현 개발·복지 균형 정책 유지'
+        recordEvent(state, 'election', '지방선거에서 현 운영 기조가 유지됐습니다.')
+      }
+    }
+  }
+
+  function updateDevelopmentIndicators(state) {
+    const previousStage = state.development.stage
+    state.development.stage = stageForPopulation(state.population)
+    state.development.occupiedBuildings = Math.max(5, Math.ceil(state.housing.occupiedUnits / clamp(2.1 + Math.log1p(state.population) * 0.55, 2.2, 15)) + state.firms.length + Math.ceil(state.population / 950))
+    state.development.constructedBuildings = Math.max(state.development.constructedBuildings, state.development.occupiedBuildings)
+    state.development.roadShare = clamp(Math.max(state.development.roadShare, state.development.constructedBuildings / 190 * 0.88 + state.development.servicedLandHa / 650), 0.04, 1)
+    state.development.transitOpen = state.population > 7200 && state.government.cash > -state.economy.annualizedGdp * 0.25
+    if (previousStage !== state.development.stage) recordEvent(state, 'stage-change', `정착지가 ${state.development.stage} 단계로 전환됐습니다.`)
+  }
+
+  function annualSnapshot(state) {
+    if (state.month !== 0) return
+    state.history.push({
+      year: state.year,
+      population: Math.round(state.population),
+      households: Math.round(state.householdCount),
+      firms: state.firms.length,
+      gdp: Math.round(state.economy.annualizedGdp),
+      gdpPerCapita: Math.round(state.economy.gdpPerCapita),
+      unemploymentRate: round(state.labor.unemploymentRate),
+      housingUnits: Math.round(state.housing.units),
+      buildings: state.development.constructedBuildings,
+      approval: round(state.government.approval),
+      emissions: round(state.environment.emissionsTonnesCo2),
+      utilityReliability: round(utilityReliability(state)),
+    })
+    if (state.history.length > 201) state.history.shift()
+  }
+
+  function auditState(state) {
+    const errors = []
+    const identity = state.flows.populationBefore + state.flows.births - state.flows.deaths + state.flows.netMigration
+    if (Math.abs(identity - state.flows.populationAfter) > 1e-6) errors.push('population-stock-flow')
+    if (state.population < 0 || !Number.isFinite(state.population)) errors.push('population-domain')
+    if (state.housing.units < 0 || state.housing.occupiedUnits > state.housing.units + 1e-6) errors.push('housing-stock')
+    if (state.labor.employment > state.labor.workforce + 1e-6 || state.labor.unemploymentRate < 0 || state.labor.unemploymentRate > 1) errors.push('labor-bounds')
+    if (Object.values(state.utilities).some((utility) => !Number.isFinite(utility.capacity) || utility.capacity < 0 || utility.reliability < 0 || utility.reliability > 1)) errors.push('utility-bounds')
+    if (Object.values(state.economy).some((value) => typeof value === 'number' && !Number.isFinite(value))) errors.push('economy-finite')
+    state.diagnostics.accountingErrors = errors
+    return errors
+  }
+
+  function snapshot(state) {
+    return {
+      version: state.version,
+      date: { foundingYear: state.foundingYear, year: state.year, month: state.month, calendarYear: state.foundingYear + state.year },
+      population: Math.round(state.population),
+      households: Math.round(state.householdCount),
+      representativeHouseholds: state.households.length,
+      firms: state.firms.length,
+      stage: state.development.stage,
+      labor: { ...state.labor, workforce: Math.round(state.labor.workforce), employment: Math.round(state.labor.employment), jobs: Math.round(state.labor.jobs) },
+      economy: { ...state.economy, sectorOutput: { ...state.economy.sectorOutput } },
+      housing: { ...state.housing },
+      government: { ...state.government, priorities: { ...state.government.priorities } },
+      utilities: Object.fromEntries(Object.entries(state.utilities).map(([key, value]) => [key, { ...value }])),
+      services: { ...state.services },
+      environment: { ...state.environment },
+      development: {
+        stage: state.development.stage,
+        constructedBuildings: state.development.constructedBuildings,
+        occupiedBuildings: state.development.occupiedBuildings,
+        roadShare: state.development.roadShare,
+        transitOpen: state.development.transitOpen,
+        servicedLandHa: state.development.servicedLandHa,
+        housingProjects: state.development.constructionPipeline.length,
+        publicProjects: state.development.publicProjects.length,
+      },
+      politics: { ...state.politics },
+      flows: { ...state.flows },
+      events: state.events.slice(0, 12).map((event) => ({ ...event })),
+      diagnostics: { ...state.diagnostics, utilityReliability: utilityReliability(state), serviceScore: serviceScore(state) },
+    }
+  }
+
+  function createSociety(world, options = {}) {
+    if (!world?.settlement || !world?.countries?.length) throw new Error('A v2 world with nations and a settlement site is required')
+    const seed = String(options.seed || world.seed || 'living-society')
+    const random = createRandom(hashString(`${seed}:v2-society`))
+    const state = initialState(world, seed, options, random)
+    const host = hostCountry(world)
+
+    function step(months = 1) {
+      const count = clamp(Math.floor(months), 1, 2400)
+      for (let iteration = 0; iteration < count; iteration += 1) {
+        state.elapsedMonths += 1
+        state.month += 1
+        if (state.month >= 12) { state.month = 0; state.year += 1 }
+        updateMacro(state, host, random)
+        updateUtilities(state)
+        updateServices(state)
+        const market = runFirmsAndMarkets(state, host, random)
+        maybeCreateFirm(state, random)
+        removeFailedFirms(state)
+        demographicFlows(state, world, random)
+        updateRepresentativeHouseholds(state, random)
+        updateHousingAndDevelopment(state, random)
+        updateGovernment(state, market)
+        planInfrastructure(state)
+        updateEnvironment(state, world, random)
+        updatePolitics(state)
+        updateDevelopmentIndicators(state)
+        annualSnapshot(state)
+        const errors = auditState(state)
+        if (errors.length) throw new Error(`Society accounting invariant failed: ${errors.join(', ')}`)
+      }
+      return snapshot(state)
+    }
+
+    auditState(state)
+    annualSnapshot(state)
+    return {
+      version: state.version,
+      state,
+      step,
+      simulate: step,
+      getSnapshot: () => snapshot(state),
+      getHistory: () => state.history.map((entry) => ({ ...entry })),
+      audit: () => auditState(state),
+      toJSON() {
+        return {
+          schemaVersion: state.schemaVersion,
+          version: state.version,
+          seed: state.seed,
+          hostCountryId: state.hostCountryId,
+          hostCountryName: state.hostCountryName,
+          snapshot: snapshot(state),
+          history: state.history.map((entry) => ({ ...entry })),
+        }
+      },
+    }
+  }
+
+  window.ProceduralSocietyEngineV2 = { create: createSociety, sectors: [...SECTOR_ORDER], sectorLabels: { ...SECTOR_LABELS } }
+})()

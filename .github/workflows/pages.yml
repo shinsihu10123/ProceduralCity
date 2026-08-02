@@ -23,11 +23,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Validate reality engine
+      - name: Validate living world and reality engines
         run: |
           node scripts/validate-engine.mjs
           node scripts/test-v11-core.mjs
           node scripts/test-v11-render.mjs
+          node scripts/test-v2-world.mjs
+          node scripts/test-v2-society.mjs
+          node scripts/test-v2-integration.mjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static site

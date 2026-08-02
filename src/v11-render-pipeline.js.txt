@@ -329,12 +329,23 @@
   function pushRoads(vertices, terrain, urban, detailLevel) {
     const flattened = []
     const engineering = { bridges: 0, tunnels: urban.infrastructure.tunnelCandidates, retainingWalls: 0, embankments: 0, streetLights: 0 }
+    const geometryChunks = []
     urban.roads.forEach((road, roadIndex) => {
+      const geometryStart = vertices.length
       for (let segment = 0; segment < road.points.length - 1; segment += 1) {
         pushRoadSegment(vertices, terrain, road, road.points[segment], road.points[segment + 1], roadIndex, segment, flattened, engineering, detailLevel)
       }
+      if (vertices.length > geometryStart) {
+        geometryChunks.push({
+          id: road.id,
+          class: road.class,
+          role: road.role,
+          points: road.points.map((point) => ({ x: point.x, y: point.y, z: point.z })),
+          vertices: new Float32Array(vertices.slice(geometryStart)),
+        })
+      }
     })
-    return { roads: flattened, engineering }
+    return { roads: flattened, engineering, geometryChunks }
   }
 
   function buildingColor(building) {
@@ -625,11 +636,33 @@
     const random = seeded(hashString(`${engineSettings.seed}:v11-render`))
     const vertices = []
     pushTerrain(vertices, terrain, detailLevel)
-    const { roads, engineering } = pushRoads(vertices, terrain, urban, detailLevel)
+    const terrainGeometry = new Float32Array(vertices)
+    const { roads, engineering, geometryChunks: roadGeometry } = pushRoads(vertices, terrain, urban, detailLevel)
     const parcels = urban.parcels.map((parcel) => ({ ...parcel, width: parcel.frontage, zone: parcel.program, terrainBuildability: parcel.buildability, streetAlignment: parcel.rotation }))
-    const buildings = urban.buildings.slice(0, detailLevel > 1 ? 250 : detailLevel > 0 ? 215 : 170).map((building) => pushBuilding(vertices, terrain, building, random, detailLevel))
+    const buildingGeometry = []
+    const buildings = urban.buildings.slice(0, detailLevel > 1 ? 250 : detailLevel > 0 ? 215 : 170).map((building) => {
+      const geometryStart = vertices.length
+      const rendered = pushBuilding(vertices, terrain, building, random, detailLevel)
+      const parcel = urban.parcels.find((candidate) => candidate.id === building.parcelId)
+      buildingGeometry.push({
+        id: building.id,
+        parcelId: building.parcelId,
+        frontageRoadId: parcel?.frontageRoadId || null,
+        program: building.program,
+        floors: building.floors,
+        x: building.x,
+        z: building.z,
+        grossFloorArea: building.grossFloorArea,
+        vertices: new Float32Array(vertices.slice(geometryStart)),
+      })
+      return rendered
+    })
+    const naturalStart = vertices.length
     const landscape = pushGreenNetwork(vertices, terrain, urban, random, detailLevel)
+    const naturalGeometry = new Float32Array(vertices.slice(naturalStart))
+    const transitStart = vertices.length
     const transit = pushTransit(vertices, terrain, urban, detailLevel)
+    const transitGeometry = new Float32Array(vertices.slice(transitStart))
     const metrics = calculateMetrics(terrain, urban, buildings, roads)
     metrics.vertexCount = vertices.length / 9
     metrics.detailLevel = detailLevel
@@ -674,6 +707,14 @@
         proceduralFacadeMaterials: true,
         floodAwareOpenSpace: true,
         cityGmlTargetLod: 'LOD2-like',
+      },
+      renderLayers: {
+        terrain: terrainGeometry,
+        roads: roadGeometry,
+        buildings: buildingGeometry,
+        natural: naturalGeometry,
+        transit: transitGeometry,
+        fullVertexCount: vertices.length / 9,
       },
       vertices: new Float32Array(vertices),
     }
