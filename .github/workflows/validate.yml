@@ -25,11 +25,12 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate split engine and modules
-        run: node scripts/validate-engine.mjs
+      - name: Validate independent V3 runtime
+        run: npm test
 
       - name: Verify static entry files
         run: |
           test -f index.html
-          test -f src/main.js
-          test -f src/style.css
+          test -f src/v3/main.js
+          test -f src/v3/app.css
+          test -f vendor/three.module.min.js
