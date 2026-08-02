@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#101512" />
-  <meta name="description" content="종료 연도 없이 도시와 국가의 인구·경제·재정·무역·외교·이주·환경이 매달 상호작용하는 현실 기반 3D 시뮬레이션." />
-  <title>Living World · 연속형 3D 사회 시뮬레이션</title>
-  <link rel="stylesheet" href="./src/v4/app.css?v=4.0.0" />
+  <meta name="description" content="기원전 12,000년의 이동형 수렵·채집 집단에서 시작해 정착·농경·도시·국가·물류·교통·전쟁이 하나의 거대한 3D 공간에서 내생적으로 발생하는 무제한 문명 시뮬레이션." />
+  <title>Deep Time · 단일 세계 문명 시뮬레이션</title>
+  <link rel="stylesheet" href="./src/v5/app.css?v=5.0.0" />
   <script type="importmap">
     {
       "imports": {
@@ -18,69 +18,74 @@
 </head>
 <body>
   <main id="app" class="app-shell">
-    <div id="viewport" class="viewport" aria-label="연속형 3D 도시와 세계 시뮬레이션 화면">
-      <canvas id="city-canvas"></canvas>
+    <div id="viewport" class="viewport" aria-label="원시시대부터 이어지는 단일 3D 세계 시뮬레이션">
+      <canvas id="world-canvas"></canvas>
     </div>
 
     <header class="topbar">
       <div class="brand" aria-label="프로젝트 제목">
         <span class="brand-mark" aria-hidden="true"></span>
         <div>
-          <h1>Living World</h1>
-          <p id="stage-label">개척 취락 · 0년 1월</p>
+          <h1>Deep Time</h1>
+          <p id="stage-label">후기 구석기 시대 · 기원전 12,000년</p>
         </div>
       </div>
       <div class="top-actions">
-        <button id="world-button" class="icon-button text-button" type="button" aria-label="세계 보기 전환" aria-pressed="false">세계</button>
-        <button id="view-button" class="icon-button text-button" type="button" aria-label="카메라 시점 변경">조감</button>
-        <button id="info-button" class="icon-button" type="button" aria-label="상세 정보 열기" aria-expanded="false">
+        <button id="view-button" class="icon-button text-button" type="button" aria-label="같은 세계 안에서 카메라 거리 변경">대륙</button>
+        <button id="info-button" class="icon-button" type="button" aria-label="상세 관측 열기" aria-expanded="false">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6M12 7.5h.01"></path></svg>
         </button>
       </div>
     </header>
 
     <section class="metric-strip" aria-live="polite">
-      <div><span id="metric-label-1">인구</span><strong id="metric-value-1">42</strong></div>
+      <div><span>세계 인구</span><strong id="metric-population">—</strong></div>
       <i aria-hidden="true"></i>
-      <div><span id="metric-label-2">건축물</span><strong id="metric-value-2">15동</strong></div>
+      <div><span>생활권</span><strong id="metric-communities">—</strong></div>
       <i aria-hidden="true"></i>
-      <div><span id="metric-label-3">도로</span><strong id="metric-value-3">2.1 km</strong></div>
+      <div><span>국가</span><strong id="metric-polities">0</strong></div>
     </section>
 
-    <button id="country-chip" class="country-chip" type="button" hidden>
-      <i id="country-chip-color" aria-hidden="true"></i>
-      <span><small>선택 국가</small><strong id="country-chip-name">—</strong></span>
-      <em id="country-chip-status">관계 보기</em>
+    <button id="entity-chip" class="entity-chip" type="button">
+      <i id="entity-chip-color" aria-hidden="true"></i>
+      <span><small id="entity-chip-kicker">관측 집단</small><strong id="entity-chip-name">—</strong></span>
+      <em id="entity-chip-status">선택</em>
     </button>
 
-    <div id="world-legend" class="world-legend" hidden aria-label="국가 관계 범례">
-      <span><i class="trade"></i>교역</span>
+    <div class="flow-legend" aria-label="움직임 시각화 범례">
+      <span><i class="logistics"></i>물류</span>
+      <span><i class="traffic"></i>교통</span>
       <span><i class="migration"></i>이주</span>
-      <span><i class="tension"></i>긴장·분쟁</span>
+      <span><i class="army"></i>군대·전투</span>
     </div>
 
     <aside id="detail-drawer" class="detail-drawer" aria-hidden="true">
       <div class="drawer-heading">
-        <div><span class="eyebrow">관측 시점</span><h2 id="drawer-year">0년 1월</h2></div>
+        <div><span class="eyebrow">관측 시점</span><h2 id="drawer-date">기원전 12,000년</h2></div>
         <button id="drawer-close" class="icon-button quiet" type="button" aria-label="상세 정보 닫기">×</button>
       </div>
 
-      <label id="country-select-wrap" class="country-select-wrap" hidden>
-        <span>국가 선택</span>
-        <select id="country-select" aria-label="관측할 국가 선택"></select>
+      <label class="entity-select-wrap">
+        <span>정착지·집단</span>
+        <select id="entity-select" aria-label="관측할 정착지 또는 집단 선택"></select>
       </label>
 
       <div class="detail-grid">
-        <div><span id="detail-label-1">가구</span><strong id="detail-value-1">14</strong></div>
-        <div><span id="detail-label-2">고용</span><strong id="detail-value-2">24명</strong></div>
-        <div><span id="detail-label-3">주택</span><strong id="detail-value-3">16호</strong></div>
-        <div><span id="detail-label-4">실업률</span><strong id="detail-value-4">0.0%</strong></div>
-        <div><span id="detail-label-5">생활 서비스</span><strong id="detail-value-5">83%</strong></div>
-        <div><span id="detail-label-6">환경</span><strong id="detail-value-6">91%</strong></div>
+        <div><span id="detail-label-1">인구</span><strong id="detail-value-1">—</strong></div>
+        <div><span id="detail-label-2">생활 형태</span><strong id="detail-value-2">—</strong></div>
+        <div><span id="detail-label-3">영양</span><strong id="detail-value-3">—</strong></div>
+        <div><span id="detail-label-4">건강</span><strong id="detail-value-4">—</strong></div>
+        <div><span id="detail-label-5">건축물</span><strong id="detail-value-5">—</strong></div>
+        <div><span id="detail-label-6">소속</span><strong id="detail-value-6">—</strong></div>
       </div>
 
+      <section class="drawer-section technology-section">
+        <span class="eyebrow">축적된 기술 · 날짜 자동 해금 없음</span>
+        <div id="technology-list" class="technology-list"></div>
+      </section>
+
       <section id="relation-section" class="drawer-section relation-section" hidden>
-        <span class="eyebrow">국가 상호작용 · 월간 흐름</span>
+        <span class="eyebrow">국가 상호작용</span>
         <ol id="relation-list" class="relation-list"></ol>
       </section>
 
@@ -88,52 +93,52 @@
         <span class="eyebrow">최근 발생 사건</span>
         <ol id="event-list" class="event-list"></ol>
       </section>
-      <p id="model-note" class="model-note">다음 달은 직전 달의 인구·고용·주택·가격·정부 장부에서 계산됩니다. 미래 스냅샷은 미리 존재하지 않습니다.</p>
+      <p id="model-note" class="model-note">국가와 도시는 처음부터 존재하지 않습니다. 지형·식량·인구·기술·교역·갈등의 누적 결과로 생깁니다.</p>
     </aside>
 
-    <section class="timeline-panel" aria-label="생성된 역사 시간축">
+    <section class="timeline-panel" aria-label="생성된 심층 역사 시간축">
       <div class="timeline-row primary-row">
-        <button id="start-button" class="transport-button compact" type="button" aria-label="설립 시점으로">|‹</button>
+        <button id="start-button" class="transport-button compact" type="button" aria-label="기원전 12,000년으로">|‹</button>
         <button id="play-button" class="transport-button play" type="button" aria-label="시뮬레이션 재생">
           <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 8 5-8 5z"></path></svg>
           <svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7v10M15 7v10"></path></svg>
         </button>
-        <div class="year-readout">
-          <strong id="year-value">0</strong><span>년</span><small id="month-value">1월</small>
+        <div class="date-readout">
+          <strong id="date-value">기원전 12,000년</strong>
           <em id="live-indicator">LIVE</em>
         </div>
         <div class="slider-wrap">
-          <input id="timeline" type="range" min="0" max="1" value="0" step="1" aria-label="생성된 역사 탐색" />
+          <input id="timeline" type="range" min="0" max="1" value="0" step="1" aria-label="이미 생성된 역사 탐색" />
           <div id="milestone-track" class="milestone-track" aria-hidden="true"></div>
         </div>
         <button id="live-button" class="live-button" type="button" aria-label="현재 시점으로 이동">현재</button>
-        <button id="speed-button" class="speed-button" type="button" aria-label="시뮬레이션 속도">6월/s</button>
+        <button id="speed-button" class="speed-button" type="button" aria-label="시뮬레이션 속도">50년/s</button>
       </div>
       <div class="timeline-caption">
-        <span>설립</span>
-        <p id="event-caption">정착지 설립 · 미래는 아직 계산되지 않음</p>
-        <span id="history-end">현재 0년</span>
+        <span>기원전 12,000</span>
+        <p id="event-caption">8개 수렵·채집 집단 · 미래는 아직 계산되지 않음</p>
+        <span id="history-end">현재</span>
       </div>
     </section>
 
-    <div id="gesture-hint" class="gesture-hint">드래그로 회전 · 수도를 눌러 국가 선택 · 시간축으로 생성된 과거 탐색</div>
+    <div id="gesture-hint" class="gesture-hint">하나의 공간입니다 · 확대해 생활권 관측 · 선을 따라 물류·교통·이주·군대 이동</div>
 
     <section id="loading-screen" class="loading-screen" aria-live="polite">
       <div class="loading-card">
         <span class="brand-mark large" aria-hidden="true"></span>
-        <span class="eyebrow">CONTINUOUS ENGINE · V4</span>
-        <h2>살아 있는 세계를 초기화합니다</h2>
-        <p id="loading-label">지형과 국가 장부 계산</p>
+        <span class="eyebrow">DEEP TIME ENGINE · V5</span>
+        <h2>원시 세계를 생성합니다</h2>
+        <p id="loading-label">지형과 수계를 계산합니다</p>
         <div class="progress-track"><i id="loading-progress"></i></div>
       </div>
     </section>
 
     <section id="error-screen" class="error-screen" hidden>
-      <h2>3D 엔진을 시작하지 못했습니다</h2>
+      <h2>3D 세계를 시작하지 못했습니다</h2>
       <p id="error-message"></p>
       <button type="button" onclick="location.reload()">다시 시도</button>
     </section>
   </main>
-  <script type="module" src="./src/v4/main.js?v=4.0.0"></script>
+  <script type="module" src="./src/v5/main.js?v=5.0.0"></script>
 </body>
 </html>

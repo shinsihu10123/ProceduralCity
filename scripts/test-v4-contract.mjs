@@ -11,11 +11,8 @@ const [index, engine, main] = await Promise.all([
   read('src/v4/main.js'),
 ]);
 
-assert.match(index, /src\/v4\/main\.js/);
-assert.match(index, /src\/v4\/app\.css/);
 assert.match(index, /vendor\/three\.module\.min\.js/);
 assert.match(index, /id="live-button"/);
-assert.match(index, /id="country-select"/);
 assert.match(index, /id="relation-list"/);
 assert.doesNotMatch(index, /max="120"/);
 assert.doesNotMatch(index, /https?:\/\//, 'runtime must remain offline and CDN-independent');
@@ -35,4 +32,4 @@ await Promise.all([
   exists('vendor/addons/controls/OrbitControls.js'),
 ]);
 
-console.log('v4 contract: unbounded generated history, observable country interactions, offline Three.js runtime');
+console.log('v4 archive contract: continuous engine modules remain valid beside the V5 experience');
