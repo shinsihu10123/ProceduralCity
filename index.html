@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#101512" />
-  <meta name="description" content="작은 정착지가 사회·경제·환경 시스템의 결과로 성장하는 전 과정을 직접 탐색하는 현실 기반 3D 시뮬레이션." />
-  <title>Living Settlement · 현실 기반 3D 도시 성장 시뮬레이션</title>
-  <link rel="stylesheet" href="./src/v3/app.css?v=3.0.0" />
+  <meta name="description" content="종료 연도 없이 도시와 국가의 인구·경제·재정·무역·외교·이주·환경이 매달 상호작용하는 현실 기반 3D 시뮬레이션." />
+  <title>Living World · 연속형 3D 사회 시뮬레이션</title>
+  <link rel="stylesheet" href="./src/v4/app.css?v=4.0.0" />
   <script type="importmap">
     {
       "imports": {
@@ -18,7 +18,7 @@
 </head>
 <body>
   <main id="app" class="app-shell">
-    <div id="viewport" class="viewport" aria-label="3D 정착지 시뮬레이션 화면">
+    <div id="viewport" class="viewport" aria-label="연속형 3D 도시와 세계 시뮬레이션 화면">
       <canvas id="city-canvas"></canvas>
     </div>
 
@@ -26,8 +26,8 @@
       <div class="brand" aria-label="프로젝트 제목">
         <span class="brand-mark" aria-hidden="true"></span>
         <div>
-          <h1>Living Settlement</h1>
-          <p id="stage-label">개척 취락 · 설립 0년</p>
+          <h1>Living World</h1>
+          <p id="stage-label">개척 취락 · 0년 1월</p>
         </div>
       </div>
       <div class="top-actions">
@@ -40,63 +40,90 @@
     </header>
 
     <section class="metric-strip" aria-live="polite">
-      <div><span>인구</span><strong id="population-value">42</strong></div>
+      <div><span id="metric-label-1">인구</span><strong id="metric-value-1">42</strong></div>
       <i aria-hidden="true"></i>
-      <div><span>건축물</span><strong id="building-value">15동</strong></div>
+      <div><span id="metric-label-2">건축물</span><strong id="metric-value-2">15동</strong></div>
       <i aria-hidden="true"></i>
-      <div><span>도로</span><strong id="road-value">2.1 km</strong></div>
+      <div><span id="metric-label-3">도로</span><strong id="metric-value-3">2.1 km</strong></div>
     </section>
+
+    <button id="country-chip" class="country-chip" type="button" hidden>
+      <i id="country-chip-color" aria-hidden="true"></i>
+      <span><small>선택 국가</small><strong id="country-chip-name">—</strong></span>
+      <em id="country-chip-status">관계 보기</em>
+    </button>
+
+    <div id="world-legend" class="world-legend" hidden aria-label="국가 관계 범례">
+      <span><i class="trade"></i>교역</span>
+      <span><i class="migration"></i>이주</span>
+      <span><i class="tension"></i>긴장·분쟁</span>
+    </div>
 
     <aside id="detail-drawer" class="detail-drawer" aria-hidden="true">
       <div class="drawer-heading">
-        <div><span class="eyebrow">현재 시점</span><h2 id="drawer-year">설립 0년</h2></div>
+        <div><span class="eyebrow">관측 시점</span><h2 id="drawer-year">0년 1월</h2></div>
         <button id="drawer-close" class="icon-button quiet" type="button" aria-label="상세 정보 닫기">×</button>
       </div>
+
+      <label id="country-select-wrap" class="country-select-wrap" hidden>
+        <span>국가 선택</span>
+        <select id="country-select" aria-label="관측할 국가 선택"></select>
+      </label>
+
       <div class="detail-grid">
-        <div><span>가구</span><strong id="household-value">14</strong></div>
-        <div><span>고용</span><strong id="employment-value">22명</strong></div>
-        <div><span>주택</span><strong id="housing-value">16호</strong></div>
-        <div><span>실업률</span><strong id="unemployment-value">1.5%</strong></div>
-        <div><span>서비스</span><strong id="service-value">78%</strong></div>
-        <div><span>환경</span><strong id="environment-value">96%</strong></div>
+        <div><span id="detail-label-1">가구</span><strong id="detail-value-1">14</strong></div>
+        <div><span id="detail-label-2">고용</span><strong id="detail-value-2">24명</strong></div>
+        <div><span id="detail-label-3">주택</span><strong id="detail-value-3">16호</strong></div>
+        <div><span id="detail-label-4">실업률</span><strong id="detail-value-4">0.0%</strong></div>
+        <div><span id="detail-label-5">생활 서비스</span><strong id="detail-value-5">83%</strong></div>
+        <div><span id="detail-label-6">환경</span><strong id="detail-value-6">91%</strong></div>
       </div>
-      <div class="drawer-section">
-        <span class="eyebrow">최근 변화</span>
+
+      <section id="relation-section" class="drawer-section relation-section" hidden>
+        <span class="eyebrow">국가 상호작용 · 월간 흐름</span>
+        <ol id="relation-list" class="relation-list"></ol>
+      </section>
+
+      <section class="drawer-section">
+        <span class="eyebrow">최근 발생 사건</span>
         <ol id="event-list" class="event-list"></ol>
-      </div>
-      <p class="model-note">도시 규모는 미리 정해진 곡선이 아니라 가구·일자리·주택·정부 재정과 기반시설의 제약에서 계산됩니다.</p>
+      </section>
+      <p id="model-note" class="model-note">다음 달은 직전 달의 인구·고용·주택·가격·정부 장부에서 계산됩니다. 미래 스냅샷은 미리 존재하지 않습니다.</p>
     </aside>
 
-    <section class="timeline-panel" aria-label="시뮬레이션 시간축">
+    <section class="timeline-panel" aria-label="생성된 역사 시간축">
       <div class="timeline-row primary-row">
-        <button id="start-button" class="transport-button compact" type="button" aria-label="처음으로">|‹</button>
-        <button id="play-button" class="transport-button play" type="button" aria-label="재생">
+        <button id="start-button" class="transport-button compact" type="button" aria-label="설립 시점으로">|‹</button>
+        <button id="play-button" class="transport-button play" type="button" aria-label="시뮬레이션 재생">
           <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 8 5-8 5z"></path></svg>
           <svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7v10M15 7v10"></path></svg>
         </button>
-        <div class="year-readout"><strong id="year-value">0</strong><span>년</span></div>
+        <div class="year-readout">
+          <strong id="year-value">0</strong><span>년</span><small id="month-value">1월</small>
+          <em id="live-indicator">LIVE</em>
+        </div>
         <div class="slider-wrap">
-          <input id="timeline" type="range" min="0" max="120" value="0" step="0.1" aria-label="설립 후 연도" />
+          <input id="timeline" type="range" min="0" max="1" value="0" step="1" aria-label="생성된 역사 탐색" />
           <div id="milestone-track" class="milestone-track" aria-hidden="true"></div>
         </div>
-        <button id="end-button" class="transport-button compact" type="button" aria-label="최종 시점으로">›|</button>
-        <button id="speed-button" class="speed-button" type="button" aria-label="재생 속도">2×</button>
+        <button id="live-button" class="live-button" type="button" aria-label="현재 시점으로 이동">현재</button>
+        <button id="speed-button" class="speed-button" type="button" aria-label="시뮬레이션 속도">6월/s</button>
       </div>
       <div class="timeline-caption">
         <span>설립</span>
-        <p id="event-caption">정착지 설립 · 42명</p>
-        <span>120년</span>
+        <p id="event-caption">정착지 설립 · 미래는 아직 계산되지 않음</p>
+        <span id="history-end">현재 0년</span>
       </div>
     </section>
 
-    <div id="gesture-hint" class="gesture-hint">한 손가락으로 회전 · 두 손가락으로 이동과 확대</div>
+    <div id="gesture-hint" class="gesture-hint">드래그로 회전 · 수도를 눌러 국가 선택 · 시간축으로 생성된 과거 탐색</div>
 
     <section id="loading-screen" class="loading-screen" aria-live="polite">
       <div class="loading-card">
         <span class="brand-mark large" aria-hidden="true"></span>
-        <span class="eyebrow">NEW ENGINE · V3</span>
-        <h2>정착지를 생성하고 있습니다</h2>
-        <p id="loading-label">물리 지형 계산</p>
+        <span class="eyebrow">CONTINUOUS ENGINE · V4</span>
+        <h2>살아 있는 세계를 초기화합니다</h2>
+        <p id="loading-label">지형과 국가 장부 계산</p>
         <div class="progress-track"><i id="loading-progress"></i></div>
       </div>
     </section>
@@ -107,6 +134,6 @@
       <button type="button" onclick="location.reload()">다시 시도</button>
     </section>
   </main>
-  <script type="module" src="./src/v3/main.js?v=3.0.0"></script>
+  <script type="module" src="./src/v4/main.js?v=4.0.0"></script>
 </body>
 </html>
