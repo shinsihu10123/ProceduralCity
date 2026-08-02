@@ -281,7 +281,8 @@ export class CityScene {
     this.trafficLayer = new TrafficLayer(simulation, this.materials);
     this.streetLights = new StreetLightLayer(simulation, this.materials);
     this.localGroup.add(this.vegetationLayer.group, this.trafficLayer.group, this.streetLights.group);
-    this.macroLayer = options.macroWorld ? new MacroWorldLayer(options.macroWorld) : null;
+    const MacroLayerClass = options.macroLayerClass || MacroWorldLayer;
+    this.macroLayer = options.macroWorld ? new MacroLayerClass(options.macroWorld) : null;
     if (this.macroLayer) {
       this.macroLayer.group.visible = false;
       this.scene.add(this.macroLayer.group);
@@ -305,6 +306,9 @@ export class CityScene {
 
     this.startedAt = performance.now();
     this.year = -1;
+    this.buildingRevision = simulation.buildingRevision ?? simulation.buildings.length;
+    this.lastDynamicSync = 0;
+    this.lastVegetationSync = 0;
     this.mode = 'settlement';
     this.running = true;
     this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -320,12 +324,49 @@ export class CityScene {
     const value = clamp(Number(year) || 0, 0, this.simulation.years);
     if (!force && Math.abs(value - this.year) < 0.08) return;
     this.year = value;
-    const snapshot = this.simulation.getSnapshot(value);
+    const simulationSnapshot = this.simulation.getSnapshot(value);
+    const snapshot = simulationSnapshot.settlement || simulationSnapshot;
     this.roadLayer.setYear(value);
     this.buildingLayer.setYear(value);
     this.vegetationLayer.setYear(value);
     this.streetLights.setYear(value);
     this.trafficLayer.setYear(value, snapshot);
+  }
+
+  syncSimulation(force = false) {
+    const revision = this.simulation.buildingRevision ?? this.simulation.buildings.length;
+    if (revision === this.buildingRevision) return false;
+    const now = performance.now();
+    if (!force && now - this.lastDynamicSync < 360) return false;
+    this.lastDynamicSync = now;
+    this.localGroup.remove(this.buildingLayer.group);
+    this.buildingLayer.dispose();
+    this.buildingLayer = new BuildingLayer(this.simulation.buildings, this.materials);
+    this.localGroup.add(this.buildingLayer.group);
+    if (force || now - this.lastVegetationSync > 1200) {
+      this.localGroup.remove(this.vegetationLayer.group);
+      this.vegetationLayer.dispose();
+      this.vegetationLayer = new VegetationLayer(this.simulation.spatial, this.simulation, this.materials);
+      this.localGroup.add(this.vegetationLayer.group);
+      this.lastVegetationSync = now;
+    }
+    this.buildingRevision = revision;
+    this.setYear(this.year, true);
+    return true;
+  }
+
+  setWorldSnapshot(snapshot, selectedCountryId = null) {
+    this.macroLayer?.setSnapshot?.(snapshot, selectedCountryId);
+  }
+
+  pickCountry(clientX, clientY) {
+    if (this.mode !== 'world') return null;
+    return this.macroLayer?.pickCountry?.(clientX, clientY, this.camera, this.canvas) ?? null;
+  }
+
+  focusCountry(countryId) {
+    if (this.mode !== 'world') return;
+    this.macroLayer?.focusCountry?.(countryId, this.camera, this.controls);
   }
 
   setView(preset) {

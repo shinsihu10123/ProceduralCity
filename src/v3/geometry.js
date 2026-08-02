@@ -305,7 +305,7 @@ class DescriptorCollector {
       builtYear: building.builtYear,
       phaseStart: options.phaseStart || 0,
       constructionOnly: Boolean(options.constructionOnly),
-      removeYear: options.removeYear ?? Infinity,
+      removeYear: options.removeYear ?? building.removeYear ?? Infinity,
       color: options.color || null,
       castsShadow: options.castsShadow !== false,
       buildingId: building.id,

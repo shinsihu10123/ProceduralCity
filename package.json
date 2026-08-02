@@ -1,12 +1,12 @@
 {
   "name": "procedural-city-rebuild",
-  "version": "3.0.0-alpha.1",
+  "version": "4.0.0-alpha.1",
   "private": true,
   "type": "module",
   "dependencies": {
     "three": "0.185.1"
   },
   "scripts": {
-    "test": "node scripts/test-v3-spatial.mjs && node scripts/test-v3-simulation.mjs && node scripts/test-v3-contract.mjs"
+    "test": "node scripts/test-v3-spatial.mjs && node scripts/test-v3-simulation.mjs && node scripts/test-v4-continuous.mjs && node scripts/test-v4-contract.mjs"
   }
 }
