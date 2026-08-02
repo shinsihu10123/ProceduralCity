@@ -1,0 +1,236 @@
+// Procedural City v2.0 — multi-scale world mesh and endogenous growth rendering bridge.
+
+(function () {
+  const BIOME_COLORS = {
+    ocean: [0.13, 0.31, 0.43],
+    ice: [0.78, 0.84, 0.85],
+    tundra: [0.48, 0.53, 0.48],
+    'boreal-forest': [0.20, 0.36, 0.27],
+    'temperate-forest': [0.25, 0.43, 0.27],
+    grassland: [0.48, 0.53, 0.29],
+    desert: [0.65, 0.54, 0.34],
+    savanna: [0.57, 0.49, 0.25],
+    rainforest: [0.12, 0.37, 0.22],
+    alpine: [0.42, 0.43, 0.40],
+    wetland: [0.20, 0.40, 0.31],
+  }
+
+  function clamp(value, min, max) { return Math.max(min, Math.min(max, value)) }
+  function mix(a, b, t) {
+    const factor = clamp(t, 0, 1)
+    return [a[0] + (b[0] - a[0]) * factor, a[1] + (b[1] - a[1]) * factor, a[2] + (b[2] - a[2]) * factor]
+  }
+  function concatenate(chunks) {
+    const valid = chunks.filter((chunk) => chunk?.length)
+    const total = valid.reduce((sum, chunk) => sum + chunk.length, 0)
+    const result = new Float32Array(total)
+    let offset = 0
+    for (const chunk of valid) {
+      result.set(chunk, offset)
+      offset += chunk.length
+    }
+    return result
+  }
+  function cellIndex(x, z, size) { return z * size + x }
+  function renderPoint(world, x, z) {
+    const scale = world.renderScale
+    const index = cellIndex(clamp(Math.round(x), 0, world.size - 1), clamp(Math.round(z), 0, world.size - 1), world.size)
+    return {
+      x: (x / (world.size - 1) - 0.5) * scale,
+      z: (z / (world.size - 1) - 0.5) * scale,
+      y: Math.max(-3.8, world.fields.elevation[index] / 180),
+    }
+  }
+  function pushRibbon(vertices, a, b, width, yOffset, color) {
+    const dx = b.x - a.x
+    const dz = b.z - a.z
+    const length = Math.hypot(dx, dz) || 1
+    const nx = -dz / length * width * 0.5
+    const nz = dx / length * width * 0.5
+    pushQuad(vertices,
+      [a.x + nx, a.y + yOffset, a.z + nz],
+      [b.x + nx, b.y + yOffset, b.z + nz],
+      [b.x - nx, b.y + yOffset, b.z - nz],
+      [a.x - nx, a.y + yOffset, a.z - nz],
+      [0, 1, 0], color)
+  }
+  function biomeColor(world, index) {
+    const name = window.ProceduralWorldSystemV2.biomes[world.fields.biome[index]] || 'grassland'
+    if (world.fields.elevation[index] <= 0) {
+      const depth = clamp(-world.fields.elevation[index] / 4200, 0, 1)
+      return mix([0.20, 0.45, 0.57], BIOME_COLORS.ocean, depth)
+    }
+    const base = BIOME_COLORS[name] || BIOME_COLORS.grassland
+    const country = world.countries[world.countryId[index]]
+    const politicalTint = country?.color || base
+    const altitude = clamp(world.fields.elevation[index] / 4200, 0, 1)
+    return mix(mix(base, politicalTint, 0.09), [0.62, 0.62, 0.58], altitude * 0.26)
+  }
+
+  function buildWorldGeometry(world) {
+    const vertices = []
+    world.renderScale = Math.min(2100, Math.max(1280, world.spanKm * 0.72))
+    for (let z = 0; z < world.size - 1; z += 1) {
+      for (let x = 0; x < world.size - 1; x += 1) {
+        const i00 = cellIndex(x, z, world.size)
+        const i10 = cellIndex(x + 1, z, world.size)
+        const i11 = cellIndex(x + 1, z + 1, world.size)
+        const i01 = cellIndex(x, z + 1, world.size)
+        const p00 = renderPoint(world, x, z)
+        const p10 = renderPoint(world, x + 1, z)
+        const p11 = renderPoint(world, x + 1, z + 1)
+        const p01 = renderPoint(world, x, z + 1)
+        const a = [p00.x, p00.y, p00.z]
+        const b = [p10.x, p10.y, p10.z]
+        const c = [p11.x, p11.y, p11.z]
+        const d = [p01.x, p01.y, p01.z]
+        pushTriangle(vertices, a, b, c, calculateNormal(a, b, c), mix(biomeColor(world, i00), biomeColor(world, i11), 0.42))
+        pushTriangle(vertices, a, c, d, calculateNormal(a, c, d), mix(biomeColor(world, i00), biomeColor(world, i01), 0.42))
+      }
+    }
+
+    // Rivers follow the conditioned D8 drainage graph and are cartographic-width ribbons.
+    for (let index = 0; index < world.fields.river.length; index += 1) {
+      const strength = world.fields.river[index]
+      const next = world.fields.hydrology.downstream[index]
+      if (strength < 0.18 || next < 0 || world.fields.elevation[index] <= 0) continue
+      const x = index % world.size
+      const z = Math.floor(index / world.size)
+      const nx = next % world.size
+      const nz = Math.floor(next / world.size)
+      const a = renderPoint(world, x + 0.5, z + 0.5)
+      const b = renderPoint(world, nx + 0.5, nz + 0.5)
+      pushRibbon(vertices, a, b, 0.75 + strength * 3.1, 0.22, mix([0.18, 0.48, 0.64], [0.32, 0.67, 0.75], strength))
+    }
+
+    // Borders are a semantic overview layer, not physical walls.
+    for (let z = 0; z < world.size - 1; z += 1) {
+      for (let x = 0; x < world.size - 1; x += 1) {
+        const index = cellIndex(x, z, world.size)
+        const id = world.countryId[index]
+        if (id < 0) continue
+        const rightId = world.countryId[cellIndex(x + 1, z, world.size)]
+        const bottomId = world.countryId[cellIndex(x, z + 1, world.size)]
+        if (rightId >= 0 && rightId !== id) pushRibbon(vertices, renderPoint(world, x + 1, z), renderPoint(world, x + 1, z + 1), 0.72, 0.46, [0.72, 0.76, 0.72])
+        if (bottomId >= 0 && bottomId !== id) pushRibbon(vertices, renderPoint(world, x, z + 1), renderPoint(world, x + 1, z + 1), 0.72, 0.46, [0.72, 0.76, 0.72])
+      }
+    }
+
+    // Capitals and the active settlement are deliberately oversized map markers at macro LOD.
+    for (const country of world.countries) {
+      const point = renderPoint(world, country.capital.x + 0.5, country.capital.z + 0.5)
+      pushBox(vertices, point.x, point.y + 0.28, point.z, 3.8, 7.5, 3.8, mix(country.color, [0.82, 0.86, 0.82], 0.45), 0.25)
+      pushBox(vertices, point.x, point.y + 7.5, point.z, 7.6, 0.62, 1.5, [0.88, 0.86, 0.70], 0.78)
+    }
+    const settlement = renderPoint(world, world.settlement.x + 0.5, world.settlement.z + 0.5)
+    pushBox(vertices, settlement.x, settlement.y + 0.35, settlement.z, 5.2, 13.5, 5.2, [0.88, 0.60, 0.20], 0.78)
+    pushBox(vertices, settlement.x, settlement.y + 13.7, settlement.z, 13.5, 0.72, 1.7, [0.98, 0.80, 0.34], 0.78)
+    return {
+      vertices: new Float32Array(vertices),
+      extent: world.renderScale * 0.5,
+      vertexCount: vertices.length / 9,
+      verticalExaggeration: world.cellKm / 0.18,
+    }
+  }
+
+  function growthOrder(city) {
+    const center = city.centerList?.[0] || city.centers?.cbd || { x: 0, z: 0 }
+    return city.renderLayers.buildings.slice().sort((a, b) => {
+      const score = (building) => {
+        const distance = Math.hypot(building.x - center.x, building.z - center.z) / Math.max(1, city.extent)
+        const heightPenalty = Math.max(0, building.floors - 4) * 0.036
+        const earlyUse = building.program === 'residential' ? -0.24 : building.program === 'agriculture' ? -0.18
+          : building.program === 'industrial' ? -0.10 : building.program === 'civic' ? -0.04
+            : ['office', 'mixed-use'].includes(building.program) ? 0.18 : 0
+        return distance * 0.92 + heightPenalty + earlyUse
+      }
+      return score(a) - score(b) || a.id.localeCompare(b.id)
+    })
+  }
+
+  function roadOrder(city, activeBuildings) {
+    const required = new Set(activeBuildings.map((building) => building.frontageRoadId).filter(Boolean))
+    const center = city.centerList?.[0] || city.centers?.cbd || { x: 0, z: 0 }
+    const ordered = city.renderLayers.roads.slice().sort((a, b) => {
+      const score = (road) => {
+        const closest = road.points.reduce((best, point) => Math.min(best, Math.hypot(point.x - center.x, point.z - center.z)), Infinity)
+        const hierarchy = road.class === 'arterial' ? -0.10 : road.class === 'collector' ? -0.04 : 0
+        return closest / Math.max(1, city.extent) + hierarchy
+      }
+      const requiredDelta = Number(required.has(b.id)) - Number(required.has(a.id))
+      return requiredDelta || score(a) - score(b) || a.id.localeCompare(b.id)
+    })
+    return { ordered, required }
+  }
+
+  function composeSettlementGeometry(city, snapshot) {
+    if (!city?.renderLayers) return city?.vertices || new Float32Array()
+    const buildings = growthOrder(city)
+    const activeCount = clamp(Math.round(snapshot.development.constructedBuildings), 5, buildings.length)
+    const activeBuildings = buildings.slice(0, activeCount)
+    const { ordered: roads, required } = roadOrder(city, activeBuildings)
+    const targetRoads = clamp(Math.ceil(roads.length * snapshot.development.roadShare), 2, roads.length)
+    const activeRoads = []
+    for (const road of roads) {
+      if (required.has(road.id) || activeRoads.length < targetRoads) activeRoads.push(road)
+    }
+    const chunks = [city.renderLayers.terrain, city.renderLayers.natural]
+    chunks.push(...activeRoads.map((road) => road.vertices))
+    chunks.push(...activeBuildings.map((building) => building.vertices))
+    if (snapshot.development.transitOpen) chunks.push(city.renderLayers.transit)
+    const vertices = concatenate(chunks)
+    return { vertices, activeBuildings, activeRoads, totalBuildings: buildings.length, totalRoads: roads.length }
+  }
+
+  let activeWorld = null
+  let activeCity = null
+  let activeSnapshot = null
+  let worldGeometry = null
+
+  function setWorld(world) {
+    activeWorld = world
+    worldGeometry = buildWorldGeometry(world)
+    world.render = worldGeometry
+    return worldGeometry
+  }
+  function setCity(city) { activeCity = city }
+  function showWorld() {
+    if (!worldGeometry) return false
+    window.ProceduralCityViewMode = 'world'
+    window.ProceduralCityRenderExtent = worldGeometry.extent
+    uploadCity({ vertices: worldGeometry.vertices })
+    camera.target = [0, 4, 0]
+    camera.distance = worldGeometry.extent * 1.52
+    camera.pitch = 0.73
+    camera.yaw = -0.72
+    window.dispatchEvent(new CustomEvent('procedural-city:v2-view', { detail: { mode: 'world' } }))
+    return true
+  }
+  function showSettlement(snapshot = activeSnapshot) {
+    if (!activeCity || !snapshot) return null
+    activeSnapshot = snapshot
+    const composition = composeSettlementGeometry(activeCity, snapshot)
+    window.ProceduralCityViewMode = 'settlement'
+    window.ProceduralCityRenderExtent = activeCity.extent
+    uploadCity({ vertices: composition.vertices })
+    if (typeof applyCameraPreset === 'function') applyCameraPreset('overview')
+    window.dispatchEvent(new CustomEvent('procedural-city:v2-view', { detail: { mode: 'settlement' } }))
+    return composition
+  }
+  function updateGrowth(snapshot) {
+    activeSnapshot = snapshot
+    if (window.ProceduralCityViewMode !== 'world') return showSettlement(snapshot)
+    return null
+  }
+
+  window.ProceduralCityV2Renderer = {
+    version: '2.0.0-multiscale-render-bridge',
+    setWorld,
+    setCity,
+    showWorld,
+    showSettlement,
+    updateGrowth,
+    composeSettlementGeometry,
+    getState: () => ({ activeWorld, activeCity, activeSnapshot, worldGeometry, viewMode: window.ProceduralCityViewMode || 'settlement' }),
+  }
+})()

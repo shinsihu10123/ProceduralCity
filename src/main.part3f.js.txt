@@ -563,8 +563,10 @@ function niceScale(value) {
 }
 
 function updateScale() {
-  const meters = niceScale(camera.distance * 0.18)
-  const width = clamp((meters / Math.max(camera.distance * 0.18, 1)) * 90, 54, 118)
+  const unitInMeters = window.ProceduralCityViewMode === 'world' ? 1000 : 1
+  const rawMeters = camera.distance * 0.18 * unitInMeters
+  const meters = niceScale(rawMeters)
+  const width = clamp((meters / Math.max(rawMeters, 1)) * 90, 54, 118)
   ui.scaleLine.style.width = `${width}px`
   ui.scaleLabel.textContent = meters >= 1000 ? `${(meters / 1000).toFixed(meters % 1000 === 0 ? 0 : 1)} km` : `${meters} m`
   ui.compassNeedle.style.transform = `rotate(${-camera.yaw}rad)`
@@ -589,7 +591,8 @@ function render(frameTime = performance.now()) {
     camera.target[1] + Math.sin(camera.pitch) * camera.distance,
     camera.target[2] + Math.cos(camera.yaw) * cosPitch * camera.distance,
   ]
-  const far = Math.max(2500, currentCity ? currentCity.extent * 4.2 : 3000)
+  const renderExtent = window.ProceduralCityRenderExtent || (currentCity ? currentCity.extent : 0)
+  const far = Math.max(2500, renderExtent ? renderExtent * 4.2 : 3000)
   mat4Perspective(projection, Math.PI / 4, canvas.width / canvas.height, 0.2, far)
   mat4LookAt(view, eye, camera.target, [0, 1, 0])
   mat4Multiply(viewProjection, projection, view)
@@ -600,8 +603,8 @@ function render(frameTime = performance.now()) {
   gl.uniform3fv(locations.sunColor, environment.sunColor)
   gl.uniform3fv(locations.fogColor, environment.sky)
   gl.uniform1f(locations.ambient, environment.ambient)
-  gl.uniform1f(locations.fogNear, currentCity ? currentCity.extent * 0.78 : 650)
-  gl.uniform1f(locations.fogFar, currentCity ? currentCity.extent * 2.55 : 1800)
+  gl.uniform1f(locations.fogNear, renderExtent ? renderExtent * 0.78 : 650)
+  gl.uniform1f(locations.fogFar, renderExtent ? renderExtent * 2.55 : 1800)
   gl.uniform1f(locations.nightFactor, environment.nightFactor)
   if (locations.cameraPosition) gl.uniform3fv(locations.cameraPosition, eye)
   if (locations.time) gl.uniform1f(locations.time, frameTime * 0.001)
@@ -614,14 +617,14 @@ function render(frameTime = performance.now()) {
   v053BindGeometry(vertexBuffer)
   gl.drawArrays(gl.TRIANGLES, 0, vertexCount)
 
-  v053BuildTraffic(currentCity, deltaSeconds)
-  if (v053TrafficVertexCount > 0) {
+  if (window.ProceduralCityViewMode !== 'world') v053BuildTraffic(currentCity, deltaSeconds)
+  if (window.ProceduralCityViewMode !== 'world' && v053TrafficVertexCount > 0) {
     v053BindGeometry(v053TrafficBuffer)
     gl.drawArrays(gl.TRIANGLES, 0, v053TrafficVertexCount)
   }
 
-  v053BuildRail(currentCity, deltaSeconds)
-  if (v053RailVertexCount > 0) {
+  if (window.ProceduralCityViewMode !== 'world') v053BuildRail(currentCity, deltaSeconds)
+  if (window.ProceduralCityViewMode !== 'world' && v053RailVertexCount > 0) {
     v053BindGeometry(v053RailBuffer)
     gl.drawArrays(gl.TRIANGLES, 0, v053RailVertexCount)
   }

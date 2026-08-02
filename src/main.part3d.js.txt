@@ -127,6 +127,7 @@ ui.export.addEventListener('click', () => {
     roads: currentCity.roads,
     greenSpaces: currentCity.greenSpaces,
     infrastructure: currentCity.infrastructure,
+    livingWorld: window.ProceduralCityV2?.exportData?.() || null,
   }
   const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)

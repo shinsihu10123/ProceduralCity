@@ -22,6 +22,10 @@ const requiredOrder = [
   'v11-urban-morphology.js.txt',
   'v11-render-pipeline.js.txt',
   'v11-ui-layer.js.txt',
+  'v2-world-system.js.txt',
+  'v2-society-engine.js.txt',
+  'v2-render-bridge.js.txt',
+  'v2-ui-controller.js.txt',
 ]
 let previousIndex = -1
 for (const name of requiredOrder) {
@@ -69,7 +73,7 @@ try {
   const missingIds = [...queriedIds].filter((id) => !ids.has(id))
   if (missingIds.length) throw new Error(`Missing DOM IDs referenced by engine: ${missingIds.join(', ')}`)
 
-  const required = ['city-canvas', 'loading', 'seed', 'generate', 'time-of-day']
+  const required = ['city-canvas', 'loading', 'seed', 'generate', 'time-of-day', 'v2-run', 'v2-step', 'v2-society-hud']
   const absentRequired = required.filter((id) => !ids.has(id))
   if (absentRequired.length) throw new Error(`Required DOM IDs are absent: ${absentRequired.join(', ')}`)
 
@@ -79,6 +83,9 @@ try {
     ['contourAlignedStreetTensor', 'terrain-aligned street morphology'],
     ['streetFrontingParcels', 'street-fronting parcel generation'],
     ['v1.1-reality-engine', 'v1.1 runtime marker'],
+    ['2.0.0-living-world-alpha', 'v2 world runtime marker'],
+    ['population-stock-flow', 'population accounting invariant'],
+    ['frontageRoadId', 'growth-to-road dependency'],
   ]
   for (const [token, label] of invariants) {
     if (!combined.includes(token)) throw new Error(`Missing ${label} invariant: ${token}`)

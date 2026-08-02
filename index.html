@@ -4,10 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#101820" />
-  <meta name="description" content="시간·기후·기상과 도시 기반시설을 통합한 절차적 3D 도시 시뮬레이션" />
-  <title>Procedural City v1.1 · Urban Reality Engine</title>
+  <meta name="description" content="지형·국가·가구·기업·정부가 연결된 다중 해상도 3D 세계·도시 시뮬레이션" />
+  <title>Procedural City v2.0 · Living World Engine</title>
   <link rel="stylesheet" href="./src/style.css" />
   <link rel="stylesheet" href="./src/simulation.css" />
+  <link rel="stylesheet" href="./src/v2-living-world.css" />
 </head>
 <body>
   <main class="app-shell">
@@ -15,9 +16,9 @@
       <header class="brand-block">
         <div class="brand-row">
           <div><p class="eyebrow">PROCEDURAL URBAN SYSTEMS LAB</p><h1>Procedural City</h1></div>
-          <span class="version-chip">v1.1 α</span>
+          <span class="version-chip">v2.0 α</span>
         </div>
-        <p class="description">수문 연결 지형에서 도로·필지·토지이용·건축을 인과적으로 생성하는 결정론적 3D 도시 시뮬레이션입니다.</p>
+        <p class="description">대륙·기후·국가·교역에서 가구·기업·정부·기반시설까지 연결하고, 작은 정착지의 내생적 성장을 3D로 추적합니다.</p>
       </header>
 
       <section class="panel-section scenario-section">
@@ -31,6 +32,35 @@
         <div class="reality-card-head"><span>REALITY ENGINE</span><strong id="engine-runtime">초기화 중</strong></div>
         <div class="reality-card-grid"><span><b>수문</b> Priority-Flood</span><span><b>도로</b> 지형비용 경로</span><span><b>필지</b> 가로 정렬</span><span><b>건축</b> <i id="engine-lod">LOD2-like</i></span></div>
         <div class="reality-card-foot"><span id="engine-parcels">— 필지</span><span id="engine-roads">— 회랑</span></div>
+      </section>
+
+      <section class="panel-section living-world-controls" aria-label="세계와 사회 시뮬레이션 제어">
+        <div class="section-heading"><h2>Living World</h2><span id="v2-engine-status" class="engine-dot">초기화 중</span></div>
+        <div class="view-switch" role="group" aria-label="공간 해상도 전환">
+          <button type="button" data-world-view="settlement" class="active">정착지 3D</button>
+          <button type="button" data-world-view="world">세계 3D</button>
+        </div>
+        <div class="world-facts">
+          <div><span>세계 폭</span><strong id="v2-world-span">—</strong></div>
+          <div><span>국가</span><strong id="v2-country-count">—</strong></div>
+          <div><span>정착 국가</span><strong id="v2-host-country">—</strong></div>
+          <div><span>정착 환경</span><strong id="v2-site-biome">—</strong></div>
+        </div>
+        <div class="society-clock">
+          <div><span>SIMULATION DATE</span><strong id="v2-date">정착 0년 1월</strong></div>
+          <span id="v2-stage" class="stage-chip">취락</span>
+        </div>
+        <div class="society-actions">
+          <button id="v2-run" type="button" aria-pressed="true">일시정지</button>
+          <button id="v2-step" type="button">+ 1년</button>
+          <select id="v2-speed" aria-label="사회 시뮬레이션 속도">
+            <option value="0.5">0.5개월/초</option>
+            <option value="2" selected>2개월/초</option>
+            <option value="12">1년/초</option>
+            <option value="60">5년/초</option>
+          </select>
+        </div>
+        <div id="v2-event" class="society-event">세계·정착지의 초기 조건을 계산하고 있습니다.</div>
       </section>
 
       <section class="panel-section controls-grid">
@@ -73,12 +103,26 @@
     <section class="viewport" aria-label="3D 도시 뷰어">
       <canvas id="city-canvas"></canvas><div id="weather-layer" class="weather-layer"></div><div id="analysis-layer" class="analysis-layer"></div><div id="loading" class="loading" role="status">도시 시스템 계산 중</div>
       <div class="simulation-hud"><div class="sim-kpi"><span>인구</span><strong id="kpi-pop">—</strong></div><div class="sim-kpi"><span>일자리</span><strong id="kpi-jobs">—</strong></div><div class="sim-kpi"><span>밀도</span><strong id="kpi-density">—</strong></div><div class="sim-kpi"><span>녹지율</span><strong id="kpi-green">—</strong></div><div class="sim-kpi"><span>대중교통 접근</span><strong id="kpi-transit">—</strong></div><div class="sim-kpi"><span>직주 균형</span><strong id="kpi-balance">—</strong></div></div>
+      <section id="v2-society-hud" class="v2-society-hud" aria-label="정착지 사회경제 상태">
+        <div class="v2-hud-title"><div><span id="v2-hud-place">LIVING SETTLEMENT</span><strong id="v2-hud-date">정착 0년</strong></div><span id="v2-hud-stage">취락</span></div>
+        <div class="v2-hud-grid">
+          <div><span>인구</span><strong id="v2-population">—</strong></div>
+          <div><span>기업</span><strong id="v2-firms">—</strong></div>
+          <div><span>실업률</span><strong id="v2-unemployment">—</strong></div>
+          <div><span>1인 GDP</span><strong id="v2-gdp-capita">—</strong></div>
+          <div><span>주택 공실</span><strong id="v2-vacancy">—</strong></div>
+          <div><span>기반시설</span><strong id="v2-utilities">—</strong></div>
+          <div><span>정부 지지</span><strong id="v2-approval">—</strong></div>
+          <div><span>CO₂/월</span><strong id="v2-emissions">—</strong></div>
+        </div>
+      </section>
+      <div id="v2-world-banner" class="v2-world-banner" hidden><strong>거시 세계 LOD</strong><span id="v2-world-summary">—</span><small>국경·수도 표시는 분석용 심벌이며, 지형 높이는 가독성을 위해 과장됩니다.</small></div>
       <div class="environment-card"><div class="env-chip"><span>◉</span><div><b id="env-temp">—</b><br><span id="env-weather">—</span></div></div><div class="env-chip"><span>◷</span><div><b id="env-clock">—</b><br><span id="env-date">—</span></div></div></div>
       <div id="layer-panel" class="floating-panel layer-panel"><div class="floating-title"><span>레이어</span><button id="layer-collapse" type="button" class="icon-button">−</button></div><div class="layer-list"><label class="layer-row"><input type="checkbox" checked>지형·수계</label><label class="layer-row"><input type="checkbox" checked>도로망</label><label class="layer-row"><input type="checkbox" checked>건축물</label><label class="layer-row"><input type="checkbox" checked>대중교통</label><label class="layer-row"><input type="checkbox" checked>녹지·공공시설</label><label class="layer-row"><input type="checkbox">행정구역</label><label class="layer-row"><input type="checkbox">POI</label></div></div>
       <div class="analysis-dock"><div class="analysis-card"><h3>용도 분포</h3><div class="analysis-list"><div><span>주거</span><b id="landuse-residential">—</b></div><div><span>상업·업무</span><b id="landuse-commercial">—</b></div><div><span>산업·물류</span><b id="landuse-industrial">—</b></div><div><span>공공·녹지</span><b id="landuse-civic">—</b></div></div></div><div class="analysis-card"><h3>교통 인프라</h3><div class="analysis-list"><div><span>도로</span><b id="infra-road">—</b></div><div><span>철도</span><b id="infra-rail">—</b></div><div><span>자전거도로</span><b id="infra-cycle">—</b></div><div><span>교량</span><b id="infra-bridges">—</b></div></div></div><div class="analysis-card"><h3>시설 현황</h3><div class="analysis-list"><div><span>학교</span><b id="facility-schools">—</b></div><div><span>병원</span><b id="facility-hospitals">—</b></div><div><span>공공시설</span><b id="facility-civic">—</b></div><div><span>광장·공원</span><b id="facility-parks">—</b></div></div></div><div class="analysis-card"><h3>환경 지표</h3><div class="analysis-list"><div><span>공기 질</span><b id="env-air">—</b></div><div><span>유출 위험</span><b id="env-runoff">—</b></div><div><span>열섬 강도</span><b>보통</b></div><div><span>모델 유형</span><b>합성 도시</b></div></div></div></div>
       <div class="floating-panel mini-map"><div class="floating-title"><span>미니맵</span><span>1:8,000</span></div><canvas id="mini-map-canvas"></canvas><div class="mini-meta"><span>37.54°N</span><span>127.07°E</span></div></div>
       <div class="viewport-topbar"><div class="location-badge"><span class="pulse-dot"></span><span id="district-label">CENTRAL DISTRICT</span></div><div class="compass" aria-label="북쪽 방향"><span>N</span><i id="compass-needle"></i></div></div>
-      <div class="scale-wrap"><div id="scale-line" class="scale-line"></div><span id="scale-label">100 m</span></div><div class="status-badge">Urban Reality Engine v1.1 · WebGL2 · Deterministic GIS</div><div class="quality-note">수문 연결 지형·경사 비용 도로·가로 정렬 필지·형태 문법 건축을 동일한 공간 모델에서 생성합니다.</div>
+      <div class="scale-wrap"><div id="scale-line" class="scale-line"></div><span id="scale-label">100 m</span></div><div class="status-badge">Living World Engine v2.0 · WebGL2 · Endogenous ABM</div><div class="quality-note">거시 세계와 미시 정착지를 분리하고, 가구·기업·정부의 수요와 제약이 실제 공간 건설을 결정합니다.</div>
     </section>
   </main>
   <script type="module" src="./src/main.js"></script>

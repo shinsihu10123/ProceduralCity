@@ -1,0 +1,203 @@
+// Procedural City v2.0 — living-world lifecycle, controls and diagnostics UI.
+
+(function () {
+  const q = (selector) => document.querySelector(selector)
+  const stageLabels = {
+    hamlet: '취락', village: '마을', 'small-town': '소도읍', town: '도시', city: '중심도시', 'regional-city': '광역도시',
+  }
+  const biomeLabels = {
+    ocean: '해양', ice: '빙설', tundra: '툰드라', 'boreal-forest': '냉대림',
+    'temperate-forest': '온대림', grassland: '초원', desert: '사막', savanna: '사바나',
+    rainforest: '열대우림', alpine: '고산', wetland: '습지',
+  }
+  let world = null
+  let society = null
+  let city = null
+  let running = true
+  let speed = 2
+  let accumulator = 0
+  let previousTime = performance.now()
+  let lastVisualKey = ''
+  let lastComposition = null
+  let lastVisualUpdateTime = 0
+
+  function text(id, value) {
+    const element = q(`#${id}`)
+    if (element) element.textContent = value
+  }
+  function percent(value, digits = 0) { return `${(Number(value || 0) * 100).toFixed(digits)}%` }
+  function compactNumber(value) {
+    const number = Number(value) || 0
+    if (Math.abs(number) >= 1e9) return `${(number / 1e9).toFixed(1)}B`
+    if (Math.abs(number) >= 1e6) return `${(number / 1e6).toFixed(1)}M`
+    if (Math.abs(number) >= 1e3) return `${(number / 1e3).toFixed(number >= 10000 ? 0 : 1)}K`
+    return Math.round(number).toLocaleString('ko-KR')
+  }
+  function money(value) { return `${compactNumber(value)} cr` }
+  function utilityAverage(snapshot) {
+    const values = Object.values(snapshot.utilities).map((utility) => utility.reliability)
+    return values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length)
+  }
+  function currentEvent(snapshot) { return snapshot.events?.[0]?.message || '사회 시스템이 균형 상태를 계산하고 있습니다.' }
+
+  function syncLegacyMetrics(snapshot) {
+    text('metric-buildings', Math.round(snapshot.development.constructedBuildings).toLocaleString('ko-KR'))
+    text('metric-population', snapshot.population.toLocaleString('ko-KR'))
+    text('metric-jobs', snapshot.labor.jobs.toLocaleString('ko-KR'))
+    const averageFloors = lastComposition?.activeBuildings?.length
+      ? lastComposition.activeBuildings.reduce((sum, building) => sum + building.floors, 0) / lastComposition.activeBuildings.length
+      : 1.8
+    text('metric-height', `${(averageFloors * 3.25).toFixed(1)} m`)
+    const greenRatio = Math.min(0.70, snapshot.services.parkAreaHa / Math.max(1, snapshot.development.servicedLandHa))
+    text('metric-green', percent(greenRatio))
+    const finalRoadKm = city?.metrics?.roadLengthKm || 0
+    text('metric-roads', `${(finalRoadKm * snapshot.development.roadShare).toFixed(1)} km`)
+    text('metric-transit', snapshot.development.transitOpen ? percent(Math.min(0.94, 0.48 + snapshot.development.roadShare * 0.42)) : '0%')
+    text('metric-balance', (snapshot.labor.jobs / Math.max(1, snapshot.households)).toFixed(2))
+    text('metric-flood', percent(snapshot.environment.floodExposure))
+    text('metric-network', percent(snapshot.development.roadShare))
+    text('engine-parcels', `${Math.round(snapshot.housing.units).toLocaleString('ko-KR')} 주택`)
+    text('engine-roads', `${lastComposition?.activeRoads?.length || 0}개 회랑`)
+    text('facility-schools', `${Math.max(1, Math.ceil(snapshot.services.schoolSeats / 420))}개`)
+    text('facility-hospitals', `${Math.max(1, Math.ceil(snapshot.services.clinicCapacity / 1800))}개`)
+    text('facility-civic', `${Math.max(1, Math.ceil(snapshot.population / 2600))}개`)
+    text('facility-parks', `${Math.max(1, Math.ceil(snapshot.services.parkAreaHa / 2.4))}개`)
+    text('kpi-pop', snapshot.population.toLocaleString('ko-KR'))
+    text('kpi-jobs', snapshot.labor.jobs.toLocaleString('ko-KR'))
+    text('kpi-density', `${Math.round(snapshot.population / Math.max(0.2, snapshot.development.servicedLandHa / 100)).toLocaleString('ko-KR')} /㎢`)
+    text('kpi-green', percent(greenRatio))
+    text('kpi-transit', snapshot.development.transitOpen ? '운행' : '미개통')
+    text('kpi-balance', (snapshot.labor.jobs / Math.max(1, snapshot.households)).toFixed(2))
+  }
+
+  function updateVisual(snapshot, force = false) {
+    if (!city || !window.ProceduralCityV2Renderer) return
+    const visualKey = `${Math.round(snapshot.development.constructedBuildings)}:${Math.round(snapshot.development.roadShare * 100)}:${snapshot.development.transitOpen}`
+    if (!force && visualKey === lastVisualKey) return
+    const now = performance.now()
+    if (!force && now - lastVisualUpdateTime < 180) return
+    lastVisualKey = visualKey
+    lastVisualUpdateTime = now
+    lastComposition = window.ProceduralCityV2Renderer.updateGrowth(snapshot) || lastComposition
+  }
+
+  function updateUi(snapshot, forceVisual = false) {
+    const stage = stageLabels[snapshot.stage] || snapshot.stage
+    text('v2-date', `정착 ${snapshot.date.year}년 ${snapshot.date.month + 1}월`)
+    text('v2-stage', stage)
+    text('v2-event', currentEvent(snapshot))
+    text('v2-hud-place', `${world.settlement.countryName.toUpperCase()} · ${biomeLabels[world.settlement.biome] || world.settlement.biome}`)
+    text('v2-hud-date', `${snapshot.date.calendarYear}년 · 정착 ${snapshot.date.year}년`)
+    text('v2-hud-stage', stage)
+    text('v2-population', snapshot.population.toLocaleString('ko-KR'))
+    text('v2-firms', `${snapshot.firms}개`)
+    text('v2-unemployment', percent(snapshot.labor.unemploymentRate, 1))
+    text('v2-gdp-capita', money(snapshot.economy.gdpPerCapita))
+    text('v2-vacancy', percent(snapshot.housing.vacancyRate, 1))
+    text('v2-utilities', percent(utilityAverage(snapshot)))
+    text('v2-approval', percent(snapshot.government.approval))
+    text('v2-emissions', `${snapshot.environment.emissionsTonnesCo2.toFixed(1)}t`)
+    updateVisual(snapshot, forceVisual)
+    syncLegacyMetrics(snapshot)
+  }
+
+  function updateWorldUi() {
+    text('v2-world-span', `${world.spanKm.toLocaleString('ko-KR')} km`)
+    text('v2-country-count', `${world.countries.length}개국`)
+    text('v2-host-country', world.settlement.countryName)
+    text('v2-site-biome', biomeLabels[world.settlement.biome] || world.settlement.biome)
+    text('v2-world-summary', `${world.countries.length}개국 · ${world.diagnostics.tectonicPlates}개 지각판 · ${world.diagnostics.riverCells.toLocaleString('ko-KR')}개 하천 셀 · ${world.trade.length}개 교역 회랑`)
+    text('v2-engine-status', '정상 작동')
+    q('#v2-engine-status')?.classList.add('ready')
+    text('engine-runtime', 'v2 정상 작동')
+    text('engine-lod', 'Macro + LOD2')
+    const version = q('.version-chip')
+    if (version) version.textContent = 'v2.0 α'
+    const status = q('.status-badge')
+    if (status) status.textContent = 'Living World Engine v2.0 · WebGL2 · Endogenous ABM'
+    const quality = q('.quality-note')
+    if (quality) quality.textContent = '대륙·국가·교역의 거시 조건과 가구·기업·정부의 미시 수요가 건설·인구·환경 결과를 함께 결정합니다.'
+  }
+
+  function initialize(generatedCity) {
+    city = generatedCity
+    const seed = generatedCity.settings?.seed || 'living-world'
+    world = window.ProceduralWorldSystemV2.create({ seed, size: 96, spanKm: 2400 })
+    society = window.ProceduralSocietyEngineV2.create(world, { seed, foundingYear: 2026 })
+    window.ProceduralCityV2Renderer.setWorld(world)
+    window.ProceduralCityV2Renderer.setCity(city)
+    window.ProceduralCityViewMode = 'settlement'
+    window.ProceduralCityRenderExtent = city.extent
+    lastVisualKey = ''
+    lastComposition = null
+    updateWorldUi()
+    updateUi(society.getSnapshot(), true)
+    window.dispatchEvent(new CustomEvent('procedural-city:v2-ready', { detail: { world, society, city } }))
+  }
+
+  function step(months) {
+    if (!society) return null
+    const snapshot = society.simulate(months)
+    updateUi(snapshot)
+    return snapshot
+  }
+
+  function setRunning(next) {
+    running = Boolean(next)
+    if (!running && society) updateUi(society.getSnapshot(), true)
+    const button = q('#v2-run')
+    if (button) {
+      button.setAttribute('aria-pressed', String(running))
+      button.textContent = running ? '일시정지' : '계속 진행'
+    }
+  }
+
+  q('#v2-run')?.addEventListener('click', () => setRunning(!running))
+  q('#v2-step')?.addEventListener('click', () => step(12))
+  q('#v2-speed')?.addEventListener('change', (event) => { speed = Number(event.target.value) || 2 })
+  document.querySelectorAll('[data-world-view]').forEach((button) => button.addEventListener('click', () => {
+    if (!world || !society) return
+    if (button.dataset.worldView === 'world') window.ProceduralCityV2Renderer.showWorld()
+    else {
+      lastComposition = window.ProceduralCityV2Renderer.showSettlement(society.getSnapshot())
+      syncLegacyMetrics(society.getSnapshot())
+    }
+  }))
+  window.addEventListener('procedural-city:v2-view', (event) => {
+    const mode = event.detail?.mode || 'settlement'
+    document.body.classList.toggle('v2-world-mode', mode === 'world')
+    q('#v2-world-banner').hidden = mode !== 'world'
+    document.querySelectorAll('[data-world-view]').forEach((button) => button.classList.toggle('active', button.dataset.worldView === mode))
+    text('district-label', mode === 'world' ? 'MULTI-NATION WORLD' : `${world?.settlement?.countryName || 'LIVING'} SETTLEMENT`)
+  })
+  window.addEventListener('procedural-city:v11-generated', (event) => initialize(event.detail.city))
+
+  function frame(time) {
+    const delta = Math.min(0.25, Math.max(0, (time - previousTime) / 1000))
+    previousTime = time
+    if (running && society) {
+      accumulator += delta * speed
+      const months = Math.min(120, Math.floor(accumulator))
+      if (months > 0) {
+        accumulator -= months
+        step(months)
+      }
+    }
+    requestAnimationFrame(frame)
+  }
+
+  window.ProceduralCityV2 = {
+    version: '2.0.0-living-world-alpha',
+    getWorld: () => world,
+    getSociety: () => society,
+    getCity: () => city,
+    getSnapshot: () => society?.getSnapshot() || null,
+    getHistory: () => society?.getHistory() || [],
+    step,
+    setRunning,
+    exportData: () => ({ world: world?.toJSON() || null, society: society?.toJSON() || null }),
+  }
+
+  setRunning(true)
+  requestAnimationFrame(frame)
+})()

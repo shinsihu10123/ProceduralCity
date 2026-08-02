@@ -1,4 +1,4 @@
-const BUILD_ID = 'v110-reality-engine-20260802'
+const BUILD_ID = 'v200-living-world-20260802'
 const sourceParts = [
   './v10-shader-patch.js.txt',
   './main.part1.js.txt',
@@ -34,6 +34,10 @@ const sourceParts = [
   './v11-urban-morphology.js.txt',
   './v11-render-pipeline.js.txt',
   './v11-ui-layer.js.txt',
+  './v2-world-system.js.txt',
+  './v2-society-engine.js.txt',
+  './v2-render-bridge.js.txt',
+  './v2-ui-controller.js.txt',
 ]
 
 function versionedUrl(path) {
