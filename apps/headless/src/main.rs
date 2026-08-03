@@ -66,7 +66,9 @@ fn run() -> Result<(), String> {
     let snapshot_output = parse_path_flag(&arguments, "--snapshot-output")?;
 
     if load_path.is_some() && seed.is_some() {
-        return Err("--seed cannot be combined with --load; the save owns the world seed".to_owned());
+        return Err(
+            "--seed cannot be combined with --load; the save owns the world seed".to_owned(),
+        );
     }
 
     let loaded = load_path.is_some();
@@ -84,11 +86,7 @@ fn run() -> Result<(), String> {
     }
 
     let digest = format!("{:016x}", host.deterministic_digest());
-    let snapshot = RenderSnapshot::kernel(
-        host.tick().value(),
-        host.world_seed(),
-        digest.clone(),
-    );
+    let snapshot = RenderSnapshot::kernel(host.tick().value(), host.world_seed(), digest.clone());
 
     if let Some(path) = snapshot_output.as_deref() {
         write_render_snapshot(path, &snapshot)
