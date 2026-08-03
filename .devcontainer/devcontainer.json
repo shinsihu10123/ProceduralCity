@@ -1,0 +1,29 @@
+{
+  "name": "Artificial World Stage 0",
+  "image": "mcr.microsoft.com/devcontainers/rust:1",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "vadimcn.vscode-lldb",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "forwardPorts": [5173],
+  "portsAttributes": {
+    "5173": {
+      "label": "Stage 0 Viewer",
+      "onAutoForward": "openPreview"
+    }
+  },
+  "postCreateCommand": "rustc --version && cargo --version && node --version && npm --version && cargo fetch",
+  "remoteUser": "vscode"
+}
