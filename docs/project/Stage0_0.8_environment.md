@@ -1,6 +1,6 @@
 # Stage 0.8 개발 환경 구축
 
-문서 버전: 0.8.0-draft  
+문서 버전: 0.8.1-draft  
 상태: 진행 중  
 기준 브랜치: `stage0-rebuild`
 
@@ -29,10 +29,11 @@ Stage 0.7의 H0·H1 성능 목표는 폐기하지 않는다. 해당 목표는 �
 | 시뮬레이션 코어 | Rust |
 | 빌드·패키지 | Cargo workspace |
 | 실행 방식 | Headless-first |
-| 웹 Viewer | TypeScript 기반, 후속 구축 |
+| 웹 Viewer | TypeScript + Three.js + Vite |
 | 자동 검증 | GitHub Actions |
 | CI 운영체제 | Ubuntu Linux |
 | Rust 검사 | rustfmt, Clippy, cargo test |
+| Viewer 검사 | TypeScript strict check, Vite production build |
 
 ## 4. 현재 생성된 구조
 
@@ -45,6 +46,11 @@ crates/kernel/Cargo.toml
 crates/kernel/src/lib.rs
 apps/headless/Cargo.toml
 apps/headless/src/main.rs
+apps/viewer/package.json
+apps/viewer/tsconfig.json
+apps/viewer/index.html
+apps/viewer/src/main.ts
+apps/viewer/src/style.css
 ```
 
 ## 5. 최소 Kernel
@@ -71,18 +77,72 @@ cargo run -p artificial-world-headless -- --ticks 10000 --seed 42
 
 출력에는 최종 tick, seed, deterministic digest가 포함된다.
 
-## 7. CI 게이트
+## 7. 웹 디버그 Viewer
 
-GitHub Actions는 다음을 순서대로 실행한다.
+현재 Viewer는 권위 상태를 수정하지 않는 읽기 전용 진단 스켈레톤이다.
+
+표시 항목:
+
+- 모의 `RenderSnapshot`
+- Tick
+- Seed
+- Deterministic digest
+- Entity 표식
+- Event 표식
+- Region 구획
+- LOD A~D 계수
+- iPad 터치 기반 회전·이동·확대
+
+현재는 Kernel과 실시간 연결하지 않고 고정된 mock snapshot을 사용한다. 다음 단계에서 Headless 출력과 Snapshot 계약을 연결한다.
+
+실행:
+
+```bash
+npm install --prefix apps/viewer --no-audit --no-fund
+npm --prefix apps/viewer run dev -- --host 0.0.0.0
+```
+
+Codespaces의 전달 포트 `5173`에서 확인한다.
+
+## 8. CI 게이트
+
+GitHub Actions는 다음을 검증한다.
+
+### Rust
 
 1. `cargo fmt --all -- --check`
 2. `cargo clippy --workspace --all-targets -- -D warnings`
 3. `cargo test --workspace`
 4. 10,000틱 Headless smoke test
 
-2026-08-03 기준 Stage 0 CI와 기존 city engine 검증이 모두 성공했다.
+### Viewer
 
-## 8. 진행 상태
+1. Node.js 환경 구성
+2. Viewer 의존성 설치
+3. TypeScript strict type-check
+4. Vite production build
+
+2026-08-03 기준 최신 Stage 0 CI와 기존 city engine 검증이 모두 성공했다.
+
+## 9. Codespaces 검증
+
+2026-08-03 사용자 확인으로 iPad에서 `stage0-rebuild` Codespace의 실제 기동을 완료했다.
+
+남은 수동 검증:
+
+```bash
+git pull
+rustc --version
+cargo --version
+node --version
+npm --version
+cargo test --workspace
+cargo run -p artificial-world-headless -- --ticks 10000 --seed 42
+npm install --prefix apps/viewer --no-audit --no-fund
+npm --prefix apps/viewer run dev -- --host 0.0.0.0
+```
+
+## 10. 진행 상태
 
 | 단계 | 상태 |
 |---|---|
@@ -90,19 +150,21 @@ GitHub Actions는 다음을 순서대로 실행한다.
 | 0.8.2 기존 V5 보존 방침 | 완료 |
 | 0.8.3 재구축 브랜치 | 완료 |
 | 0.8.4 Dev Container 구성 파일 | 완료 |
-| 0.8.4 Codespaces 실제 기동 | 미검증 |
+| 0.8.4 Codespaces 실제 기동 | 완료 — 사용자 확인 |
 | 0.8.5 Rust workspace | 완료 |
 | 0.8.6 GitHub Actions CI | 완료 |
-| 0.8.7 웹 디버그 Viewer | 대기 |
+| 0.8.7 웹 디버그 Viewer 스켈레톤 | 완료 — CI build 성공 |
 | 0.8.8 Kernel 최소 실행 | CI 검증 완료 |
-| 0.8.9 Save/Load·기준선 벤치마크 | 대기 |
+| 0.8.9 Save/Load·기준선 벤치마크 | 다음 |
 | 0.8.10 Stage 0 완료 판정 | 대기 |
 
-## 9. 다음 작업
+## 11. 다음 작업
 
-1. iPad에서 `stage0-rebuild` 브랜치의 Codespace 생성
-2. Dev Container 생성 성공 확인
-3. 터미널에서 Rust·Node 버전 확인
-4. `cargo test --workspace` 실행
-5. Headless 10,000틱 실행
-6. TypeScript 웹 디버그 Viewer 스켈레톤 추가
+1. Codespace에서 최신 `stage0-rebuild` pull
+2. Rust·Node 버전과 로컬 테스트 확인
+3. 10,000틱 Headless 실행 확인
+4. 포트 5173에서 Viewer 실제 화면 확인
+5. Snapshot JSON 계약 추가
+6. Kernel → Viewer 데이터 연결
+7. Save/Load 최소 구현
+8. 최초 기준선 벤치마크 실행
