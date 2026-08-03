@@ -36,3 +36,23 @@ jobs:
 
       - name: Run deterministic headless smoke test
         run: cargo run -p artificial-world-headless -- --ticks 10000 --seed 42
+
+  viewer:
+    name: TypeScript diagnostic viewer
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install viewer dependencies
+        run: npm install --prefix apps/viewer --no-audit --no-fund
+
+      - name: Type-check and build viewer
+        run: npm --prefix apps/viewer run build
