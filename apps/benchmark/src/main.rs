@@ -158,9 +158,8 @@ fn run_id(argument: Option<String>) -> String {
 }
 
 fn hardware_profile() -> HardwareProfile {
-    let logical_cpu_count = std::thread::available_parallelism().map_or(1, |count| {
-        u64::try_from(count.get()).unwrap_or(u64::MAX)
-    });
+    let logical_cpu_count = std::thread::available_parallelism()
+        .map_or(1, |count| u64::try_from(count.get()).unwrap_or(u64::MAX));
     HardwareProfile {
         environment: environment_name(),
         operating_system: env::consts::OS.to_owned(),
