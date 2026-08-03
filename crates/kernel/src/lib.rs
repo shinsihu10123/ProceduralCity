@@ -230,14 +230,20 @@ mod tests {
 
         let checkpoint = first_half.checkpoint();
         let mut restored = SimulationHost::restore(checkpoint);
-        assert_eq!(restored.deterministic_digest(), first_half.deterministic_digest());
+        assert_eq!(
+            restored.deterministic_digest(),
+            first_half.deterministic_digest()
+        );
 
         for _ in 0..10_000 {
             restored.step().expect("restored host should advance");
         }
 
         assert_eq!(restored.tick(), uninterrupted.tick());
-        assert_eq!(restored.deterministic_digest(), uninterrupted.deterministic_digest());
+        assert_eq!(
+            restored.deterministic_digest(),
+            uninterrupted.deterministic_digest()
+        );
     }
 
     #[test]
