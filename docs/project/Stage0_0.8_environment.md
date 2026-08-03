@@ -1,6 +1,6 @@
 # Stage 0.8 개발 환경 구축
 
-문서 버전: 0.8.2-draft  
+문서 버전: 0.8.3-draft  
 상태: 진행 중  
 기준 브랜치: `stage0-rebuild`
 
@@ -29,11 +29,12 @@ Stage 0.7의 H0·H1 성능 목표는 폐기하지 않는다. 해당 목표는 �
 | 시뮬레이션 코어 | Rust |
 | 빌드·패키지 | Cargo workspace |
 | 실행 방식 | Headless-first |
+| 계약 직렬화 | Serde + JSON |
 | 웹 Viewer | TypeScript + Three.js + Vite |
 | 자동 검증 | GitHub Actions |
 | CI 운영체제 | Ubuntu Linux |
 | Rust 검사 | rustfmt, Clippy, cargo test |
-| Viewer 검사 | TypeScript strict check, Vite production build |
+| Viewer 검사 | Snapshot runtime validation, TypeScript strict check, Vite build |
 
 ## 4. 현재 생성된 구조
 
@@ -42,6 +43,8 @@ Stage 0.7의 H0·H1 성능 목표는 폐기하지 않는다. 해당 목표는 �
 .github/workflows/stage0-ci.yml
 Cargo.toml
 rust-toolchain.toml
+crates/contracts/Cargo.toml
+crates/contracts/src/lib.rs
 crates/kernel/Cargo.toml
 crates/kernel/src/lib.rs
 apps/headless/Cargo.toml
@@ -49,8 +52,12 @@ apps/headless/src/main.rs
 apps/viewer/package.json
 apps/viewer/tsconfig.json
 apps/viewer/index.html
+apps/viewer/public/snapshots/latest.json
+apps/viewer/scripts/validate-snapshot.mjs
 apps/viewer/src/main.ts
 apps/viewer/src/style.css
+schemas/snapshots/render-snapshot.v1.schema.json
+docs/contracts/render-snapshot-v1.md
 ```
 
 ## 5. 최소 Kernel
@@ -67,99 +74,150 @@ apps/viewer/src/style.css
 
 렌더링 frame delta는 Kernel 입력으로 받지 않는다.
 
-## 6. Headless 실행
+## 6. Headless 실행과 Snapshot 출력
 
-기본 명령:
+기본 실행:
 
 ```bash
 cargo run -p artificial-world-headless -- --ticks 10000 --seed 42
 ```
 
-출력에는 최종 tick, seed, deterministic digest가 포함된다.
+Viewer용 Snapshot 출력:
 
-## 7. 웹 디버그 Viewer
+```bash
+cargo run -p artificial-world-headless -- \
+  --ticks 10000 \
+  --seed 42 \
+  --snapshot-output apps/viewer/public/snapshots/latest.json
+```
 
-현재 Viewer는 권위 상태를 수정하지 않는 읽기 전용 진단 스켈레톤이다.
+Snapshot은 임시 파일에 먼저 기록한 뒤 최종 경로로 rename한다. 출력 전 Rust 계약 검증을 수행한다.
 
-표시 항목:
+## 7. RenderSnapshot v1
 
-- 모의 `RenderSnapshot`
-- Tick
-- Seed
-- Deterministic digest
-- Entity 표식
-- Event 표식
-- Region 구획
-- LOD A~D 계수
-- iPad 터치 기반 회전·이동·확대
+스키마 ID:
 
-현재는 Kernel과 실시간 연결하지 않고 고정된 mock snapshot을 사용한다. 다음 단계에서 Headless 출력과 Snapshot 계약을 연결한다.
+```text
+render-snapshot.v1
+```
+
+필드:
+
+- `schemaVersion`
+- `source`
+- `tick`
+- `seed`
+- `digest`
+- `lodCounts`
+- `regions`
+- `entities`
+- `events`
+
+현재 Kernel에는 권위 개체·사건·Region 상태가 아직 없으므로 관련 배열과 LOD 계수는 0으로 출력한다. Viewer가 표시하는 네 구역은 좌표 확인용 presentation scaffold이며 권위 상태가 아니다.
+
+데이터 흐름:
+
+```text
+SimulationHost
+→ Headless snapshot publisher
+→ Rust contract validation
+→ RenderSnapshot JSON
+→ TypeScript runtime validation
+→ Three.js Viewer
+```
+
+## 8. 웹 디버그 Viewer
+
+Viewer는 `/snapshots/latest.json`을 읽는다.
+
+- 고정 mock 행위자·사건 생성 제거
+- 버전과 source 검사
+- tick·seed·digest 표시
+- Region·Entity·Event 배열 표시
+- 알 수 없는 스키마 거부
+- 파일 누락·손상 시 명시적 오류 화면
+- 권위 상태 쓰기 경로 없음
 
 실행:
 
 ```bash
 npm install --prefix apps/viewer --no-audit --no-fund
+npm --prefix apps/viewer run validate:snapshot
 npm --prefix apps/viewer run dev -- --host 0.0.0.0
 ```
 
 Codespaces의 전달 포트 `5173`에서 확인한다.
 
-## 8. CI 게이트
-
-GitHub Actions는 다음을 검증한다.
+## 9. CI 게이트
 
 ### Rust
 
 1. `cargo fmt --all -- --check`
 2. `cargo clippy --workspace --all-targets -- -D warnings`
 3. `cargo test --workspace`
-4. 10,000틱 Headless smoke test
+4. 10,000틱 실행
+5. `RenderSnapshot` JSON 출력
+6. 출력 파일 존재 확인
 
-### Viewer
+### Kernel → Viewer
 
-1. Node.js 환경 구성
-2. Viewer 의존성 설치
+1. CI에서 Headless를 실행해 Viewer Snapshot 생성
+2. Node 기반 Snapshot 계약 검사
 3. TypeScript strict type-check
 4. Vite production build
 
-2026-08-03 기준 최신 Stage 0 CI와 기존 city engine 검증이 모두 성공했다.
+2026-08-03 기준 Stage 0 CI와 기존 city engine 검증이 모두 성공했다.
 
-## 9. Codespaces 및 iPad 수동 검증
+검증된 값:
 
-2026-08-03 사용자 확인으로 다음을 완료했다.
+```json
+{
+  "tick": 10000,
+  "seed": 42,
+  "digest": "40885885fe2db25d",
+  "snapshotWritten": true
+}
+```
 
-- iPad에서 `stage0-rebuild` Codespace 실제 기동
+## 10. Codespaces 및 iPad 수동 검증
+
+완료:
+
+- iPad에서 `stage0-rebuild` Codespace 기동
 - Dev Container 환경 진입
 - 포트 5173 전달
-- Viewer 실제 화면 표시
-- 3D 장면 렌더링
-- 정보 패널 표시
-- iPad 터치 기반 화면 조작
+- 초기 Viewer 실제 화면 표시
+- 3D 렌더링과 터치 조작
 
-따라서 iPad를 개발 접속 단말로 사용하고, Codespaces에서 코어와 Viewer를 실행하는 초기 개발 경로가 실제로 작동함을 확인했다.
+추가 확인 필요:
 
-## 10. 진행 상태
+- 최신 브랜치 pull
+- Headless가 생성한 `RenderSnapshot v1` 표시
+- 화면의 Entity·Event가 0으로 표시되는지 확인
+- 상태 문구가 `Kernel Snapshot 연결됨`으로 표시되는지 확인
+
+## 11. 진행 상태
 
 | 단계 | 상태 |
 |---|---|
 | 0.8.1 iPad·클라우드 개발 방식 | 완료 |
 | 0.8.2 기존 V5 보존 방침 | 완료 |
 | 0.8.3 재구축 브랜치 | 완료 |
-| 0.8.4 Dev Container 구성 파일 | 완료 |
-| 0.8.4 Codespaces 실제 기동 | 완료 — 사용자 확인 |
+| 0.8.4 Dev Container·Codespaces | 완료 |
 | 0.8.5 Rust workspace | 완료 |
 | 0.8.6 GitHub Actions CI | 완료 |
-| 0.8.7 웹 디버그 Viewer 스켈레톤 | 완료 — CI 및 iPad 실제 검증 |
-| 0.8.8 Kernel 최소 실행 | CI 검증 완료 |
-| 0.8.9 Snapshot 연결·Save/Load·기준선 벤치마크 | 다음 |
+| 0.8.7 웹 디버그 Viewer 스켈레톤 | 완료 |
+| 0.8.8 Kernel 최소 실행 | 완료 |
+| 0.8.9.1 Snapshot JSON 계약 | 완료 — CI 검증 |
+| 0.8.9.2 Kernel → Viewer 연결 | 완료 — CI 검증, iPad 화면 재확인 필요 |
+| 0.8.9.3 Save/Load | 다음 |
+| 0.8.9.4 기준선 벤치마크 | 대기 |
 | 0.8.10 Stage 0 완료 판정 | 대기 |
 
-## 11. 다음 작업
+## 12. 다음 작업
 
-1. 버전된 `RenderSnapshot` JSON 계약 추가
-2. Headless 실행 결과를 Snapshot 파일로 내보내기
-3. Viewer가 mock 데이터 대신 Snapshot 파일을 읽도록 변경
-4. 최소 World Save Manifest와 상태 저장 구현
-5. Save → Load → 재실행 digest 일치 테스트
-6. 최초 기준선 벤치마크 실행
-7. Stage 0 완료 검토
+1. iPad Codespace에서 최신 Snapshot Viewer 확인
+2. 최소 World Save Manifest 구현
+3. Save → Load → 재실행 digest 일치 테스트
+4. 최초 기준선 벤치마크 실행
+5. Stage 0 완료 검토
