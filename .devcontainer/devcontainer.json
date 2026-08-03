@@ -24,6 +24,6 @@
       "onAutoForward": "openPreview"
     }
   },
-  "postCreateCommand": "rustc --version && cargo --version && node --version && npm --version && cargo fetch",
+  "postCreateCommand": "rustc --version && cargo --version && node --version && npm --version && cargo fetch && npm install --prefix apps/viewer --no-audit --no-fund",
   "remoteUser": "vscode"
 }
