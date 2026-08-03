@@ -3,8 +3,8 @@
 mod world_save;
 
 pub use world_save::{
-    EventPosition, KernelStateRecord, ModuleStateManifest, RandomStateManifest,
-    WorldSaveManifest, WorldSaveValidationError, KERNEL_MODULE_ID, KERNEL_STATE_SCHEMA_VERSION,
+    EventPosition, KernelStateRecord, ModuleStateManifest, RandomStateManifest, WorldSaveManifest,
+    WorldSaveValidationError, KERNEL_MODULE_ID, KERNEL_STATE_SCHEMA_VERSION,
     WORLD_SAVE_SCHEMA_VERSION,
 };
 
