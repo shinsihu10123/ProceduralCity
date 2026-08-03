@@ -24,7 +24,9 @@ pub enum PersistenceError {
 impl fmt::Display for PersistenceError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Validation(message) => write!(formatter, "persistence validation failed: {message}"),
+            Self::Validation(message) => {
+                write!(formatter, "persistence validation failed: {message}")
+            }
             Self::Serialization(message) => {
                 write!(formatter, "persistence serialization failed: {message}")
             }
@@ -181,13 +183,8 @@ mod tests {
     #[test]
     fn world_save_round_trip_preserves_manifest() {
         let path = test_path("round-trip");
-        let save = WorldSaveManifest::kernel(
-            10_000,
-            42,
-            true,
-            "40885885fe2db25d".to_owned(),
-            "0.0.1",
-        );
+        let save =
+            WorldSaveManifest::kernel(10_000, 42, true, "40885885fe2db25d".to_owned(), "0.0.1");
 
         write_world_save(&path, &save).expect("world save should be written");
         let restored = read_world_save(&path).expect("world save should be restored");
