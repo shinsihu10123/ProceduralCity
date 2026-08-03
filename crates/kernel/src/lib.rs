@@ -72,6 +72,12 @@ impl SimulationHost {
     /// Advances exactly one authoritative fixed tick.
     ///
     /// No rendering frame time is accepted here by design.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SimulationError::Paused`] when the host is not running and
+    /// [`SimulationError::TickOverflow`] when the authoritative counter cannot
+    /// advance without overflowing.
     pub fn step(&mut self) -> Result<Tick, SimulationError> {
         if !self.running {
             return Err(SimulationError::Paused);
