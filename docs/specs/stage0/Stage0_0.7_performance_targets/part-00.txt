@@ -1,0 +1,707 @@
+Stage 0.7 성능 목표 명세
+
+문서 버전: 0.7.0
+상태: 기준안 확정
+적용 범위:
+- 시뮬레이션 처리량
+- 고정 틱 안정성
+- 개체·지역 규모
+- LOD
+- 메모리
+- 저장·복원
+- 사건 원장
+- 병렬 처리
+- 렌더링
+- 장기 실행
+- 성능 회귀
+
+상위 문서:
+- Stage 0.1 프로젝트 철학 및 시스템 경계 명세
+- Stage 0.2 핵심 원칙 및 강제 규칙 명세
+- Stage 0.3 전체 아키텍처 명세
+- Stage 0.4 개발 규칙 명세
+- Stage 0.5 코드 구조 명세
+- Stage 0.6 데이터 구조 명세
+
+목적:
+프로젝트가 거대한 연속 세계와 장기간 역사를 처리하면서도 인과성, 상태 보존,
+결정론, 저장 가능성, 시각화 가능성을 유지하도록 정량적 성능 목표와 검증 기준을 정의한다.
+
+중요:
+본 문서의 수치는 최초 공학 기준선이다.
+Stage 0.8에서 실제 개발 환경과 기술 스택을 구축한 뒤 기준 벤치마크를 실행하고,
+하드웨어 또는 엔진 특성 때문에 수정이 필요할 경우 ADR과 버전 상승을 통해 변경한다.
+
+────────────────────────────────────────
+1. 성능 목표의 기본 철학
+────────────────────────────────────────
+
+1.1 정확성 우선
+
+최적화 우선순위는 다음과 같다.
+
+1. 인과적 일관성
+2. 상태 보존
+3. 결정론과 재현성
+4. 저장·복원 가능성
+5. 장기 안정성
+6. 처리량
+7. 렌더링 품질
+
+성능을 이유로 다음을 허용하지 않는다.
+
+- 원인 없는 결과 생성
+- 화면 밖 지역 정지
+- 카메라 밖 개체 삭제
+- 도시·국가·기술 자동 생성
+- LOD 전환 시 자원 보정
+- 사건 원인 삭제
+- 렌더링 상태를 권위 상태로 사용
+- 숨은 성공률·사망률 조정
+
+1.2 측정 가능한 목표
+
+모든 성능 목표는 다음을 가져야 한다.
+
+- 기준 하드웨어
+- 기준 설정
+- 기준 세계 상태
+- 시드
+- 코드 빌드 ID
+- 측정 시간
+- 평균
+- 중앙값
+- p95
+- p99
+- 최대값
+- 메모리 증가율
+- 결과 digest
+
+1.3 성능 모드 분리
+
+프로젝트는 세 성능 모드를 구분한다.
+
+A. Interactive Mode
+- 사용자가 세계를 3D로 관찰
+- 활성 지역을 상세 계산
+- 렌더링과 UI 동시 실행
+- 부드러운 입력·카메라·선택 필요
+
+B. Accelerated Mode
+- 시간 가속
+- 활성 상세 범위를 줄이거나 일부 지역을 집계
+- 렌더링은 유지할 수 있으나 프레임보다 틱 처리량 우선
+
+C. Headless Research Mode
+- 렌더링 없음
+- 장기 실험과 반복 실행
+- 모든 지역은 필요한 최소 정밀도만 사용
+- 세계 연도 처리량과 재현성 우선
+
+각 모드의 성능 수치를 혼합 평가하지 않는다.
+
+────────────────────────────────────────
+2. 기준 하드웨어 등급
+────────────────────────────────────────
+
+기술 스택 확정 전이므로 특정 제조사나 제품을 기준으로 하지 않는다.
+
+H0 최소 개발 환경
+
+CPU:
+- 6코어 / 12스레드 이상
+- 64비트 데스크톱급
+
+Memory:
+- 16GB RAM
+
+GPU:
+- 6GB VRAM급 또는 이에 준하는 그래픽 처리 능력
+- 디버그 시각화와 저중간 품질 3D 렌더링 가능
+
+Storage:
+- SSD
+- 프로젝트 및 테스트용 여유 공간 최소 100GB
+
+Target Resolution:
+- 1920×1080
+
+용도:
+- 코드 작성
+- 단위 테스트
+- 소규모 시나리오
+- 최소 품질 Viewer
+
+H1 기준 개발·실행 환경
+
+CPU:
+- 8코어 / 16스레드 이상
+- 높은 단일 스레드 성능
+- AVX2급 벡터 연산 또는 동급 기능 권장
+
+Memory:
+- 32GB RAM
+
+GPU:
+- 8GB VRAM 이상
+- 1080p 60FPS 기준 Viewer
+
+Storage:
+- NVMe SSD
+- 지속 쓰기 성능이 Event와 Snapshot 저장을 방해하지 않을 것
+- 프로젝트 및 실행 데이터 여유 공간 최소 250GB
+
+Target Resolution:
+- 1920×1080
+- 2560×1440은 품질 조정 조건부
+
+H2 확장·연구 환경
+
+CPU:
+- 16코어 / 32스레드 이상
+
+Memory:
+- 64GB RAM 이상
+
+GPU:
+- 16GB VRAM 이상
+
+Storage:
+- 고성능 NVMe SSD
+- 장기 사건 원장과 다중 Snapshot용 1TB 이상 여유 권장
+
+용도:
+- 대규모 헤드리스 실험
+- 복수 세계 병렬 실행
+- 대형 LOD 검증
+- 고해상도 Viewer
+
+규칙:
+H0에서도 프로젝트 전체 소스가 빌드되고 최소 실행 시나리오가 작동해야 한다.
+H1을 공식 성능 기준 환경으로 사용한다.
+H2만으로 통과 가능한 기능은 기본 기능으로 승인하지 않는다.
+
+────────────────────────────────────────
+3. 기준 시간 모델
+────────────────────────────────────────
+
+3.1 논리 틱
+
+초기 기준:
+
+- Interactive authoritative tick: 초당 10틱
+- 1 base tick: 100ms의 상세 시뮬레이션 시간
+- 렌더링: 별도 프레임
+- 물리적으로 필요한 경우 활성 지역 내부에서 micro-step 사용
+
+3.2 Physics Micro-step
+
+초기 상한:
+- 최대 20ms 시뮬레이션 시간
+- base tick당 최대 5회
+
+규칙:
+- 모든 지역에서 항상 5회 수행하지 않음
+- 충돌·고속 이동·구조 불안정이 있는 활성 지역에만 적용
+- micro-step 결과는 base tick Commit에 통합
+- micro-step은 Event를 불필요하게 폭증시키지 않음
+
+3.3 저주파 시스템
+
+예시 초기 주기:
+
+- 대사: 1~10틱
+- 체온: 1~10틱
+- 식물 성장: 100틱 이상
+- 토양 변화: 1,000틱 이상
+- 침식: 10,000틱 이상
+- 관계 집계: 10~100틱
+- 지역 통계: 100틱 이상
+- 장기 역사 압축: 10,000틱 이상
+
+정확한 주기는 각 모듈 구현 단계에서 측정 후 확정한다.
+
+3.4 시간 가속
+
+시간 가속은 base tick 의미를 변경하지 않는다.
+
+허용:
+- 단위 실제 시간당 더 많은 tick 처리
+- 비관찰 지역의 LOD 강등
+- 저주파 시스템의 안전한 batch 실행
+- 거시 집계 모델 사용
+
+금지:
+- 같은 LOD와 같은 조건에서 시간 배속에 따라 다른 규칙 사용
+- 빠른 진행을 위해 결과 임의 생성
+- 인과관계를 생략하는 비공개 fast-forward
+
+────────────────────────────────────────
+4. 틱 처리 시간 목표
+────────────────────────────────────────
+
+H1 Interactive Mode 기준:
+
+Target tick rate:
+- 10 ticks/s
+
+Tick wall-time budget:
+- 평균 70ms 이하
+- p95 90ms 이하
+- p99 100ms 이하
+- 100ms 초과 tick 비율 0.1% 이하
+
+남은 시간은 다음에 사용한다.
+
+- OS 스케줄링 변동
+- 비동기 저장 준비
+- Viewer와 데이터 교환
+- 일시적 사건 밀도 증가
+- GC 또는 메모리 정리
+
+Tick skipping:
+- 금지
+
+Overrun 처리:
+- 시뮬레이션이 실제 시간보다 늦어짐
+- overrun 지표 기록
+- 자동 LOD 정책 검토
+- 데이터 삭제나 상태 생략은 금지
+
+────────────────────────────────────────
+5. 틱 단계별 CPU 예산
+────────────────────────────────────────
+
+H1 Interactive 기준 평균 목표:
+
+Phase 0 Tick Begin:
+- 1ms
+
+Phase 1 Environment:
+- 6ms
+
+Phase 2 Physical Pre-step:
+- 10ms
+
+Phase 3 Biological Update:
+- 7ms
+
+Phase 4 Perception:
+- 9ms
+
+Phase 5 Cognition:
+- 13ms
+
+Phase 6 Social & Collective:
+- 5ms
+
+Phase 7 Command Resolution:
+- 6ms
+
+Phase 8 Physics Execution:
+- 8ms
+
+Phase 9 State Commit:
+- 2ms
+
+Phase 10 Learning & History:
+- 1ms
+
+Phase 11 Aggregation & LOD:
+- 1ms
+
+Phase 12 Snapshot Publication:
+- 1ms
+
+합계:
+- 70ms
+
+주의:
+- 초기 Stage에는 존재하지 않는 모듈 예산을 다른 모듈이 영구 점유해서는 안 됨
+- 예산은 각 Stage가 추가될 때 재분배
+- 개별 Phase의 일시적 초과는 가능하지만 전체 p95를 지켜야 함
+
+────────────────────────────────────────
+6. 실행 규모 등급
+────────────────────────────────────────
+
+Scale S0: Kernel Foundation
+
+목적:
+- Stage 0 이후 최초 수직 슬라이스
+
+대상:
+- Terrain cell: 65,536 이상
+- Region: 256 이상
+- EntityRecord: 100,000 이상
+- 동시 Command: 10,000/tick 스트레스
+- Event: 100,000/s 피크 테스트
+
+필수:
+- 1,000,000 tick 연속 실행
+- 저장·복원
+- 동일 시드 digest 일치
+- 메모리 누수 없음
+
+Scale S1: Survival Prototype
+
+대상:
+- 상세 생명체 1,000개
+- 상세 동적 물체 20,000개
+- 정적·준정적 물체 100,000개
+- Terrain cell 262,144 이상
+- 활성 Region 16 이상
+
+Interactive:
+- H1에서 10 ticks/s 유지
+
+Headless:
+- 100 ticks/s 이상 목표
+
+Scale S2: Large Survival World
+
+대상:
+- LOD-A 상세 행위자 2,000개
+- LOD-A 동적 물체 50,000개
+- 정적 구조·자원 부품 250,000개
+- LOD-B에서 표현되는 개인 100,000명
+- 주요 개체 exact 유지 10,000개
+- Region 4,096 이상
+
+Interactive:
+- H1에서 10 ticks/s
+- Viewer 1080p 60FPS
+
+Scale S3: Civilization Simulation
+
+대상:
+- LOD-A 상세 행위자 2,000개
+- LOD-B 개인 또는 소규모 집단 100,000개
+- LOD-C 인구 5,000,000명 이상
+- 중요 개체 exact 유지 50,000개
+- 구조 부품·자원 레코드 5,000,000개 이상
+- Region 16,384 이상
+
+Headless macro target:
+- H1에서 1 simulated year / 60 real minutes 이하
+- H2에서 1 simulated year / 20 real minutes 이하
+
+조건:
+- 대부분 지역이 LOD-C 또는 LOD-D
+- 대규모 상세 전투·화재·붕괴가 동시에 발생하지 않는 기준 시나리오
+
+Scale S4: Multi-state World Stretch Goal
+
+대상:
+- 집계 인구 10,000,000~100,000,000
+- 다수 정치·경제·문화권
+- 중요 개체 100,000개 이하 exact
+- 대부분 LOD-C/D
+
+상태:
+- 장기 확장 목표
+- Stage 0 승인 기준이 아님
+- 실제 데이터가 쌓인 후 재산정
+
+────────────────────────────────────────
+7. LOD별 처리 목표
+────────────────────────────────────────
+
+LOD-A Detail
+
+특징:
+- 개체 단위
+- 상세 감각·행동
+- 실제 이동
+- 고빈도 물리
+- 구조물 내부 활동
+
+H1 Interactive 상한 목표:
+- 상세 생명체 2,000
+- 동적 물체 50,000
+- 활성 구조 부품 250,000
+- 활성 Region 32
+
+LOD-B Local Aggregate
+
+특징:
+- 가구·작업단·건물·군집 단위
+- 중요 개체 exact
+- 경로·생산·이동 근사
+
+목표:
+- 100,000 개인 상당 상태
+- 10,000 중요 개체 exact
+- 1,000 활성 집계 단위 이상
+
+LOD-C Regional Aggregate
+
+특징:
+- 인구 코호트
+- 자원 계정
+- 생산·소비·이동 흐름
+- 관계·지식 분포
+
+목표:
+- 5,000,000 인구 기준
+- Region당 update wall-time 평균 50µs 이하
+- 변화가 적은 Region은 주기 batch 처리
+
+LOD-D Dormant
+
+특징:
+- 장기 추세
+- 예약 사건
+- 중요 인과 링크
+- 매우 낮은 빈도
+
+목표:
+- Region당 평균 메모리 16KB 이하
+- Region당 update wall-time 평균 5µs 이하
+- 이벤트 없는 기간은 batch 가능
+
+────────────────────────────────────────
+8. LOD 전환 성능
+────────────────────────────────────────
+
+강등:
+
+- 단일 Region 평균 50ms 이하
+- p95 150ms 이하
+- 메인 시뮬레이션 정지 10ms 이하
+- 나머지는 비동기 또는 작업 분할
+
+승격:
+
+- 단일 Region 평균 100ms 이하
+- p95 300ms 이하
+- Viewer hitch 50ms 이하
+- 중요 개체 우선 복원
+- 전체 복원 전 부분 Snapshot 허용
+
+동시 전환:
+- 한 프레임/틱에 무제한 승격 금지
+- 예산 기반 큐 사용
+- 기본 최대 2개 Region 승격/tick
+- 기본 최대 8개 Region 강등/tick
+
+LOD 보존 오차:
+
+정확히 보존:
+- 인구 수
+- 중요 개체 ID
+- 이산 소유 물체
+- 주요 사건 링크
+- 저장된 권리·의무
+- Knowledge lineage 핵심 노드
+
+허용 오차:
+- 총 질량: 0.01% 이하
+- 자원 총량: 0.01% 이하
+- 에너지 근사: 0.1% 이하
+- 관계 분포 주요 지표: 2% 이하
+- 지식 보유율: 2% 이하
+- 건강·연령 분포: 2% 이하
+
+복원 결정론:
+- 동일 AggregateState와 reconstruction seed
+- 동일 코드·설정
+- 동일 세부 상태 digest 생성
+
+────────────────────────────────────────
+9. 메모리 전체 예산
+────────────────────────────────────────
+
+H0 총 프로세스 목표:
+- 12GB 이하
+
+H1 총 프로세스 목표:
+- 24GB 이하
+
+H2 대규모 연구 실행:
+- 48GB 이하를 기본 목표
+- 64GB 시스템에서 안전 여유 확보
+
+H1 세부 예산:
+
+Simulation authoritative hot state:
+- 6GB
+
+Simulation cold/history state:
+- 6GB
+
+Indexes and caches:
+- 2GB
+
+Event buffers:
+- 1GB
+
+Snapshot and save staging:
+- 2GB
+
+Viewer CPU-side data:
+- 3GB
+
+Runtime, allocator, diagnostics, margin:
+- 4GB
+
+합계:
+- 24GB
+
+규칙:
+- 예산은 평균이 아니라 최대 정상 작동 기준
+- 저장·복원 중 두 배 메모리 사용 금지
+- Copy-on-write와 segment streaming 사용
+- 메모리 압박 시 숨은 상태 삭제 금지
+
+────────────────────────────────────────
+10. 개체별 메모리 예산
+────────────────────────────────────────
+
+Living agent hot state:
+- 평균 2KB 이하
+- p95 4KB 이하
+
+Living agent cold cognitive state:
+- 평균 32KB 이하
+- p95 128KB 이하
+
+단, 지식·기억을 모두 개체 내부에 복제하지 않는다.
+공유 가능한 불변 내용은 content-addressed storage 또는 lineage 참조 사용.
+
+Dynamic physical object:
+- 평균 256B 이하
+
+Static structural part:
+- 평균 128B 이하
+
+EntityRegistry record:
+- 평균 64B 이하
+
+Relationship edge:
+- 평균 64B 이하
+
+MemoryRecord 압축 후:
+- 평균 96B 이하
+
+BeliefRecord 압축 후:
+- 평균 128B 이하
+
+Knowledge lineage edge:
+- 평균 48B 이하
+
+LOD-C cohort:
+- 평균 8KB 이하
+
+LOD-D region:
+- 평균 16KB 이하
+
+이 수치는 내부 hot/cold 분리와 sparse component storage를 전제로 한다.
+
+────────────────────────────────────────
+11. 메모리 안정성 목표
+────────────────────────────────────────
+
+Warm-up:
+- 첫 100,000 tick 또는 시나리오별 정의 구간
+
+Warm-up 이후:
+- 로그·Snapshot 보존량을 제외한 메모리 증가율
+  1,000,000 tick당 1% 이하
+
+24시간 Soak:
+- 비의도 메모리 증가 5% 이하
+- 참조되지 않는 Entity/Component 잔존 없음
+- 파괴된 Entity는 Tombstone 정책에 맞게 축약
+- allocator fragmentation 20% 이하
+
+Steady-state allocation:
+- 전체 10MB/s 이하 목표
+- Physics·Biology·Perception hot loop는 tick당 동적 할당 0에 근접
+- 고정 크기 pool과 arena 사용 가능
+
+────────────────────────────────────────
+12. 사건 처리 성능
+────────────────────────────────────────
+
+Event 생성:
+
+지속 처리량:
+- H1에서 50,000 Event/s 이상
+
+피크:
+- 200,000 Event/s를 10초 이상 처리
+
+Event append latency:
+- 평균 2ms 이하/batch
+- p95 10ms 이하/batch
+
+Event 크기:
+- significant event 압축 평균 256B 이하
+- historical event 압축 평균 512B 이하
+
+저장 증가:
+- 1,000,000 significant Event당 256MB 이하 목표
+- 색인 포함 384MB 이하 목표
+
+원장 조회:
+
+- EventId 단일 조회: 5ms 이하
+- Entity 최근 1,000 Event: 50ms 이하
+- Region·tick 범위 10,000 Event: 100ms 이하
+- 인과 그래프 1,000 node: 200ms 이하
+- 인과 그래프 10,000 node: 비동기, 2초 이하
+
+규칙:
+모든 미세 물리 적분을 장기 Event로 저장하지 않는다.
+중요 상태 변화와 원인 링크를 보존하면서 micro-event를 집계한다.
+
+────────────────────────────────────────
+13. 저장 크기 목표
+────────────────────────────────────────
+
+S0 Kernel Foundation:
+- 전체 Save 256MB 이하
+
+S1 Survival Prototype:
+- 1,000 상세 생명체 기준 512MB 이하
+
+S2 Large Survival:
+- 2,000 상세 생명체
+- 100,000 LOD-B 개인 상당
+- 전체 Save 2GB 이하
+
+S3 Civilization:
+- 5,000,000 집계 인구
+- 전체 Save 16GB 이하
+- Event archive는 별도 segment로 증가 가능
+
+Snapshot 압축:
+- 동일 Region의 연속 Snapshot delta compression 지원
+- 중복 구조·지식 content dedup
+- 오래된 상세 Snapshot은 정책에 따라 정리 가능
+- Historical Event는 삭제하지 않고 압축 가능
+
+────────────────────────────────────────
+14. 저장·복원 시간 목표
+────────────────────────────────────────
+
+H1 NVMe 기준:
+
+S0:
+- Save 2초 이하
+- Load 5초 이하
+
+S1:
+- Save 5초 이하
+- Load 10초 이하
+
+S2:
+- Save 10초 이하
+- Load 20초 이하
+
+S3:
+- Save 60초 이하
+- Load 120초 이하
+
+Interactive 저장:
