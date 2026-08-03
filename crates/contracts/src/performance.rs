@@ -80,7 +80,10 @@ impl fmt::Display for PerformanceRunValidationError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::SchemaVersion(version) => {
-                write!(formatter, "unsupported performance schema version: {version}")
+                write!(
+                    formatter,
+                    "unsupported performance schema version: {version}"
+                )
             }
             Self::EmptyIdentifier(field) => write!(formatter, "{field} must not be empty"),
             Self::InvalidConfiguration => formatter.write_str(
@@ -124,10 +127,7 @@ impl PerformanceRunManifest {
         validate_non_empty("benchmarkId", &self.benchmark_id)?;
         validate_non_empty("codeBuildId", &self.code_build_id)?;
         validate_non_empty("hardware.environment", &self.hardware.environment)?;
-        validate_non_empty(
-            "hardware.operatingSystem",
-            &self.hardware.operating_system,
-        )?;
+        validate_non_empty("hardware.operatingSystem", &self.hardware.operating_system)?;
         validate_non_empty("hardware.architecture", &self.hardware.architecture)?;
         validate_non_empty("hardware.rustcVersion", &self.hardware.rustc_version)?;
         validate_non_empty("hardware.buildProfile", &self.hardware.build_profile)?;
