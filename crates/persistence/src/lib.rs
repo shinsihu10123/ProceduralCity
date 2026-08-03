@@ -55,7 +55,7 @@ impl Error for PersistenceError {
     }
 }
 
-/// Writes a validated RenderSnapshot using a temporary file and atomic rename.
+/// Writes a validated [`RenderSnapshot`] using a temporary file and atomic rename.
 ///
 /// # Errors
 ///
