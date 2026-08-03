@@ -3,6 +3,7 @@ resolver = "2"
 members = [
   "crates/contracts",
   "crates/kernel",
+  "crates/persistence",
   "apps/headless"
 ]
 default-members = ["apps/headless"]
