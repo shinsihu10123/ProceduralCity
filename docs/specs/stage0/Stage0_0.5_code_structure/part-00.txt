@@ -1,0 +1,816 @@
+Stage 0.5 코드 구조 명세
+
+문서 버전: 0.5.0
+상태: 기준안 확정
+적용 범위: 프로젝트 전체 저장소, 패키지, 모듈, 테스트, 도구, 문서
+상위 문서:
+- Stage 0.1 프로젝트 철학 및 시스템 경계 명세
+- Stage 0.2 핵심 원칙 및 강제 규칙 명세
+- Stage 0.3 전체 아키텍처 명세
+- Stage 0.4 개발 규칙 명세
+
+목적:
+아키텍처와 개발 규칙을 실제 저장소 구조로 변환한다.
+기술 스택과 엔진 선택 이전에도 유지되는 논리적 코드 경계를 정의하고,
+향후 언어·엔진이 결정되면 이 구조를 해당 빌드 시스템과 패키지 체계에 매핑한다.
+
+────────────────────────────────────────
+1. 기본 방침
+────────────────────────────────────────
+
+1.1 기술 스택 독립성
+
+본 문서의 디렉터리명과 패키지 경계는 논리적 기준이다.
+
+향후 다음 중 어떤 구현 기술을 선택하더라도 구조 원칙은 유지한다.
+
+- 자체 엔진
+- Unity
+- Unreal Engine
+- Godot
+- Rust/C++ 기반 네이티브 엔진
+- 서버 시뮬레이션 + 별도 렌더 클라이언트
+
+기술 스택에 따라 실제 확장자, 프로젝트 파일, 빌드 스크립트는 달라질 수 있다.
+
+1.2 모듈 우선 구조
+
+코드는 화면 기능이나 개발 단계보다 책임 모듈을 기준으로 배치한다.
+
+금지:
+- “Phase1”, “Phase2” 디렉터리에 기능 코드를 누적
+- “Managers” 폴더에 서로 다른 상태 소유자를 혼합
+- “Utils” 폴더에 도메인 규칙을 숨김
+- 렌더링 코드와 시뮬레이션 코어를 같은 모듈에 배치
+
+1.3 의존 방향
+
+의존 방향은 다음을 기본으로 한다.
+
+Platform
+→ Kernel
+→ Foundation
+→ Domain
+→ Observation
+→ Presentation
+
+정확히는 상위 표현 계층이 하위 계층의 공개 계약에 의존한다.
+하위 계층은 상위 계층 구현을 참조하지 않는다.
+
+1.4 계약 중심 통신
+
+모듈 간 통신은 다음 계약으로 제한한다.
+
+- Query
+- Command
+- Event
+- Snapshot
+- Port/Adapter
+
+내부 클래스나 가변 컬렉션을 외부에 노출하지 않는다.
+
+1.5 저장소 형태
+
+초기에는 단일 저장소(monorepo)를 사용한다.
+
+이유:
+- 시뮬레이션 코어와 렌더링·도구·테스트의 버전을 함께 관리
+- Command/Event/State 계약 변경을 원자적으로 반영
+- 저장 스키마와 마이그레이션을 같은 변경에서 검증
+- 초기 개발 단계에서 패키지 분산 복잡도 방지
+
+후속 분리 조건:
+- 서버·클라이언트가 독립 배포 주기를 가짐
+- 외부 SDK 제공 필요
+- 빌드 시간과 접근 권한 분리가 필요
+- 계약이 충분히 안정됨
+
+────────────────────────────────────────
+2. 저장소 최상위 구조
+────────────────────────────────────────
+
+artificial-world/
+├─ README.md
+├─ LICENSE
+├─ CHANGELOG.md
+├─ CODEOWNERS
+├─ .editorconfig
+├─ .gitignore
+├─ .gitattributes
+├─ build/
+├─ config/
+├─ docs/
+├─ schemas/
+├─ src/
+├─ tests/
+├─ benchmarks/
+├─ tools/
+├─ apps/
+├─ examples/
+├─ assets/
+├─ generated/
+├─ third_party/
+└─ scripts/
+
+각 디렉터리의 역할은 아래와 같다.
+
+────────────────────────────────────────
+3. 루트 파일
+────────────────────────────────────────
+
+3.1 README.md
+
+포함:
+- 프로젝트 정의
+- 현재 Stage
+- 빌드·실행 방법
+- 헤드리스 실행 방법
+- 테스트 실행 방법
+- 저장소 구조 요약
+- 핵심 금지 원칙
+- 문서 링크
+
+포함하지 않음:
+- 세부 아키텍처 전체
+- 장문의 설계 근거
+- 임시 작업 메모
+
+3.2 LICENSE
+
+프로젝트 라이선스.
+
+라이선스는 Stage 0.8에서 실제로 확정한다.
+
+3.3 CHANGELOG.md
+
+사용자·개발자에게 의미 있는 변경을 버전별로 기록한다.
+
+세부 커밋 목록을 복제하지 않는다.
+
+3.4 CODEOWNERS
+
+핵심 경로별 리뷰 책임을 지정한다.
+
+초기 1인 개발이어도 경로별 책임 범위를 명확히 한다.
+
+예:
+- /src/kernel/
+- /src/world/
+- /src/physics/
+- /schemas/
+- /docs/architecture/
+- /tests/determinism/
+
+3.5 .editorconfig
+
+줄바꿈, 들여쓰기, 문자 인코딩, 파일 끝 개행을 통일한다.
+
+기본:
+- UTF-8
+- LF
+- 마지막 줄 개행
+- 공백 기반 들여쓰기 또는 언어별 표준
+- 후행 공백 제거
+
+3.6 .gitattributes
+
+대용량·바이너리·줄바꿈 정책을 정의한다.
+
+────────────────────────────────────────
+4. build/
+────────────────────────────────────────
+
+목적:
+빌드 시스템과 패키징 설정을 모은다.
+
+구조:
+
+build/
+├─ presets/
+├─ toolchains/
+├─ packaging/
+├─ ci/
+└─ versioning/
+
+규칙:
+- 도메인 코드 금지
+- 환경별 설정과 빌드 로직만 허용
+- 생성된 빌드 결과물은 커밋하지 않음
+- 빌드 결과는 별도 out/ 또는 기술 스택 기본 출력 경로 사용
+
+────────────────────────────────────────
+5. config/
+────────────────────────────────────────
+
+목적:
+실행 시 사용하는 버전 관리 가능한 구성 파일을 저장한다.
+
+구조:
+
+config/
+├─ base/
+├─ development/
+├─ test/
+├─ benchmark/
+├─ experiments/
+└─ examples/
+
+5.1 base/
+
+프로젝트 기본 상수와 기본 실행 설정.
+
+5.2 development/
+
+개발 편의 설정.
+
+예:
+- 상세 로그
+- 디버그 오버레이
+- 낮은 개체 수
+- 빠른 저장 주기
+
+5.3 test/
+
+결정론·단위·통합 테스트용 고정 설정.
+
+5.4 benchmark/
+
+성능 비교를 위한 고정된 시나리오 설정.
+
+5.5 experiments/
+
+실험별 설정.
+
+각 실험은 다음 메타데이터를 포함한다.
+- experiment_id
+- 목적
+- 초기 시드
+- 변경 변수
+- 기준 설정
+- 실행 반복 횟수
+- 결과 저장 위치
+
+5.6 examples/
+
+사용자와 개발자를 위한 최소 예제 설정.
+
+규칙:
+- 구성 키는 schemas/config에서 정의
+- 코드에 중복된 기본값을 흩어놓지 않음
+- 모든 실행은 실제 사용한 설정 해시를 기록
+
+────────────────────────────────────────
+6. docs/
+────────────────────────────────────────
+
+구조:
+
+docs/
+├─ project/
+├─ architecture/
+├─ adr/
+├─ modules/
+├─ contracts/
+├─ data/
+├─ testing/
+├─ performance/
+├─ experiments/
+├─ glossary/
+├─ guides/
+└─ diagrams/
+
+6.1 project/
+
+Stage 문서와 전체 계획.
+
+예:
+- Stage0_0.1.md
+- Stage0_0.2.md
+- Stage0_0.3.md
+- Stage0_0.4.md
+- Stage0_0.5.md
+
+6.2 architecture/
+
+전체 계층, 상태 소유권, 틱, LOD, 저장 구조.
+
+6.3 adr/
+
+Architecture Decision Record.
+
+파일명:
+ADR-0001-fixed-tick.md
+ADR-0002-command-resolution-commit.md
+
+6.4 modules/
+
+모듈별 기준 문서.
+
+각 모듈 문서 템플릿:
+- 책임
+- 비책임
+- 권위 상태
+- 공개 Query
+- 수신 Command
+- 발행 Event
+- Snapshot
+- 업데이트 Phase
+- 저장 스키마
+- 불변 조건
+- 성능 지표
+- 의존성
+- 테스트 목록
+
+6.5 contracts/
+
+Command, Event, Query, Snapshot의 의미와 버전 정책.
+
+6.6 data/
+
+데이터 구조, ID, 단위, 직렬화, 마이그레이션.
+
+6.7 testing/
+
+테스트 전략, 재현성, Soak Test, LOD 검증.
+
+6.8 performance/
+
+성능 목표, 벤치마크 결과, 프로파일 분석.
+
+6.9 experiments/
+
+실험 설계와 결과 보고서.
+
+6.10 glossary/
+
+용어집과 안정 식별자 목록.
+
+6.11 guides/
+
+개발 환경, 디버깅, 새 모듈 추가 방법.
+
+6.12 diagrams/
+
+소스 기반 구조도.
+
+권장:
+- Mermaid
+- PlantUML
+- Graphviz DOT
+- SVG 원본
+
+이미지만 두지 않고 재생성 가능한 소스를 함께 둔다.
+
+────────────────────────────────────────
+7. schemas/
+────────────────────────────────────────
+
+목적:
+코드와 독립적인 데이터 계약과 저장 형식을 정의한다.
+
+구조:
+
+schemas/
+├─ config/
+├─ commands/
+├─ events/
+├─ snapshots/
+├─ saves/
+├─ modules/
+├─ migrations/
+└─ ids/
+
+규칙:
+- 스키마는 버전 관리
+- 저장 enum은 안정 문자열 또는 명시적 정수 사용
+- 코드 열거 순서에 의존하지 않음
+- 변경 시 호환성 수준 표시
+- 마이그레이션 테스트 포함
+
+7.1 config/
+
+실행 설정 스키마.
+
+7.2 commands/
+
+공개 Command envelope와 payload 스키마.
+
+7.3 events/
+
+사건 원장 스키마.
+
+7.4 snapshots/
+
+렌더링·분석용 읽기 모델.
+
+7.5 saves/
+
+World Snapshot, Event Segment, Manifest.
+
+7.6 modules/
+
+모듈별 영속 상태.
+
+7.7 migrations/
+
+버전 간 변환 규칙과 테스트 벡터.
+
+7.8 ids/
+
+안정 식별자 규칙과 예약 범위.
+
+────────────────────────────────────────
+8. src/ 전체 구조
+────────────────────────────────────────
+
+src/
+├─ platform/
+├─ kernel/
+├─ foundation/
+├─ world/
+├─ physics/
+├─ ecology/
+├─ biology/
+├─ cognition/
+├─ society/
+├─ knowledge/
+├─ construction/
+├─ economy/
+├─ politics/
+├─ culture/
+├─ warfare/
+├─ observation/
+├─ persistence/
+├─ adapters/
+└─ shared/
+
+핵심 원칙:
+- 각 디렉터리는 하나의 논리 패키지 또는 패키지 그룹
+- 공개 API와 내부 구현 분리
+- 상위 도메인이 하위 도메인의 내부 구현 참조 금지
+- shared에는 도메인 규칙을 배치하지 않음
+
+────────────────────────────────────────
+9. src/platform/
+────────────────────────────────────────
+
+역할:
+운영체제와 외부 런타임에 대한 추상화.
+
+구조:
+
+src/platform/
+├─ api/
+├─ filesystem/
+├─ threading/
+├─ clock/
+├─ memory/
+├─ logging/
+├─ profiling/
+└─ internal/
+
+허용:
+- 파일 시스템
+- 스레드
+- 프로세스
+- 고해상도 실제 시계
+- 메모리 계측
+- 시스템 로그
+- 플랫폼 프로파일링
+
+금지:
+- 월드 시간
+- 도메인 상태
+- 개체 AI
+- 렌더링 로직
+- 게임 규칙
+
+주의:
+실제 시계는 성능 측정과 입출력에만 사용한다.
+시뮬레이션 판정에는 kernel/time의 세계 시간을 사용한다.
+
+────────────────────────────────────────
+10. src/kernel/
+────────────────────────────────────────
+
+역할:
+모든 도메인이 공유하는 시뮬레이션 실행 코어.
+
+구조:
+
+src/kernel/
+├─ api/
+├─ host/
+├─ time/
+├─ ids/
+├─ random/
+├─ scheduling/
+├─ commands/
+├─ resolution/
+├─ commit/
+├─ events/
+├─ snapshots/
+├─ diagnostics/
+└─ internal/
+
+10.1 api/
+
+외부 모듈이 사용할 공개 계약.
+
+10.2 host/
+
+SimulationHost와 lifecycle.
+
+10.3 time/
+
+TimeService, Tick, Duration, update frequency.
+
+10.4 ids/
+
+EntityId, CommandId, EventId, RegionId.
+
+10.5 random/
+
+RandomService와 stream derivation.
+
+10.6 scheduling/
+
+Phase, job dependency, deterministic merge order.
+
+10.7 commands/
+
+CommandEnvelope, CommandBus, 공통 Command metadata.
+
+도메인별 payload는 소유 모듈에 둔다.
+
+10.8 resolution/
+
+공통 Resolution pipeline interface와 Result type.
+
+도메인별 판정 로직은 도메인 모듈에 둔다.
+
+10.9 commit/
+
+StateDelta, CommitBatch, StateCommitter.
+
+10.10 events/
+
+EventEnvelope, EventLedger interface, severity.
+
+10.11 snapshots/
+
+Snapshot publication infrastructure.
+
+10.12 diagnostics/
+
+불변 조건, tick trace, deterministic digest.
+
+────────────────────────────────────────
+11. src/foundation/
+────────────────────────────────────────
+
+역할:
+도메인 전반에서 사용하는 수학·단위·공간의 원시 타입.
+
+구조:
+
+src/foundation/
+├─ math/
+├─ units/
+├─ geometry/
+├─ spatial/
+├─ collections/
+├─ serialization/
+└─ validation/
+
+허용:
+- 벡터·행렬의 독립 타입 또는 래퍼
+- 물리 단위 타입
+- 좌표와 경계
+- 공간 색인 인터페이스
+- 안정 정렬 컬렉션
+- 직렬화 기반 도구
+- 검증 유틸리티
+
+금지:
+- 생물학 규칙
+- AI 규칙
+- 경제 규칙
+- “도시”, “국가”, “기술” 같은 고차원 개념
+
+foundation은 낮은 수준의 재사용 가능한 원시 요소만 포함한다.
+
+────────────────────────────────────────
+12. 도메인 모듈 공통 내부 구조
+────────────────────────────────────────
+
+각 도메인 모듈은 가능한 한 다음 템플릿을 따른다.
+
+src/<module>/
+├─ api/
+│  ├─ queries/
+│  ├─ commands/
+│  ├─ events/
+│  ├─ snapshots/
+│  └─ ports/
+├─ domain/
+│  ├─ state/
+│  ├─ rules/
+│  ├─ services/
+│  ├─ policies/
+│  └─ invariants/
+├─ application/
+│  ├─ systems/
+│  ├─ resolvers/
+│  ├─ handlers/
+│  ├─ aggregators/
+│  └─ mappers/
+├─ persistence/
+│  ├─ schema/
+│  ├─ serializers/
+│  └─ migrations/
+├─ diagnostics/
+│  ├─ metrics/
+│  ├─ tracing/
+│  └─ debug_views/
+└─ internal/
+
+12.1 api/
+
+다른 모듈에 공개되는 유일한 진입점.
+
+12.2 domain/state/
+
+권위 상태와 값 객체.
+
+12.3 domain/rules/
+
+순수한 도메인 규칙.
+
+12.4 domain/services/
+
+여러 상태를 조합하지만 해당 도메인 내부에 머무는 서비스.
+
+12.5 domain/policies/
+
+교체 가능하거나 구성 가능한 정책.
+
+12.6 domain/invariants/
+
+불변 조건과 검증.
+
+12.7 application/systems/
+
+틱 Phase에 등록되는 시스템.
+
+12.8 application/resolvers/
+
+Command 판정.
+
+12.9 application/handlers/
+
+Event 수신과 도메인 반응.
+
+12.10 application/aggregators/
+
+LOD 강등·승격과 집계.
+
+12.11 application/mappers/
+
+권위 상태에서 Snapshot으로 변환.
+
+12.12 persistence/
+
+저장·복원 전용.
+
+12.13 diagnostics/
+
+성능과 디버그 정보.
+
+12.14 internal/
+
+외부 사용이 금지된 구현 세부.
+
+────────────────────────────────────────
+13. src/world/
+────────────────────────────────────────
+
+구조:
+
+src/world/
+├─ api/
+├─ spatial_grid/
+├─ terrain/
+├─ climate/
+├─ hydrology/
+├─ atmosphere/
+├─ light/
+├─ energy_field/
+├─ regions/
+├─ persistence/
+├─ diagnostics/
+└─ internal/
+
+소유 상태:
+- 세계 좌표계
+- 지형 높이와 표면 속성
+- 기후장
+- 물 상태
+- 대기장
+- 광량
+- 지역 분할과 LOD 상태
+
+주요 공개 Query:
+- SampleTerrain
+- SampleClimate
+- SampleWater
+- QueryRegion
+- QueryVisibilityEnvironment
+
+주요 Event:
+- TerrainChanged
+- RainfallChanged
+- FloodStarted
+- RegionLodChanged
+
+금지:
+- 개체의 믿음 상태
+- 국가 경계 권위 상태
+- 도시 분류 상태
+
+────────────────────────────────────────
+14. src/physics/
+────────────────────────────────────────
+
+구조:
+
+src/physics/
+├─ api/
+├─ bodies/
+├─ materials/
+├─ collision/
+├─ forces/
+├─ structural/
+├─ thermal/
+├─ fluids/
+├─ combustion/
+├─ damage/
+├─ erosion/
+├─ persistence/
+├─ diagnostics/
+└─ internal/
+
+소유 상태:
+- 위치
+- 속도
+- 질량
+- 물체 충돌 형상
+- 구조 연결
+- 하중
+- 온도와 열 상태
+- 물리 손상
+
+주요 Command:
+- ApplyForceIntent
+- MoveBodyIntent
+- AttachIntent
+- DetachIntent
+- HeatIntent
+- DamageIntent
+
+주의:
+AI의 MoveIntent를 곧바로 위치 변경으로 처리하지 않는다.
+이동 의도는 힘·속도·경로·충돌·신체 능력 조건을 통해 실행된다.
+
+────────────────────────────────────────
+15. src/ecology/
+────────────────────────────────────────
+
+구조:
+
+src/ecology/
+├─ api/
+├─ soil/
+├─ minerals/
+├─ plants/
+├─ animals/
+├─ nutrients/
+├─ regeneration/
+├─ depletion/
+├─ aggregation/
+├─ persistence/
+├─ diagnostics/
+└─ internal/
+
+소유 상태:
+- 토양 자원
+- 광물 분포
+- 식물 군집
+- 비행위 동물 또는 단순 동물 군집
+- 영양 순환
+- 재생·고갈 상태
+
+biology와의 경계:
+- ecology는 환경 속 생물 군집과 자원 순환
+- biology는 개별 생명체의 내부 생리 상태
+
