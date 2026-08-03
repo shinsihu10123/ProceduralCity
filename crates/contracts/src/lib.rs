@@ -107,7 +107,9 @@ pub enum SnapshotValidationError {
 impl fmt::Display for SnapshotValidationError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::SchemaVersion(version) => write!(formatter, "unsupported schema version: {version}"),
+            Self::SchemaVersion(version) => {
+                write!(formatter, "unsupported schema version: {version}")
+            }
             Self::Digest(digest) => write!(formatter, "invalid deterministic digest: {digest}"),
             Self::DuplicateRegion(id) => write!(formatter, "duplicate region id: {id}"),
             Self::InvalidRegion(id) => write!(formatter, "invalid region geometry: {id}"),
