@@ -1,7 +1,13 @@
 #![forbid(unsafe_code)]
 
+mod performance;
 mod world_save;
 
+pub use performance::{
+    BenchmarkConfiguration, DurationSummary, HardwareProfile, PerformanceRunManifest,
+    PerformanceRunValidationError, ThroughputSummary, PERFORMANCE_RUN_SCHEMA_VERSION,
+    STAGE0_BASELINE_BENCHMARK_ID,
+};
 pub use world_save::{
     EventPosition, KernelStateRecord, ModuleStateManifest, RandomStateManifest, WorldSaveManifest,
     WorldSaveValidationError, KERNEL_MODULE_ID, KERNEL_STATE_SCHEMA_VERSION,
