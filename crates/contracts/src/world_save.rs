@@ -78,16 +78,27 @@ impl fmt::Display for WorldSaveValidationError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::SchemaVersion(version) => {
-                write!(formatter, "unsupported world save schema version: {version}")
+                write!(
+                    formatter,
+                    "unsupported world save schema version: {version}"
+                )
             }
             Self::KernelSchemaVersion(version) => {
-                write!(formatter, "unsupported kernel state schema version: {version}")
+                write!(
+                    formatter,
+                    "unsupported kernel state schema version: {version}"
+                )
             }
             Self::SaveId(save_id) => write!(formatter, "invalid deterministic save id: {save_id}"),
-            Self::WorldId(world_id) => write!(formatter, "invalid deterministic world id: {world_id}"),
+            Self::WorldId(world_id) => {
+                write!(formatter, "invalid deterministic world id: {world_id}")
+            }
             Self::EmptyBuildId => formatter.write_str("code build id must not be empty"),
             Self::InvalidDigest { field, value } => {
-                write!(formatter, "invalid 64-bit hexadecimal digest in {field}: {value}")
+                write!(
+                    formatter,
+                    "invalid 64-bit hexadecimal digest in {field}: {value}"
+                )
             }
             Self::TickMismatch { manifest, kernel } => write!(
                 formatter,
@@ -100,9 +111,8 @@ impl fmt::Display for WorldSaveValidationError {
                 formatter,
                 "world seed mismatch: random_state={random_state}, kernel={kernel}"
             ),
-            Self::KernelModuleManifest => {
-                formatter.write_str("world save must contain exactly one valid kernel module manifest")
-            }
+            Self::KernelModuleManifest => formatter
+                .write_str("world save must contain exactly one valid kernel module manifest"),
             Self::KernelStateDigestMismatch => formatter.write_str(
                 "kernel module state digest does not match the embedded kernel state digest",
             ),
@@ -230,7 +240,10 @@ impl WorldSaveManifest {
         {
             return Err(WorldSaveValidationError::KernelModuleManifest);
         }
-        validate_digest("moduleManifests[0].stateDigest", &kernel_module.state_digest)?;
+        validate_digest(
+            "moduleManifests[0].stateDigest",
+            &kernel_module.state_digest,
+        )?;
         if kernel_module.state_digest != self.kernel_state.deterministic_digest {
             return Err(WorldSaveValidationError::KernelStateDigestMismatch);
         }
@@ -345,13 +358,8 @@ mod tests {
 
     #[test]
     fn kernel_world_save_round_trips_through_json() {
-        let save = WorldSaveManifest::kernel(
-            10_000,
-            42,
-            true,
-            "40885885fe2db25d".to_owned(),
-            "0.0.1",
-        );
+        let save =
+            WorldSaveManifest::kernel(10_000, 42, true, "40885885fe2db25d".to_owned(), "0.0.1");
         save.validate().expect("world save should be valid");
 
         let json = serde_json::to_string(&save).expect("world save should serialize");
@@ -364,13 +372,8 @@ mod tests {
 
     #[test]
     fn tick_mismatch_is_rejected() {
-        let mut save = WorldSaveManifest::kernel(
-            10_000,
-            42,
-            true,
-            "40885885fe2db25d".to_owned(),
-            "0.0.1",
-        );
+        let mut save =
+            WorldSaveManifest::kernel(10_000, 42, true, "40885885fe2db25d".to_owned(), "0.0.1");
         save.kernel_state.tick = 9_999;
 
         assert!(matches!(
@@ -381,13 +384,8 @@ mod tests {
 
     #[test]
     fn manifest_tampering_is_rejected() {
-        let mut save = WorldSaveManifest::kernel(
-            10_000,
-            42,
-            true,
-            "40885885fe2db25d".to_owned(),
-            "0.0.1",
-        );
+        let mut save =
+            WorldSaveManifest::kernel(10_000, 42, true, "40885885fe2db25d".to_owned(), "0.0.1");
         save.intervention_count = 1;
 
         assert!(matches!(
