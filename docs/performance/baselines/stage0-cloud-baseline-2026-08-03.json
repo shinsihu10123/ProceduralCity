@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "performance-run.v1",
+  "runId": "github-30812184674-1",
+  "benchmarkId": "stage0-kernel-baseline.v1",
+  "codeBuildId": "bf760a9e7e87c1e9895e5f71471d69967182c892",
+  "createdAtUtc": null,
+  "hardware": {
+    "environment": "github-actions",
+    "operatingSystem": "linux",
+    "architecture": "x86_64",
+    "logicalCpuCount": 4,
+    "rustcVersion": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "buildProfile": "release"
+  },
+  "configuration": {
+    "worldSeed": 42,
+    "warmupTicks": 1000000,
+    "measuredTicksPerSample": 10000000,
+    "sampleCount": 7
+  },
+  "emptyTickDuration": {
+    "sampleCount": 7,
+    "minimumNs": 6243372,
+    "medianNs": 6275041,
+    "p95Ns": 6314535,
+    "maximumNs": 6314535
+  },
+  "emptyTickThroughput": {
+    "sampleCount": 7,
+    "minimumTicksPerSecond": 1583647885,
+    "medianTicksPerSecond": 1593615085,
+    "maximumTicksPerSecond": 1601698569
+  },
+  "snapshotWriteDuration": {
+    "sampleCount": 7,
+    "minimumNs": 413193,
+    "medianNs": 542575,
+    "p95Ns": 4254230,
+    "maximumNs": 4254230
+  },
+  "saveWriteDuration": {
+    "sampleCount": 7,
+    "minimumNs": 447227,
+    "medianNs": 504494,
+    "p95Ns": 1602047,
+    "maximumNs": 1602047
+  },
+  "saveLoadDuration": {
+    "sampleCount": 7,
+    "minimumNs": 16361,
+    "medianNs": 16580,
+    "p95Ns": 31288,
+    "maximumNs": 31288
+  },
+  "snapshotBytes": 251,
+  "saveBytes": 858,
+  "finalTick": 10000000,
+  "finalDigest": "5378a13874e79360"
+}
