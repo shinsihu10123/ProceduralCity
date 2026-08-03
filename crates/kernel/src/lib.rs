@@ -15,6 +15,40 @@ impl Tick {
     }
 }
 
+/// Minimal authoritative Kernel state required for deterministic restoration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SimulationCheckpoint {
+    tick: Tick,
+    world_seed: u64,
+    running: bool,
+}
+
+impl SimulationCheckpoint {
+    #[must_use]
+    pub const fn new(tick: u64, world_seed: u64, running: bool) -> Self {
+        Self {
+            tick: Tick(tick),
+            world_seed,
+            running,
+        }
+    }
+
+    #[must_use]
+    pub const fn tick(self) -> Tick {
+        self.tick
+    }
+
+    #[must_use]
+    pub const fn world_seed(self) -> u64 {
+        self.world_seed
+    }
+
+    #[must_use]
+    pub const fn is_running(self) -> bool {
+        self.running
+    }
+}
+
 /// Failures caused by invalid kernel lifecycle operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SimulationError {
@@ -51,6 +85,15 @@ impl SimulationHost {
         }
     }
 
+    #[must_use]
+    pub const fn restore(checkpoint: SimulationCheckpoint) -> Self {
+        Self {
+            tick: checkpoint.tick,
+            world_seed: checkpoint.world_seed,
+            running: checkpoint.running,
+        }
+    }
+
     pub const fn start(&mut self) {
         self.running = true;
     }
@@ -65,8 +108,22 @@ impl SimulationHost {
     }
 
     #[must_use]
+    pub const fn world_seed(&self) -> u64 {
+        self.world_seed
+    }
+
+    #[must_use]
     pub const fn is_running(&self) -> bool {
         self.running
+    }
+
+    #[must_use]
+    pub const fn checkpoint(&self) -> SimulationCheckpoint {
+        SimulationCheckpoint {
+            tick: self.tick,
+            world_seed: self.world_seed,
+            running: self.running,
+        }
     }
 
     /// Advances exactly one authoritative fixed tick.
@@ -112,7 +169,7 @@ impl SimulationHost {
 
 #[cfg(test)]
 mod tests {
-    use super::{SimulationError, SimulationHost, Tick};
+    use super::{SimulationCheckpoint, SimulationError, SimulationHost, Tick};
 
     #[test]
     fn fixed_tick_progresses_one_step_at_a_time() {
@@ -153,5 +210,43 @@ mod tests {
         let right = SimulationHost::new(2);
 
         assert_ne!(left.deterministic_digest(), right.deterministic_digest());
+    }
+
+    #[test]
+    fn checkpoint_restore_preserves_digest_and_progression() {
+        let mut uninterrupted = SimulationHost::new(42);
+        uninterrupted.start();
+        for _ in 0..20_000 {
+            uninterrupted
+                .step()
+                .expect("uninterrupted host should advance");
+        }
+
+        let mut first_half = SimulationHost::new(42);
+        first_half.start();
+        for _ in 0..10_000 {
+            first_half.step().expect("first half should advance");
+        }
+
+        let checkpoint = first_half.checkpoint();
+        let mut restored = SimulationHost::restore(checkpoint);
+        assert_eq!(restored.deterministic_digest(), first_half.deterministic_digest());
+
+        for _ in 0..10_000 {
+            restored.step().expect("restored host should advance");
+        }
+
+        assert_eq!(restored.tick(), uninterrupted.tick());
+        assert_eq!(restored.deterministic_digest(), uninterrupted.deterministic_digest());
+    }
+
+    #[test]
+    fn explicit_checkpoint_parts_restore_lifecycle() {
+        let checkpoint = SimulationCheckpoint::new(5, 9, false);
+        let restored = SimulationHost::restore(checkpoint);
+
+        assert_eq!(restored.tick(), Tick(5));
+        assert_eq!(restored.world_seed(), 9);
+        assert!(!restored.is_running());
     }
 }
