@@ -1,14 +1,15 @@
 # Stage 0.8 개발 환경 구축
 
-문서 버전: 0.8.5-draft  
-상태: 구현·자동 검증 완료, Stage 0 최종 판정 대기  
-기준 브랜치: `stage0-rebuild`
+문서 버전: 0.8.6  
+상태: **완료 — Stage 0 최종 승인**  
+기준 브랜치: `stage0-rebuild`  
+최종 판정서: `Stage0_completion_assessment.md`
 
 ## 1. 운영 결정
 
-초기 개발 단말은 iPad로 한다. iPad는 편집·검토·터미널 접속·웹 Viewer 확인에 사용하고, 실제 컴파일과 자동 테스트는 GitHub Codespaces 및 GitHub Actions의 Linux 환경에서 수행한다.
+초기 개발 단말은 iPad로 한다. iPad는 편집·검토·터미널 접속·웹 Viewer 확인에 사용하고, 실제 컴파일과 자동 테스트는 GitHub Codespaces 및 GitHub Actions Linux 환경에서 수행한다.
 
-Stage 0.7의 H0·H1 성능 목표는 폐기하지 않는다. GitHub Actions 수치는 공유 클라우드 환경의 회귀 기준선이며, 공식 H1 성능은 이후 네이티브 실행 장비 또는 별도 연구 서버에서 검증한다.
+Stage 0.7의 H0·H1 성능 목표는 유지한다. GitHub Actions 수치는 공유 클라우드 환경의 회귀 기준선이며, 공식 H1 성능은 이후 네이티브 실행 장비 또는 별도 연구 서버에서 검증한다.
 
 ## 2. 저장소 정책
 
@@ -16,11 +17,12 @@ Stage 0.7의 H0·H1 성능 목표는 폐기하지 않는다. GitHub Actions 수�
 - 기존 Deep Time V5: `main`에 보존
 - Stage 0 재구축: `stage0-rebuild`
 - 작업 PR: Draft PR #25
-- Stage 0.8 완료 판정 전 병합 금지
+- 기술적 상태: Stage 0 merge-ready
+- 실제 Draft 해제와 병합: 저장소 소유자의 명시적 승인 필요
 
-기존 V5는 시각화와 비교 참고 자료로만 사용한다. 새 코어는 고정 틱, 단일 상태 소유권, Command → Resolution → Commit → Event 원칙을 기준으로 재작성한다.
+기존 V5는 시각화와 비교 참고 자료로만 사용한다. 새 코어는 고정 틱, 단일 상태 소유권, `Command → Resolution → Commit → Event` 원칙을 기준으로 재작성한다.
 
-## 3. 초기 기술 스택
+## 3. 확정 기술 스택
 
 | 영역 | 결정 |
 |---|---|
@@ -40,61 +42,62 @@ Stage 0.7의 H0·H1 성능 목표는 폐기하지 않는다. GitHub Actions 수�
 | Rust 검사 | rustfmt, Clippy, cargo test |
 | Viewer 검사 | Snapshot runtime validation, TypeScript strict check, Vite build |
 
-## 4. 현재 생성된 구조
+## 4. 기준 문서와 저장소 구조
+
+Stage 0 기준본:
+
+```text
+docs/specs/stage0/README.md
+docs/specs/stage0/Stage0_0.1_project_philosophy.txt
+docs/specs/stage0/Stage0_0.2_core_principles.txt
+docs/specs/stage0/Stage0_0.3_architecture.txt
+docs/specs/stage0/Stage0_0.4_development_rules.txt
+docs/specs/stage0/Stage0_0.5_code_structure/
+docs/specs/stage0/Stage0_0.6_data_structure/
+docs/specs/stage0/Stage0_0.7_performance_targets/
+docs/project/glossary.md
+docs/adr/stage0-decision-register.md
+docs/project/Stage0_completion_assessment.md
+```
+
+실행 기반:
 
 ```text
 .devcontainer/devcontainer.json
 .github/workflows/stage0-ci.yml
 Cargo.toml
 rust-toolchain.toml
-crates/contracts/Cargo.toml
-crates/contracts/src/lib.rs
-crates/contracts/src/world_save.rs
-crates/contracts/src/performance.rs
-crates/kernel/Cargo.toml
-crates/kernel/src/lib.rs
-crates/persistence/Cargo.toml
-crates/persistence/src/lib.rs
-apps/headless/Cargo.toml
-apps/headless/src/main.rs
-apps/benchmark/Cargo.toml
-apps/benchmark/src/main.rs
-apps/viewer/package.json
-apps/viewer/tsconfig.json
-apps/viewer/index.html
-apps/viewer/public/snapshots/latest.json
-apps/viewer/scripts/validate-snapshot.mjs
-apps/viewer/src/main.ts
-apps/viewer/src/style.css
-schemas/snapshots/render-snapshot.v1.schema.json
-schemas/saves/world-save.v1.schema.json
-schemas/performance/performance-run.v1.schema.json
-docs/contracts/render-snapshot-v1.md
-docs/contracts/world-save-v1.md
-docs/contracts/performance-run-v1.md
-docs/performance/baselines/stage0-cloud-baseline-2026-08-03.json
-docs/performance/baselines/stage0-cloud-baseline-2026-08-03.md
+crates/contracts/
+crates/kernel/
+crates/persistence/
+apps/headless/
+apps/benchmark/
+apps/viewer/
+schemas/snapshots/
+schemas/saves/
+schemas/performance/
+docs/contracts/
+docs/performance/baselines/
 ```
 
 ## 5. 최소 Kernel
 
-현재 Kernel은 다음을 구현한다.
+현재 Kernel 구현:
 
 - `Tick`
 - `SimulationHost`
 - 시작·일시정지 lifecycle
 - 한 번에 정확히 1틱 전진
-- 정지 상태의 전진 거부
+- 정지 상태 전진 거부
 - tick overflow 오류
 - 동일 seed·동일 tick의 결정론 digest
 - `SimulationCheckpoint`
-- checkpoint 생성
-- checkpoint 복원
+- checkpoint 생성·복원
 - 복원 전후 digest 연속성 테스트
 
 렌더링 frame delta는 Kernel 입력으로 받지 않는다.
 
-## 6. Headless 실행과 Snapshot 출력
+## 6. Headless와 RenderSnapshot
 
 기본 실행:
 
@@ -102,7 +105,7 @@ docs/performance/baselines/stage0-cloud-baseline-2026-08-03.md
 cargo run -p artificial-world-headless -- --ticks 10000 --seed 42
 ```
 
-Viewer용 Snapshot 출력:
+Viewer Snapshot 출력:
 
 ```bash
 cargo run -p artificial-world-headless -- \
@@ -111,17 +114,7 @@ cargo run -p artificial-world-headless -- \
   --snapshot-output apps/viewer/public/snapshots/latest.json
 ```
 
-Snapshot은 Persistence 계층에서 계약 검증 후 transactional write로 기록한다.
-
-## 7. RenderSnapshot v1
-
-스키마 ID:
-
-```text
-render-snapshot.v1
-```
-
-필드:
+`render-snapshot.v1` 필드:
 
 - `schemaVersion`
 - `source`
@@ -133,7 +126,7 @@ render-snapshot.v1
 - `entities`
 - `events`
 
-현재 Kernel에는 권위 개체·사건·Region 상태가 아직 없으므로 관련 배열과 LOD 계수는 0으로 출력한다. Viewer가 표시하는 네 구역은 좌표 확인용 presentation scaffold이며 권위 상태가 아니다.
+현재 Kernel에는 실제 Region·Entity·Event 권위 상태가 아직 없으므로 관련 배열은 비어 있다. Viewer가 표시하는 좌표 구획은 presentation scaffold이며 권위 상태가 아니다.
 
 데이터 흐름:
 
@@ -141,12 +134,12 @@ render-snapshot.v1
 SimulationHost
 → Headless snapshot publisher
 → Rust contract validation
-→ RenderSnapshot JSON
+→ transactional JSON write
 → TypeScript runtime validation
 → Three.js Viewer
 ```
 
-## 8. World Save v1
+## 7. World Save v1
 
 스키마:
 
@@ -162,10 +155,10 @@ kernel-state.v1
 - running lifecycle state
 - Kernel deterministic digest
 - Kernel module manifest
-- seed-only configuration hash
-- Random Service 위치와 카운터 자리표시자
-- Event Ledger 위치 자리표시자
-- Intervention count 자리표시자
+- configuration hash
+- Random Service 확장 위치
+- Event Ledger 확장 위치
+- Intervention 확장 위치
 - canonical manifest digest
 
 저장:
@@ -177,7 +170,7 @@ cargo run -p artificial-world-headless -- \
   --save-output target/manual/world-save.json
 ```
 
-복원과 추가 실행:
+복원·추가 실행:
 
 ```bash
 cargo run -p artificial-world-headless -- \
@@ -185,21 +178,28 @@ cargo run -p artificial-world-headless -- \
   --ticks 10000
 ```
 
-`--load`와 `--seed`는 함께 사용할 수 없다. 저장 파일이 world seed를 소유한다.
+`--load`와 `--seed`는 함께 사용할 수 없다. 복원 시 계약, ID, tick, seed, module manifest, configuration hash, manifest digest를 검증하고 Kernel digest가 저장값과 다르면 실행을 거부한다.
 
-복원 시 계약, ID, tick, seed, module manifest, configuration hash와 manifest digest를 검증하고, Kernel checkpoint를 복원한 뒤 deterministic digest를 재계산한다. 저장값과 복원값이 다르면 실행을 거부한다.
+결정론 연속성 검증:
 
-## 9. 웹 디버그 Viewer
+```text
+직접 20,000틱:       a315c4dc327dc8a0
+10,000틱 저장:       40885885fe2db25d
+복원 후 20,000틱:   a315c4dc327dc8a0
+```
+
+## 8. 웹 디버그 Viewer
 
 Viewer는 `/snapshots/latest.json`을 읽는다.
 
 - 고정 mock 행위자·사건 생성 제거
-- 버전과 source 검사
+- schema version과 source 검사
 - tick·seed·digest 표시
-- Region·Entity·Event 배열 표시
+- Region·Entity·Event 표시
 - 알 수 없는 스키마 거부
-- 파일 누락·손상 시 명시적 오류 화면
+- 파일 누락·손상 시 명시적 오류
 - 권위 상태 쓰기 경로 없음
+- iPad 터치 회전·이동·확대 검증 완료
 
 실행:
 
@@ -209,9 +209,9 @@ npm --prefix apps/viewer run validate:snapshot
 npm --prefix apps/viewer run dev -- --host 0.0.0.0
 ```
 
-Codespaces의 전달 포트 `5173`에서 확인한다.
+Codespaces 전달 포트 `5173`에서 확인한다.
 
-## 10. PerformanceRunManifest v1
+## 9. PerformanceRunManifest v1
 
 계약:
 
@@ -222,13 +222,12 @@ stage0-kernel-baseline.v1
 
 측정 대상:
 
-- Empty fixed-tick 실행 시간
-- Empty Tick 처리량
-- RenderSnapshot transactional write 시간과 크기
-- World Save transactional write 시간과 크기
+- Empty fixed-tick 실행 시간과 처리량
+- RenderSnapshot transactional write 시간·크기
+- World Save transactional write 시간·크기
 - World Save load·계약 검증 시간
 - 최종 tick과 결정론 digest
-- 실행 환경, Rust 버전, build profile, sample 구성
+- 실행 환경·Rust 버전·build profile·sample 구성
 
 수동 실행:
 
@@ -249,25 +248,20 @@ target/benchmark/artifacts/render-snapshot.json
 target/benchmark/artifacts/world-save.json
 ```
 
-시간은 정수 나노초, 처리량은 정수 ticks/s로 저장한다. 동일 입력의 모든 샘플이 동일 digest를 생성하지 않으면 벤치마크를 실패 처리한다.
+동일 입력의 모든 sample이 같은 digest를 만들지 않으면 benchmark를 실패 처리한다.
 
-## 11. 최초 클라우드 기준선
+## 10. 최초 클라우드 기준선
 
-실행:
+환경:
 
-- Workflow run: `30812184674`
-- Artifact ID: `8855227183`
-- Artifact SHA-256: `7e9c0f7d8fd91d4529568bb3c77935cc9bb83d3c10f9276dca148009b4f13335`
 - GitHub Actions Linux x86_64
 - 논리 CPU 4개
-- Rust `1.97.1`
+- Rust 1.97.1
 - Release build
 - Seed 42
-- Warm-up 1,000,000틱
-- 샘플당 10,000,000틱
+- warm-up 1,000,000틱
+- sample당 10,000,000틱
 - 7회 반복
-
-결과:
 
 | 측정 항목 | minimum | median | p95 / maximum |
 |---|---:|---:|---:|
@@ -277,111 +271,63 @@ target/benchmark/artifacts/world-save.json
 | Save 기록 | 447,227 ns | 504,494 ns | 1,602,047 ns |
 | Save load·검증 | 16,361 ns | 16,580 ns | 31,288 ns |
 
-파일과 결정론:
+```text
+Snapshot size: 251 bytes
+Save size:     858 bytes
+Final tick:    10,000,000
+Final digest:  5378a13874e79360
+```
 
-| 항목 | 값 |
-|---|---:|
-| Snapshot 크기 | 251 bytes |
-| Save 크기 | 858 bytes |
-| Final tick | 10,000,000 |
-| Final digest | `5378a13874e79360` |
+이 수치는 최소 Kernel 실행 오버헤드의 클라우드 회귀 기준선이다. 미래 전체 시뮬레이션 성능이나 H1 공식 판정이 아니다.
 
-현재 `SimulationHost::step`은 tick 증가와 lifecycle 검사만 수행한다. 따라서 15억 ticks/s 수준의 수치는 미래 전체 시뮬레이션 용량이 아니라 최소 Kernel 실행 오버헤드의 기준점이다.
-
-GitHub Actions는 공유 runner이므로 이 수치를 Stage 0.7의 H1 공식 성능 판정에 사용하지 않는다. 후속 변경의 극단적 회귀 탐지와 측정 파이프라인 검증에 사용한다.
-
-## 12. CI 게이트
+## 11. CI 게이트
 
 ### Rust·Persistence
 
 1. `cargo fmt --all -- --check`
 2. `cargo clippy --workspace --all-targets -- -D warnings`
 3. `cargo test --workspace`
-4. 10,000틱 실행
-5. `RenderSnapshot` JSON 출력
-6. Snapshot 파일 존재 확인
-7. 20,000틱 무중단 실행
-8. 10,000틱 checkpoint 저장
-9. Save Load 후 10,000틱 추가 실행
-10. 무중단 실행과 복원 실행의 tick·seed·digest 비교
+4. RenderSnapshot 생성·존재 검증
+5. 20,000틱 직접 실행
+6. 10,000틱 checkpoint 저장
+7. 복원 후 10,000틱 추가 실행
+8. tick·seed·digest 연속성 비교
 
 ### Cloud baseline benchmark
 
 1. Rust Release build
-2. 1,000,000틱 warm-up
-3. 10,000,000틱 × 7회 측정
-4. 모든 샘플 digest 일치
-5. 최소 Empty Tick 100,000 ticks/s
-6. Snapshot p95 2초 이하
-7. Save p95 2초 이하
-8. Save load p95 5초 이하
-9. Snapshot·Save 파일 존재와 크기 검증
-10. Manifest와 실제 Snapshot·Save를 workflow artifact로 보존
+2. warm-up과 7회 반복
+3. 모든 sample digest 일치
+4. Empty Tick 최소 처리량
+5. Snapshot·Save·Load p95 한도
+6. 파일 크기와 산출물 존재
+7. workflow artifact 보존
 
 ### Kernel → Viewer
 
-1. CI에서 Headless를 실행해 Viewer Snapshot 생성
-2. Node 기반 Snapshot 계약 검사
-3. TypeScript strict type-check
+1. Headless가 Snapshot 생성
+2. Node Snapshot 계약 검사
+3. TypeScript strict 검사
 4. Vite production build
 
-2026-08-03 기준 다음 Job이 모두 성공했다.
+### 기존 구현 보존
 
-- Rust kernel, persistence, and headless runner
-- Stage 0 cloud baseline benchmark
-- Kernel snapshot to TypeScript viewer
-- 기존 Validate city engine
+기존 `Validate city engine` workflow도 병행 실행해 `main`의 V5 자산과 기존 경로를 훼손하지 않는지 검사한다.
 
-Snapshot 검증값:
-
-```json
-{
-  "tick": 10000,
-  "seed": 42,
-  "digest": "40885885fe2db25d",
-  "snapshotWritten": true
-}
-```
-
-Save Load 연속성 검증값:
-
-```json
-{
-  "direct": {
-    "tick": 20000,
-    "seed": 42,
-    "digest": "a315c4dc327dc8a0"
-  },
-  "checkpoint": {
-    "tick": 10000,
-    "seed": 42,
-    "digest": "40885885fe2db25d",
-    "saveWritten": true
-  },
-  "resumed": {
-    "startTick": 10000,
-    "tick": 20000,
-    "seed": 42,
-    "digest": "a315c4dc327dc8a0",
-    "loaded": true
-  },
-  "continuity": "verified"
-}
-```
-
-## 13. Codespaces 및 iPad 수동 검증
+## 12. iPad·Codespaces 실제 검증
 
 완료:
 
 - iPad에서 `stage0-rebuild` Codespace 기동
-- Dev Container 환경 진입
+- Dev Container 진입
+- Rust·Node 도구 실행
 - 포트 5173 전달
-- 초기 Viewer 실제 화면 표시
-- 3D 렌더링과 터치 조작
+- Viewer 실제 화면 표시
+- 3D 렌더링
+- 터치 회전·확대·이동
+- Kernel Snapshot 표시
 
-Kernel Snapshot 연결, Save Load, 벤치마크는 GitHub Actions Linux 환경에서 자동 검증됐다. 최신 Snapshot 화면의 iPad 재확인은 보조 수동 검사이며 Stage 0.8 자동 승인 게이트에는 포함하지 않는다.
-
-## 14. 진행 상태
+## 13. 완료 상태
 
 | 단계 | 상태 |
 |---|---|
@@ -391,19 +337,49 @@ Kernel Snapshot 연결, Save Load, 벤치마크는 GitHub Actions Linux 환경�
 | 0.8.4 Dev Container·Codespaces | 완료 |
 | 0.8.5 Rust workspace | 완료 |
 | 0.8.6 GitHub Actions CI | 완료 |
-| 0.8.7 웹 디버그 Viewer 스켈레톤 | 완료 |
-| 0.8.8 Kernel 최소 실행 | 완료 |
-| 0.8.9.1 Snapshot JSON 계약 | 완료 — CI 검증 |
-| 0.8.9.2 Kernel → Viewer 연결 | 완료 — CI 검증 |
-| 0.8.9.3 World Save 계약 | 완료 — CI 검증 |
-| 0.8.9.4 Save Load 결정론 연속성 | 완료 — CI 검증 |
-| 0.8.9.5 기준선 벤치마크 | 완료 — Release CI 및 artifact 검증 |
-| 0.8.10 Stage 0 완료 판정 | 다음 |
+| 0.8.7 웹 디버그 Viewer | 완료 |
+| 0.8.8 최소 Kernel | 완료 |
+| 0.8.9.1 Snapshot JSON 계약 | 완료 |
+| 0.8.9.2 Kernel → Viewer 연결 | 완료 |
+| 0.8.9.3 World Save 계약 | 완료 |
+| 0.8.9.4 Save→Load 결정론 연속성 | 완료 |
+| 0.8.9.5 기준선 벤치마크 | 완료 |
+| 0.8.10 Stage 0 완료 판정 | **완료 — PASS** |
 
-## 15. 다음 작업
+## 14. 의도적 후속 구현
 
-1. Stage 0.1~0.8 산출물과 실제 저장소 구현의 일치 여부 검토
-2. 미충족 항목과 의도적 연기 항목 분리
-3. Draft PR #25 최종 상태 검토
-4. Stage 0 완료 판정서 작성
-5. 완료 승인 후 다음 개발 Stage 진입
+다음은 Stage 0.8 미완료가 아니라 Stage 0 종료 후 첫 수직 슬라이스 또는 후속 Stage 범위다.
+
+- 완전한 TimeService
+- EntityRegistry와 강한 ID
+- RandomService
+- JobScheduler
+- CommandBus
+- ResolutionPipeline
+- StateDelta·CommitBatch·StateCommitter
+- EventLedger와 Event Segment
+- SpatialGrid
+- Terrain·Region 권위 상태
+- Climate·Water·Resource
+- 실제 LOD
+- 1,000,000틱 world-state Soak
+- Command storm·Event append benchmark
+- H1 네이티브 성능 판정
+- Biology·Perception·Memory·AI와 문명 도메인
+
+상세 분류는 `Stage0_completion_assessment.md`를 따른다.
+
+## 15. 후속 작업
+
+Stage 0을 종료하고 **Stage 1 — World Engine**으로 진입한다.
+
+첫 구현 순서:
+
+1. TimeService 확장
+2. EntityRegistry
+3. RandomService
+4. 최소 Command→Resolution→Commit→Event 경로
+5. SpatialGrid
+6. Region·TerrainCellState
+7. World Save 확장
+8. S0 benchmark와 1,000,000틱 Soak
