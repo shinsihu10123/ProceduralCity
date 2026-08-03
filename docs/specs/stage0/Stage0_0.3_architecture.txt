@@ -1,0 +1,726 @@
+Stage 0.3 전체 아키텍처 명세
+
+문서 버전: 0.3.0
+상태: 기준안 확정
+적용 범위: 프로젝트 전체
+상위 문서:
+- Stage 0.1 프로젝트 철학 및 시스템 경계 명세
+- Stage 0.2 핵심 원칙 및 강제 규칙 명세
+
+목적:
+인공 세계 시뮬레이션의 전체 모듈 경계, 상태 소유권, 실행 순서, 데이터 흐름,
+다중 해상도 처리, 저장·복원, 사건 추적, 시각화 연결 방식을 정의한다.
+
+────────────────────────────────────────
+1. 아키텍처의 기본 형식
+────────────────────────────────────────
+
+본 프로젝트는 다음 구조를 채택한다.
+
+- 계층형 모듈 아키텍처
+- 데이터 지향적 시뮬레이션 코어
+- 명령(Command) → 판정(Resolution) → 상태 변경(State Mutation) → 사건(Event) 흐름
+- 읽기 모델과 쓰기 모델의 분리
+- 시뮬레이션과 렌더링의 완전 분리
+- 결정론적 고정 틱 기반 실행
+- 다중 해상도 공간 시뮬레이션
+- 사건 원장(Event Ledger) 기반 인과 추적
+- 스냅샷 + 사건 로그 기반 저장·복원
+
+핵심 원칙:
+개별 모듈은 다른 모듈의 상태를 직접 수정하지 않는다.
+모든 변경은 소유 모듈의 판정기를 거쳐 커밋된다.
+
+────────────────────────────────────────
+2. 전체 계층
+────────────────────────────────────────
+
+L0. Platform & Runtime
+- 운영체제, 파일 시스템, 스레드, 메모리, 작업 스케줄러, 프로파일링
+
+L1. Simulation Kernel
+- 시간, 틱, ID, 난수, 명령 버스, 사건 버스, 작업 스케줄링, 상태 커밋
+
+L2. World Foundation
+- 공간, 지형, 기후, 물, 대기, 광원, 에너지장, 지역 분할
+
+L3. Physical Reality
+- 물질, 재료, 충돌, 하중, 열, 유체, 연소, 파괴, 침식
+
+L4. Ecology & Biology
+- 자원 순환, 토양, 식물, 동물, 생명 유지, 성장, 번식, 질병, 유전, 사망
+
+L5. Cognition & Action
+- 감각, 인지, 기억, 욕구, 목표, 계획, 학습, 행동 요청
+
+L6. Emergent Human Systems
+- 관계, 집단, 지식, 건축, 생산, 교환, 권력, 문화, 전쟁
+
+L7. Observation & Analysis
+- 사건 원장, 인과 그래프, 통계, 분류, 리플레이, 디버그 읽기 모델
+
+L8. Presentation & Experiment
+- 3D 렌더링, 카메라, UI, 분석 화면, 실험자 개입 게이트웨이
+
+의존 방향:
+상위 계층은 하위 계층의 공개 읽기 모델과 인터페이스를 사용할 수 있다.
+하위 계층은 상위 계층의 구체 구현을 참조하지 않는다.
+Presentation 계층은 Simulation Core에 직접 쓰지 않는다.
+
+────────────────────────────────────────
+3. 핵심 런타임 모듈
+────────────────────────────────────────
+
+3.1 SimulationHost
+책임:
+- 세계 실행 시작·정지
+- 틱 속도 관리
+- 시스템 초기화
+- 프레임과 시뮬레이션 시간 분리
+- 헤드리스 실행
+
+3.2 TimeService
+소유 상태:
+- world_tick
+- world_time
+- calendar_state
+- time_scale
+규칙:
+- 시뮬레이션은 고정 틱으로 진행
+- 렌더링 프레임률은 결과에 영향 없음
+- 장기 과정은 별도 저주파 스케줄로 실행 가능
+
+3.3 EntityRegistry
+책임:
+- 세계 내 모든 지속 객체의 고유 ID 관리
+- 생성·폐기·세대 번호 관리
+- 잘못된 참조 탐지
+대상:
+- 개체, 동물, 식물 군집, 물체, 구조 부품, 집단, 지식 기록, 사건
+
+3.4 RandomService
+책임:
+- 관리형 난수 스트림 제공
+- 시드 저장
+- 시스템별 독립 난수 스트림
+- 재현성 검증
+금지:
+- 시스템 내부에서 임의의 전역 난수 호출
+
+3.5 CommandBus
+역할:
+- AI·환경·사용자 실험이 요청한 행동을 수집
+예:
+- MoveIntent
+- ConsumeIntent
+- PickupIntent
+- CombineIntent
+- AttackIntent
+- CommunicateIntent
+명령은 성공 결과가 아니라 시도 의도를 표현한다.
+
+3.6 ResolutionPipeline
+역할:
+- 명령 가능 여부 검사
+- 시간·에너지·자원·거리·지식·물리 조건 판정
+- 충돌하는 명령 해결
+- 성공·부분 성공·실패 결정
+- 상태 변경안 생성
+
+3.7 StateCommitter
+역할:
+- 검증된 변경안을 원자적으로 적용
+- 보존 법칙 검사
+- 변경 전후 상태 기록
+- 사건 생성
+
+3.8 EventLedger
+역할:
+- 주요 사건과 상태 변경의 영속 기록
+필수 필드:
+- event_id
+- tick
+- location
+- actor_ids
+- target_ids
+- cause_event_ids
+- command_id
+- before_digest
+- after_digest
+- random_trace
+- intervention_flag
+
+3.9 JobScheduler
+역할:
+- 시스템 실행 주기 관리
+- 병렬 실행 가능한 작업 구분
+- 결정론 유지용 단계 장벽
+- LOD별 작업 예산 배정
+
+────────────────────────────────────────
+4. 도메인 모듈
+────────────────────────────────────────
+
+4.1 World Engine
+하위 모듈:
+- SpatialGrid
+- Terrain
+- Climate
+- Hydrology
+- Atmosphere
+- LightField
+- EnergyField
+- RegionManager
+소유:
+- 위치 기반 환경 상태
+출력:
+- 공개 환경 샘플
+- 환경 변화 사건
+
+4.2 Physics Engine
+하위 모듈:
+- MaterialState
+- RigidBody
+- Collision
+- StructuralGraph
+- Thermal
+- Fluid
+- Combustion
+- Damage
+- Erosion
+소유:
+- 물체 물리 상태
+- 구조 연결과 하중
+규칙:
+- AI는 물리 결과를 직접 지정할 수 없음
+- 렌더러는 물리 상태를 수정할 수 없음
+
+4.3 Resource & Ecology
+하위 모듈:
+- Soil
+- Mineral
+- Plant
+- Animal
+- NutrientCycle
+- Regeneration
+- Depletion
+소유:
+- 생태 자원량과 재생 조건
+- 생태계 상호작용 상태
+
+4.4 Biology
+하위 모듈:
+- Body
+- Metabolism
+- Thermoregulation
+- Injury
+- Disease
+- Immunity
+- Growth
+- Reproduction
+- Genetics
+- Aging
+- Death
+소유:
+- 생명체 내부 상태
+출력:
+- 행동 가능 범위
+- 감각 능력
+- 생존 위험
+- 생물 사건
+
+4.5 Perception
+역할:
+- 실제 세계 상태를 감각 관측치로 변환
+입력:
+- 환경 공개 상태
+- 개체 감각 기관
+- 거리, 가림, 빛, 소음
+출력:
+- Observation
+금지:
+- 전역 참값을 AI에 직접 전달
+
+4.6 Memory & Belief
+소유:
+- 경험 기억
+- 의미 기억
+- 믿음
+- 출처
+- 신뢰도
+- 시간 감쇠
+실제 상태와 분리된 행위자별 세계 모델을 유지한다.
+
+4.7 Individual AI
+하위 모듈:
+- NeedEvaluator
+- GoalGenerator
+- Planner
+- HabitPolicy
+- Learning
+- ActionSelector
+출력:
+- Intent/Command
+직접 수정 금지:
+- 물리, 자원, 생물, 사회 상태
+
+4.8 Relationship & Society
+하위 모듈:
+- InteractionHistory
+- Trust
+- Obligation
+- Kinship
+- GroupFormation
+- Norms
+- Roles
+- CollectiveDecision
+집단은 관계 그래프와 공동 상태에서 발생한다.
+
+4.9 Knowledge System
+하위 모듈:
+- ObservationKnowledge
+- Hypothesis
+- Experiment
+- Procedure
+- Reproduction
+- Teaching
+- Record
+- Distortion
+기술은 기능적 절차와 조건·결과의 지식 묶음으로 존재한다.
+
+4.10 Construction
+하위 모듈:
+- DesignProposal
+- MaterialSelection
+- Placement
+- Assembly
+- StructuralEvaluation
+- UseEvaluation
+- Maintenance
+건물 유형을 직접 생성하지 않는다.
+구조 부품과 연결 관계가 누적되어 기능적 공간이 형성된다.
+
+4.11 Economy
+하위 모듈:
+- Production
+- Consumption
+- Storage
+- Transfer
+- Exchange
+- Obligation
+- OwnershipClaim
+- PriceFormation
+- Logistics
+경제 체제는 고정 객체가 아니라 반복 관계의 패턴이다.
+
+4.12 Politics
+하위 모듈:
+- Authority
+- Rule
+- Enforcement
+- CollectiveResource
+- TerritoryControl
+- Legitimacy
+- Administration
+- Rebellion
+국가는 시스템 객체로 자동 생성되지 않는다.
+장기간의 통제·규칙·자원·정당성 패턴을 분석 계층이 분류한다.
+
+4.13 Culture
+하위 모듈:
+- Symbol
+- LanguageSignal
+- Custom
+- Value
+- Ritual
+- Identity
+- Narrative
+문화는 반복 행동과 공유 기억의 분포로 표현한다.
+
+4.14 Warfare
+하위 모듈:
+- Recruitment
+- Equipment
+- Formation
+- Command
+- Supply
+- Combat
+- Occupation
+- Resistance
+- Recovery
+전투력 단일 수치 비교로 전쟁 결과를 결정하지 않는다.
+
+────────────────────────────────────────
+5. 상태 소유권
+────────────────────────────────────────
+
+각 데이터에는 단 하나의 권위 있는 소유 모듈이 존재한다.
+
+예:
+- 위치·속도: Physics
+- 체온·허기·부상: Biology
+- 기억·믿음: Memory
+- 목표·계획: Individual AI
+- 신뢰·의무: Society
+- 물질 재고: Resource/Economy의 명시된 원장
+- 구조 연결: Construction/Physics 간 계약으로 Physics가 권위 상태 보유
+- 사건 기록: EventLedger
+
+다른 모듈은 다음 방식으로만 접근한다.
+- Read Model 조회
+- Command 제출
+- Event 구독
+- Snapshot 읽기
+
+공유 가변 상태를 두지 않는다.
+
+────────────────────────────────────────
+6. 틱 처리 순서
+────────────────────────────────────────
+
+한 시뮬레이션 틱은 다음 단계로 처리한다.
+
+Phase 0: Tick Begin
+- 시간 증가
+- 난수 스트림 준비
+- 작업 예산 확정
+
+Phase 1: Environment Update
+- 기후, 물, 빛, 온도, 생태 장기 변화
+
+Phase 2: Physical Pre-step
+- 힘, 충돌 후보, 구조 하중, 열·유체 경계 계산
+
+Phase 3: Biological Update
+- 대사, 허기, 갈증, 체온, 질병, 부상, 성장
+
+Phase 4: Perception
+- 개체별 관측 생성
+- 기억 입력 갱신
+
+Phase 5: Cognition
+- 욕구 평가
+- 목표 생성
+- 계획·습관 선택
+- 행동 명령 제출
+
+Phase 6: Social & Collective Decisions
+- 의사소통
+- 협력 요청
+- 집단 의사결정
+- 거래·규칙·명령 제출
+
+Phase 7: Command Resolution
+- 유효성 검사
+- 자원 예약
+- 충돌 해결
+- 성공·실패 판정
+
+Phase 8: Physics Execution
+- 이동, 충돌, 운반, 조립, 공격, 열·연소 적용
+
+Phase 9: State Commit
+- 상태 변경 원자 적용
+- 보존 법칙 검증
+- 사건 기록
+
+Phase 10: Learning & History
+- 결과 관찰
+- 기억·숙련·신뢰·지식 갱신
+- 인과 연결
+
+Phase 11: Aggregation & LOD
+- 통계 갱신
+- 지역 해상도 승격·강등
+- 장기 이력 압축
+
+Phase 12: Snapshot Publication
+- 렌더링·UI·분석용 불변 읽기 스냅샷 발행
+
+────────────────────────────────────────
+7. 데이터 흐름
+────────────────────────────────────────
+
+기본 행동 흐름:
+
+실제 세계 상태
+→ 감각 변환
+→ 행위자의 관측
+→ 기억·믿음 갱신
+→ 욕구·목표·계획
+→ 행동 명령
+→ 물리·생물·자원 판정
+→ 상태 변경
+→ 사건 기록
+→ 학습과 관계 변화
+→ 다음 행동
+
+지식 흐름:
+
+현상 관찰
+→ 경험 기록
+→ 가설
+→ 실험 명령
+→ 실제 결과
+→ 신뢰도 갱신
+→ 절차화
+→ 모방·교육·기록
+→ 왜곡·망각·소실 가능
+
+거시 구조 흐름:
+
+개체 행동과 관계
+→ 반복 패턴
+→ 지역·집단 집계
+→ 분석 계층의 분류
+→ UI 표시
+
+분류 결과는 시뮬레이션 상태를 직접 변경하지 않는다.
+
+────────────────────────────────────────
+8. 다중 해상도 아키텍처
+────────────────────────────────────────
+
+LOD-A: 활성 세부 지역
+- 개체·물체 단위
+- 고빈도 물리
+- 상세 감각·행동
+- 구조물 내부 활동
+
+LOD-B: 지역 집계
+- 가구·작업단·건물·군집 단위
+- 경로와 생산 흐름 근사
+- 주요 개체는 개별 유지
+
+LOD-C: 광역 거시
+- 인구 코호트
+- 자원 계정
+- 생산·소비·이동 흐름
+- 집단 관계와 위험률
+
+LOD-D: 휴면 기록
+- 변화가 거의 없는 지역
+- 장기 추세와 예약 사건만 처리
+
+승격:
+- 카메라 접근
+- 중요 사건 발생
+- 사용자의 추적 대상
+- 정밀 상호작용 필요
+
+강등:
+- 장기간 비관찰
+- 낮은 사건 밀도
+- 세부 상태가 집계 가능
+
+필수 보존:
+- 인구
+- 자원
+- 에너지 근사
+- 주요 개체
+- 관계
+- 지식 분포
+- 사건 원인
+- 구조물과 영토의 핵심 상태
+
+────────────────────────────────────────
+9. 저장·복원
+────────────────────────────────────────
+
+저장 형식은 다음 조합을 사용한다.
+
+1. World Snapshot
+- 특정 틱의 전체 권위 상태
+
+2. Event Segments
+- 스냅샷 이후 사건
+
+3. Configuration Manifest
+- 시스템 설정
+- 세계 생성 규칙
+- 단위와 상수
+
+4. Version Manifest
+- 코드·데이터 스키마 버전
+- 마이그레이션 정보
+
+5. Random State
+- 시스템별 난수 스트림 상태
+
+저장 절차:
+- 틱 경계에서 일관된 스냅샷 생성
+- 쓰기 중 상태 변형 방지
+- 체크섬 검증
+- 복원 후 불변 조건 검사
+- 재현성 테스트 수행
+
+────────────────────────────────────────
+10. 관찰·분석·시각화
+────────────────────────────────────────
+
+Observation API는 읽기 전용이다.
+
+제공 읽기 모델:
+- RenderSnapshot
+- EntityView
+- RegionSummary
+- EventTimeline
+- CausalGraph
+- ResourceFlow
+- RelationshipGraph
+- KnowledgeLineage
+- LODMap
+- PerformanceMetrics
+
+시각화 계층:
+- 3D World View
+- 개체·물체 선택 패널
+- 사건 타임라인
+- 원인→결과 그래프
+- 자원·물류 흐름
+- 집단·영토 영향권
+- 기술 전승 계보
+- LOD·성능 디버그 오버레이
+- 리플레이
+
+실험자 개입:
+UI → InterventionGateway → 검증 → 기록된 Command → 시뮬레이션 판정
+직접 상태 수정은 금지한다.
+
+────────────────────────────────────────
+11. 모듈 간 주요 계약
+────────────────────────────────────────
+
+AI → World
+- QueryPerceivedState가 아니라 Perception이 생성한 Observation만 사용
+
+AI → Physics
+- 행동 결과가 아닌 Intent 제출
+
+Construction → Physics
+- 연결·배치 요청
+- Physics가 안정성과 붕괴 판정
+
+Economy → Resource
+- 소유권 기록과 실제 물질 재고를 구분
+- 거래는 실제 이전 완료 후 커밋
+
+Society → Individual
+- 집단 명령은 강제 상태 변경이 아니라 사회적 요청·압력으로 전달
+
+Analysis → Simulation
+- 읽기 전용
+- 분류 결과로 기능 자동 부여 금지
+
+Visualization → Simulation
+- 읽기 전용
+- 실험은 InterventionGateway만 사용
+
+Persistence → All
+- 각 모듈은 직렬화 가능한 권위 상태와 버전 스키마 제공
+
+────────────────────────────────────────
+12. 아키텍처 금지 사항
+────────────────────────────────────────
+
+- God Object 형태의 WorldManager
+- 모든 시스템이 공유 상태를 직접 수정
+- AI가 전역 참값을 조회
+- 렌더링 프레임에서 시뮬레이션 로직 실행
+- UI가 상태를 직접 수정
+- 조건 충족 시 도시·국가·기술 객체 자동 생성
+- 사건 로그 없이 상태만 변경
+- 관리되지 않는 난수 사용
+- 화면 밖 지역 정지
+- LOD 전환 시 자원·인구 임의 보정
+- 저장되지 않는 핵심 런타임 상태
+- 분석 분류와 권위 상태의 혼합
+
+────────────────────────────────────────
+13. 최초 구현 범위
+────────────────────────────────────────
+
+Stage 0 이후 첫 실행 가능한 기반은 다음만 구현한다.
+
+필수:
+- SimulationHost
+- TimeService
+- EntityRegistry
+- RandomService
+- JobScheduler
+- CommandBus
+- ResolutionPipeline
+- StateCommitter
+- EventLedger
+- SpatialGrid
+- Terrain 기초
+- 기후·물·자원 최소 상태
+- Snapshot/Save/Load
+- 헤드리스 실행
+- 단순 3D 또는 디버그 시각화
+- 성능 계측
+
+후속 Stage 1 연결점:
+- Biology
+- Perception
+- Memory
+- Individual AI
+- 기본 행동 명령
+
+────────────────────────────────────────
+14. 아키텍처 결정 기록
+────────────────────────────────────────
+
+ADR-001: 고정 틱 시뮬레이션
+이유:
+재현성, 저장 일관성, 병렬 단계 관리.
+
+ADR-002: Command → Resolution → Commit
+이유:
+AI가 결과를 직접 결정하지 못하게 하고 인과 기록을 보장.
+
+ADR-003: 단일 권위 상태 소유자
+이유:
+상태 충돌과 숨은 변경 방지.
+
+ADR-004: Event Ledger
+이유:
+원인 추적, 리플레이, 디버깅, 연구 분석.
+
+ADR-005: Snapshot + Event Log
+이유:
+무한 장기 세계의 저장 비용과 복원 속도 균형.
+
+ADR-006: 다중 해상도 시뮬레이션
+이유:
+연속 세계와 대규모 개체를 현실적인 계산량으로 처리.
+
+ADR-007: 읽기 전용 Observation API
+이유:
+렌더링·분석·UI가 시뮬레이션을 오염시키는 것을 방지.
+
+ADR-008: Headless-first
+이유:
+장시간 실험, 자동 테스트, 성능 검증, 서버 실행 지원.
+
+────────────────────────────────────────
+15. 0.3 완료 기준
+────────────────────────────────────────
+
+다음 사항을 확정했으므로 Stage 0.3을 완료로 판정한다.
+
+- 전체 계층 구조
+- 런타임 핵심 모듈
+- 도메인 모듈 경계
+- 상태 소유권
+- 고정 틱 처리 순서
+- 명령·판정·커밋 흐름
+- 사건 원장
+- 다중 해상도 구조
+- 저장·복원 구조
+- 읽기 전용 관찰·분석 API
+- 시각화와 실험 개입 경로
+- 모듈 간 주요 계약
+- 금지 아키텍처 패턴
+- 최초 구현 범위
+- 주요 아키텍처 결정 기록
