@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://artificial-world.local/schemas/snapshots/render-snapshot.v1.schema.json",
+  "title": "Artificial World RenderSnapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "source",
+    "tick",
+    "seed",
+    "digest",
+    "lodCounts",
+    "regions",
+    "entities",
+    "events"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "render-snapshot.v1" },
+    "source": { "const": "kernel" },
+    "tick": { "type": "integer", "minimum": 0 },
+    "seed": { "type": "integer", "minimum": 0 },
+    "digest": { "type": "string", "pattern": "^[0-9a-fA-F]{16}$" },
+    "lodCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["A", "B", "C", "D"],
+      "properties": {
+        "A": { "type": "integer", "minimum": 0 },
+        "B": { "type": "integer", "minimum": 0 },
+        "C": { "type": "integer", "minimum": 0 },
+        "D": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "regions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "x", "z", "size", "lod"],
+        "properties": {
+          "id": { "type": "integer", "minimum": 0 },
+          "x": { "type": "number" },
+          "z": { "type": "number" },
+          "size": { "type": "number", "exclusiveMinimum": 0 },
+          "lod": { "enum": ["A", "B", "C", "D"] }
+        }
+      }
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "x", "z", "height"],
+        "properties": {
+          "id": { "type": "integer", "minimum": 0 },
+          "kind": { "enum": ["agent", "object"] },
+          "x": { "type": "number" },
+          "z": { "type": "number" },
+          "height": { "type": "number" }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "x", "z", "severity"],
+        "properties": {
+          "id": { "type": "integer", "minimum": 0 },
+          "x": { "type": "number" },
+          "z": { "type": "number" },
+          "severity": { "enum": ["info", "warning"] }
+        }
+      }
+    }
+  }
+}
