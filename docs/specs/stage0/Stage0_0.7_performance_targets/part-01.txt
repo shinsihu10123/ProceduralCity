@@ -1,0 +1,714 @@
+- 권위 상태 pause 50ms 이하
+- Snapshot capture 이후 비동기 쓰기
+- 진행 상태 표시
+- 저장 취소 시 기존 정상 Save 보존
+
+Incremental checkpoint:
+- 변경 Region과 Module segment만 기록
+- 평균 10초 이내 완료 목표
+- 기본 실행을 장기간 정지시키지 않음
+
+복원 후:
+- 불변 조건 전체 검사
+- RandomState 검증
+- Event 위치 검증
+- 첫 1,000 tick digest 연속성 검사
+
+────────────────────────────────────────
+15. 렌더링 성능 목표
+────────────────────────────────────────
+
+H1, 1920×1080 기준:
+
+Target:
+- 평균 60FPS
+- p95 frame time 22.2ms 이하
+- 1% low 45FPS 이상
+
+H2, 2560×1440 기준:
+- 평균 60FPS
+
+CPU render preparation:
+- 평균 5ms 이하/frame
+- p95 8ms 이하
+
+GPU frame:
+- 평균 16.7ms 이하
+- p95 22.2ms 이하
+
+Snapshot→화면 지연:
+- 2 simulation tick 이하
+- 일반 상태에서 200ms 이하
+
+표시 규모 목표:
+- visible animated agents 5,000
+- visible dynamic objects 20,000
+- instanced static parts 1,000,000
+- event markers 10,000
+- terrain streaming region 256 이상
+
+방식:
+- GPU instancing
+- indirect draw 또는 동급 방식
+- hierarchical culling
+- occlusion culling
+- mesh/material batching
+- render-only interpolation
+- presentation LOD
+
+주의:
+Presentation LOD는 Simulation LOD와 동일하지 않을 수 있다.
+그래픽 단순화는 허용되지만 실제 상태를 변경해서는 안 된다.
+
+────────────────────────────────────────
+16. Viewer 응답성
+────────────────────────────────────────
+
+목표:
+
+- 카메라 입력 응답: 50ms 이하
+- 일시정지 명령: 200ms 이하
+- 시간 배속 변경 반영: 500ms 이하
+- Entity 선택 패널: 100ms 이하
+- Region Summary: 200ms 이하
+- 최근 Event timeline: 200ms 이하
+- Causal Graph 1,000 node: 200ms 이하
+- LOD overlay 갱신: 500ms 이하
+
+Viewer가 분석을 요청해도 시뮬레이션 틱이 장시간 중단되어서는 안 된다.
+큰 분석은 복사된 Snapshot과 Event index에서 비동기 실행한다.
+
+────────────────────────────────────────
+17. AI 성능 목표
+────────────────────────────────────────
+
+AI는 다층 의사결정을 사용한다.
+
+Tier 1 Reflex:
+- 매 tick 가능
+- 개체당 평균 5µs 이하
+
+Tier 2 Habit:
+- 필요 시 또는 1~10 tick
+- 개체당 평균 20µs 이하
+
+Tier 3 Short Plan:
+- 10~100 tick 주기 또는 상태 변화 시
+- 실행당 평균 200µs 이하
+
+Tier 4 Long Plan:
+- 1,000 tick 이상 주기 또는 중요 사건 시
+- 실행당 평균 5ms 이하
+
+Tier 5 High-order Reasoning:
+- 매우 제한된 개체와 상황
+- 실행당 평균 50ms 이하
+- 작업 분할과 중단 가능
+- tick 하나를 독점하지 않음
+
+H1 LOD-A 전체 Cognition 예산:
+- 평균 13ms/tick
+- p95 20ms/tick
+
+규칙:
+- 모든 개체가 매 tick 장기 계획 수행 금지
+- 계획 캐시와 습관 재사용
+- 환경 변화가 없으면 재계획 억제
+- 예산 초과 시 무작위 행동이 아니라 기존 계획·습관 유지
+- 예산 부족 사실을 진단 지표로 기록
+
+────────────────────────────────────────
+18. 감각과 공간 조회 성능
+────────────────────────────────────────
+
+Perception budget:
+- 평균 9ms/tick
+- p95 15ms/tick
+
+목표:
+- LOD-A 2,000 개체
+- 각 개체의 후보 공간 조회
+- 전체 world scan 금지
+
+Spatial query:
+- 근접 후보 100개 이하를 일반 목표
+- broad-phase → channel filter → occlusion test
+- 반복 환경은 cache 가능
+- cache는 state revision으로 무효화
+
+단일 근접 조회:
+- 평균 10µs 이하
+
+Region query:
+- 평균 100µs 이하
+
+대규모 가시성:
+- 분할 작업
+- tick budget 초과 시 다음 tick으로 연기 가능
+- 긴급 위험 감각은 우선 처리
+
+────────────────────────────────────────
+19. 물리 성능 목표
+────────────────────────────────────────
+
+H1 LOD-A Physics 전체:
+- Pre-step + Execution 평균 18ms/tick
+- p95 30ms/tick
+
+대상:
+- 동적 Body 50,000
+- 활성 collision pair 100,000 이하
+- 구조 연결 250,000
+- micro-step 최대 5
+
+규칙:
+- sleeping body 사용
+- 정적·준정적 분리
+- spatial partition
+- 구조 그래프 지역 분할
+- 모든 구조 연결을 매 tick 전체 재계산하지 않음
+- 불안정·변화 부위만 우선 계산
+
+물리 오류:
+- NaN 0건
+- 무한 속도 0건
+- 허용 범위 외 penetration 장기 지속 0건
+- 보존 오차는 모듈별 tolerance 내
+
+────────────────────────────────────────
+20. 병렬 처리 목표
+────────────────────────────────────────
+
+H1 8코어 기준:
+
+1 thread 대비 8 thread:
+- 병렬 가능 시나리오에서 5배 이상 speedup
+
+H2 16코어 기준:
+- H1 8 thread 대비 1.5배 이상 추가 speedup
+
+Job scheduler overhead:
+- 전체 tick 시간의 5% 이하
+
+Worker load balance:
+- p95 max_worker_time / mean_worker_time 1.5 이하
+
+Queue stall:
+- tick당 2ms 이하 평균
+
+동기화 장벽:
+- 전체 tick 시간의 10% 이하
+
+규칙:
+- lock contention을 숨기지 않음
+- 동일 권위 상태 동시 쓰기 금지
+- Region partition과 변경안 병합 우선
+- thread count 변화로 결과가 달라지지 않아야 함
+
+────────────────────────────────────────
+21. GPU 계산 정책
+────────────────────────────────────────
+
+초기 권위 시뮬레이션:
+
+- GPU는 렌더링 우선
+- 권위 상태 계산은 CPU 결정론 경로를 기본으로 함
+
+GPU 사용 가능 후보:
+- 비권위 시각화
+- 지형 mesh 생성
+- 분석용 heatmap
+- 비권위 통계
+- 결정론이 검증된 대규모 field 계산
+
+GPU 권위 계산 승인 조건:
+- 동일 입력 재현성
+- CPU reference 구현
+- 오차 범위 문서
+- 저장 복원 일관성
+- GPU 미지원 환경 fallback
+- 결정론 테스트
+
+GPU 계산이 빨라도 인과성과 재현성을 훼손하면 사용하지 않는다.
+
+────────────────────────────────────────
+22. 결정론 성능 등급
+────────────────────────────────────────
+
+D0 Strict Deterministic
+
+조건:
+- 동일 코드 빌드
+- 동일 설정
+- 동일 시드
+- 동일 스레드 수와 플랫폼
+
+결과:
+- 매 tick global digest 완전 일치
+
+적용:
+- Kernel
+- ID
+- Command ordering
+- Event ordering
+- 저장 직렬화
+- 정수 기반 계정
+
+D1 Reproducible Deterministic
+
+조건:
+- 동일 코드·설정·시드
+- 지원 플랫폼 범위
+
+결과:
+- 상태 digest 또는 정규화 digest 일치
+- 허용된 부동소수점 tolerance 내
+
+적용:
+- Physics
+- Climate
+- 일부 연속장
+
+D2 Statistical Equivalent
+
+결과:
+- 개별 상태 exact 일치는 보장하지 않음
+- 분포와 보존량이 허용 오차 내 일치
+
+적용 후보:
+- 장기 LOD 집계
+- GPU 가속 모델
+- 확률적 deaggregation
+
+기본 CI:
+- D0와 D1 테스트 필수
+- D2는 통계 반복 시험 필수
+
+────────────────────────────────────────
+23. 장기 실행 목표
+────────────────────────────────────────
+
+최소 Soak Test:
+
+- 1,000,000 tick
+- 오류·NaN·무효 참조 0
+- invariant failure 0
+- 저장·복원 성공
+- 메모리 증가 정책 충족
+- Event segment 연속성 유지
+- digest 검증
+
+24시간 Soak:
+
+- H1에서 연속 24시간
+- 매 100,000 tick incremental checkpoint
+- 체크포인트 하나 이상 복원 후 계속 실행
+- 비의도 메모리 증가 5% 이하
+- tick p95 기준 악화 10% 이하
+- Event 처리량 지속 가능
+- 파일 손상 0
+
+7일 연구 실행 목표:
+
+- H2 headless
+- 자동 segment rotation
+- 디스크 여유 경고
+- 중간 복구 가능
+- 프로세스 crash 시 마지막 정상 checkpoint 복원
+- 전체 결과 hash와 환경 기록
+
+────────────────────────────────────────
+24. 성능 저하 대응 순서
+────────────────────────────────────────
+
+성능 목표 미달 시 다음 순서로 대응한다.
+
+1. 측정 오류 확인
+2. hot path 식별
+3. 불필요한 작업 제거
+4. 업데이트 빈도 조정
+5. 데이터 배치와 캐시 개선
+6. 메모리 할당 제거
+7. 공간·지역 분할 개선
+8. 병렬화
+9. SIMD
+10. LOD 정책 개선
+11. 근사 모델 검토
+12. GPU 검토
+
+근사 모델은 마지막 수단 중 하나다.
+도입 시 인과관계와 오차를 문서화한다.
+
+────────────────────────────────────────
+25. 예산 초과 시 허용되는 동작
+────────────────────────────────────────
+
+허용:
+- 렌더 품질 하향
+- 그림자 거리 감소
+- Presentation LOD 강화
+- Snapshot 발행 빈도 일시 감소
+- 비긴급 분석 지연
+- 비긴급 고차원 AI 추론 큐 지연
+- 신규 Region 승격 지연
+- 저주파 시스템의 안전한 batch
+- 시간 가속 배율 자동 제한
+
+금지:
+- Simulation tick 건너뛰기
+- 생명체·자원 임의 삭제
+- 사건 원인 삭제
+- 상세 지역 결과를 무작위로 생성
+- 행동 성공률 자동 보정
+- 문명 보존용 숨은 자원
+- 사용자가 보지 않는 지역 정지
+
+────────────────────────────────────────
+26. Benchmark Suite
+────────────────────────────────────────
+
+B-KERNEL-001 Empty Tick
+
+대상:
+- Time
+- Scheduler
+- Random stream preparation
+- empty Commit
+
+목표 H1:
+- 100,000 tick/s 이상 headless
+
+B-KERNEL-002 Command Storm
+
+대상:
+- 10,000 Command/tick
+- validation
+- ordering
+- failure result
+
+목표:
+- 10 ticks/s Interactive 유지
+- Command loss 0
+- ordering deterministic
+
+B-WORLD-001 Terrain Read
+
+대상:
+- 262,144 Terrain cell
+- 1,000,000 random spatial sample
+
+목표:
+- 100ms 이하 또는 초당 10,000,000 sample 이상
+
+B-EVENT-001 Event Append
+
+대상:
+- 1,000,000 significant Event
+
+목표:
+- 50,000 Event/s 이상
+- 압축 크기 256MB 이하
+
+B-SAVE-001 Snapshot Roundtrip
+
+대상:
+- S0 world
+
+목표:
+- Save 2초
+- Load 5초
+- digest 일치
+
+B-LOD-001 Demote/Promote
+
+대상:
+- Region 100개
+- population, resource, relationship, knowledge 포함
+
+목표:
+- 보존 오차 기준 통과
+- 동일 seed 복원 digest 일치
+
+B-SURVIVAL-001 Interactive Agents
+
+대상:
+- agent 1,000
+- dynamic objects 20,000
+
+목표:
+- 10 ticks/s
+- cognition, perception, physics 예산 통과
+
+B-SURVIVAL-002 Large Detail
+
+대상:
+- agent 2,000
+- dynamic objects 50,000
+
+목표:
+- H1 10 ticks/s
+- H0에서는 5 ticks/s 이상 또는 자동 품질 조정
+
+B-CIV-001 Macro World
+
+대상:
+- population 5,000,000 aggregate
+- Region 16,384
+- 주요 개체 50,000
+
+목표:
+- H1 1 world-year / 60 minutes
+- H2 1 world-year / 20 minutes
+
+B-RENDER-001 Dense Settlement View
+
+대상:
+- animated 5,000
+- static parts 1,000,000
+
+목표:
+- H1 1080p 60FPS
+- 1% low 45FPS
+
+────────────────────────────────────────
+27. 성능 회귀 기준
+────────────────────────────────────────
+
+CI는 기준 빌드와 비교한다.
+
+경고:
+- tick 평균 5% 악화
+- tick p95 5% 악화
+- 메모리 5% 증가
+- Save 크기 5% 증가
+- Load 시간 10% 증가
+- Event 크기 5% 증가
+
+병합 차단:
+- tick 평균 10% 이상 악화
+- tick p95 10% 이상 악화
+- 메모리 10% 이상 증가
+- Save 크기 10% 이상 증가
+- Load/Save 시간 20% 이상 증가
+- 결정론 digest 불일치
+- LOD 보존 오차 초과
+- Soak invariant failure
+- Event 누락
+
+예외:
+- 의도적으로 정확도를 높인 변경
+- 새로운 권위 상태 추가
+- 기능 범위 확대
+
+예외 시:
+- 변경 전후 측정
+- 비용 근거
+- 대안 검토
+- 새 기준 승인
+- ADR 또는 성능 보고서
+
+────────────────────────────────────────
+28. 성능 측정 데이터
+────────────────────────────────────────
+
+각 benchmark 실행은 다음을 저장한다.
+
+PerformanceRunManifest:
+- run_id
+- benchmark_id
+- code_build_id
+- configuration_hash
+- hardware_profile
+- operating_system
+- compiler_or_runtime_version
+- thread_count
+- deterministic_mode
+- world_seed
+- start_time
+- duration
+- warmup_duration
+- sample_count
+- result_digest
+
+Metrics:
+- tick mean
+- tick median
+- tick p95
+- tick p99
+- phase times
+- worker times
+- memory peak
+- memory growth
+- allocation rate
+- event throughput
+- save size
+- save/load time
+- render FPS
+- GPU time
+- LOD error
+- invariant count
+
+원시 결과를 보존하고 요약 수치만 저장하지 않는다.
+
+────────────────────────────────────────
+29. 프로파일링 규칙
+────────────────────────────────────────
+
+항상 측정:
+- phase wall time
+- job wall time
+- entities processed
+- regions processed
+- commands
+- deltas
+- events
+- allocations
+- cache hit/miss
+- queue depth
+- lock wait
+- snapshot latency
+
+Sampling profiler:
+- 일반 실행에서 저오버헤드
+
+Instrumented profiler:
+- benchmark와 디버그 빌드
+
+규칙:
+- profiler 비활성 상태와 활성 상태 비용 분리
+- 측정 코드가 결정론을 바꾸지 않아야 함
+- 실시간 로그 폭증 방지
+- ring buffer와 sampling 사용
+
+────────────────────────────────────────
+30. Stage별 성능 승인 게이트
+────────────────────────────────────────
+
+Stage 0 완료 후:
+
+필수:
+- B-KERNEL-001
+- B-KERNEL-002
+- B-WORLD-001
+- B-EVENT-001
+- B-SAVE-001
+- 1,000,000 tick Soak
+- deterministic digest
+
+Stage 1 생존 개체:
+
+필수:
+- B-SURVIVAL-001
+- Perception 예산
+- Cognition 예산
+- Biology 예산
+- 저장 복원
+- 24시간 Soak 일부 또는 전체
+
+Stage 2 도구·제작:
+
+추가:
+- 물체 수 증가
+- Attach/Detach Command storm
+- 지식 기록 증가율
+- 구조 부품 메모리
+
+Stage 3 건축:
+
+추가:
+- 구조 그래프
+- 붕괴 피크
+- 1,000,000 visible parts
+- 구조물 Save 크기
+
+Stage 4 사회:
+
+추가:
+- Relationship edge
+- communication Event
+- 집단 집계
+- Memory/Belief 증가율
+
+Stage 5 이상:
+
+추가:
+- S3 Civilization
+- B-CIV-001
+- 장기 Event archive
+- 대형 LOD roundtrip
+- 다국가 병렬 시나리오
+
+────────────────────────────────────────
+31. 최초 수직 슬라이스 성능 승인 기준
+────────────────────────────────────────
+
+Stage 0 종료 직후 첫 구현은 다음을 통과해야 한다.
+
+환경:
+- H1
+- Headless
+- Release build
+- 고정 시드
+
+세계:
+- Terrain cell 65,536
+- Region 256
+- EntityRecord 100,000
+- Event 1,000,000 생성 시험
+
+필수 기준:
+
+1. Empty tick
+- 100,000 tick/s 이상
+
+2. 1,000,000 tick Soak
+- crash 0
+- invariant failure 0
+- memory growth 1% 이하
+- deterministic digest 일치
+
+3. Command storm
+- 10,000 Command/tick
+- 누락 0
+- 안정 ordering
+- 목표 tick budget 통과
+
+4. Event append
+- 50,000 Event/s
+- 1,000,000 Event 압축 256MB 이하
+
+5. Save/Load
+- Save 2초
+- Load 5초
+- state digest 일치
+
+6. Snapshot
+- 발행 평균 1ms 이하
+- Read-only 검증
+
+7. Viewer debug
+- H1 1080p 60FPS
+- 최소 Terrain·Entity·LOD·Event marker 표시
+
+────────────────────────────────────────
+32. 성능 관련 금지 패턴
+────────────────────────────────────────
+
+- benchmark 없는 최적화
+- Debug build 성능을 공식 기준으로 사용
+- 평균만 보고 p95/p99 무시
+- 짧은 실행만 측정
+- warm-up 포함 수치와 제외 수치 혼합
+- 하드웨어 정보 누락
+- 시드·설정 누락
+- GC pause 또는 allocator stall 숨김
+- 실패 Event 삭제로 처리량 개선
+- LOD 보존 오차 미측정
+- Viewer FPS와 Simulation TPS 혼합
+- 저장 크기 감소를 위해 권위 상태 누락
+- 렌더링을 끄고 Interactive 성능 통과 주장
+- H2에서만 가능한 기능을 기본 기준으로 채택
+- 시간 가속을 위해 규칙 변경
+- 카메라 밖 세계 정지
+- 상태를 임의로 합성해 복원 비용 절감
+
