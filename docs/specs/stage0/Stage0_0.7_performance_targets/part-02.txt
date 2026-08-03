@@ -1,0 +1,65 @@
+────────────────────────────────────────
+33. 0.8에서 재검증할 항목
+────────────────────────────────────────
+
+Stage 0.8 개발 환경 구축 후 실제로 측정한다.
+
+- 선택 언어의 ID와 단위 타입 오버헤드
+- EntityRegistry record 크기
+- Terrain cell 실제 크기
+- Event 직렬화 크기
+- allocator 특성
+- 멀티스레드 scheduler overhead
+- 고정 틱 처리량
+- 저장 포맷 속도
+- compression ratio
+- GPU instancing 성능
+- 엔진의 headless overhead
+- cross-platform 결정론
+- compiler optimization 영향
+
+실측 결과가 목표와 크게 다르면:
+
+1. 오류인지 구조적 한계인지 구분
+2. 목표를 낮추기 전에 구현 개선 검토
+3. 근사 도입 전 인과 영향 분석
+4. 필요 시 Stage 0.7.1 작성
+5. 성능 기준 변경 ADR 기록
+
+────────────────────────────────────────
+34. Stage 0.7 완료 기준
+────────────────────────────────────────
+
+다음 항목을 확정했으므로 Stage 0.7을 완료로 판정한다.
+
+- 성능 철학
+- Interactive·Accelerated·Headless 모드
+- H0·H1·H2 기준 하드웨어
+- 기준 tick과 micro-step 목표
+- tick 평균·p95·p99 예산
+- Phase별 CPU 예산
+- S0~S4 규모 등급
+- LOD별 개체·지역 목표
+- LOD 전환 시간과 보존 오차
+- 총 메모리 예산
+- 개체별 메모리 예산
+- 메모리 증가율
+- Event 처리량과 크기
+- Save 크기
+- Save·Load 시간
+- 렌더링 FPS와 표시 규모
+- Viewer 응답성
+- AI 계층별 계산 예산
+- Perception·Physics 예산
+- 병렬 처리 확장성
+- GPU 권위 계산 정책
+- 결정론 등급
+- 장기 Soak Test
+- 성능 저하 대응 순서
+- 예산 초과 시 허용·금지 동작
+- Benchmark Suite
+- 성능 회귀 차단 기준
+- 성능 측정 Manifest
+- Stage별 성능 승인 게이트
+- 최초 수직 슬라이스 승인 기준
+- 0.8 재검증 항목
