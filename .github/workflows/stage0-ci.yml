@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   rust:
-    name: Rust kernel and headless runner
+    name: Rust kernel, persistence, and headless runner
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -43,6 +43,47 @@ jobs:
 
       - name: Verify snapshot file exists
         run: test -s target/ci/render-snapshot.json
+
+      - name: Verify Save Load deterministic continuity
+        run: |
+          mkdir -p target/ci
+          cargo run --quiet -p artificial-world-headless -- \
+            --ticks 20000 \
+            --seed 42 \
+            > target/ci/direct.json
+          cargo run --quiet -p artificial-world-headless -- \
+            --ticks 10000 \
+            --seed 42 \
+            --save-output target/ci/world-save.json \
+            > target/ci/checkpoint.json
+          cargo run --quiet -p artificial-world-headless -- \
+            --load target/ci/world-save.json \
+            --ticks 10000 \
+            > target/ci/resumed.json
+          test -s target/ci/world-save.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("target/ci")
+          direct = json.loads((root / "direct.json").read_text())
+          checkpoint = json.loads((root / "checkpoint.json").read_text())
+          resumed = json.loads((root / "resumed.json").read_text())
+
+          assert checkpoint["tick"] == 10_000
+          assert checkpoint["saveWritten"] is True
+          assert resumed["loaded"] is True
+          assert resumed["startTick"] == 10_000
+          for field in ("tick", "seed", "digest"):
+              assert resumed[field] == direct[field], (field, direct[field], resumed[field])
+
+          print(json.dumps({
+              "direct": direct,
+              "checkpoint": checkpoint,
+              "resumed": resumed,
+              "continuity": "verified",
+          }, separators=(",", ":")))
+          PY
 
   viewer:
     name: Kernel snapshot to TypeScript viewer
