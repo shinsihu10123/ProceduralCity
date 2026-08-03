@@ -1,6 +1,6 @@
 # Stage 0.8 개발 환경 구축
 
-문서 버전: 0.8.1-draft  
+문서 버전: 0.8.2-draft  
 상태: 진행 중  
 기준 브랜치: `stage0-rebuild`
 
@@ -124,23 +124,19 @@ GitHub Actions는 다음을 검증한다.
 
 2026-08-03 기준 최신 Stage 0 CI와 기존 city engine 검증이 모두 성공했다.
 
-## 9. Codespaces 검증
+## 9. Codespaces 및 iPad 수동 검증
 
-2026-08-03 사용자 확인으로 iPad에서 `stage0-rebuild` Codespace의 실제 기동을 완료했다.
+2026-08-03 사용자 확인으로 다음을 완료했다.
 
-남은 수동 검증:
+- iPad에서 `stage0-rebuild` Codespace 실제 기동
+- Dev Container 환경 진입
+- 포트 5173 전달
+- Viewer 실제 화면 표시
+- 3D 장면 렌더링
+- 정보 패널 표시
+- iPad 터치 기반 화면 조작
 
-```bash
-git pull
-rustc --version
-cargo --version
-node --version
-npm --version
-cargo test --workspace
-cargo run -p artificial-world-headless -- --ticks 10000 --seed 42
-npm install --prefix apps/viewer --no-audit --no-fund
-npm --prefix apps/viewer run dev -- --host 0.0.0.0
-```
+따라서 iPad를 개발 접속 단말로 사용하고, Codespaces에서 코어와 Viewer를 실행하는 초기 개발 경로가 실제로 작동함을 확인했다.
 
 ## 10. 진행 상태
 
@@ -153,18 +149,17 @@ npm --prefix apps/viewer run dev -- --host 0.0.0.0
 | 0.8.4 Codespaces 실제 기동 | 완료 — 사용자 확인 |
 | 0.8.5 Rust workspace | 완료 |
 | 0.8.6 GitHub Actions CI | 완료 |
-| 0.8.7 웹 디버그 Viewer 스켈레톤 | 완료 — CI build 성공 |
+| 0.8.7 웹 디버그 Viewer 스켈레톤 | 완료 — CI 및 iPad 실제 검증 |
 | 0.8.8 Kernel 최소 실행 | CI 검증 완료 |
-| 0.8.9 Save/Load·기준선 벤치마크 | 다음 |
+| 0.8.9 Snapshot 연결·Save/Load·기준선 벤치마크 | 다음 |
 | 0.8.10 Stage 0 완료 판정 | 대기 |
 
 ## 11. 다음 작업
 
-1. Codespace에서 최신 `stage0-rebuild` pull
-2. Rust·Node 버전과 로컬 테스트 확인
-3. 10,000틱 Headless 실행 확인
-4. 포트 5173에서 Viewer 실제 화면 확인
-5. Snapshot JSON 계약 추가
-6. Kernel → Viewer 데이터 연결
-7. Save/Load 최소 구현
-8. 최초 기준선 벤치마크 실행
+1. 버전된 `RenderSnapshot` JSON 계약 추가
+2. Headless 실행 결과를 Snapshot 파일로 내보내기
+3. Viewer가 mock 데이터 대신 Snapshot 파일을 읽도록 변경
+4. 최소 World Save Manifest와 상태 저장 구현
+5. Save → Load → 재실행 digest 일치 테스트
+6. 최초 기준선 벤치마크 실행
+7. Stage 0 완료 검토
