@@ -39,7 +39,10 @@ fn write_snapshot(path: &Path, snapshot: &RenderSnapshot) -> Result<(), String> 
         .validate()
         .map_err(|error| format!("snapshot validation failed: {error}"))?;
 
-    if let Some(parent) = path.parent().filter(|parent| !parent.as_os_str().is_empty()) {
+    if let Some(parent) = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
         fs::create_dir_all(parent)
             .map_err(|error| format!("failed to create {}: {error}", parent.display()))?;
     }
@@ -54,12 +57,8 @@ fn write_snapshot(path: &Path, snapshot: &RenderSnapshot) -> Result<(), String> 
             temporary_path.display()
         )
     })?;
-    fs::rename(&temporary_path, path).map_err(|error| {
-        format!(
-            "failed to commit snapshot {}: {error}",
-            path.display()
-        )
-    })?;
+    fs::rename(&temporary_path, path)
+        .map_err(|error| format!("failed to commit snapshot {}: {error}", path.display()))?;
 
     Ok(())
 }
