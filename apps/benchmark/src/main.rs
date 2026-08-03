@@ -100,7 +100,10 @@ fn execute_ticks(seed: u64, ticks: u64) -> Result<(u64, String), String> {
         black_box(tick);
     }
     let elapsed = duration_ns(started.elapsed());
-    Ok((elapsed, format!("{:016x}", host.deterministic_digest())))
+    Ok((
+        elapsed,
+        format!("{:016x}", host.deterministic_digest()),
+    ))
 }
 
 fn warm_up(seed: u64, ticks: u64) -> Result<(), String> {
@@ -175,6 +178,7 @@ fn hardware_profile() -> HardwareProfile {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn run() -> Result<(), String> {
     let arguments: Vec<String> = env::args().skip(1).collect();
     let output = parse_path_flag(
@@ -184,11 +188,7 @@ fn run() -> Result<(), String> {
     )?;
     let seed = parse_u64_flag(&arguments, "--seed", DEFAULT_SEED)?;
     let warmup_ticks = parse_u64_flag(&arguments, "--warmup-ticks", DEFAULT_WARMUP_TICKS)?;
-    let measured_ticks = parse_u64_flag(
-        &arguments,
-        "--measured-ticks",
-        DEFAULT_MEASURED_TICKS,
-    )?;
+    let measured_ticks = parse_u64_flag(&arguments, "--measured-ticks", DEFAULT_MEASURED_TICKS)?;
     let sample_count = parse_u64_flag(&arguments, "--samples", DEFAULT_SAMPLE_COUNT)?;
     if measured_ticks == 0 || sample_count == 0 {
         return Err("--measured-ticks and --samples must be greater than zero".to_owned());
@@ -252,9 +252,10 @@ fn run() -> Result<(), String> {
         write_render_snapshot(&snapshot_path, &snapshot).map_err(|error| error.to_string())?;
         snapshot_write_durations.push(duration_ns(started.elapsed()));
         let current_snapshot_bytes = file_size(&snapshot_path)?;
-        if snapshot_bytes.replace(current_snapshot_bytes).is_some_and(|previous| {
-            previous != current_snapshot_bytes
-        }) {
+        if snapshot_bytes
+            .replace(current_snapshot_bytes)
+            .is_some_and(|previous| previous != current_snapshot_bytes)
+        {
             return Err("snapshot byte size changed between identical samples".to_owned());
         }
 
