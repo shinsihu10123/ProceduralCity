@@ -1,0 +1,14 @@
+[package]
+name = "artificial-world-headless"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "artificial-world-headless"
+path = "src/main.rs"
+
+[dependencies]
+artificial-world-kernel = { path = "../../crates/kernel" }
+
+[lints]
+workspace = true
