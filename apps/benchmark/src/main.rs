@@ -100,10 +100,7 @@ fn execute_ticks(seed: u64, ticks: u64) -> Result<(u64, String), String> {
         black_box(tick);
     }
     let elapsed = duration_ns(started.elapsed());
-    Ok((
-        elapsed,
-        format!("{:016x}", host.deterministic_digest()),
-    ))
+    Ok((elapsed, format!("{:016x}", host.deterministic_digest())))
 }
 
 fn warm_up(seed: u64, ticks: u64) -> Result<(), String> {
