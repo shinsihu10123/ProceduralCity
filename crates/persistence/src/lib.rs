@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use artificial_world_contracts::{RenderSnapshot, WorldSaveManifest};
+use artificial_world_contracts::{PerformanceRunManifest, RenderSnapshot, WorldSaveManifest};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     error::Error,
@@ -71,7 +71,7 @@ pub fn write_render_snapshot(
     write_json_transactional(path, snapshot)
 }
 
-/// Writes a validated World Save using a temporary file and atomic rename.
+/// Writes a validated [`WorldSaveManifest`] using a temporary file and atomic rename.
 ///
 /// # Errors
 ///
@@ -83,7 +83,7 @@ pub fn write_world_save(path: &Path, save: &WorldSaveManifest) -> Result<(), Per
     write_json_transactional(path, save)
 }
 
-/// Reads and validates a versioned World Save.
+/// Reads and validates a versioned [`WorldSaveManifest`].
 ///
 /// # Errors
 ///
@@ -94,6 +94,21 @@ pub fn read_world_save(path: &Path) -> Result<WorldSaveManifest, PersistenceErro
     save.validate()
         .map_err(|error| PersistenceError::Validation(error.to_string()))?;
     Ok(save)
+}
+
+/// Writes a validated [`PerformanceRunManifest`] transactionally.
+///
+/// # Errors
+///
+/// Returns [`PersistenceError`] when validation, serialization, directory
+/// creation, file synchronization, or rename fails.
+pub fn write_performance_run(
+    path: &Path,
+    run: &PerformanceRunManifest,
+) -> Result<(), PersistenceError> {
+    run.validate()
+        .map_err(|error| PersistenceError::Validation(error.to_string()))?;
+    write_json_transactional(path, run)
 }
 
 fn write_json_transactional<T: Serialize>(path: &Path, value: &T) -> Result<(), PersistenceError> {
@@ -168,8 +183,12 @@ fn temporary_path(path: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{read_world_save, write_world_save};
-    use artificial_world_contracts::WorldSaveManifest;
+    use super::{read_world_save, write_performance_run, write_world_save};
+    use artificial_world_contracts::{
+        BenchmarkConfiguration, DurationSummary, HardwareProfile, PerformanceRunManifest,
+        ThroughputSummary, WorldSaveManifest, PERFORMANCE_RUN_SCHEMA_VERSION,
+        STAGE0_BASELINE_BENCHMARK_ID,
+    };
     use std::{fs, path::PathBuf, process};
 
     fn test_path(name: &str) -> PathBuf {
@@ -191,5 +210,56 @@ mod tests {
 
         assert_eq!(restored, save);
         fs::remove_file(path).expect("temporary test save should be removed");
+    }
+
+    #[test]
+    fn performance_run_is_written_after_validation() {
+        let path = test_path("performance-run");
+        let duration = DurationSummary {
+            sample_count: 1,
+            minimum_ns: 10,
+            median_ns: 10,
+            p95_ns: 10,
+            maximum_ns: 10,
+        };
+        let run = PerformanceRunManifest {
+            schema_version: PERFORMANCE_RUN_SCHEMA_VERSION.to_owned(),
+            run_id: "test-run".to_owned(),
+            benchmark_id: STAGE0_BASELINE_BENCHMARK_ID.to_owned(),
+            code_build_id: "test-build".to_owned(),
+            created_at_utc: None,
+            hardware: HardwareProfile {
+                environment: "test".to_owned(),
+                operating_system: "linux".to_owned(),
+                architecture: "x86_64".to_owned(),
+                logical_cpu_count: 1,
+                rustc_version: "rustc-test".to_owned(),
+                build_profile: "release".to_owned(),
+            },
+            configuration: BenchmarkConfiguration {
+                world_seed: 42,
+                warmup_ticks: 1,
+                measured_ticks_per_sample: 10,
+                sample_count: 1,
+            },
+            empty_tick_duration: duration,
+            empty_tick_throughput: ThroughputSummary {
+                sample_count: 1,
+                minimum_ticks_per_second: 100_000,
+                median_ticks_per_second: 100_000,
+                maximum_ticks_per_second: 100_000,
+            },
+            snapshot_write_duration: duration,
+            save_write_duration: duration,
+            save_load_duration: duration,
+            snapshot_bytes: 10,
+            save_bytes: 20,
+            final_tick: 10,
+            final_digest: "40885885fe2db25d".to_owned(),
+        };
+
+        write_performance_run(&path, &run).expect("performance run should be written");
+        assert!(fs::metadata(&path).expect("manifest should exist").len() > 0);
+        fs::remove_file(path).expect("temporary performance run should be removed");
     }
 }
