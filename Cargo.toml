@@ -1,0 +1,18 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/kernel",
+  "apps/headless"
+]
+default-members = ["apps/headless"]
+
+[workspace.package]
+edition = "2021"
+version = "0.0.1"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"
