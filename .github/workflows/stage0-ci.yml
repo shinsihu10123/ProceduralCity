@@ -85,6 +85,79 @@ jobs:
           }, separators=(",", ":")))
           PY
 
+  benchmark:
+    name: Stage 0 cloud baseline benchmark
+    needs: rust
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Record Rust version
+        run: echo "RUSTC_VERSION=$(rustc --version)" >> "$GITHUB_ENV"
+
+      - name: Run release baseline benchmark
+        env:
+          BENCHMARK_ENVIRONMENT: github-actions
+        run: >-
+          cargo run --release -p artificial-world-benchmark --
+          --output target/benchmark/performance-run.json
+          --seed 42
+          --warmup-ticks 1000000
+          --measured-ticks 10000000
+          --samples 7
+          --run-id github-${{ github.run_id }}-${{ github.run_attempt }}
+          --build-id ${{ github.sha }}
+
+      - name: Validate benchmark thresholds
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("target/benchmark/performance-run.json")
+          data = json.loads(path.read_text())
+
+          assert data["schemaVersion"] == "performance-run.v1"
+          assert data["benchmarkId"] == "stage0-kernel-baseline.v1"
+          assert data["hardware"]["environment"] == "github-actions"
+          assert data["hardware"]["buildProfile"] == "release"
+          assert data["configuration"]["sampleCount"] == 7
+          assert data["configuration"]["measuredTicksPerSample"] == 10_000_000
+          assert data["emptyTickThroughput"]["minimumTicksPerSecond"] >= 100_000
+          assert data["snapshotWriteDuration"]["p95Ns"] <= 2_000_000_000
+          assert data["saveWriteDuration"]["p95Ns"] <= 2_000_000_000
+          assert data["saveLoadDuration"]["p95Ns"] <= 5_000_000_000
+          assert data["snapshotBytes"] > 0
+          assert data["saveBytes"] > 0
+          assert len(data["finalDigest"]) == 16
+          assert Path("target/benchmark/artifacts/render-snapshot.json").is_file()
+          assert Path("target/benchmark/artifacts/world-save.json").is_file()
+
+          print(json.dumps({
+              "medianTicksPerSecond": data["emptyTickThroughput"]["medianTicksPerSecond"],
+              "snapshotBytes": data["snapshotBytes"],
+              "saveBytes": data["saveBytes"],
+              "medianSnapshotWriteNs": data["snapshotWriteDuration"]["medianNs"],
+              "medianSaveWriteNs": data["saveWriteDuration"]["medianNs"],
+              "medianSaveLoadNs": data["saveLoadDuration"]["medianNs"],
+              "digest": data["finalDigest"],
+          }, separators=(",", ":")))
+          PY
+
+      - name: Upload benchmark manifest and artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage0-cloud-baseline-${{ github.run_id }}
+          path: target/benchmark
+          if-no-files-found: error
+          retention-days: 30
+
   viewer:
     name: Kernel snapshot to TypeScript viewer
     runs-on: ubuntu-latest
