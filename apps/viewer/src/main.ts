@@ -66,7 +66,7 @@ const isNonNegativeInteger = (value: unknown): value is number =>
 const isLodLevel = (value: unknown): value is LodLevel =>
   value === "A" || value === "B" || value === "C" || value === "D";
 
-const assertRegion = (value: unknown): asserts value is RenderRegion => {
+const assertRegion: (value: unknown) => asserts value is RenderRegion = (value) => {
   if (
     !isRecord(value) ||
     !isNonNegativeInteger(value.id) ||
@@ -80,7 +80,7 @@ const assertRegion = (value: unknown): asserts value is RenderRegion => {
   }
 };
 
-const assertEntity = (value: unknown): asserts value is RenderEntity => {
+const assertEntity: (value: unknown) => asserts value is RenderEntity = (value) => {
   if (
     !isRecord(value) ||
     !isNonNegativeInteger(value.id) ||
@@ -93,7 +93,7 @@ const assertEntity = (value: unknown): asserts value is RenderEntity => {
   }
 };
 
-const assertEvent = (value: unknown): asserts value is EventMarker => {
+const assertEvent: (value: unknown) => asserts value is EventMarker = (value) => {
   if (
     !isRecord(value) ||
     !isNonNegativeInteger(value.id) ||
@@ -105,7 +105,7 @@ const assertEvent = (value: unknown): asserts value is EventMarker => {
   }
 };
 
-const assertLodCounts = (value: unknown): asserts value is LodCounts => {
+const assertLodCounts: (value: unknown) => asserts value is LodCounts = (value) => {
   if (
     !isRecord(value) ||
     !isNonNegativeInteger(value.A) ||
@@ -117,7 +117,7 @@ const assertLodCounts = (value: unknown): asserts value is LodCounts => {
   }
 };
 
-const assertSnapshot = (value: unknown): asserts value is RenderSnapshot => {
+const assertSnapshot: (value: unknown) => asserts value is RenderSnapshot = (value) => {
   if (!isRecord(value)) {
     throw new Error("RenderSnapshot root must be an object");
   }
