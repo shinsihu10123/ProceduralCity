@@ -8,7 +8,9 @@ name = "artificial-world-headless"
 path = "src/main.rs"
 
 [dependencies]
+artificial-world-contracts = { path = "../../crates/contracts" }
 artificial-world-kernel = { path = "../../crates/kernel" }
+serde_json = "1"
 
 [lints]
 workspace = true
