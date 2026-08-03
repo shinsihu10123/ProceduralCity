@@ -79,7 +79,8 @@ pub struct EventMarker {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]\pub struct RenderSnapshot {
+#[serde(rename_all = "camelCase")]
+pub struct RenderSnapshot {
     pub schema_version: String,
     pub source: SnapshotSource,
     pub tick: u64,
