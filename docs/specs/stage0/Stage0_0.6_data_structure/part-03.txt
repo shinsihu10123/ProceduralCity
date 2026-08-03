@@ -1,0 +1,216 @@
+46. 최초 구현 데이터 최소 집합
+────────────────────────────────────────
+
+Stage 0 종료 직후 첫 수직 슬라이스에서 구현할 데이터:
+
+1. Tick
+2. WorldId
+3. EntityId
+4. RegionId
+5. CommandId
+6. EventId
+7. SchemaVersion
+8. EntityRecord
+9. ModuleDescriptor
+10. WorldPosition
+11. RegionAddress
+12. TerrainCellState 최소형
+13. CommandEnvelope 최소형
+14. ValidationResult
+15. StateDelta
+16. CommitBatch
+17. CommitResult
+18. EventEnvelope
+19. RandomStreamRecord
+20. SnapshotEnvelope
+21. RegionSummary 최소형
+22. WorldSaveManifest
+23. ModuleStateManifest
+24. StateSegment
+25. ChecksumManifest
+26. DeterminismDigest
+27. ConfigurationManifest
+
+최초 구현에서 제외:
+- Memory
+- Belief
+- Relationship
+- Knowledge
+- Economy
+- Politics
+- Culture
+- Warfare
+
+이들은 스키마 방향만 확정하고 실제 구현은 해당 Stage에서 진행한다.
+
+────────────────────────────────────────
+47. 최초 수직 슬라이스 데이터 흐름
+────────────────────────────────────────
+
+ConfigurationManifest
+→ SimulationHost
+→ ModuleDescriptor 등록
+→ EntityRegistry 생성
+→ TerrainCellState 초기화
+→ Tick 시작
+→ CommandEnvelope 수집
+→ ValidationResult
+→ StateDelta
+→ CommitBatch
+→ CommitResult
+→ EventEnvelope
+→ SnapshotEnvelope
+→ WorldSaveManifest
+→ 저장
+→ 복원
+→ DeterminismDigest 비교
+
+────────────────────────────────────────
+48. 데이터 검증 시나리오
+────────────────────────────────────────
+
+시나리오 A: 개체 파괴 후 과거 사건 조회
+
+잘못:
+개체 삭제와 함께 모든 참조 무효화
+
+올바름:
+EntityRecord destroyed
+→ EntityTombstone 생성
+→ 과거 Event와 Memory가 Tombstone 참조
+
+시나리오 B: AI가 식량 위치를 앎
+
+잘못:
+BeliefRecord가 Terrain ResourceDeposit의 실제 좌표를 자동 복사
+
+올바름:
+ObservationRecord
+→ MemoryRecord
+→ BeliefRecord
+→ 불확실한 위치 추정
+
+시나리오 C: 자원 이동
+
+잘못:
+경제 모듈이 실제 물질 수량 직접 변경
+
+올바름:
+ExchangeAgreement
+→ Transfer Command
+→ Physics/Ecology StateDelta
+→ Commit
+→ Transfer Event
+→ Economy fulfillment 갱신
+
+시나리오 D: LOD 강등
+
+잘못:
+개체 삭제 후 인구 수만 저장
+
+올바름:
+PopulationCohort
++ ResourceAccount
++ RelationshipDistribution
++ KnowledgeDistribution
++ important entities
++ reconstruction seed
++ causal links
+
+시나리오 E: 저장 복원
+
+잘못:
+현재 위치와 화면 상태만 저장
+
+올바름:
+WorldSaveManifest
++ Module states
++ EntityRegistry
++ Random streams
++ Event position
++ interventions
++ schema versions
++ checksums
+
+시나리오 F: 도시 분류
+
+잘못:
+CityState를 권위 상태로 생성
+
+올바름:
+RegionSummary와 활동·인구·구조 패턴
+→ Observation Classification
+→ "도시형 패턴" Read Model
+
+────────────────────────────────────────
+49. 금지 데이터 패턴
+────────────────────────────────────────
+
+- 전역 WorldState 하나에 모든 데이터 저장
+- 동일 사실을 여러 모듈이 권위 상태로 중복 보유
+- 실제 상태와 BeliefState 혼합
+- Event를 문자열 로그로만 저장
+- ID 대신 배열 인덱스를 영구 참조
+- 코드 enum 순서를 저장값으로 사용
+- 단위 없는 물리 수치
+- 원인 없는 StateDelta
+- revision 없는 가변 상태
+- 저장되지 않는 장기 Command
+- 파괴된 개체 참조를 무조건 제거
+- LOD 강등 시 인과·지식·관계 삭제
+- RenderSnapshot을 시뮬레이션 입력으로 재사용
+- 카메라 거리만으로 데이터 정밀도 결정
+- 알 수 없음과 0을 혼동
+- 스키마 버전 없는 저장
+- 마이그레이션 없는 의미 변경
+- 정렬되지 않은 Map 순회로 결정론 훼손
+- 캐시를 권위 상태로 취급
+- 분석 라벨을 시뮬레이션 상태로 승격
+
+────────────────────────────────────────
+50. Stage 0.6 완료 기준
+────────────────────────────────────────
+
+다음 항목을 확정했으므로 Stage 0.6을 완료로 판정한다.
+
+- 데이터 분류 체계
+- 권위 상태와 인식 상태 분리
+- 공통 원시 타입
+- 강한 ID와 Tombstone
+- 단위 타입
+- 공간 데이터
+- EntityRegistry
+- ModuleDescriptor
+- 권위 상태 Envelope
+- Command Envelope
+- Validation과 Reservation
+- StateDelta와 CommitBatch
+- CommitResult
+- Event Envelope와 EventSegment
+- RandomTrace
+- Observation
+- Memory
+- Belief
+- Need·Goal·Plan
+- 관계와 의무
+- 집단 패턴과 분석 View
+- 지식·절차·실험·전승 계보
+- 물리·환경·생태·생물 데이터
+- 건축·경제·정치·문화·전쟁 데이터
+- LOD Aggregate와 Deaggregation
+- Snapshot과 Read Model
+- 저장 Manifest와 Segment
+- Intervention
+- Configuration
+- 진단·결정론 데이터
+- 색인 구조
+- 참조 무결성
+- 불변성과 Optional 규칙
+- 수치 오차와 보존 정책
+- 결정론적 직렬화
+- 스키마 호환성과 마이그레이션
+- 데이터 보존·압축 정책
+- 데이터 소유권 표
+- 최초 구현 최소 데이터
+- 검증 시나리오
+- 금지 데이터 패턴
