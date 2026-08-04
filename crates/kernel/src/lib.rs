@@ -40,7 +40,7 @@ pub use planet::{
 };
 pub use planet_surface::{
     face_edge_transform, FaceEdgeTransform, SurfaceEdge, SurfaceTileAddress, SurfaceTileError,
-    MAX_SURFACE_TILE_LEVEL,
+    SurfaceTileLocalPosition, MAX_SURFACE_TILE_LEVEL, SURFACE_TILE_LOCAL_SCALE,
 };
 pub use river_network::{
     RiverJunction, RiverJunctionKind, RiverNetwork, RiverNetworkError, RiverReach,
