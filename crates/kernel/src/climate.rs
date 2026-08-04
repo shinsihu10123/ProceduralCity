@@ -295,9 +295,7 @@ fn humidity_permille(terrain: TerrainSample, precipitation_mm: u32) -> u16 {
 }
 
 fn aridity_permille(temperature_millic: i32, precipitation_mm: u32) -> u16 {
-    let thermal_demand = i64::from(temperature_millic)
-        .saturating_add(10_000)
-        .max(1);
+    let thermal_demand = i64::from(temperature_millic).saturating_add(10_000).max(1);
     let potential_evaporation = u64::try_from(thermal_demand / 25 + 200).unwrap_or(u64::MAX);
     let value = u64::from(precipitation_mm)
         .saturating_mul(1_000)
@@ -344,14 +342,13 @@ pub enum ClimateError {
 impl fmt::Display for ClimateError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidPoleDistance => {
-                formatter.write_str("pole distance must be positive")
-            }
+            Self::InvalidPoleDistance => formatter.write_str("pole distance must be positive"),
             Self::InvalidTemperatureRange => {
                 formatter.write_str("equator temperature must not be below pole temperature")
             }
-            Self::InvalidLapseRate => formatter
-                .write_str("lapse rate must not exceed 20,000 milli-Celsius per kilometre"),
+            Self::InvalidLapseRate => {
+                formatter.write_str("lapse rate must not exceed 20,000 milli-Celsius per kilometre")
+            }
             Self::InvalidPrecipitation => {
                 formatter.write_str("baseline precipitation must be positive")
             }
