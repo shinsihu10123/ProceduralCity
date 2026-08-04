@@ -1,4 +1,7 @@
-use std::{fmt, num::NonZeroU32};
+use std::{
+    fmt,
+    num::{NonZeroU32, NonZeroU64},
+};
 
 use crate::{TerrainGenerator, TerrainSample};
 
@@ -18,7 +21,7 @@ const PER_MILLE: i64 = 1_000;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ClimateConfig {
     equator_z_mm: i64,
-    pole_distance_mm: NonZeroU32,
+    pole_distance_mm: NonZeroU64,
     equator_temperature_millic: i32,
     pole_temperature_millic: i32,
     lapse_rate_millic_per_km: u32,
@@ -32,9 +35,8 @@ impl ClimateConfig {
     /// # Errors
     ///
     /// Returns [`ClimateError::InvalidPoleDistance`] when `pole_distance_mm`
-    /// is zero or does not fit the current coordinate contract,
-    /// [`ClimateError::InvalidTemperatureRange`] when the equator is colder
-    /// than the pole, [`ClimateError::InvalidLapseRate`] for rates above
+    /// is zero, [`ClimateError::InvalidTemperatureRange`] when the equator is
+    /// colder than the pole, [`ClimateError::InvalidLapseRate`] for rates above
     /// 20 °C/km, [`ClimateError::InvalidPrecipitation`] when the baseline is
     /// zero, or [`ClimateError::InvalidOrographicDistance`] when its sampling
     /// distance is zero.
@@ -47,9 +49,9 @@ impl ClimateConfig {
         base_precipitation_mm_per_year: u32,
         orographic_sample_distance_mm: u32,
     ) -> Result<Self, ClimateError> {
-        if pole_distance_mm == 0 || pole_distance_mm > u32::MAX as u64 {
+        let Some(pole_distance_mm) = NonZeroU64::new(pole_distance_mm) else {
             return Err(ClimateError::InvalidPoleDistance);
-        }
+        };
         if equator_temperature_millic < pole_temperature_millic {
             return Err(ClimateError::InvalidTemperatureRange);
         }
@@ -59,11 +61,7 @@ impl ClimateConfig {
         if base_precipitation_mm_per_year == 0 {
             return Err(ClimateError::InvalidPrecipitation);
         }
-        let Some(pole_distance_mm) = NonZeroU32::new(pole_distance_mm as u32) else {
-            return Err(ClimateError::InvalidPoleDistance);
-        };
-        let Some(orographic_sample_distance_mm) =
-            NonZeroU32::new(orographic_sample_distance_mm)
+        let Some(orographic_sample_distance_mm) = NonZeroU32::new(orographic_sample_distance_mm)
         else {
             return Err(ClimateError::InvalidOrographicDistance);
         };
@@ -84,7 +82,7 @@ impl ClimateConfig {
     }
 
     #[must_use]
-    pub const fn pole_distance_mm(self) -> u32 {
+    pub const fn pole_distance_mm(self) -> u64 {
         self.pole_distance_mm.get()
     }
 
@@ -216,23 +214,21 @@ impl ClimateGenerator {
     #[must_use]
     pub fn sample(self, x_mm: i64, z_mm: i64) -> ClimateSample {
         let terrain = self.terrain.sample(x_mm, z_mm);
-        let upwind_x = x_mm.saturating_sub(i64::from(
-            self.config.orographic_sample_distance_mm.get(),
-        ));
+        let upwind_x =
+            x_mm.saturating_sub(i64::from(self.config.orographic_sample_distance_mm.get()));
         let upwind = self.terrain.sample(upwind_x, z_mm);
         let latitude_permille = self.latitude_permille(z_mm);
         let temperature = self.temperature_millic(terrain, latitude_permille);
         let precipitation = self.precipitation_mm(terrain, upwind, latitude_permille);
         let humidity = humidity_permille(terrain, precipitation);
         let aridity = aridity_permille(temperature, precipitation);
-        let class = classify_climate(terrain, temperature, aridity);
         ClimateSample {
             mean_temperature_millic: temperature,
             annual_precipitation_mm: precipitation,
             relative_humidity_permille: humidity,
             aridity_index_permille: aridity,
             latitude_permille,
-            class,
+            class: classify_climate(terrain, temperature, aridity),
         }
     }
 
@@ -240,7 +236,7 @@ impl ClimateGenerator {
         let distance = z_mm.abs_diff(self.config.equator_z_mm);
         let scaled = distance
             .saturating_mul(PER_MILLE as u64)
-            .checked_div(u64::from(self.config.pole_distance_mm.get()))
+            .checked_div(self.config.pole_distance_mm.get())
             .unwrap_or(u64::MAX)
             .min(PER_MILLE as u64);
         u16::try_from(scaled).expect("clamped latitude permille fits u16")
@@ -256,8 +252,8 @@ impl ClimateGenerator {
                 .saturating_sub(terrain.sea_level_mm())
                 .max(0),
         );
-        let elevation_drop = elevation_mm * i64::from(self.config.lapse_rate_millic_per_km)
-            / 1_000_000;
+        let elevation_drop =
+            elevation_mm * i64::from(self.config.lapse_rate_millic_per_km) / 1_000_000;
         let result = equator - latitude_drop - elevation_drop;
         i32::try_from(result.clamp(i64::from(i32::MIN), i64::from(i32::MAX)))
             .expect("clamped temperature fits i32")
@@ -270,8 +266,7 @@ impl ClimateGenerator {
         latitude_permille: u16,
     ) -> u32 {
         let continentality = i64::from(terrain.continentality_q20());
-        let ocean_influence = ((Q20_SCALE - continentality) * 500 / Q20_SCALE)
-            .clamp(0, PER_MILLE);
+        let ocean_influence = ((Q20_SCALE - continentality) * 500 / Q20_SCALE).clamp(0, PER_MILLE);
         let latitude_factor = (PER_MILLE - i64::from(latitude_permille) * 2 / 5).max(300);
         let baseline = i64::from(self.config.base_precipitation_mm_per_year);
         let moisture = baseline / 3 + baseline * ocean_influence * 4 / (3 * PER_MILLE);
@@ -300,7 +295,9 @@ fn humidity_permille(terrain: TerrainSample, precipitation_mm: u32) -> u16 {
 }
 
 fn aridity_permille(temperature_millic: i32, precipitation_mm: u32) -> u16 {
-    let thermal_demand = i64::from(temperature_millic).saturating_add(10_000).max(1);
+    let thermal_demand = i64::from(temperature_millic)
+        .saturating_add(10_000)
+        .max(1);
     let potential_evaporation = u64::try_from(thermal_demand / 25 + 200).unwrap_or(u64::MAX);
     let value = u64::from(precipitation_mm)
         .saturating_mul(1_000)
@@ -347,11 +344,20 @@ pub enum ClimateError {
 impl fmt::Display for ClimateError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidPoleDistance => formatter.write_str("pole distance must fit in non-zero u32 millimetres"),
-            Self::InvalidTemperatureRange => formatter.write_str("equator temperature must not be below pole temperature"),
-            Self::InvalidLapseRate => formatter.write_str("lapse rate must not exceed 20,000 milli-Celsius per kilometre"),
-            Self::InvalidPrecipitation => formatter.write_str("baseline precipitation must be positive"),
-            Self::InvalidOrographicDistance => formatter.write_str("orographic sampling distance must be positive"),
+            Self::InvalidPoleDistance => {
+                formatter.write_str("pole distance must be positive")
+            }
+            Self::InvalidTemperatureRange => {
+                formatter.write_str("equator temperature must not be below pole temperature")
+            }
+            Self::InvalidLapseRate => formatter
+                .write_str("lapse rate must not exceed 20,000 milli-Celsius per kilometre"),
+            Self::InvalidPrecipitation => {
+                formatter.write_str("baseline precipitation must be positive")
+            }
+            Self::InvalidOrographicDistance => {
+                formatter.write_str("orographic sampling distance must be positive")
+            }
         }
     }
 }
@@ -360,14 +366,19 @@ impl std::error::Error for ClimateError {}
 
 #[cfg(test)]
 mod tests {
-    use super::{ClimateClass, ClimateConfig, ClimateGenerator};
+    use super::{
+        ClimateClass, ClimateConfig, ClimateGenerator, DEFAULT_BASE_PRECIPITATION_MM_PER_YEAR,
+        DEFAULT_EQUATOR_TEMPERATURE_MILLIC, DEFAULT_OROGRAPHIC_SAMPLE_DISTANCE_MM,
+        DEFAULT_POLE_DISTANCE_MM, DEFAULT_POLE_TEMPERATURE_MILLIC,
+    };
     use crate::{TerrainConfig, TerrainGenerator};
 
+    fn terrain() -> TerrainGenerator {
+        TerrainGenerator::new(42, TerrainConfig::default())
+    }
+
     fn generator() -> ClimateGenerator {
-        ClimateGenerator::new(
-            TerrainGenerator::new(42, TerrainConfig::default()),
-            ClimateConfig::default(),
-        )
+        ClimateGenerator::new(terrain(), ClimateConfig::default())
     }
 
     #[test]
@@ -383,25 +394,30 @@ mod tests {
     fn polar_baseline_is_colder_than_equator() {
         let generator = generator();
         let equator = generator.sample(0, 0);
-        let pole = generator.sample(0, i64::from(generator.config().pole_distance_mm()));
+        let pole = generator.sample(0, generator.config().pole_distance_mm() as i64);
         assert!(pole.mean_temperature_millic() < equator.mean_temperature_millic());
     }
 
     #[test]
-    fn high_elevation_reduces_temperature() {
-        let generator = generator();
-        let mut lowest = generator.sample(0, 0);
-        let mut highest = lowest;
-        for x in -64..=64 {
-            let sample = generator.sample(i64::from(x) * 128_000, 0);
-            if sample.mean_temperature_millic() < highest.mean_temperature_millic() {
-                highest = sample;
-            }
-            if sample.mean_temperature_millic() > lowest.mean_temperature_millic() {
-                lowest = sample;
-            }
-        }
-        assert!(highest.mean_temperature_millic() < lowest.mean_temperature_millic());
+    fn lapse_rate_cools_land_above_sea_level() {
+        let terrain = terrain();
+        let coordinate = (-128..=128)
+            .map(|x| i64::from(x) * 256_000)
+            .find(|x| terrain.sample(*x, 0).height_mm() > 0)
+            .expect("test terrain must contain land above sea level");
+        let without_lapse = ClimateConfig::new(
+            0,
+            DEFAULT_POLE_DISTANCE_MM,
+            DEFAULT_EQUATOR_TEMPERATURE_MILLIC,
+            DEFAULT_POLE_TEMPERATURE_MILLIC,
+            0,
+            DEFAULT_BASE_PRECIPITATION_MM_PER_YEAR,
+            DEFAULT_OROGRAPHIC_SAMPLE_DISTANCE_MM,
+        )
+        .expect("zero lapse-rate configuration is valid");
+        let normal = generator().sample(coordinate, 0);
+        let flat = ClimateGenerator::new(terrain, without_lapse).sample(coordinate, 0);
+        assert!(normal.mean_temperature_millic() < flat.mean_temperature_millic());
     }
 
     #[test]
@@ -430,7 +446,13 @@ mod tests {
         let generator = generator();
         let equator = generator.sample(0, 0);
         let pole = generator.sample(0, 10_000_000_000);
-        assert!(matches!(equator.class(), ClimateClass::Tropical | ClimateClass::Subtropical | ClimateClass::Arid));
-        assert!(matches!(pole.class(), ClimateClass::Ice | ClimateClass::Tundra | ClimateClass::Alpine));
+        assert!(matches!(
+            equator.class(),
+            ClimateClass::Tropical | ClimateClass::Subtropical | ClimateClass::Arid
+        ));
+        assert!(matches!(
+            pole.class(),
+            ClimateClass::Ice | ClimateClass::Tundra | ClimateClass::Alpine
+        ));
     }
 }
