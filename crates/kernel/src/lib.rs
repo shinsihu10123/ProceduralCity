@@ -4,6 +4,7 @@ mod depression;
 mod global_hydrology;
 mod hydrology;
 mod hydrology_boundary;
+mod river_network;
 mod space;
 mod terrain;
 #[allow(clippy::similar_names)]
@@ -21,6 +22,10 @@ pub use hydrology::{
 };
 pub use hydrology_boundary::{
     ChunkBoundarySide, CrossChunkBoundary, CrossChunkError, CrossChunkFlowLink,
+};
+pub use river_network::{
+    RiverJunction, RiverJunctionKind, RiverNetwork, RiverNetworkError, RiverReach,
+    DEFAULT_RIVER_NETWORK_THRESHOLD,
 };
 pub use space::{
     CellCoord, CellLocalPosition, RegionCoord, SpaceError, SpatialGrid, WorldBounds, WorldPosition,
