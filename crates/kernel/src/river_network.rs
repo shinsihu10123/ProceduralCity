@@ -303,10 +303,10 @@ fn integer_sqrt(value: u64) -> u64 {
         return value;
     }
     let mut x = value;
-    let mut y = (x + value / x) / 2;
+    let mut y = u64::midpoint(x, value / x);
     while y < x {
         x = y;
-        y = (x + value / x) / 2;
+        y = u64::midpoint(x, value / x);
     }
     x
 }
