@@ -2,7 +2,7 @@ use super::{PlateField, PlateId, TectonicPlate};
 use crate::{UnitDirectionQ30, DIRECTION_Q30_SCALE};
 
 const BOUNDARY_MARGIN_Q60: i128 =
-    i128::from(DIRECTION_Q30_SCALE) * i128::from(DIRECTION_Q30_SCALE) / 96;
+    (DIRECTION_Q30_SCALE as i128) * (DIRECTION_Q30_SCALE as i128) / 96;
 const NORMAL_MOTION_THRESHOLD: i128 = 1_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
