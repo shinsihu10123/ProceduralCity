@@ -86,7 +86,7 @@ impl PlateField {
 
         let margin = primary_dot - secondary_dot;
         let (normal_motion, shear_motion) = relative_motion_scores(primary, secondary);
-        let kind = if margin > BOUNDARY_MARGIN_Q60 {
+        let kind = if direction == primary.center() || margin > BOUNDARY_MARGIN_Q60 {
             PlateBoundaryKind::Interior
         } else if normal_motion < -NORMAL_MOTION_THRESHOLD {
             PlateBoundaryKind::Convergent
