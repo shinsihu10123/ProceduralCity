@@ -12,6 +12,7 @@ mod space;
 mod terrain;
 #[allow(clippy::similar_names)]
 mod terrain_analysis;
+mod terrain_surface;
 mod time;
 
 pub use climate::{
@@ -59,6 +60,9 @@ pub use terrain_analysis::{
     FlowDirection, TerrainAnalysisError, TerrainChunk, TerrainChunkCoord, TerrainChunkSpec,
     TerrainQualityReport, DEFAULT_TERRAIN_CHUNK_EDGE_CELLS, DEFAULT_TERRAIN_SAMPLE_SPACING_MM,
     MAX_TERRAIN_CHUNK_EDGE_CELLS,
+};
+pub use terrain_surface::{
+    TerrainChunkSurfaceAdapter, TerrainSampleIndex, TerrainSurfaceError,
 };
 pub use time::{
     DurationTicks, Tick, TickDuration, TimeError, TimeSaveStateV1, TimeScale, TimeService,
