@@ -1,11 +1,45 @@
 #![forbid(unsafe_code)]
 
+mod depression;
+mod global_hydrology;
+mod hydrology;
+mod hydrology_boundary;
+mod river_network;
 mod space;
+mod terrain;
+#[allow(clippy::similar_names)]
+mod terrain_analysis;
 mod time;
 
+pub use depression::{DepressionError, DepressionFill};
+pub use global_hydrology::{
+    GlobalDrainageTerminal, GlobalHydrologyError, GlobalHydrologyField, GlobalHydrologyInput,
+    GlobalHydrologyNode, GlobalHydrologyNodeKey,
+};
+pub use hydrology::{
+    DrainageTerminal, HydrologyError, HydrologyField, HydrologyNode,
+    DEFAULT_RIVER_ACCUMULATION_THRESHOLD,
+};
+pub use hydrology_boundary::{
+    ChunkBoundarySide, CrossChunkBoundary, CrossChunkError, CrossChunkFlowLink,
+};
+pub use river_network::{
+    RiverJunction, RiverJunctionKind, RiverNetwork, RiverNetworkError, RiverReach,
+    DEFAULT_RIVER_NETWORK_THRESHOLD,
+};
 pub use space::{
     CellCoord, CellLocalPosition, RegionCoord, SpaceError, SpatialGrid, WorldBounds, WorldPosition,
     DEFAULT_CELL_SIZE_MM, DEFAULT_REGION_EDGE_CELLS, MILLIMETERS_PER_METER,
+};
+pub use terrain::{
+    TerrainClass, TerrainConfig, TerrainError, TerrainGenerator, TerrainSample,
+    DEFAULT_AMPLITUDE_MM, DEFAULT_BASE_WAVELENGTH_MM, DEFAULT_OCTAVES, DEFAULT_SEA_LEVEL_MM,
+    TERRAIN_ANALYSIS_STEP_MM,
+};
+pub use terrain_analysis::{
+    FlowDirection, TerrainAnalysisError, TerrainChunk, TerrainChunkCoord, TerrainChunkSpec,
+    TerrainQualityReport, DEFAULT_TERRAIN_CHUNK_EDGE_CELLS, DEFAULT_TERRAIN_SAMPLE_SPACING_MM,
+    MAX_TERRAIN_CHUNK_EDGE_CELLS,
 };
 pub use time::{
     DurationTicks, Tick, TickDuration, TimeError, TimeSaveStateV1, TimeScale, TimeService,
