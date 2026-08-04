@@ -165,17 +165,17 @@ impl PlanetSurfacePosition {
     #[must_use]
     pub fn unit_direction_q30(self) -> UnitDirectionQ30 {
         let scale = i128::from(DIRECTION_Q30_SCALE);
-        let u = i128::from(self.u_q30);
-        let v = i128::from(self.v_q30);
-        let (x, y, z) = match self.face {
-            CubeFace::PositiveX => (scale, v, -u),
-            CubeFace::NegativeX => (-scale, v, u),
-            CubeFace::PositiveY => (u, scale, -v),
-            CubeFace::NegativeY => (u, -scale, v),
-            CubeFace::PositiveZ => (u, v, scale),
-            CubeFace::NegativeZ => (-u, v, -scale),
+        let face_u = i128::from(self.u_q30);
+        let face_v = i128::from(self.v_q30);
+        let (cube_x, cube_y, cube_z) = match self.face {
+            CubeFace::PositiveX => (scale, face_v, -face_u),
+            CubeFace::NegativeX => (-scale, face_v, face_u),
+            CubeFace::PositiveY => (face_u, scale, -face_v),
+            CubeFace::NegativeY => (face_u, -scale, face_v),
+            CubeFace::PositiveZ => (face_u, face_v, scale),
+            CubeFace::NegativeZ => (-face_u, face_v, -scale),
         };
-        normalize_q30(x, y, z)
+        normalize_q30(cube_x, cube_y, cube_z)
     }
 
     /// Converts the surface coordinate to a planet-centred Cartesian position.
@@ -203,69 +203,69 @@ impl PlanetSurfacePosition {
                 .map_err(|_| PlanetError::CoordinateOverflow)
         };
         Ok(PlanetCartesianPosition {
-            x_mm: project(direction.x_q30)?,
-            y_mm: project(direction.y_q30)?,
-            z_mm: project(direction.z_q30)?,
+            x: project(direction.x_q30())?,
+            y: project(direction.y_q30())?,
+            z: project(direction.z_q30())?,
         })
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UnitDirectionQ30 {
-    x_q30: i64,
-    y_q30: i64,
-    z_q30: i64,
+    x: i64,
+    y: i64,
+    z: i64,
 }
 
 impl UnitDirectionQ30 {
     #[must_use]
     pub const fn x_q30(self) -> i64 {
-        self.x_q30
+        self.x
     }
 
     #[must_use]
     pub const fn y_q30(self) -> i64 {
-        self.y_q30
+        self.y
     }
 
     #[must_use]
     pub const fn z_q30(self) -> i64 {
-        self.z_q30
+        self.z
     }
 
     /// Returns sine of geocentric latitude in Q30 form.
     #[must_use]
     pub const fn sin_latitude_q30(self) -> i64 {
-        self.y_q30
+        self.y
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PlanetCartesianPosition {
-    x_mm: i64,
-    y_mm: i64,
-    z_mm: i64,
+    x: i64,
+    y: i64,
+    z: i64,
 }
 
 impl PlanetCartesianPosition {
     #[must_use]
     pub const fn x_mm(self) -> i64 {
-        self.x_mm
+        self.x
     }
 
     #[must_use]
     pub const fn y_mm(self) -> i64 {
-        self.y_mm
+        self.y
     }
 
     #[must_use]
     pub const fn z_mm(self) -> i64 {
-        self.z_mm
+        self.z
     }
 }
 
-fn normalize_q30(x: i128, y: i128, z: i128) -> UnitDirectionQ30 {
-    let squared = u128::try_from(x * x + y * y + z * z)
+fn normalize_q30(cube_x: i128, cube_y: i128, cube_z: i128) -> UnitDirectionQ30 {
+    let squared = u128::try_from(cube_x * cube_x + cube_y * cube_y + cube_z * cube_z)
         .expect("cube-face direction squared length is positive");
     let length = integer_sqrt(squared);
     let scale = i128::from(DIRECTION_Q30_SCALE);
@@ -274,9 +274,9 @@ fn normalize_q30(x: i128, y: i128, z: i128) -> UnitDirectionQ30 {
         i64::try_from(value * scale / length).expect("normalised Q30 direction fits i64")
     };
     UnitDirectionQ30 {
-        x_q30: convert(x),
-        y_q30: convert(y),
-        z_q30: convert(z),
+        x: convert(cube_x),
+        y: convert(cube_y),
+        z: convert(cube_z),
     }
 }
 
