@@ -5,6 +5,7 @@ mod depression;
 mod global_hydrology;
 mod hydrology;
 mod hydrology_boundary;
+mod planet;
 mod river_network;
 mod space;
 mod terrain;
@@ -29,6 +30,13 @@ pub use hydrology::{
 };
 pub use hydrology_boundary::{
     ChunkBoundarySide, CrossChunkBoundary, CrossChunkError, CrossChunkFlowLink,
+};
+pub use planet::{
+    CubeFace, PlanetCartesianPosition, PlanetConfig, PlanetError, PlanetSurfacePosition,
+    UnitDirectionQ30, DIRECTION_Q30_SCALE, EARTH_AXIAL_TILT_MILLIDEGREES,
+    EARTH_MEAN_RADIUS_MM, EARTH_SIDEREAL_ORBIT_MILLISECONDS,
+    EARTH_SIDEREAL_ROTATION_MILLISECONDS,
+    EARTH_STANDARD_GRAVITY_MICROMETERS_PER_SECOND_SQUARED,
 };
 pub use river_network::{
     RiverJunction, RiverJunctionKind, RiverNetwork, RiverNetworkError, RiverReach,
