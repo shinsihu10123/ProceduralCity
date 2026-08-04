@@ -5,6 +5,7 @@ pub const DEFAULT_CELL_SIZE_MM: u32 = 1_000;
 pub const DEFAULT_REGION_EDGE_CELLS: u32 = 64;
 
 /// Authoritative continuous-world position in integer millimetres.
+#[allow(clippy::struct_field_names)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct WorldPosition {
     x_mm: i64,
@@ -116,6 +117,7 @@ impl RegionCoord {
 }
 
 /// Position local to a cell, always in `[0, cell_size_mm)` on every axis.
+#[allow(clippy::struct_field_names)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct CellLocalPosition {
     x_mm: u32,
@@ -187,6 +189,13 @@ impl SpatialGrid {
         )
     }
 
+    /// Computes the position local to the containing cell.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if a Euclidean remainder smaller than the configured `u32`
+    /// cell size cannot be represented as `u32`, which is unreachable for a
+    /// valid [`SpatialGrid`].
     #[must_use]
     pub fn local_in_cell(self, position: WorldPosition) -> CellLocalPosition {
         let size = i64::from(self.cell_size_mm.get());
