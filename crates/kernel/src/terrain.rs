@@ -237,7 +237,10 @@ mod tests {
     #[test]
     fn identical_seed_and_position_are_deterministic() {
         let generator = TerrainGenerator::new(42, TerrainConfig::default());
-        assert_eq!(generator.sample(123_456, -987_654), generator.sample(123_456, -987_654));
+        assert_eq!(
+            generator.sample(123_456, -987_654),
+            generator.sample(123_456, -987_654)
+        );
     }
 
     #[test]
