@@ -339,10 +339,7 @@ mod tests {
         time.start();
         assert_eq!(time.begin_tick(), Ok(Tick::new(1)));
         assert_eq!(time.current_tick(), Tick::ZERO);
-        assert_eq!(
-            time.save_state(),
-            Err(TimeError::SaveDuringIncompleteTick)
-        );
+        assert_eq!(time.save_state(), Err(TimeError::SaveDuringIncompleteTick));
         assert_eq!(time.commit_tick(), Ok(Tick::new(1)));
     }
 
