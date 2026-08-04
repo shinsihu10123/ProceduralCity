@@ -1,11 +1,16 @@
 #![forbid(unsafe_code)]
 
 mod space;
+mod terrain;
 mod time;
 
 pub use space::{
     CellCoord, CellLocalPosition, RegionCoord, SpaceError, SpatialGrid, WorldBounds, WorldPosition,
     DEFAULT_CELL_SIZE_MM, DEFAULT_REGION_EDGE_CELLS, MILLIMETERS_PER_METER,
+};
+pub use terrain::{
+    TerrainConfig, TerrainError, TerrainGenerator, TerrainSample, DEFAULT_AMPLITUDE_MM,
+    DEFAULT_BASE_WAVELENGTH_MM, DEFAULT_OCTAVES, DEFAULT_SEA_LEVEL_MM,
 };
 pub use time::{
     DurationTicks, Tick, TickDuration, TimeError, TimeSaveStateV1, TimeScale, TimeService,
