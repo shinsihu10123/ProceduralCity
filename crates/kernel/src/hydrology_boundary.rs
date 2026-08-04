@@ -141,7 +141,6 @@ impl CrossChunkBoundary {
                 second_chunk,
                 second_fill,
                 second_side,
-                second_boundary,
                 edge,
             )?;
             append_link(
@@ -155,7 +154,6 @@ impl CrossChunkBoundary {
                 first_chunk,
                 first_fill,
                 first_side,
-                first_boundary,
                 edge,
             )?;
         }
@@ -202,7 +200,6 @@ fn append_link(
     destination_chunk: &TerrainChunk,
     destination_fill: &DepressionFill,
     destination_side: ChunkBoundarySide,
-    destination_boundary: usize,
     edge: usize,
 ) -> Result<(), CrossChunkError> {
     let source_node = source_hydrology.nodes()[source_boundary];
@@ -227,7 +224,6 @@ fn append_link(
         destination_sample_index: destination_interior,
         transferred_accumulation: source_node.accumulation(),
     });
-    let _ = destination_boundary;
     Ok(())
 }
 
@@ -298,7 +294,9 @@ impl fmt::Display for CrossChunkError {
         formatter.write_str(match self {
             Self::NotCardinalNeighbours => "terrain chunks are not cardinal neighbours",
             Self::MismatchedSpecification => "terrain chunks use different sampling specifications",
-            Self::InvalidAnalysisLayout => "terrain and hydrology analysis layouts are incompatible",
+            Self::InvalidAnalysisLayout => {
+                "terrain and hydrology analysis layouts are incompatible"
+            }
             Self::SharedBoundaryMismatch => "adjacent chunks disagree on their shared boundary",
         })
     }
@@ -318,8 +316,8 @@ mod tests {
     ) -> (TerrainChunk, DepressionFill, HydrologyField) {
         let chunk = TerrainChunk::generate(generator, coord, spec).expect("chunk should generate");
         let fill = DepressionFill::analyse(&chunk).expect("fill should analyse");
-        let hydrology = HydrologyField::analyse_with_fill(&chunk, &fill)
-            .expect("hydrology should analyse");
+        let hydrology =
+            HydrologyField::analyse_with_fill(&chunk, &fill).expect("hydrology should analyse");
         (chunk, fill, hydrology)
     }
 
@@ -329,10 +327,9 @@ mod tests {
         let spec = TerrainChunkSpec::new(16, 4_000).expect("valid spec");
         let left = analysed_chunk(generator, TerrainChunkCoord::new(0, 0), spec);
         let right = analysed_chunk(generator, TerrainChunkCoord::new(1, 0), spec);
-        let boundary = CrossChunkBoundary::analyse(
-            &left.0, &left.1, &left.2, &right.0, &right.1, &right.2,
-        )
-        .expect("boundary should analyse");
+        let boundary =
+            CrossChunkBoundary::analyse(&left.0, &left.1, &left.2, &right.0, &right.1, &right.2)
+                .expect("boundary should analyse");
         assert_eq!(boundary.first_side(), ChunkBoundarySide::East);
         assert!(boundary.links().iter().all(|link| {
             link.source_chunk() == left.0.coord() || link.source_chunk() == right.0.coord()
@@ -345,14 +342,12 @@ mod tests {
         let spec = TerrainChunkSpec::new(16, 4_000).expect("valid spec");
         let north = analysed_chunk(generator, TerrainChunkCoord::new(-1, 2), spec);
         let south = analysed_chunk(generator, TerrainChunkCoord::new(-1, 3), spec);
-        let forward = CrossChunkBoundary::analyse(
-            &north.0, &north.1, &north.2, &south.0, &south.1, &south.2,
-        )
-        .expect("forward boundary should analyse");
-        let reverse = CrossChunkBoundary::analyse(
-            &south.0, &south.1, &south.2, &north.0, &north.1, &north.2,
-        )
-        .expect("reverse boundary should analyse");
+        let forward =
+            CrossChunkBoundary::analyse(&north.0, &north.1, &north.2, &south.0, &south.1, &south.2)
+                .expect("forward boundary should analyse");
+        let reverse =
+            CrossChunkBoundary::analyse(&south.0, &south.1, &south.2, &north.0, &north.1, &north.2)
+                .expect("reverse boundary should analyse");
         assert_eq!(forward.links(), reverse.links());
     }
 
