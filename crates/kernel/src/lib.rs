@@ -5,11 +5,15 @@ mod depression;
 mod global_hydrology;
 mod hydrology;
 mod hydrology_boundary;
+mod planet;
+mod planet_surface;
 mod river_network;
 mod space;
+mod spherical_terrain;
 mod terrain;
 #[allow(clippy::similar_names)]
 mod terrain_analysis;
+mod terrain_surface;
 mod time;
 
 pub use climate::{
@@ -30,6 +34,16 @@ pub use hydrology::{
 pub use hydrology_boundary::{
     ChunkBoundarySide, CrossChunkBoundary, CrossChunkError, CrossChunkFlowLink,
 };
+pub use planet::{
+    CubeFace, PlanetCartesianPosition, PlanetConfig, PlanetError, PlanetSurfacePosition,
+    UnitDirectionQ30, DIRECTION_Q30_SCALE, EARTH_AXIAL_TILT_MILLIDEGREES, EARTH_MEAN_RADIUS_MM,
+    EARTH_SIDEREAL_ORBIT_MILLISECONDS, EARTH_SIDEREAL_ROTATION_MILLISECONDS,
+    EARTH_STANDARD_GRAVITY_MICROMETERS_PER_SECOND_SQUARED,
+};
+pub use planet_surface::{
+    face_edge_transform, FaceEdgeTransform, SurfaceEdge, SurfaceTileAddress, SurfaceTileError,
+    SurfaceTileLocalPosition, MAX_SURFACE_TILE_LEVEL, SURFACE_TILE_LOCAL_SCALE,
+};
 pub use river_network::{
     RiverJunction, RiverJunctionKind, RiverNetwork, RiverNetworkError, RiverReach,
     DEFAULT_RIVER_NETWORK_THRESHOLD,
@@ -38,6 +52,7 @@ pub use space::{
     CellCoord, CellLocalPosition, RegionCoord, SpaceError, SpatialGrid, WorldBounds, WorldPosition,
     DEFAULT_CELL_SIZE_MM, DEFAULT_REGION_EDGE_CELLS, MILLIMETERS_PER_METER,
 };
+pub use spherical_terrain::SphericalTerrainGenerator;
 pub use terrain::{
     TerrainClass, TerrainConfig, TerrainError, TerrainGenerator, TerrainSample,
     DEFAULT_AMPLITUDE_MM, DEFAULT_BASE_WAVELENGTH_MM, DEFAULT_OCTAVES, DEFAULT_SEA_LEVEL_MM,
@@ -48,6 +63,7 @@ pub use terrain_analysis::{
     TerrainQualityReport, DEFAULT_TERRAIN_CHUNK_EDGE_CELLS, DEFAULT_TERRAIN_SAMPLE_SPACING_MM,
     MAX_TERRAIN_CHUNK_EDGE_CELLS,
 };
+pub use terrain_surface::{TerrainChunkSurfaceAdapter, TerrainSampleIndex, TerrainSurfaceError};
 pub use time::{
     DurationTicks, Tick, TickDuration, TimeError, TimeSaveStateV1, TimeScale, TimeService,
     UpdateCadence, WorldTime, TIME_SAVE_SCHEMA_V1,
