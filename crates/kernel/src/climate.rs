@@ -391,7 +391,9 @@ mod tests {
     fn polar_baseline_is_colder_than_equator() {
         let generator = generator();
         let equator = generator.sample(0, 0);
-        let pole = generator.sample(0, generator.config().pole_distance_mm() as i64);
+        let pole_z = i64::try_from(generator.config().pole_distance_mm())
+            .expect("default pole distance must fit the signed world coordinate contract");
+        let pole = generator.sample(0, pole_z);
         assert!(pole.mean_temperature_millic() < equator.mean_temperature_millic());
     }
 
