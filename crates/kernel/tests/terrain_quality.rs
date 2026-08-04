@@ -145,8 +145,8 @@ fn quality_seed_results_are_repeatable() {
 #[test]
 fn distant_windows_do_not_repeat_exactly() {
     let generator = TerrainGenerator::new(42, TerrainConfig::default());
-    let spec = TerrainChunkSpec::new(32, 16_000)
-        .expect("pattern-test chunk specification must be valid");
+    let spec =
+        TerrainChunkSpec::new(32, 16_000).expect("pattern-test chunk specification must be valid");
     let coordinates = [
         TerrainChunkCoord::new(0, 0),
         TerrainChunkCoord::new(97, 31),
