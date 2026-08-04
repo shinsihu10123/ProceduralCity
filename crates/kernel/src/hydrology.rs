@@ -117,8 +117,7 @@ impl HydrologyField {
         let mut downstream = vec![None; expected];
         let mut directions = vec![FlowDirection::Sink; expected];
         for index in 0..expected {
-            let (direction, target) =
-                select_downstream(heights, &flat_distance, edge, index);
+            let (direction, target) = select_downstream(heights, &flat_distance, edge, index);
             directions[index] = direction;
             downstream[index] = target;
         }
