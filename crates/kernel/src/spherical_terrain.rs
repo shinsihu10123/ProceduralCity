@@ -121,15 +121,16 @@ fn lerp_q20(left: i64, right: i64, fraction: i64) -> i64 {
 fn lattice(seed: u64, octave: u8, x: i64, y: i64, z: i64) -> i64 {
     let mut value = seed
         ^ u64::from(octave).wrapping_mul(0x9e37_79b9_7f4a_7c15)
-        ^ (x as u64).rotate_left(13)
-        ^ (y as u64).rotate_left(31)
-        ^ (z as u64).rotate_left(47);
+        ^ x.cast_unsigned().rotate_left(13)
+        ^ y.cast_unsigned().rotate_left(31)
+        ^ z.cast_unsigned().rotate_left(47);
     value ^= value >> 30;
     value = value.wrapping_mul(0xbf58_476d_1ce4_e5b9);
     value ^= value >> 27;
     value = value.wrapping_mul(0x94d0_49bb_1331_11eb);
     value ^= value >> 31;
-    let signed = i32::from_ne_bytes((value as u32).to_ne_bytes());
+    let bytes = value.to_le_bytes();
+    let signed = i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
     i64::from(signed) * INTERPOLATION_SCALE / i64::from(i32::MAX)
 }
 
