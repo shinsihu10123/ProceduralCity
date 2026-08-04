@@ -2,6 +2,7 @@
 
 mod space;
 mod terrain;
+#[allow(clippy::similar_names)]
 mod terrain_analysis;
 mod time;
 
