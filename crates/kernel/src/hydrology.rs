@@ -1,6 +1,6 @@
-use std::fmt;
+use std::{collections::VecDeque, fmt};
 
-use crate::{FlowDirection, TerrainChunk, TerrainSample};
+use crate::{DepressionFill, FlowDirection, TerrainChunk};
 
 /// Minimum upstream sample count used by the default river-candidate query.
 pub const DEFAULT_RIVER_ACCUMULATION_THRESHOLD: u64 = 32;
@@ -10,7 +10,7 @@ pub const DEFAULT_RIVER_ACCUMULATION_THRESHOLD: u64 = 32;
 pub enum DrainageTerminal {
     /// Flow leaves the sampled chunk through its shared border.
     BoundaryOutlet,
-    /// Flow terminates at a local minimum or flat cell.
+    /// Flow terminates at an unresolved local minimum.
     Sink,
 }
 
@@ -55,50 +55,79 @@ pub struct HydrologyField {
 }
 
 impl HydrologyField {
-    /// Builds a chunk-local hydrology field from materialized terrain samples.
+    /// Builds a chunk-local hydrology field from the original terrain heights.
     ///
-    /// Every sample contributes one unit of runoff. Flow is routed to the
-    /// strictly lowest D8 neighbour. Border samples that drain outward are
-    /// treated as boundary outlets. Flats and local minima remain sinks; sink
-    /// filling and cross-chunk basin reconciliation are intentionally deferred
-    /// to the next hydrology refinement.
+    /// This compatibility path does not remove depressions. Prefer
+    /// [`Self::analyse_with_fill`] when a [`DepressionFill`] is available.
     ///
     /// # Errors
     ///
-    /// Returns [`HydrologyError::InvalidChunkLayout`] when the chunk sample
-    /// count does not match its declared square dimensions,
-    /// [`HydrologyError::AccumulationOverflow`] if runoff accumulation exceeds
-    /// `u64`, or [`HydrologyError::BasinOverflow`] if more than `u32::MAX`
-    /// drainage basins are encountered.
+    /// Returns a [`HydrologyError`] when the chunk layout is invalid or a
+    /// derived counter overflows.
     ///
     /// # Panics
     ///
-    /// Panics only if the internal basin-assignment pass fails to assign an ID
-    /// to a node. Strict downhill routing makes drainage paths acyclic, so this
-    /// invariant is guaranteed for a valid [`TerrainChunk`].
+    /// Panics only if the internal basin-assignment invariant is violated.
     pub fn analyse(chunk: &TerrainChunk) -> Result<Self, HydrologyError> {
+        let heights: Vec<i32> = chunk
+            .samples()
+            .iter()
+            .map(|sample| sample.height_mm())
+            .collect();
+        Self::analyse_heights(chunk, &heights)
+    }
+
+    /// Builds hydrology from a Priority-Flood corrected elevation surface.
+    ///
+    /// Strictly lower neighbours are preferred. Equal-height flat cells route
+    /// toward a deterministic distance field seeded by boundary outlets and
+    /// cells adjacent to lower terrain. This makes flat routing acyclic without
+    /// modifying the original terrain samples.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`HydrologyError::FillLayoutMismatch`] when the fill and chunk
+    /// dimensions differ, or another [`HydrologyError`] when a derived counter
+    /// overflows.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if the internal basin-assignment invariant is violated.
+    pub fn analyse_with_fill(
+        chunk: &TerrainChunk,
+        fill: &DepressionFill,
+    ) -> Result<Self, HydrologyError> {
+        if fill.edge_samples() != chunk.spec().edge_samples() {
+            return Err(HydrologyError::FillLayoutMismatch);
+        }
+        Self::analyse_heights(chunk, fill.filled_heights_mm())
+    }
+
+    fn analyse_heights(chunk: &TerrainChunk, heights: &[i32]) -> Result<Self, HydrologyError> {
         let edge = usize::try_from(chunk.spec().edge_samples())
             .map_err(|_| HydrologyError::InvalidChunkLayout)?;
         let expected = edge
             .checked_mul(edge)
             .ok_or(HydrologyError::InvalidChunkLayout)?;
-        if chunk.samples().len() != expected {
+        if chunk.samples().len() != expected || heights.len() != expected {
             return Err(HydrologyError::InvalidChunkLayout);
         }
 
+        let flat_distance = flat_distances(heights, edge)?;
         let mut downstream = vec![None; expected];
         let mut directions = vec![FlowDirection::Sink; expected];
         for index in 0..expected {
-            let (direction, target) = select_downstream(chunk.samples(), edge, index);
+            let (direction, target) =
+                select_downstream(heights, &flat_distance, edge, index);
             directions[index] = direction;
             downstream[index] = target;
         }
 
         let mut order: Vec<usize> = (0..expected).collect();
         order.sort_unstable_by(|left, right| {
-            chunk.samples()[*right]
-                .height_mm()
-                .cmp(&chunk.samples()[*left].height_mm())
+            heights[*right]
+                .cmp(&heights[*left])
+                .then_with(|| flat_distance[*right].cmp(&flat_distance[*left]))
                 .then_with(|| left.cmp(right))
         });
 
@@ -136,7 +165,7 @@ impl HydrologyField {
                 if let Some(next) = downstream[current] {
                     current = next;
                 } else {
-                    let terminal = terminal_for(edge, current, directions[current]);
+                    let terminal = terminal_for(edge, current);
                     basin_count = basin_count
                         .checked_add(1)
                         .ok_or(HydrologyError::BasinOverflow)?;
@@ -219,14 +248,78 @@ impl HydrologyField {
     }
 }
 
+fn flat_distances(heights: &[i32], edge: usize) -> Result<Vec<u32>, HydrologyError> {
+    let mut distances = vec![u32::MAX; heights.len()];
+    let mut queue = VecDeque::new();
+
+    for index in 0..heights.len() {
+        if is_boundary(edge, index) || has_lower_neighbour(heights, edge, index) {
+            distances[index] = 0;
+            queue.push_back(index);
+        }
+    }
+
+    while let Some(index) = queue.pop_front() {
+        let next_distance = distances[index]
+            .checked_add(1)
+            .ok_or(HydrologyError::FlatDistanceOverflow)?;
+        for (_, neighbour) in neighbours_with_directions(edge, index) {
+            if heights[neighbour] == heights[index] && distances[neighbour] == u32::MAX {
+                distances[neighbour] = next_distance;
+                queue.push_back(neighbour);
+            }
+        }
+    }
+
+    Ok(distances)
+}
+
+fn has_lower_neighbour(heights: &[i32], edge: usize, index: usize) -> bool {
+    neighbours_with_directions(edge, index)
+        .any(|(_, neighbour)| heights[neighbour] < heights[index])
+}
+
 fn select_downstream(
-    samples: &[TerrainSample],
+    heights: &[i32],
+    flat_distance: &[u32],
     edge: usize,
     index: usize,
 ) -> (FlowDirection, Option<usize>) {
+    let center_height = heights[index];
+    let center_distance = flat_distance[index];
+    let mut best_lower: Option<(i32, FlowDirection, usize)> = None;
+    let mut best_flat: Option<(u32, FlowDirection, usize)> = None;
+
+    for (direction, target) in neighbours_with_directions(edge, index) {
+        let target_height = heights[target];
+        if target_height < center_height {
+            let candidate = (target_height, direction, target);
+            if best_lower.is_none_or(|best| candidate < best) {
+                best_lower = Some(candidate);
+            }
+        } else if target_height == center_height && flat_distance[target] < center_distance {
+            let candidate = (flat_distance[target], direction, target);
+            if best_flat.is_none_or(|best| candidate < best) {
+                best_flat = Some(candidate);
+            }
+        }
+    }
+
+    if let Some((_, direction, target)) = best_lower {
+        (direction, Some(target))
+    } else if let Some((_, direction, target)) = best_flat {
+        (direction, Some(target))
+    } else {
+        (FlowDirection::Sink, None)
+    }
+}
+
+fn neighbours_with_directions(
+    edge: usize,
+    index: usize,
+) -> impl Iterator<Item = (FlowDirection, usize)> {
     let x = index % edge;
     let z = index / edge;
-    let center_height = samples[index].height_mm();
     let directions = [
         FlowDirection::North,
         FlowDirection::NorthEast,
@@ -237,36 +330,25 @@ fn select_downstream(
         FlowDirection::West,
         FlowDirection::NorthWest,
     ];
-    let mut best_direction = FlowDirection::Sink;
-    let mut best_target = None;
-    let mut best_height = center_height;
-
-    for direction in directions {
+    directions.into_iter().filter_map(move |direction| {
         let (offset_x, offset_z) = direction.unit_offset();
-        let Some(neighbour_x) = x.checked_add_signed(isize::from(offset_x)) else {
-            continue;
-        };
-        let Some(neighbour_z) = z.checked_add_signed(isize::from(offset_z)) else {
-            continue;
-        };
+        let neighbour_x = x.checked_add_signed(isize::from(offset_x))?;
+        let neighbour_z = z.checked_add_signed(isize::from(offset_z))?;
         if neighbour_x >= edge || neighbour_z >= edge {
-            continue;
+            return None;
         }
-        let target = neighbour_z * edge + neighbour_x;
-        let height = samples[target].height_mm();
-        if height < best_height {
-            best_height = height;
-            best_direction = direction;
-            best_target = Some(target);
-        }
-    }
-    (best_direction, best_target)
+        Some((direction, neighbour_z * edge + neighbour_x))
+    })
 }
 
-fn terminal_for(edge: usize, index: usize, direction: FlowDirection) -> DrainageTerminal {
+fn is_boundary(edge: usize, index: usize) -> bool {
     let x = index % edge;
     let z = index / edge;
-    if direction == FlowDirection::Sink && (x == 0 || z == 0 || x + 1 == edge || z + 1 == edge) {
+    x == 0 || z == 0 || x + 1 == edge || z + 1 == edge
+}
+
+fn terminal_for(edge: usize, index: usize) -> DrainageTerminal {
+    if is_boundary(edge, index) {
         DrainageTerminal::BoundaryOutlet
     } else {
         DrainageTerminal::Sink
@@ -276,16 +358,20 @@ fn terminal_for(edge: usize, index: usize, direction: FlowDirection) -> Drainage
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HydrologyError {
     InvalidChunkLayout,
+    FillLayoutMismatch,
     AccumulationOverflow,
     BasinOverflow,
+    FlatDistanceOverflow,
 }
 
 impl fmt::Display for HydrologyError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(match self {
             Self::InvalidChunkLayout => "terrain chunk samples do not match the declared layout",
+            Self::FillLayoutMismatch => "depression fill dimensions do not match the terrain chunk",
             Self::AccumulationOverflow => "hydrology accumulation overflowed u64",
             Self::BasinOverflow => "hydrology basin count overflowed u32",
+            Self::FlatDistanceOverflow => "flat drainage distance overflowed u32",
         })
     }
 }
@@ -295,30 +381,42 @@ impl std::error::Error for HydrologyError {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{TerrainChunkCoord, TerrainChunkSpec, TerrainConfig, TerrainGenerator};
+    use crate::{
+        DepressionFill, TerrainChunkCoord, TerrainChunkSpec, TerrainConfig, TerrainGenerator,
+    };
+
+    fn generated_chunk() -> TerrainChunk {
+        let generator = TerrainGenerator::new(42, TerrainConfig::default());
+        let spec = TerrainChunkSpec::new(32, 2_000).expect("valid chunk spec");
+        TerrainChunk::generate(generator, TerrainChunkCoord::new(-1, 2), spec)
+            .expect("chunk should generate")
+    }
 
     fn analysed_field() -> HydrologyField {
-        let generator = TerrainGenerator::new(42, TerrainConfig::default());
-        let spec = TerrainChunkSpec::new(16, 4_000).expect("valid chunk spec");
-        let chunk = TerrainChunk::generate(generator, TerrainChunkCoord::new(-1, 2), spec)
-            .expect("chunk should generate");
-        HydrologyField::analyse(&chunk).expect("hydrology should analyse")
+        let chunk = generated_chunk();
+        let fill = DepressionFill::analyse(&chunk).expect("priority flood should complete");
+        HydrologyField::analyse_with_fill(&chunk, &fill).expect("hydrology should analyse")
     }
 
     #[test]
-    fn hydrology_is_deterministic() {
+    fn filled_hydrology_is_deterministic() {
         assert_eq!(analysed_field(), analysed_field());
     }
 
     #[test]
     fn every_sample_belongs_to_one_basin() {
         let field = analysed_field();
-        assert_eq!(field.nodes().len(), 17 * 17);
+        assert_eq!(field.nodes().len(), 33 * 33);
         assert!(field.basin_count() > 0);
         assert!(field
             .nodes()
             .iter()
             .all(|node| node.basin_id() < field.basin_count()));
+    }
+
+    #[test]
+    fn filled_surface_does_not_leave_internal_sinks() {
+        assert_eq!(analysed_field().sink_count(), 0);
     }
 
     #[test]
@@ -335,6 +433,12 @@ mod tests {
         assert!(candidates
             .iter()
             .all(|index| field.nodes()[*index].accumulation() >= 8));
+    }
+
+    #[test]
+    fn legacy_analysis_remains_available() {
+        let chunk = generated_chunk();
+        assert!(HydrologyField::analyse(&chunk).is_ok());
     }
 
     #[test]
