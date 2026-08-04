@@ -18,6 +18,11 @@ impl Tick {
         self.0
     }
 
+    /// Returns the next authoritative tick without wrapping.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimeError::TickOverflow`] when this tick is [`u64::MAX`].
     pub fn checked_next(self) -> Result<Self, TimeError> {
         self.0
             .checked_add(1)
@@ -49,6 +54,11 @@ pub struct TickDuration(NonZeroU64);
 impl TickDuration {
     pub const BASELINE: Self = Self(NonZeroU64::new(100_000_000).unwrap());
 
+    /// Creates a non-zero fixed tick duration in nanoseconds.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimeError::InvalidTickDuration`] when `value` is zero.
     pub const fn from_nanos(value: u64) -> Result<Self, TimeError> {
         match NonZeroU64::new(value) {
             Some(value) => Ok(Self(value)),
@@ -92,8 +102,9 @@ impl WorldTime {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum TimeScale {
+    #[default]
     Paused,
     Multiplier(NonZeroU64),
     Unbounded,
@@ -102,17 +113,16 @@ pub enum TimeScale {
 impl TimeScale {
     pub const REALTIME: Self = Self::Multiplier(NonZeroU64::new(1).unwrap());
 
+    /// Creates a non-zero processing multiplier.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimeError::InvalidTimeScale`] when `value` is zero.
     pub const fn multiplier(value: u64) -> Result<Self, TimeError> {
         match NonZeroU64::new(value) {
             Some(value) => Ok(Self::Multiplier(value)),
             None => Err(TimeError::InvalidTimeScale),
         }
-    }
-}
-
-impl Default for TimeScale {
-    fn default() -> Self {
-        Self::Paused
     }
 }
 
@@ -123,6 +133,12 @@ pub struct UpdateCadence {
 }
 
 impl UpdateCadence {
+    /// Creates a deterministic periodic update cadence.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimeError::InvalidCadence`] when `interval` is zero or when
+    /// `phase_offset` is not smaller than `interval`.
     pub const fn new(interval: u64, phase_offset: u64) -> Result<Self, TimeError> {
         let Some(interval) = NonZeroU64::new(interval) else {
             return Err(TimeError::InvalidCadence);
@@ -220,6 +236,12 @@ impl TimeService {
         }
     }
 
+    /// Restores authoritative time at a committed tick boundary.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimeError::UnsupportedSaveSchema`] for an unknown schema and
+    /// [`TimeError::InvalidTickDuration`] for a zero tick duration.
     pub const fn restore(state: TimeSaveStateV1) -> Result<Self, TimeError> {
         if state.schema_version != TIME_SAVE_SCHEMA_V1 {
             return Err(TimeError::UnsupportedSaveSchema);
@@ -282,6 +304,13 @@ impl TimeService {
         self.time_scale = value;
     }
 
+    /// Opens the next authoritative tick transaction without publishing it.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimeError::Paused`] while paused,
+    /// [`TimeError::TickAlreadyInProgress`] when a transaction is active, or
+    /// [`TimeError::TickOverflow`] when no later tick can be represented.
     pub fn begin_tick(&mut self) -> Result<Tick, TimeError> {
         if !self.is_running() {
             return Err(TimeError::Paused);
@@ -294,6 +323,12 @@ impl TimeService {
         Ok(next)
     }
 
+    /// Publishes the active tick transaction.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimeError::CommitWithoutActiveTick`] when no tick transaction
+    /// is active.
     pub fn commit_tick(&mut self) -> Result<Tick, TimeError> {
         let next = self
             .pending_tick
@@ -307,11 +342,22 @@ impl TimeService {
         self.pending_tick = None;
     }
 
+    /// Begins and commits exactly one authoritative tick.
+    ///
+    /// # Errors
+    ///
+    /// Propagates errors from [`Self::begin_tick`] or [`Self::commit_tick`].
     pub fn advance_one_tick(&mut self) -> Result<Tick, TimeError> {
         self.begin_tick()?;
         self.commit_tick()
     }
 
+    /// Captures time state at a committed tick boundary.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimeError::SaveDuringIncompleteTick`] while a tick transaction
+    /// is active.
     pub const fn save_state(&self) -> Result<TimeSaveStateV1, TimeError> {
         if self.pending_tick.is_some() {
             return Err(TimeError::SaveDuringIncompleteTick);
