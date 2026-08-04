@@ -140,6 +140,11 @@ impl TerrainGenerator {
     ///
     /// The implementation uses only integer arithmetic, so results are stable
     /// across platforms and independent of evaluation order.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if the internally normalized height escapes the configured
+    /// signed 32-bit amplitude range, which would indicate an invariant defect.
     #[must_use]
     pub fn sample(self, x_mm: i64, z_mm: i64) -> TerrainSample {
         let mut wavelength = u64::from(self.config.base_wavelength_mm.get());
