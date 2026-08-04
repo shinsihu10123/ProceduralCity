@@ -1,3 +1,7 @@
+#[path = "tectonic_boundary.rs"]
+mod boundary;
+pub use boundary::{PlateBoundaryKind, PlateBoundarySample};
+
 use crate::{CubeFace, PlanetSurfacePosition, UnitDirectionQ30, DIRECTION_Q30_SCALE};
 
 pub const DEFAULT_TECTONIC_PLATE_COUNT: u16 = 24;
@@ -127,12 +131,12 @@ impl PlateField {
         Ok(Self { world_seed, plates })
     }
 
-    /// Generates the default Earth-like global plate field.
+    /// Generates an Earth-like field using the validated default plate count.
     ///
     /// # Panics
     ///
-    /// Panics only if the compile-time default plate count is moved outside
-    /// the validated supported range.
+    /// Panics only if [`DEFAULT_TECTONIC_PLATE_COUNT`] is changed to a value
+    /// outside the supported plate-count range.
     #[must_use]
     pub fn earth_like(world_seed: u64) -> Self {
         Self::generate(world_seed, DEFAULT_TECTONIC_PLATE_COUNT)
@@ -149,12 +153,12 @@ impl PlateField {
         &self.plates
     }
 
-    /// Returns the plate whose spherical centre is nearest to the direction.
+    /// Returns the spherical Voronoi owner for a unit direction.
     ///
     /// # Panics
     ///
-    /// Panics only if a `PlateField` is internally constructed with no plates;
-    /// all fields produced by [`Self::generate`] contain at least six plates.
+    /// Panics only if a `PlateField` is constructed internally with an empty
+    /// plate list. Public constructors reject such fields.
     #[must_use]
     pub fn plate_at(&self, direction: UnitDirectionQ30) -> TectonicPlate {
         *self
