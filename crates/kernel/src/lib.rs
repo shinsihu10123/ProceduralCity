@@ -61,9 +61,7 @@ pub use terrain_analysis::{
     TerrainQualityReport, DEFAULT_TERRAIN_CHUNK_EDGE_CELLS, DEFAULT_TERRAIN_SAMPLE_SPACING_MM,
     MAX_TERRAIN_CHUNK_EDGE_CELLS,
 };
-pub use terrain_surface::{
-    TerrainChunkSurfaceAdapter, TerrainSampleIndex, TerrainSurfaceError,
-};
+pub use terrain_surface::{TerrainChunkSurfaceAdapter, TerrainSampleIndex, TerrainSurfaceError};
 pub use time::{
     DurationTicks, Tick, TickDuration, TimeError, TimeSaveStateV1, TimeScale, TimeService,
     UpdateCadence, WorldTime, TIME_SAVE_SCHEMA_V1,
