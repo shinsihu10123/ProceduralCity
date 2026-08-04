@@ -27,8 +27,8 @@ fn large_multi_chunk_pipeline_is_deterministic_and_connected() {
         for x in 0..GRID_EDGE_CHUNKS {
             let chunk = TerrainChunk::generate(generator, TerrainChunkCoord::new(x, z), spec)
                 .expect("soak-test terrain chunk must generate");
-            let fill = DepressionFill::analyse(&chunk)
-                .expect("soak-test depression filling must succeed");
+            let fill =
+                DepressionFill::analyse(&chunk).expect("soak-test depression filling must succeed");
             let hydrology = HydrologyField::analyse_with_fill(&chunk, &fill)
                 .expect("soak-test chunk hydrology must succeed");
             assert_eq!(hydrology.sink_count(), 0);
