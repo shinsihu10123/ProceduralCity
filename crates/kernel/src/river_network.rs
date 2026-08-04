@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fmt};
 
-use crate::{GlobalDrainageTerminal, GlobalHydrologyField, GlobalHydrologyNodeKey};
+use crate::{GlobalHydrologyField, GlobalHydrologyNodeKey};
 
 pub const DEFAULT_RIVER_NETWORK_THRESHOLD: u64 = 64;
 
@@ -268,16 +268,16 @@ fn compute_strahler_orders(
                 continue;
             }
             let order = if sources.is_empty() {
-                1
+                1_u16
             } else {
-                let maximum = sources
+                let maximum: u16 = sources
                     .iter()
                     .map(|source| orders[source])
                     .max()
                     .unwrap_or(1);
                 let maximum_count = sources
                     .iter()
-                    .filter(|source| orders[source] == maximum)
+                    .filter(|source| orders[*source] == maximum)
                     .count();
                 if maximum_count >= 2 {
                     maximum
@@ -358,8 +358,8 @@ impl std::error::Error for RiverNetworkError {}
 mod tests {
     use super::*;
     use crate::{
-        DepressionFill, GlobalHydrologyInput, HydrologyField, TerrainChunk, TerrainChunkCoord,
-        TerrainChunkSpec, TerrainConfig, TerrainGenerator,
+        DepressionFill, GlobalDrainageTerminal, GlobalHydrologyInput, HydrologyField,
+        TerrainChunk, TerrainChunkCoord, TerrainChunkSpec, TerrainConfig, TerrainGenerator,
     };
 
     struct AnalysedChunk {
