@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+mod climate;
 mod depression;
 mod global_hydrology;
 mod hydrology;
@@ -11,6 +12,12 @@ mod terrain;
 mod terrain_analysis;
 mod time;
 
+pub use climate::{
+    ClimateClass, ClimateConfig, ClimateError, ClimateGenerator, ClimateSample,
+    DEFAULT_BASE_PRECIPITATION_MM_PER_YEAR, DEFAULT_EQUATOR_TEMPERATURE_MILLIC,
+    DEFAULT_LAPSE_RATE_MILLIC_PER_KM, DEFAULT_OROGRAPHIC_SAMPLE_DISTANCE_MM,
+    DEFAULT_POLE_DISTANCE_MM, DEFAULT_POLE_TEMPERATURE_MILLIC,
+};
 pub use depression::{DepressionError, DepressionFill};
 pub use global_hydrology::{
     GlobalDrainageTerminal, GlobalHydrologyError, GlobalHydrologyField, GlobalHydrologyInput,
