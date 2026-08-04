@@ -4,8 +4,8 @@ mod space;
 mod time;
 
 pub use space::{
-    CellCoord, CellLocalPosition, RegionCoord, SpaceError, SpatialGrid, WorldBounds,
-    WorldPosition, DEFAULT_CELL_SIZE_MM, DEFAULT_REGION_EDGE_CELLS, MILLIMETERS_PER_METER,
+    CellCoord, CellLocalPosition, RegionCoord, SpaceError, SpatialGrid, WorldBounds, WorldPosition,
+    DEFAULT_CELL_SIZE_MM, DEFAULT_REGION_EDGE_CELLS, MILLIMETERS_PER_METER,
 };
 pub use time::{
     DurationTicks, Tick, TickDuration, TimeError, TimeSaveStateV1, TimeScale, TimeService,
