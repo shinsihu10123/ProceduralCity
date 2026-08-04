@@ -142,31 +142,26 @@ mod tests {
     #[test]
     fn identical_direction_is_face_independent() {
         let generator = SphericalTerrainGenerator::earth_like(42);
-        let positive_x = PlanetSurfacePosition::new(
-            CubeFace::PositiveX,
-            -DIRECTION_Q30_SCALE,
-            0,
-            0,
-        )
-        .expect("surface coordinate is valid")
-        .unit_direction_q30();
-        let positive_z = PlanetSurfacePosition::new(
-            CubeFace::PositiveZ,
-            DIRECTION_Q30_SCALE,
-            0,
-            0,
-        )
-        .expect("surface coordinate is valid")
-        .unit_direction_q30();
+        let positive_x =
+            PlanetSurfacePosition::new(CubeFace::PositiveX, -DIRECTION_Q30_SCALE, 0, 0)
+                .expect("surface coordinate is valid")
+                .unit_direction_q30();
+        let positive_z = PlanetSurfacePosition::new(CubeFace::PositiveZ, DIRECTION_Q30_SCALE, 0, 0)
+            .expect("surface coordinate is valid")
+            .unit_direction_q30();
         assert_eq!(positive_x, positive_z);
-        assert_eq!(generator.height_mm(positive_x), generator.height_mm(positive_z));
+        assert_eq!(
+            generator.height_mm(positive_x),
+            generator.height_mm(positive_z)
+        );
     }
 
     #[test]
     fn seed_changes_the_planet_field() {
-        let direction = PlanetSurfacePosition::new(CubeFace::PositiveY, 123_456_789, -456_789_123, 0)
-            .expect("surface coordinate is valid")
-            .unit_direction_q30();
+        let direction =
+            PlanetSurfacePosition::new(CubeFace::PositiveY, 123_456_789, -456_789_123, 0)
+                .expect("surface coordinate is valid")
+                .unit_direction_q30();
         assert_ne!(
             SphericalTerrainGenerator::earth_like(1).height_mm(direction),
             SphericalTerrainGenerator::earth_like(2).height_mm(direction)
@@ -182,6 +177,11 @@ mod tests {
         let right = PlanetSurfacePosition::new(CubeFace::PositiveZ, 100_100_000, 200_000_000, 0)
             .expect("surface coordinate is valid")
             .unit_direction_q30();
-        assert!(generator.height_mm(left).abs_diff(generator.height_mm(right)) < 500_000);
+        assert!(
+            generator
+                .height_mm(left)
+                .abs_diff(generator.height_mm(right))
+                < 500_000
+        );
     }
 }
