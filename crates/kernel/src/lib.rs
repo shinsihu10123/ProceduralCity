@@ -14,6 +14,7 @@ mod terrain;
 #[allow(clippy::similar_names)]
 mod terrain_analysis;
 mod terrain_surface;
+pub mod tectonics;
 mod time;
 
 pub use climate::{
