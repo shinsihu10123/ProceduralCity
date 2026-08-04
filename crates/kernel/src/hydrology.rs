@@ -320,10 +320,7 @@ mod tests {
     fn accumulation_conserves_local_runoff() {
         let field = analysed_field();
         assert!(field.nodes().iter().all(|node| node.accumulation() >= 1));
-        assert!(field
-            .nodes()
-            .iter()
-            .any(|node| node.accumulation() > 1));
+        assert!(field.nodes().iter().any(|node| node.accumulation() > 1));
     }
 
     #[test]
