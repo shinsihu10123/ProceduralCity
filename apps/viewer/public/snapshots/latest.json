@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "render-snapshot.v1",
+  "source": "kernel",
+  "tick": 10000,
+  "seed": 42,
+  "digest": "40885885fe2db25d",
+  "lodCounts": {
+    "A": 0,
+    "B": 0,
+    "C": 0,
+    "D": 0
+  },
+  "regions": [],
+  "entities": [],
+  "events": []
+}

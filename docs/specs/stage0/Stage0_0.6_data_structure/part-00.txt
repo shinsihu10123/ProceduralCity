@@ -1,0 +1,872 @@
+Stage 0.6 데이터 구조 명세
+
+문서 버전: 0.6.0
+상태: 기준안 확정
+적용 범위: 프로젝트 전체 런타임 상태, 명령, 사건, 저장, 분석, LOD, 스키마
+상위 문서:
+- Stage 0.1 프로젝트 철학 및 시스템 경계 명세
+- Stage 0.2 핵심 원칙 및 강제 규칙 명세
+- Stage 0.3 전체 아키텍처 명세
+- Stage 0.4 개발 규칙 명세
+- Stage 0.5 코드 구조 명세
+
+목적:
+인공 세계의 모든 중요 데이터를 권위 상태, 행위자 인식 상태, 변경안, 사건,
+집계 상태, 저장 상태, 분석 상태로 구분하고, 각 데이터의 필드·수명·소유권·참조·
+버전·직렬화·무결성·LOD 전환 규칙을 정의한다.
+
+────────────────────────────────────────
+1. 기본 데이터 원칙
+────────────────────────────────────────
+
+1.1 단일 권위 상태
+
+동일한 사실을 둘 이상의 모듈이 권위 상태로 중복 소유하지 않는다.
+
+예:
+- 위치와 속도: Physics
+- 체온과 부상: Biology
+- 기억과 믿음: Cognition
+- 신뢰와 의무: Society
+- 사건 기록: EventLedger
+
+다른 모듈이 동일 사실을 필요로 하면 Query, Snapshot, Event 또는 파생 캐시를 사용한다.
+
+1.2 실제 세계와 인식 세계의 분리
+
+다음 두 상태는 명확히 분리한다.
+
+World Truth
+- 시뮬레이션 내부의 실제 상태
+
+Epistemic State
+- 개체가 관찰·기억·추론·전달을 통해 믿는 상태
+
+행위자는 World Truth를 직접 사용하지 않는다.
+
+1.3 권위 상태와 파생 상태의 분리
+
+Authoritative State
+- 세계 진행을 결정
+- 저장 필수
+- 소유 모듈만 변경
+
+Derived State
+- 권위 상태에서 다시 계산 가능
+- 저장 선택
+- 캐시 폐기 가능
+
+Presentation State
+- 렌더링·UI용
+- 시뮬레이션 판단에 사용 금지
+
+1.4 모든 상태 변경의 원인
+
+권위 상태 변경은 다음 중 하나를 원인으로 가져야 한다.
+
+- Command
+- 자연 과정
+- 선행 Event
+- 시스템 초기화
+- 기록된 Intervention
+- 문서화된 수치 오차 보정
+
+1.5 데이터 지향성
+
+대규모 개체 처리를 위해 데이터는 객체 그래프보다 연속 배열, 컴포넌트 저장소,
+지역별 파티션, 안정 ID와 인덱스를 우선 사용한다.
+
+단, 외부 계약과 저장 형식은 내부 메모리 배치에 종속되지 않는다.
+
+1.6 스키마 우선
+
+Command, Event, Snapshot, Save, Config는 코드보다 독립된 버전 스키마를 가진다.
+
+1.7 무한 실행 대응
+
+다음 데이터는 무한히 증가할 수 있으므로 수명과 압축 정책을 명시한다.
+
+- 사건
+- 기억
+- 관계 이력
+- 경로 이력
+- 지식 계보
+- 성능 기록
+- 저장 스냅샷
+
+────────────────────────────────────────
+2. 데이터 분류 체계
+────────────────────────────────────────
+
+A. Authoritative State
+세계의 실제 진행을 결정한다.
+
+예:
+- TerrainState
+- BodyState
+- PhysicalBodyState
+- BeliefState
+- RelationshipState
+- KnowledgeState
+
+B. Epistemic State
+행위자와 집단이 믿는 세계 모델이다.
+
+예:
+- Observation
+- MemoryRecord
+- BeliefRecord
+- RumorRecord
+- ConfidenceEstimate
+
+C. Intent & Command
+아직 발생하지 않은 행동 시도다.
+
+예:
+- MoveIntent
+- ConsumeIntent
+- AttachIntent
+- CommunicateIntent
+
+D. Resolution Data
+판정 과정의 중간 결과다.
+
+예:
+- ValidationResult
+- ResourceReservation
+- StateDelta
+- CommitBatch
+
+E. Event Data
+이미 발생한 사실과 인과관계를 기록한다.
+
+예:
+- MovementCompleted
+- ConsumptionFailed
+- StructureCollapsed
+- DeathOccurred
+
+F. Aggregate State
+LOD 강등 지역의 보존 상태다.
+
+예:
+- RegionAggregateState
+- PopulationCohort
+- ResourceAccount
+- KnowledgeDistribution
+
+G. Snapshot & Read Model
+렌더링·UI·분석용 읽기 데이터다.
+
+예:
+- RenderSnapshot
+- EntityView
+- RegionSummary
+- CausalGraphView
+
+H. Persistent Data
+저장·복원을 위한 직렬화 데이터다.
+
+예:
+- WorldSnapshotManifest
+- ModuleStateSegment
+- EventSegment
+- RandomStateManifest
+
+I. Configuration Data
+세계 규칙과 실험 조건이다.
+
+J. Diagnostic Data
+성능·불변 조건·디버그 추적 데이터다.
+
+────────────────────────────────────────
+3. 공통 원시 타입
+────────────────────────────────────────
+
+3.1 Tick
+
+type Tick = unsigned 64-bit integer
+
+규칙:
+- 0은 초기 상태
+- 매 시뮬레이션 스텝마다 1 증가
+- 오버플로는 실질적으로 발생하지 않도록 충분한 범위 사용
+- 저장과 Event의 기준 시간
+
+3.2 SimulationDuration
+
+fields:
+- ticks: unsigned 64-bit
+
+선택적 읽기 표현:
+- seconds
+- minutes
+- days
+- years
+
+읽기 표현은 설정된 tick_duration을 사용해 변환한다.
+
+3.3 WorldTime
+
+fields:
+- tick
+- elapsed_duration
+- calendar_id
+- calendar_position
+
+calendar_position은 표현용이며 권위 기준은 tick이다.
+
+3.4 Strong ID
+
+공통 구조:
+
+StrongId:
+- value: unsigned 64-bit 또는 128-bit
+- generation: unsigned integer
+- type_tag: 컴파일 타임 또는 스키마 타입으로 분리
+
+필수 ID:
+- WorldId
+- ModuleId
+- EntityId
+- ComponentId
+- RegionId
+- CellId
+- CommandId
+- EventId
+- ObservationId
+- MemoryId
+- BeliefId
+- RelationshipId
+- KnowledgeId
+- StructureId
+- SaveId
+- SnapshotId
+- ExperimentId
+- InterventionId
+- RandomStreamId
+
+규칙:
+- ID와 배열 인덱스를 동일하게 취급하지 않음
+- 폐기된 ID를 즉시 재사용하지 않음
+- 재사용 시 generation 증가
+- 외부 저장에는 안정 ID 사용
+- 내부 캐시는 ID→index 매핑 사용 가능
+
+3.5 SchemaVersion
+
+fields:
+- major
+- minor
+- patch
+- schema_hash
+
+3.6 StableTypeId
+
+문자열 또는 명시적 정수.
+
+예:
+- "physics.body.v1"
+- "event.movement.completed.v1"
+
+코드 enum 순서에 의존하지 않는다.
+
+3.7 HashDigest
+
+fields:
+- algorithm
+- bytes
+
+용도:
+- 결정론 digest
+- 저장 체크섬
+- 설정 hash
+- before/after state digest
+
+────────────────────────────────────────
+4. 단위 타입
+────────────────────────────────────────
+
+필수 기본 단위:
+
+- DistanceM
+- AreaM2
+- VolumeM3
+- MassKg
+- TimeSeconds
+- DurationTicks
+- VelocityMps
+- AccelerationMps2
+- ForceN
+- EnergyJ
+- PowerW
+- TemperatureK
+- PressurePa
+- DensityKgM3
+- MoistureRatio
+- Concentration
+- Probability01
+- Confidence01
+- HealthRatio01
+- DamageJ 또는 도메인별 손상량
+- CurrencyQuantity는 경제 단계 이후 별도 단위
+
+규칙:
+- 단위 없는 float를 물리량으로 사용하지 않음
+- 비율은 의미를 이름으로 구분
+- Probability01과 Confidence01을 같은 타입으로 혼용하지 않음
+- 섭씨는 입력·표시용이며 내부 열역학은 Kelvin 권장
+- 각 단위 타입은 NaN·Infinity·유효 범위를 검증
+
+────────────────────────────────────────
+5. 공간 데이터 구조
+────────────────────────────────────────
+
+5.1 WorldPosition
+
+fields:
+- x: DistanceM
+- y: DistanceM
+- z: DistanceM
+- coordinate_space_id
+
+규칙:
+- 하나의 연속 세계 좌표계를 유지
+- 내부 지역 분할은 구현 세부
+- 지역 경계를 넘어도 위치 연속성 유지
+
+5.2 WorldVector
+
+fields:
+- x
+- y
+- z
+
+5.3 Orientation
+
+권장:
+- normalized quaternion 또는 명시된 회전 표현
+
+5.4 Bounds3
+
+fields:
+- min_position
+- max_position
+
+5.5 RegionAddress
+
+fields:
+- region_id
+- region_coordinate
+- parent_region_id optional
+- lod_level
+- bounds
+- neighbor_region_ids
+
+5.6 CellAddress
+
+fields:
+- region_id
+- local_cell_coordinate
+- cell_id
+
+5.7 SpatialReference
+
+공통 공간 참조:
+
+SpatialReference:
+- position optional
+- bounds optional
+- region_id
+- cell_id optional
+- frame_id optional
+
+Event, Command, Observation에서 공통 사용한다.
+
+5.8 PathReference
+
+fields:
+- path_id
+- node_ids 또는 compressed_polyline
+- created_tick
+- owner_id optional
+- confidence optional
+- source
+
+실제 경로와 기억 속 경로는 별도 타입으로 구분한다.
+
+────────────────────────────────────────
+6. EntityRegistry
+────────────────────────────────────────
+
+6.1 EntityRecord
+
+fields:
+- entity_id
+- entity_kind
+- generation
+- lifecycle_state
+- created_tick
+- destroyed_tick optional
+- owner_module_id
+- component_type_ids
+- region_id
+- persistent
+- important_entity
+- source_event_id
+- tombstone_id optional
+
+entity_kind는 분석적 완성 분류가 아니라 원시 실행 종류다.
+
+허용 예:
+- physical_object
+- living_organism
+- structural_part
+- plant_cluster
+- abstract_record
+
+주의:
+- "city", "nation", "market"을 entity_kind로 자동 생성하지 않음
+
+6.2 LifecycleState
+
+값:
+- pending_creation
+- active
+- dormant
+- pending_destruction
+- destroyed
+- archived
+
+6.3 EntityTombstone
+
+fields:
+- entity_id
+- entity_kind
+- destroyed_tick
+- destruction_event_id
+- last_region_id
+- replacement_entity_ids
+- minimal_lineage_metadata
+
+목적:
+과거 Event와 기억이 파괴된 개체를 계속 참조할 수 있게 한다.
+
+6.4 EntityReference
+
+fields:
+- entity_id
+- expected_generation
+- expected_kind optional
+
+참조 시 generation 검증.
+
+────────────────────────────────────────
+7. ModuleDescriptor 데이터
+────────────────────────────────────────
+
+ModuleDescriptor:
+- module_id
+- module_name
+- code_version
+- schema_version
+- dependencies
+- owned_state_type_ids
+- query_type_ids
+- command_type_ids
+- event_type_ids
+- snapshot_type_ids
+- registered_phases
+- update_frequency
+- serialization_version
+- invariant_ids
+- diagnostic_metric_ids
+
+부트스트랩 시 검증:
+- 중복 상태 소유권
+- 누락 의존성
+- 순환 의존성
+- 미등록 Command/Event
+- 스키마 충돌
+
+────────────────────────────────────────
+8. 권위 상태 공통 Envelope
+────────────────────────────────────────
+
+AuthoritativeStateEnvelope:
+- state_type_id
+- state_instance_id
+- owner_module_id
+- entity_id optional
+- region_id optional
+- revision
+- created_tick
+- last_modified_tick
+- schema_version
+- payload
+- deterministic_digest
+
+규칙:
+- revision은 Commit마다 증가
+- 외부 모듈은 payload 내부를 직접 수정하지 않음
+- 저장 시 schema_version 포함
+- digest는 선택적이지만 결정론 검사에 권장
+
+────────────────────────────────────────
+9. Command 데이터 구조
+────────────────────────────────────────
+
+9.1 CommandEnvelope
+
+fields:
+- command_id
+- command_type_id
+- schema_version
+- issuer_id
+- issued_tick
+- earliest_start_tick
+- expiry_tick optional
+- priority_class
+- target_refs
+- spatial_reference optional
+- source_observation_ids
+- source_memory_ids
+- source_event_ids
+- requested_resources
+- estimated_duration
+- intervention_id optional
+- payload
+- deterministic_order_key
+- trace_flags
+
+9.2 PriorityClass
+
+예:
+- reflex
+- emergency
+- physiological
+- personal_goal
+- social_request
+- collective
+- experiment
+
+priority는 성공 보장이 아니다.
+충돌 해결 입력 중 하나일 뿐이다.
+
+9.3 RequestedResource
+
+fields:
+- resource_ref
+- quantity
+- exclusive_or_shared
+- reservation_duration
+- acceptable_substitutes
+
+9.4 CommandTargetRef
+
+fields:
+- entity_ref optional
+- spatial_ref optional
+- state_ref optional
+- relationship_ref optional
+- knowledge_ref optional
+
+9.5 Command 상태
+
+CommandLifecycle:
+- queued
+- validating
+- reserved
+- executing
+- succeeded
+- partially_succeeded
+- failed
+- interrupted
+- expired
+- cancelled
+
+9.6 실패 코드
+
+FailureCode:
+- invalid_format
+- invalid_reference
+- unauthorized
+- unknown_to_actor
+- out_of_range
+- insufficient_energy
+- insufficient_resource
+- resource_conflict
+- physically_blocked
+- target_gone
+- interrupted
+- structurally_invalid
+- biological_incapability
+- timeout
+- invariant_violation
+- external_intervention_rejected
+
+9.7 Command 예시
+
+MoveIntent payload:
+- destination_estimate
+- desired_speed
+- route_memory_id optional
+- avoidance_preferences
+- stop_conditions
+
+ConsumeIntent payload:
+- target_entity_id
+- desired_quantity
+- expected_effect_belief_id
+- acceptable_risk
+
+AttachIntent payload:
+- part_a_id
+- part_b_id
+- attachment_points
+- method_knowledge_id optional
+- intended_function optional
+
+────────────────────────────────────────
+10. Validation과 Reservation
+────────────────────────────────────────
+
+10.1 ValidationResult
+
+fields:
+- command_id
+- validation_stage
+- valid
+- failure_codes
+- warnings
+- checked_revisions
+- required_reservations
+- estimated_cost
+- evaluated_tick
+
+10.2 StateRevisionCheck
+
+fields:
+- state_instance_id
+- expected_revision
+- actual_revision
+
+10.3 ResourceReservation
+
+fields:
+- reservation_id
+- command_id
+- resource_owner_id
+- resource_ref
+- reserved_quantity
+- created_tick
+- expires_tick
+- reservation_state
+
+reservation_state:
+- active
+- consumed
+- released
+- expired
+- invalidated
+
+10.4 Reservation 규칙
+
+- 예약은 실제 소비가 아님
+- Commit 성공 시 소비 또는 이전
+- 실패·중단 시 해제
+- 동일 자원 중복 예약 방지
+- 예약도 저장이 필요한 장기 Command라면 영속화
+
+────────────────────────────────────────
+11. StateDelta
+────────────────────────────────────────
+
+11.1 StateDelta 공통 구조
+
+StateDelta:
+- delta_id
+- command_id optional
+- cause_event_ids
+- target_state_ref
+- owner_module_id
+- expected_revision
+- operation_type
+- before_value_digest
+- after_value_preview
+- resource_inputs
+- resource_outputs
+- random_trace
+- validation_result_id
+- reversible
+- rollback_payload optional
+- generated_tick
+- deterministic_order_key
+
+11.2 OperationType
+
+- create
+- update
+- increment
+- decrement
+- attach
+- detach
+- transfer
+- destroy
+- archive
+- replace
+- mark
+
+11.3 ValuePatch
+
+언어 독립 추상 표현:
+- field_path
+- previous_value
+- next_value
+- unit
+- clamp_policy optional
+- tolerance optional
+
+11.4 ResourceFlowDelta
+
+fields:
+- source_ref
+- destination_ref
+- material_or_resource_type
+- quantity_before
+- quantity_transferred
+- quantity_lost
+- loss_cause
+- quantity_after
+- conservation_tolerance
+
+11.5 CommitBatch
+
+fields:
+- commit_batch_id
+- tick
+- phase
+- deltas
+- involved_module_ids
+- invariant_checks
+- expected_global_digest optional
+- atomicity_scope
+- commit_order_key
+
+atomicity_scope:
+- single_state
+- single_entity
+- single_region
+- cross_module_transaction
+
+────────────────────────────────────────
+12. Commit 결과
+────────────────────────────────────────
+
+CommitResult:
+- commit_batch_id
+- committed
+- commit_tick
+- applied_delta_ids
+- rejected_delta_ids
+- failure_codes
+- generated_event_ids
+- before_global_digest optional
+- after_global_digest optional
+- invariant_results
+- rollback_performed
+- duration_metrics
+
+규칙:
+- 부분 적용이 허용되지 않는 batch는 전부 성공 또는 전부 실패
+- 부분 성공은 Resolution 단계에서 별도 Delta 묶음으로 명시
+- Commit 실패 자체도 시스템 진단 로그에 기록
+
+────────────────────────────────────────
+13. Event 데이터 구조
+────────────────────────────────────────
+
+13.1 EventEnvelope
+
+fields:
+- event_id
+- event_type_id
+- schema_version
+- tick
+- sequence_in_tick
+- severity
+- retention_class
+- actor_ids
+- target_ids
+- spatial_reference
+- command_id optional
+- parent_event_ids
+- cause_event_ids
+- consequence_hint_ids optional
+- outcome_code
+- before_digest
+- after_digest
+- resource_deltas
+- random_trace
+- intervention_id optional
+- payload
+- tags
+- deterministic_order_key
+
+13.2 Severity
+
+- trace
+- info
+- warning
+- critical
+- historical
+
+13.3 RetentionClass
+
+- transient
+- short_term
+- significant
+- historical
+
+13.4 Event 관계
+
+parent_event_ids:
+하나의 복합 사건 내부 계층.
+
+cause_event_ids:
+인과적으로 선행한 사건.
+
+consequence_hint_ids:
+후속 색인용 선택 필드.
+권위 인과관계는 Event Store의 역방향 색인으로 생성할 수 있다.
+
+13.5 Event correction
+
+EventCorrection:
+- correction_event_id
+- corrected_event_id
+- correction_reason
+- replacement_fields
+- issued_tick
+- issuer_system
+
+원본 Event를 덮어쓰지 않는다.
+
+13.6 EventSegment
+
+fields:
+- segment_id
+- world_id
+- start_tick
+- end_tick
+- first_event_id
+- last_event_id
+- event_count
+- schema_versions
+- compression
+- checksum
+- previous_segment_hash
+- events
+
+previous_segment_hash를 사용하면 원장 연속성 검증이 가능하다.
+

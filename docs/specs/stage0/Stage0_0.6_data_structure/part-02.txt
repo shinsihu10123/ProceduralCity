@@ -1,0 +1,779 @@
+- participant_population
+- frequency
+- contexts
+- social_expectation
+- sanctions
+- origin_event_refs
+- persistence_duration
+
+29.3 NarrativeRecord
+
+fields:
+- narrative_id
+- storyteller_refs
+- subject_event_refs
+- content
+- interpretation
+- moral_or_value_links
+- transmission_lineage
+- distortion_state
+- audience_refs
+
+────────────────────────────────────────
+30. 전쟁 데이터
+────────────────────────────────────────
+
+30.1 RecruitmentState
+
+fields:
+- recruitment_id
+- organizer_refs
+- target_population
+- requested_role_patterns
+- incentives
+- coercion
+- accepted_entities
+- rejected_entities
+- created_tick
+- status
+
+30.2 OperationPlan
+
+fields:
+- operation_id
+- planner_refs
+- objective
+- participant_refs
+- route_refs
+- supply_plan_ref
+- timing
+- contingencies
+- intelligence_belief_refs
+- status
+
+30.3 SupplyPlan
+
+fields:
+- supply_plan_id
+- supported_operation_id
+- required_resources
+- source_locations
+- transfer_routes
+- scheduled_transfers
+- expected_losses
+- current_status
+
+전투 피해 자체는 Physics와 Biology Event로 기록한다.
+
+────────────────────────────────────────
+31. LOD 데이터 구조
+────────────────────────────────────────
+
+31.1 LodLevel
+
+- A_DETAIL
+- B_LOCAL_AGGREGATE
+- C_REGIONAL_AGGREGATE
+- D_DORMANT
+
+31.2 RegionLodState
+
+fields:
+- region_id
+- current_lod
+- previous_lod
+- last_transition_tick
+- transition_reason
+- detail_budget
+- tracked_entity_ids
+- instability_score
+- event_density
+- observer_interest
+- reconstruction_seed
+- aggregate_state_ref
+- detail_state_refs
+
+31.3 RegionAggregateState
+
+fields:
+- aggregate_id
+- region_id
+- covered_tick_range
+- population_cohorts
+- resource_accounts
+- energy_accounts
+- structure_summaries
+- relationship_distributions
+- knowledge_distributions
+- movement_flows
+- production_consumption_flows
+- risk_states
+- important_entity_refs
+- unresolved_event_refs
+- reconstruction_seed
+- approximation_error_bounds
+- source_digest
+
+31.4 PopulationCohort
+
+fields:
+- cohort_id
+- selection_criteria
+- count
+- age_distribution
+- health_distribution
+- genome_distribution
+- skill_distribution
+- belief_distribution
+- relationship_summary
+- location_distribution
+
+31.5 ResourceAccount
+
+fields:
+- resource_type_id
+- opening_quantity
+- generated_quantity
+- imported_quantity
+- consumed_quantity
+- exported_quantity
+- lost_quantity
+- closing_quantity
+- tolerance
+
+회계식:
+opening + generated + imported
+- consumed - exported - lost
+= closing ± tolerance
+
+31.6 StructureSummary
+
+fields:
+- structure_cluster_id
+- part_count
+- material_totals
+- integrity_distribution
+- functional_use_distribution
+- spatial_extent
+- important_part_refs
+
+31.7 KnowledgeDistribution
+
+fields:
+- knowledge_pattern_id
+- holder_count
+- confidence_distribution
+- transmission_rate
+- distortion_rate
+- loss_risk
+- important_lineage_refs
+
+31.8 DeaggregationPlan
+
+fields:
+- region_id
+- source_aggregate_id
+- target_lod
+- reconstruction_seed
+- entities_to_restore_exactly
+- cohorts_to_instantiate
+- resource_distribution_plan
+- relationship_graph_plan
+- knowledge_assignment_plan
+- validation_targets
+- expected_error_bounds
+
+31.9 LOD 전환 검증
+
+필수 비교:
+- 인구
+- 자원
+- 총 질량 근사
+- 에너지 계정
+- 중요 개체
+- 주요 관계
+- 주요 지식
+- 구조물 핵심 상태
+- 인과 사건 링크
+
+────────────────────────────────────────
+32. Snapshot 데이터
+────────────────────────────────────────
+
+32.1 Snapshot 공통 규칙
+
+Snapshot은 권위 상태가 아니다.
+특정 틱의 읽기 전용 표현이다.
+
+32.2 SnapshotEnvelope
+
+fields:
+- snapshot_id
+- snapshot_type_id
+- world_id
+- tick
+- generated_tick
+- source_state_revisions
+- schema_version
+- region_scope
+- entity_scope
+- payload
+- digest
+
+32.3 RenderSnapshot
+
+fields:
+- tick
+- camera_scope optional
+- visible_regions
+- render_entities
+- terrain_mesh_refs
+- water_surface_refs
+- effect_state_refs
+- interpolation_metadata
+- lod_map
+- event_markers
+
+32.4 RenderEntity
+
+fields:
+- entity_id
+- presentation_type_hint
+- position
+- orientation
+- scale
+- visible_state
+- material_hint
+- animation_state_hint
+- damage_visual_state
+- selection_metadata
+
+presentation_type_hint는 권위 도메인 분류가 아니다.
+
+32.5 EntityView
+
+fields:
+- entity_id
+- tick
+- basic_identity
+- location
+- physical_summary
+- biological_summary
+- current_command_summary
+- needs_summary
+- memory_summary
+- relationship_summary
+- event_links
+- lod
+- data_precision
+
+32.6 RegionSummary
+
+fields:
+- region_id
+- tick
+- lod
+- bounds
+- population_estimate
+- resource_summary
+- environmental_summary
+- structure_summary
+- activity_summary
+- major_events
+- approximation_error
+
+32.7 CausalGraphView
+
+fields:
+- root_event_id
+- direction
+- nodes
+- edges
+- max_depth
+- filters
+- truncated
+- unresolved_links
+
+────────────────────────────────────────
+33. 저장 데이터
+────────────────────────────────────────
+
+33.1 WorldSaveManifest
+
+fields:
+- save_id
+- world_id
+- created_real_time
+- world_tick
+- world_time
+- code_build_id
+- project_version
+- configuration_hash
+- root_schema_version
+- module_manifests
+- random_state_manifest_ref
+- entity_registry_segment_ref
+- world_snapshot_segment_refs
+- event_segment_refs
+- intervention_segment_refs
+- previous_save_id optional
+- checksum_manifest_ref
+- compression
+- notes optional
+
+33.2 ModuleStateManifest
+
+fields:
+- module_id
+- module_version
+- schema_version
+- state_segment_refs
+- record_count
+- state_digest
+- migration_history
+
+33.3 StateSegment
+
+fields:
+- segment_id
+- module_id
+- state_type_id
+- region_scope optional
+- entity_id_range optional
+- tick
+- record_count
+- compression
+- checksum
+- payload
+
+33.4 RandomStateManifest
+
+fields:
+- world_seed
+- stream_records
+- derivation_policy_version
+- global_draw_digest
+
+RandomStreamRecord:
+- stream_id
+- owner_module_id
+- scope_ref
+- state
+- draw_count
+- last_used_tick
+
+33.5 ChecksumManifest
+
+fields:
+- manifest_checksum
+- segment_checksums
+- algorithm
+- generated_time
+
+33.6 SaveCompatibility
+
+CompatibilityResult:
+- compatible
+- migration_required
+- source_version
+- target_version
+- incompatible_modules
+- missing_migrations
+- warnings
+
+────────────────────────────────────────
+34. Intervention 데이터
+────────────────────────────────────────
+
+InterventionRecord:
+- intervention_id
+- experiment_id optional
+- actor_identity
+- requested_real_time
+- requested_world_tick
+- intervention_type
+- target_refs
+- before_digest
+- requested_change
+- validation_result
+- resulting_command_ids
+- resulting_event_ids
+- after_digest
+- purpose
+- natural_event_false
+- status
+
+규칙:
+- 자연 사건과 데이터 수준에서 구분
+- 직접 상태 수정 금지
+- Command 경로 사용
+- 실험 재현을 위해 저장
+
+────────────────────────────────────────
+35. Configuration 데이터
+────────────────────────────────────────
+
+35.1 ConfigurationManifest
+
+fields:
+- configuration_id
+- configuration_version
+- schema_version
+- base_configuration_ref
+- override_layers
+- resolved_values
+- resolved_hash
+- created_time
+- author
+- purpose
+
+35.2 WorldGenerationConfig
+
+fields:
+- world_seed
+- world_extent
+- coordinate_system
+- region_size
+- cell_resolution
+- terrain_generation_parameters
+- climate_initialization_parameters
+- water_initialization_parameters
+- resource_distribution_parameters
+- initial_entity_parameters
+
+35.3 RuntimeConfig
+
+fields:
+- tick_duration
+- update_frequencies
+- thread_count
+- deterministic_mode
+- event_retention
+- snapshot_interval
+- save_interval
+- lod_policies
+- diagnostic_levels
+
+35.4 구성 규칙
+
+- 실행 시 최종 resolved configuration 저장
+- override 순서 기록
+- 구성 hash를 Event와 Save에 연결
+- 실험 변경 변수 명시
+- 코드 기본값과 스키마 기본값 중복 금지
+
+────────────────────────────────────────
+36. 진단 데이터
+────────────────────────────────────────
+
+36.1 SystemMetricSample
+
+fields:
+- metric_id
+- system_id
+- tick
+- region_id optional
+- entity_count
+- invocation_count
+- duration_real_ns
+- allocations_bytes
+- events_generated
+- cache_hits
+- cache_misses
+- queue_depth
+- error_count
+
+36.2 TickTrace
+
+fields:
+- tick
+- phase_traces
+- global_digest
+- command_count
+- delta_count
+- event_count
+- snapshot_count
+- invariant_failures
+
+36.3 InvariantResult
+
+fields:
+- invariant_id
+- tick
+- module_id
+- scope_ref
+- passed
+- severity
+- measured_values
+- expected_condition
+- related_state_refs
+- related_event_ids
+
+36.4 DeterminismDigest
+
+fields:
+- tick
+- module_digests
+- entity_registry_digest
+- event_ledger_digest
+- global_digest
+- serialization_policy_version
+
+────────────────────────────────────────
+37. 색인 구조
+────────────────────────────────────────
+
+필수 런타임 색인:
+
+- EntityId → EntityRecord
+- EntityId → Component locations
+- RegionId → active entity IDs
+- CellId → spatial occupants
+- EventId → Event record
+- CommandId → Command lifecycle
+- EntityId → recent Event IDs
+- RegionId → Event ranges
+- cause_event_id → consequence Event IDs
+- owner_entity_id → Memory IDs
+- owner_entity_id → Belief IDs
+- entity pair → RelationshipId
+- KnowledgeId → lineage edges
+- StateTypeId → owner module
+- SaveId → manifest
+
+규칙:
+- 색인은 권위 데이터가 아님
+- 재구축 가능해야 함
+- 저장 선택 가능
+- 저장된 색인은 복원 후 검증
+- 결정론에 영향을 주는 순회는 안정 정렬 사용
+
+────────────────────────────────────────
+38. 참조 무결성
+────────────────────────────────────────
+
+38.1 참조 종류
+
+Strong Reference
+- 대상이 반드시 존재해야 함
+- 없으면 불변 조건 위반
+
+Weak Historical Reference
+- 대상이 파괴되어도 Tombstone으로 유지
+
+Optional Reference
+- 없음이 정상 상태
+
+External Reference
+- Asset, file, external database
+- adapter를 통해 검증
+
+38.2 삭제 정책
+
+즉시 물리 삭제하지 않고 다음 순서를 권장한다.
+
+active
+→ pending_destruction
+→ destroyed
+→ tombstone
+→ archived
+
+38.3 순환 참조
+
+메모리·관계·인과 그래프에서 순환은 의미상 가능하다.
+직렬화는 ID 기반으로 수행해 객체 포인터 순환을 피한다.
+
+────────────────────────────────────────
+39. 불변성과 변경 가능성
+────────────────────────────────────────
+
+불변 데이터:
+- Event
+- 과거 Snapshot
+- 저장 Manifest
+- Command 원본
+- Intervention 원본
+- ID
+- 스키마 버전
+
+변경 가능한 권위 상태:
+- 현재 PhysicalBodyState
+- BodyState
+- BeliefState
+- RelationshipState
+- TerrainState
+
+변경 방식:
+- 외부 직접 수정 금지
+- StateDelta를 통해 revision 증가
+- 필요 시 copy-on-write
+
+────────────────────────────────────────
+40. Null과 Optional 규칙
+────────────────────────────────────────
+
+- 의미 있는 부재는 Optional로 표현
+- 0, 빈 문자열, 음수를 부재 표현으로 사용하지 않음
+- 필수 필드는 null 금지
+- 알 수 없음과 존재하지 않음을 구분
+
+예:
+unknown temperature
+≠ no temperature field
+≠ zero temperature
+
+Epistemic 값은 다음을 구분한다.
+- unknown
+- uncertain
+- contradictory
+- not_applicable
+- known
+
+────────────────────────────────────────
+41. 수치 정확도와 허용 오차
+────────────────────────────────────────
+
+각 물리·집계 필드는 다음을 문서화한다.
+
+- 저장 정밀도
+- 계산 정밀도
+- 허용 범위
+- 보존 허용 오차
+- clamp 정책
+- overflow 정책
+- NaN 정책
+
+ConservationTolerance:
+- absolute_tolerance
+- relative_tolerance
+- accumulated_tolerance_limit
+- correction_policy
+- correction_event_required
+
+수치 보정은 조용히 수행하지 않는다.
+
+────────────────────────────────────────
+42. 결정론적 직렬화
+────────────────────────────────────────
+
+규칙:
+- 맵·집합은 안정 키 순서로 직렬화
+- 부동소수점 직렬화 형식 고정
+- timezone과 locale 영향 금지
+- 압축 전 payload digest 계산
+- 동일 상태 → 동일 canonical bytes
+- 스키마 필드 순서 고정 또는 canonical field ordering 사용
+- 선택 필드의 생략 규칙 고정
+
+CanonicalSerializationMetadata:
+- format_id
+- format_version
+- ordering_policy
+- float_policy
+- endian_policy
+- text_encoding
+
+────────────────────────────────────────
+43. 스키마 호환성
+────────────────────────────────────────
+
+변경 종류:
+
+Compatible Additive
+- optional 필드 추가
+- 새 Event 타입 추가
+- 새 enum 안정값 추가
+
+Migration Required
+- 필드 의미 변경
+- 단위 변경
+- 타입 변경
+- 상태 소유권 변경
+- 필수 필드 추가
+
+Breaking
+- ID 의미 변경
+- 과거 Event 해석 불가
+- 인과 링크 제거
+- 저장 복원 불가
+
+규칙:
+- 모든 스키마 변경은 변경 종류 표시
+- Migration Required 이상은 마이그레이션 제공
+- 원본 저장 보존
+- 변환 후 digest·불변 조건 검사
+- 마이그레이션도 버전과 로그 기록
+
+────────────────────────────────────────
+44. 데이터 보존과 압축
+────────────────────────────────────────
+
+44.1 Event
+
+Trace:
+- 짧은 기간 또는 개발 실행만
+
+Detail:
+- 최근 기간 보존
+- 압축 가능
+
+Significant:
+- 장기 보존
+
+Historical:
+- 영구 또는 매우 장기 보존
+
+44.2 Memory
+
+- 중요도 낮은 개별 기억은 요약 가능
+- 절차 기억과 트라우마는 별도 정책
+- 사건 링크가 있는 중요 기억은 보존
+
+44.3 Relationship
+
+- 세부 Interaction은 압축 가능
+- 현재 신뢰·의무·원한과 주요 원인 사건 보존
+
+44.4 Knowledge
+
+- 전승 계보의 중요 분기 보존
+- 동일 내용 중복은 내부 dedup 가능
+- 소유자별 신뢰도는 별도 유지
+
+44.5 Snapshot
+
+- 체크포인트 간격 설정
+- 오래된 세부 Snapshot은 삭제 가능
+- 해당 시점 Event와 장기 Snapshot 정책 조합
+
+────────────────────────────────────────
+45. 데이터 소유권 표
+────────────────────────────────────────
+
+데이터                         권위 소유자        다른 모듈 접근
+WorldTime                      Kernel             Query/Snapshot
+EntityRecord                   Kernel             Query
+RandomStreamState              Kernel             Port/Save
+TerrainCellState               World              Query/Snapshot
+ClimateCellState               World              Query/Snapshot
+PhysicalBodyState              Physics            Query/Event
+StructuralConnection           Physics            Query/Event
+ResourceDepositState           Ecology            Query/Event
+BodyState                      Biology            Query/Event
+ObservationRecord              Cognition          Query 제한
+MemoryRecord                   Cognition          소유자 중심 Query
+BeliefRecord                   Cognition          소유자 중심 Query
+GoalRecord                     Cognition          Snapshot 요약
+RelationshipState              Society            Query/Event
+KnowledgeClaim                 Knowledge          Query/Event
+DesignProposal                 Construction       Query/Event
+OwnershipClaim                 Economy            Query/Event
+AuthorityClaim                 Politics           Query/Event
+SymbolRecord                   Culture            Query/Event
+OperationPlan                  Warfare            제한 Query
+EventEnvelope                  EventLedger         Read-only
+RegionAggregateState           Region/소유 모듈    Query/Snapshot
+RenderSnapshot                 Observation         Read-only
+WorldSaveManifest              Persistence         Read-only
+
+────────────────────────────────────────
