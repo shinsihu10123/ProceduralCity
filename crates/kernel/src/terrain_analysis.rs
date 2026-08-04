@@ -6,7 +6,6 @@ pub const DEFAULT_TERRAIN_CHUNK_EDGE_CELLS: u32 = 64;
 pub const DEFAULT_TERRAIN_SAMPLE_SPACING_MM: u32 = 1_000;
 pub const MAX_TERRAIN_CHUNK_EDGE_CELLS: u32 = 1_024;
 
-/// Horizontal coordinate of a deterministic terrain chunk.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct TerrainChunkCoord {
     x: i64,
@@ -30,7 +29,6 @@ impl TerrainChunkCoord {
     }
 }
 
-/// Sampling contract for one square terrain chunk.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TerrainChunkSpec {
     edge_cells: NonZeroU32,
@@ -38,13 +36,10 @@ pub struct TerrainChunkSpec {
 }
 
 impl TerrainChunkSpec {
-    /// Creates a chunk sampling specification.
-    ///
     /// # Errors
     ///
-    /// Returns [`TerrainAnalysisError::InvalidChunkEdge`] when `edge_cells` is
-    /// zero or exceeds [`MAX_TERRAIN_CHUNK_EDGE_CELLS`], and
-    /// [`TerrainAnalysisError::InvalidSampleSpacing`] when spacing is zero.
+    /// Returns [`TerrainAnalysisError::InvalidChunkEdge`] for an unsupported
+    /// edge and [`TerrainAnalysisError::InvalidSampleSpacing`] for zero spacing.
     pub const fn new(
         edge_cells: u32,
         sample_spacing_mm: u32,
@@ -78,6 +73,10 @@ impl TerrainChunkSpec {
     pub const fn edge_samples(self) -> u32 {
         self.edge_cells.get() + 1
     }
+
+    fn chunk_span_mm(self) -> i64 {
+        i64::from(self.edge_cells()) * i64::from(self.sample_spacing_mm())
+    }
 }
 
 impl Default for TerrainChunkSpec {
@@ -90,7 +89,6 @@ impl Default for TerrainChunkSpec {
     }
 }
 
-/// Materialized terrain samples for a square chunk, including shared borders.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TerrainChunk {
     coord: TerrainChunkCoord,
@@ -101,58 +99,40 @@ pub struct TerrainChunk {
 }
 
 impl TerrainChunk {
-    /// Generates a deterministic chunk from world-coordinate samples.
-    ///
     /// # Errors
     ///
-    /// Returns [`TerrainAnalysisError::CoordinateOverflow`] when the chunk
-    /// origin or a sample coordinate cannot be represented as `i64`, and
-    /// [`TerrainAnalysisError::AllocationOverflow`] when the sample count
-    /// cannot be represented as `usize`.
+    /// Returns a coordinate or allocation overflow error when the requested
+    /// chunk cannot be represented.
     ///
     /// # Panics
     ///
-    /// Panics only if [`TerrainGenerator::sample`] violates its documented
-    /// fixed-point invariants.
+    /// Panics only if [`TerrainGenerator::sample`] violates its fixed-point
+    /// invariants.
     pub fn generate(
         generator: TerrainGenerator,
         coord: TerrainChunkCoord,
         spec: TerrainChunkSpec,
     ) -> Result<Self, TerrainAnalysisError> {
-        let chunk_span = i64::from(spec.edge_cells())
-            .checked_mul(i64::from(spec.sample_spacing_mm()))
-            .ok_or(TerrainAnalysisError::CoordinateOverflow)?;
+        let span = spec.chunk_span_mm();
         let origin_x_mm = coord
             .x
-            .checked_mul(chunk_span)
+            .checked_mul(span)
             .ok_or(TerrainAnalysisError::CoordinateOverflow)?;
         let origin_z_mm = coord
             .z
-            .checked_mul(chunk_span)
+            .checked_mul(span)
             .ok_or(TerrainAnalysisError::CoordinateOverflow)?;
-        let edge_samples = usize::try_from(spec.edge_samples())
+        let edge = usize::try_from(spec.edge_samples())
             .map_err(|_| TerrainAnalysisError::AllocationOverflow)?;
-        let sample_count = edge_samples
-            .checked_mul(edge_samples)
+        let count = edge
+            .checked_mul(edge)
             .ok_or(TerrainAnalysisError::AllocationOverflow)?;
-        let mut samples = Vec::with_capacity(sample_count);
+        let mut samples = Vec::with_capacity(count);
 
-        for z_index in 0..edge_samples {
-            let z_offset = i64::try_from(z_index)
-                .map_err(|_| TerrainAnalysisError::CoordinateOverflow)?
-                .checked_mul(i64::from(spec.sample_spacing_mm()))
-                .ok_or(TerrainAnalysisError::CoordinateOverflow)?;
-            let z_mm = origin_z_mm
-                .checked_add(z_offset)
-                .ok_or(TerrainAnalysisError::CoordinateOverflow)?;
-            for x_index in 0..edge_samples {
-                let x_offset = i64::try_from(x_index)
-                    .map_err(|_| TerrainAnalysisError::CoordinateOverflow)?
-                    .checked_mul(i64::from(spec.sample_spacing_mm()))
-                    .ok_or(TerrainAnalysisError::CoordinateOverflow)?;
-                let x_mm = origin_x_mm
-                    .checked_add(x_offset)
-                    .ok_or(TerrainAnalysisError::CoordinateOverflow)?;
+        for z in 0..edge {
+            let z_mm = sample_coordinate(origin_z_mm, z, spec.sample_spacing_mm())?;
+            for x in 0..edge {
+                let x_mm = sample_coordinate(origin_x_mm, x, spec.sample_spacing_mm())?;
                 samples.push(generator.sample(x_mm, z_mm));
             }
         }
@@ -199,11 +179,26 @@ impl TerrainChunk {
         let edge = usize::try_from(self.spec.edge_samples()).ok()?;
         let x = usize::try_from(x_index).ok()?;
         let z = usize::try_from(z_index).ok()?;
-        self.samples.get(z.checked_mul(edge)?.checked_add(x)?).copied()
+        self.samples
+            .get(z.checked_mul(edge)?.checked_add(x)?)
+            .copied()
     }
 }
 
-/// Eight-neighbour drainage direction, or a local sink when no neighbour is lower.
+fn sample_coordinate(
+    origin_mm: i64,
+    index: usize,
+    spacing_mm: u32,
+) -> Result<i64, TerrainAnalysisError> {
+    let index = i64::try_from(index).map_err(|_| TerrainAnalysisError::CoordinateOverflow)?;
+    let offset = index
+        .checked_mul(i64::from(spacing_mm))
+        .ok_or(TerrainAnalysisError::CoordinateOverflow)?;
+    origin_mm
+        .checked_add(offset)
+        .ok_or(TerrainAnalysisError::CoordinateOverflow)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FlowDirection {
     North,
@@ -217,36 +212,52 @@ pub enum FlowDirection {
     Sink,
 }
 
+impl FlowDirection {
+    #[must_use]
+    pub const fn unit_offset(self) -> (i8, i8) {
+        match self {
+            Self::North => (0, -1),
+            Self::NorthEast => (1, -1),
+            Self::East => (1, 0),
+            Self::SouthEast => (1, 1),
+            Self::South => (0, 1),
+            Self::SouthWest => (-1, 1),
+            Self::West => (-1, 0),
+            Self::NorthWest => (-1, -1),
+            Self::Sink => (0, 0),
+        }
+    }
+}
+
 impl TerrainGenerator {
-    /// Returns the steepest deterministic descent among eight neighbours.
-    ///
-    /// Equal-height neighbours do not drain. Equal drops are resolved by the
-    /// fixed clockwise order beginning at north.
-    ///
     /// # Panics
     ///
-    /// Panics only if [`TerrainGenerator::sample`] violates its documented
-    /// fixed-point invariants.
+    /// Panics only if [`TerrainGenerator::sample`] violates its fixed-point
+    /// invariants.
     #[must_use]
     pub fn flow_direction(self, x_mm: i64, z_mm: i64, spacing_mm: NonZeroU32) -> FlowDirection {
         let center = self.sample(x_mm, z_mm).height_mm();
         let spacing = i64::from(spacing_mm.get());
-        let neighbours = [
-            (FlowDirection::North, 0_i64, -spacing),
-            (FlowDirection::NorthEast, spacing, -spacing),
-            (FlowDirection::East, spacing, 0),
-            (FlowDirection::SouthEast, spacing, spacing),
-            (FlowDirection::South, 0, spacing),
-            (FlowDirection::SouthWest, -spacing, spacing),
-            (FlowDirection::West, -spacing, 0),
-            (FlowDirection::NorthWest, -spacing, -spacing),
+        let directions = [
+            FlowDirection::North,
+            FlowDirection::NorthEast,
+            FlowDirection::East,
+            FlowDirection::SouthEast,
+            FlowDirection::South,
+            FlowDirection::SouthWest,
+            FlowDirection::West,
+            FlowDirection::NorthWest,
         ];
         let mut best = FlowDirection::Sink;
         let mut best_height = center;
 
-        for (direction, dx, dz) in neighbours {
+        for direction in directions {
+            let (dx, dz) = direction.unit_offset();
             let neighbour = self
-                .sample(x_mm.saturating_add(dx), z_mm.saturating_add(dz))
+                .sample(
+                    x_mm.saturating_add(i64::from(dx) * spacing),
+                    z_mm.saturating_add(i64::from(dz) * spacing),
+                )
                 .height_mm();
             if neighbour < best_height {
                 best_height = neighbour;
@@ -257,7 +268,6 @@ impl TerrainGenerator {
     }
 }
 
-/// Aggregate statistics for deterministic terrain-quality checks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TerrainQualityReport {
     sample_count: u64,
@@ -268,18 +278,14 @@ pub struct TerrainQualityReport {
 }
 
 impl TerrainQualityReport {
-    /// Samples a square lattice for reproducible statistical validation.
-    ///
     /// # Errors
     ///
-    /// Returns [`TerrainAnalysisError::InvalidQualityGrid`] when `edge_samples`
-    /// is zero and [`TerrainAnalysisError::CoordinateOverflow`] when a sample
-    /// coordinate cannot be represented as `i64`.
+    /// Returns an invalid-grid or coordinate-overflow error.
     ///
     /// # Panics
     ///
-    /// Panics only if [`TerrainGenerator::sample`] violates its documented
-    /// fixed-point invariants.
+    /// Panics only if [`TerrainGenerator::sample`] violates its fixed-point
+    /// invariants.
     pub fn sample_grid(
         generator: TerrainGenerator,
         origin_x_mm: i64,
@@ -297,29 +303,23 @@ impl TerrainQualityReport {
             maximum_height_mm: i32::MIN,
             class_counts: [0; 8],
         };
-        let spacing = i64::from(spacing_mm.get());
 
         for z in 0..edge_samples {
-            let z_mm = origin_z_mm
-                .checked_add(i64::from(z).checked_mul(spacing).ok_or(
-                    TerrainAnalysisError::CoordinateOverflow,
-                )?)
-                .ok_or(TerrainAnalysisError::CoordinateOverflow)?;
+            let z_mm = grid_coordinate(origin_z_mm, z, spacing_mm)?;
             for x in 0..edge_samples {
-                let x_mm = origin_x_mm
-                    .checked_add(i64::from(x).checked_mul(spacing).ok_or(
-                        TerrainAnalysisError::CoordinateOverflow,
-                    )?)
-                    .ok_or(TerrainAnalysisError::CoordinateOverflow)?;
-                let sample = generator.sample(x_mm, z_mm);
-                report.sample_count += 1;
-                report.submerged_count += u64::from(sample.is_submerged());
-                report.minimum_height_mm = report.minimum_height_mm.min(sample.height_mm());
-                report.maximum_height_mm = report.maximum_height_mm.max(sample.height_mm());
-                report.class_counts[class_index(sample.class())] += 1;
+                let x_mm = grid_coordinate(origin_x_mm, x, spacing_mm)?;
+                report.observe(generator.sample(x_mm, z_mm));
             }
         }
         Ok(report)
+    }
+
+    fn observe(&mut self, sample: TerrainSample) {
+        self.sample_count += 1;
+        self.submerged_count += u64::from(sample.is_submerged());
+        self.minimum_height_mm = self.minimum_height_mm.min(sample.height_mm());
+        self.maximum_height_mm = self.maximum_height_mm.max(sample.height_mm());
+        self.class_counts[class_index(sample.class())] += 1;
     }
 
     #[must_use]
@@ -346,6 +346,19 @@ impl TerrainQualityReport {
     pub const fn class_counts(self) -> [u64; 8] {
         self.class_counts
     }
+}
+
+fn grid_coordinate(
+    origin_mm: i64,
+    index: u32,
+    spacing_mm: NonZeroU32,
+) -> Result<i64, TerrainAnalysisError> {
+    let offset = i64::from(index)
+        .checked_mul(i64::from(spacing_mm.get()))
+        .ok_or(TerrainAnalysisError::CoordinateOverflow)?;
+    origin_mm
+        .checked_add(offset)
+        .ok_or(TerrainAnalysisError::CoordinateOverflow)
 }
 
 const fn class_index(class: TerrainClass) -> usize {
@@ -399,15 +412,12 @@ mod tests {
             .expect("right chunk should generate");
 
         for z in 0..spec.edge_samples() {
-            assert_eq!(
-                left.sample_at(spec.edge_cells(), z),
-                right.sample_at(0, z)
-            );
+            assert_eq!(left.sample_at(spec.edge_cells(), z), right.sample_at(0, z));
         }
     }
 
     #[test]
-    fn chunk_origin_uses_euclidean_world_layout() {
+    fn chunk_origin_supports_negative_coordinates() {
         let generator = TerrainGenerator::new(7, TerrainConfig::default());
         let spec = TerrainChunkSpec::new(4, 250).expect("valid chunk spec");
         let chunk = TerrainChunk::generate(generator, TerrainChunkCoord::new(-2, 3), spec)
@@ -417,32 +427,33 @@ mod tests {
     }
 
     #[test]
-    fn flow_never_selects_a_higher_neighbour() {
+    fn selected_flow_is_strictly_downhill() {
         let generator = TerrainGenerator::new(99, TerrainConfig::default());
         let spacing = NonZeroU32::new(1_000).expect("non-zero spacing");
-        let direction = generator.flow_direction(123_000, -456_000, spacing);
-        assert!(matches!(
-            direction,
-            FlowDirection::North
-                | FlowDirection::NorthEast
-                | FlowDirection::East
-                | FlowDirection::SouthEast
-                | FlowDirection::South
-                | FlowDirection::SouthWest
-                | FlowDirection::West
-                | FlowDirection::NorthWest
-                | FlowDirection::Sink
-        ));
+        let x_mm = 123_000;
+        let z_mm = -456_000;
+        let direction = generator.flow_direction(x_mm, z_mm, spacing);
+        let (dx, dz) = direction.unit_offset();
+        let center = generator.sample(x_mm, z_mm).height_mm();
+        let target = generator
+            .sample(
+                x_mm + i64::from(dx) * i64::from(spacing.get()),
+                z_mm + i64::from(dz) * i64::from(spacing.get()),
+            )
+            .height_mm();
+        assert!(direction == FlowDirection::Sink || target < center);
     }
 
     #[test]
     fn quality_report_is_deterministic_and_non_flat() {
         let generator = TerrainGenerator::new(11, TerrainConfig::default());
         let spacing = NonZeroU32::new(250_000).expect("non-zero spacing");
-        let left = TerrainQualityReport::sample_grid(generator, -2_000_000, -2_000_000, 17, spacing)
-            .expect("quality report should generate");
-        let right = TerrainQualityReport::sample_grid(generator, -2_000_000, -2_000_000, 17, spacing)
-            .expect("quality report should generate");
+        let left =
+            TerrainQualityReport::sample_grid(generator, -2_000_000, -2_000_000, 17, spacing)
+                .expect("quality report should generate");
+        let right =
+            TerrainQualityReport::sample_grid(generator, -2_000_000, -2_000_000, 17, spacing)
+                .expect("quality report should generate");
         assert_eq!(left, right);
         assert_eq!(left.sample_count(), 289);
         assert!(left.minimum_height_mm() < left.maximum_height_mm());
