@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+mod depression;
 mod hydrology;
 mod space;
 mod terrain;
@@ -7,6 +8,7 @@ mod terrain;
 mod terrain_analysis;
 mod time;
 
+pub use depression::{DepressionError, DepressionFill};
 pub use hydrology::{
     DrainageTerminal, HydrologyError, HydrologyField, HydrologyNode,
     DEFAULT_RIVER_ACCUMULATION_THRESHOLD,
