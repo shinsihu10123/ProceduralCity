@@ -3,6 +3,7 @@ use std::fmt;
 use crate::{CubeFace, PlanetError, PlanetSurfacePosition, DIRECTION_Q30_SCALE};
 
 pub const MAX_SURFACE_TILE_LEVEL: u8 = 30;
+pub const SURFACE_TILE_LOCAL_SCALE: u32 = 1 << 30;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SurfaceEdge {
@@ -93,6 +94,39 @@ pub const fn face_edge_transform(face: CubeFace, edge: SurfaceEdge) -> FaceEdgeT
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SurfaceTileLocalPosition {
+    u: u32,
+    v: u32,
+}
+
+impl SurfaceTileLocalPosition {
+    /// Creates a normalized position inside one surface tile.
+    ///
+    /// Both coordinates use the inclusive range `0..=2^30`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SurfaceTileError::LocalCoordinateOutOfRange`] when either
+    /// coordinate exceeds [`SURFACE_TILE_LOCAL_SCALE`].
+    pub const fn new(u: u32, v: u32) -> Result<Self, SurfaceTileError> {
+        if u > SURFACE_TILE_LOCAL_SCALE || v > SURFACE_TILE_LOCAL_SCALE {
+            return Err(SurfaceTileError::LocalCoordinateOutOfRange);
+        }
+        Ok(Self { u, v })
+    }
+
+    #[must_use]
+    pub const fn u_q30(self) -> u32 {
+        self.u
+    }
+
+    #[must_use]
+    pub const fn v_q30(self) -> u32 {
+        self.v
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SurfaceTileAddress {
     face: CubeFace,
     level: u8,
@@ -149,37 +183,68 @@ impl SurfaceTileAddress {
         let last = edge_tiles - 1;
 
         match edge {
-            SurfaceEdge::North if self.y < last => Self { y: self.y + 1, ..self },
-            SurfaceEdge::East if self.x < last => Self { x: self.x + 1, ..self },
-            SurfaceEdge::South if self.y > 0 => Self { y: self.y - 1, ..self },
-            SurfaceEdge::West if self.x > 0 => Self { x: self.x - 1, ..self },
+            SurfaceEdge::North if self.y < last => Self {
+                y: self.y + 1,
+                ..self
+            },
+            SurfaceEdge::East if self.x < last => Self {
+                x: self.x + 1,
+                ..self
+            },
+            SurfaceEdge::South if self.y > 0 => Self {
+                y: self.y - 1,
+                ..self
+            },
+            SurfaceEdge::West if self.x > 0 => Self {
+                x: self.x - 1,
+                ..self
+            },
             _ => self.cross_face(edge),
         }
     }
 
-    #[must_use]
-    pub const fn edge_midpoint(self, edge: SurfaceEdge) -> PlanetSurfacePosition {
+    /// Maps a normalized tile-local position to the authoritative Cube-Sphere
+    /// surface coordinate.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SurfaceTileError`] only when the generated face coordinate
+    /// violates the planet surface contract. Valid tile addresses and local
+    /// positions always map successfully.
+    pub fn surface_position(
+        self,
+        local: SurfaceTileLocalPosition,
+        elevation_mm: i64,
+    ) -> Result<PlanetSurfacePosition, SurfaceTileError> {
         let edge_tiles = i128::from(self.edge_tiles());
-        let scale = i128::from(DIRECTION_Q30_SCALE);
-        let x_twice = i128::from(self.x) * 2 + 1;
-        let y_twice = i128::from(self.y) * 2 + 1;
-        let tile_u = -scale + x_twice * scale / edge_tiles;
-        let tile_v = -scale + y_twice * scale / edge_tiles;
-
-        let (u_q30, v_q30) = match edge {
-            SurfaceEdge::North => (tile_u, scale),
-            SurfaceEdge::East => (scale, tile_v),
-            SurfaceEdge::South => (tile_u, -scale),
-            SurfaceEdge::West => (-scale, tile_v),
-        };
+        let local_scale = i128::from(SURFACE_TILE_LOCAL_SCALE);
+        let face_scale = i128::from(DIRECTION_Q30_SCALE);
+        let global_u_numerator = i128::from(self.x) * local_scale + i128::from(local.u);
+        let global_v_numerator = i128::from(self.y) * local_scale + i128::from(local.v);
+        let u_q30 = -face_scale + 2 * global_u_numerator * face_scale / (edge_tiles * local_scale);
+        let v_q30 = -face_scale + 2 * global_v_numerator * face_scale / (edge_tiles * local_scale);
 
         PlanetSurfacePosition::new(
             self.face,
-            i64::try_from(u_q30).expect("tile midpoint fits Q30"),
-            i64::try_from(v_q30).expect("tile midpoint fits Q30"),
-            0,
+            i64::try_from(u_q30).map_err(|_| SurfaceTileError::CoordinateOutOfRange)?,
+            i64::try_from(v_q30).map_err(|_| SurfaceTileError::CoordinateOutOfRange)?,
+            elevation_mm,
         )
-        .expect("tile edge midpoint is inside Cube-Sphere bounds")
+        .map_err(Into::into)
+    }
+
+    #[must_use]
+    pub fn edge_midpoint(self, edge: SurfaceEdge) -> PlanetSurfacePosition {
+        let midpoint = SURFACE_TILE_LOCAL_SCALE / 2;
+        let local = match edge {
+            SurfaceEdge::North => SurfaceTileLocalPosition::new(midpoint, SURFACE_TILE_LOCAL_SCALE),
+            SurfaceEdge::East => SurfaceTileLocalPosition::new(SURFACE_TILE_LOCAL_SCALE, midpoint),
+            SurfaceEdge::South => SurfaceTileLocalPosition::new(midpoint, 0),
+            SurfaceEdge::West => SurfaceTileLocalPosition::new(0, midpoint),
+        }
+        .expect("edge midpoint lies inside tile-local bounds");
+        self.surface_position(local, 0)
+            .expect("tile edge midpoint maps to Cube-Sphere bounds")
     }
 
     const fn cross_face(self, edge: SurfaceEdge) -> Self {
@@ -214,6 +279,7 @@ impl SurfaceTileAddress {
 pub enum SurfaceTileError {
     LevelOutOfRange,
     CoordinateOutOfRange,
+    LocalCoordinateOutOfRange,
 }
 
 impl fmt::Display for SurfaceTileError {
@@ -221,6 +287,9 @@ impl fmt::Display for SurfaceTileError {
         formatter.write_str(match self {
             Self::LevelOutOfRange => "surface tile level exceeds the supported quadtree depth",
             Self::CoordinateOutOfRange => "surface tile coordinate lies outside the level grid",
+            Self::LocalCoordinateOutOfRange => {
+                "surface tile local coordinate exceeds the normalized Q30 bounds"
+            }
         })
     }
 }
@@ -237,9 +306,9 @@ impl From<PlanetError> for SurfaceTileError {
 mod tests {
     use super::{
         face_edge_transform, SurfaceEdge, SurfaceTileAddress, SurfaceTileError,
-        MAX_SURFACE_TILE_LEVEL,
+        SurfaceTileLocalPosition, MAX_SURFACE_TILE_LEVEL, SURFACE_TILE_LOCAL_SCALE,
     };
-    use crate::CubeFace;
+    use crate::{CubeFace, DIRECTION_Q30_SCALE};
 
     const FACES: [CubeFace; 6] = [
         CubeFace::PositiveX,
@@ -278,8 +347,12 @@ mod tests {
                 for edge in EDGES {
                     for offset in 0..edge_tiles {
                         let tile = match edge {
-                            SurfaceEdge::North => SurfaceTileAddress::new(face, level, offset, last),
-                            SurfaceEdge::East => SurfaceTileAddress::new(face, level, last, offset),
+                            SurfaceEdge::North => {
+                                SurfaceTileAddress::new(face, level, offset, last)
+                            }
+                            SurfaceEdge::East => {
+                                SurfaceTileAddress::new(face, level, last, offset)
+                            }
                             SurfaceEdge::South => SurfaceTileAddress::new(face, level, offset, 0),
                             SurfaceEdge::West => SurfaceTileAddress::new(face, level, 0, offset),
                         }
@@ -303,8 +376,12 @@ mod tests {
             for edge in EDGES {
                 for offset in 0..edge_tiles {
                     let tile = match edge {
-                        SurfaceEdge::North => SurfaceTileAddress::new(face, level, offset, last),
-                        SurfaceEdge::East => SurfaceTileAddress::new(face, level, last, offset),
+                        SurfaceEdge::North => {
+                            SurfaceTileAddress::new(face, level, offset, last)
+                        }
+                        SurfaceEdge::East => {
+                            SurfaceTileAddress::new(face, level, last, offset)
+                        }
                         SurfaceEdge::South => SurfaceTileAddress::new(face, level, offset, 0),
                         SurfaceEdge::West => SurfaceTileAddress::new(face, level, 0, offset),
                     }
@@ -322,7 +399,52 @@ mod tests {
     }
 
     #[test]
-    fn invalid_tile_addresses_are_rejected() {
+    fn root_tile_centre_maps_to_face_centre() {
+        let tile = SurfaceTileAddress::new(CubeFace::PositiveZ, 0, 0, 0)
+            .expect("root tile is valid");
+        let local = SurfaceTileLocalPosition::new(
+            SURFACE_TILE_LOCAL_SCALE / 2,
+            SURFACE_TILE_LOCAL_SCALE / 2,
+        )
+        .expect("tile centre is valid");
+        let surface = tile
+            .surface_position(local, 0)
+            .expect("tile centre maps to surface");
+        assert_eq!(surface.u_q30(), 0);
+        assert_eq!(surface.v_q30(), 0);
+        assert_eq!(
+            surface.unit_direction_q30().z_q30(),
+            DIRECTION_Q30_SCALE
+        );
+    }
+
+    #[test]
+    fn adjacent_tiles_share_identical_internal_boundaries() {
+        let west = SurfaceTileAddress::new(CubeFace::PositiveZ, 4, 7, 5)
+            .expect("west tile is valid");
+        let east = west.neighbour(SurfaceEdge::East);
+        let source = west
+            .surface_position(
+                SurfaceTileLocalPosition::new(
+                    SURFACE_TILE_LOCAL_SCALE,
+                    SURFACE_TILE_LOCAL_SCALE / 3,
+                )
+                .expect("source local coordinate is valid"),
+                125,
+            )
+            .expect("source position maps");
+        let target = east
+            .surface_position(
+                SurfaceTileLocalPosition::new(0, SURFACE_TILE_LOCAL_SCALE / 3)
+                    .expect("target local coordinate is valid"),
+                125,
+            )
+            .expect("target position maps");
+        assert_eq!(source, target);
+    }
+
+    #[test]
+    fn invalid_tile_addresses_and_local_coordinates_are_rejected() {
         assert_eq!(
             SurfaceTileAddress::new(CubeFace::PositiveX, MAX_SURFACE_TILE_LEVEL + 1, 0, 0),
             Err(SurfaceTileError::LevelOutOfRange)
@@ -330,6 +452,10 @@ mod tests {
         assert_eq!(
             SurfaceTileAddress::new(CubeFace::PositiveX, 2, 4, 0),
             Err(SurfaceTileError::CoordinateOutOfRange)
+        );
+        assert_eq!(
+            SurfaceTileLocalPosition::new(SURFACE_TILE_LOCAL_SCALE + 1, 0),
+            Err(SurfaceTileError::LocalCoordinateOutOfRange)
         );
     }
 }
