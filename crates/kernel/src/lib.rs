@@ -9,8 +9,9 @@ pub use space::{
     DEFAULT_CELL_SIZE_MM, DEFAULT_REGION_EDGE_CELLS, MILLIMETERS_PER_METER,
 };
 pub use terrain::{
-    TerrainConfig, TerrainError, TerrainGenerator, TerrainSample, DEFAULT_AMPLITUDE_MM,
-    DEFAULT_BASE_WAVELENGTH_MM, DEFAULT_OCTAVES, DEFAULT_SEA_LEVEL_MM,
+    TerrainClass, TerrainConfig, TerrainError, TerrainGenerator, TerrainSample,
+    DEFAULT_AMPLITUDE_MM, DEFAULT_BASE_WAVELENGTH_MM, DEFAULT_OCTAVES, DEFAULT_SEA_LEVEL_MM,
+    TERRAIN_ANALYSIS_STEP_MM,
 };
 pub use time::{
     DurationTicks, Tick, TickDuration, TimeError, TimeSaveStateV1, TimeScale, TimeService,
