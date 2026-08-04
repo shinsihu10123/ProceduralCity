@@ -6,7 +6,9 @@ pub const DEFAULT_OCTAVES: u8 = 5;
 pub const DEFAULT_SEA_LEVEL_MM: i32 = 0;
 pub const TERRAIN_ANALYSIS_STEP_MM: i64 = 1_000;
 const INTERPOLATION_SCALE: i128 = 1 << 20;
+#[cfg(test)]
 const INTERPOLATION_SCALE_I32: i32 = 1 << 20;
+#[cfg(test)]
 const INTERPOLATION_SCALE_U32: u32 = 1 << 20;
 const CONTINENT_SCALE_MULTIPLIER: u64 = 32;
 const RIDGE_SCALE_MULTIPLIER: u64 = 4;
