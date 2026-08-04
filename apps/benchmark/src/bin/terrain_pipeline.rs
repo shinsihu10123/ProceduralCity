@@ -108,7 +108,10 @@ fn run() -> Result<(), String> {
             .nodes()
             .len()
             .saturating_mul(size_of::<artificial_world_kernel::HydrologyNode>());
-        total.saturating_add(u64::try_from(samples.saturating_add(filled).saturating_add(nodes)).unwrap_or(u64::MAX))
+        total.saturating_add(
+            u64::try_from(samples.saturating_add(filled).saturating_add(nodes))
+                .unwrap_or(u64::MAX),
+        )
     });
 
     if sample_count == 0 || global.nodes().is_empty() || network.reaches().is_empty() {
