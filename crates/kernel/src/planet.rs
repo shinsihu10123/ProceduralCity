@@ -36,13 +36,11 @@ impl PlanetConfig {
         if axial_tilt_millidegrees > 90_000 {
             return Err(PlanetError::InvalidAxialTilt);
         }
-        let Some(rotation_period_milliseconds) =
-            NonZeroU64::new(rotation_period_milliseconds)
+        let Some(rotation_period_milliseconds) = NonZeroU64::new(rotation_period_milliseconds)
         else {
             return Err(PlanetError::InvalidRotationPeriod);
         };
-        let Some(orbital_period_milliseconds) = NonZeroU64::new(orbital_period_milliseconds)
-        else {
+        let Some(orbital_period_milliseconds) = NonZeroU64::new(orbital_period_milliseconds) else {
             return Err(PlanetError::InvalidOrbitalPeriod);
         };
         if surface_gravity_micrometers_per_second_squared == 0 {
@@ -187,7 +185,10 @@ impl PlanetSurfacePosition {
     /// Returns [`PlanetError::ElevationBelowCentre`] when elevation would put
     /// the point at or below the planet centre, or [`PlanetError::CoordinateOverflow`]
     /// when the radial distance does not fit the signed coordinate contract.
-    pub fn cartesian_mm(self, config: PlanetConfig) -> Result<PlanetCartesianPosition, PlanetError> {
+    pub fn cartesian_mm(
+        self,
+        config: PlanetConfig,
+    ) -> Result<PlanetCartesianPosition, PlanetError> {
         let radius = i128::from(config.mean_radius_mm()) + i128::from(self.elevation_mm);
         if radius <= 0 {
             return Err(PlanetError::ElevationBelowCentre);
@@ -316,9 +317,15 @@ impl fmt::Display for PlanetError {
             Self::InvalidRotationPeriod => "rotation period must be positive",
             Self::InvalidOrbitalPeriod => "orbital period must be positive",
             Self::InvalidGravity => "surface gravity must be positive",
-            Self::SurfaceCoordinateOutOfRange => "Cube-Sphere coordinates must remain in Q30 face bounds",
-            Self::ElevationBelowCentre => "surface elevation places the point at or below the planet centre",
-            Self::CoordinateOverflow => "planet Cartesian coordinate exceeds the signed integer contract",
+            Self::SurfaceCoordinateOutOfRange => {
+                "Cube-Sphere coordinates must remain in Q30 face bounds"
+            }
+            Self::ElevationBelowCentre => {
+                "surface elevation places the point at or below the planet centre"
+            }
+            Self::CoordinateOverflow => {
+                "planet Cartesian coordinate exceeds the signed integer contract"
+            }
         })
     }
 }
@@ -336,7 +343,10 @@ mod tests {
     fn defaults_are_earth_like() {
         let config = PlanetConfig::default();
         assert_eq!(config.mean_radius_mm(), EARTH_MEAN_RADIUS_MM);
-        assert_eq!(config.axial_tilt_millidegrees(), EARTH_AXIAL_TILT_MILLIDEGREES);
+        assert_eq!(
+            config.axial_tilt_millidegrees(),
+            EARTH_AXIAL_TILT_MILLIDEGREES
+        );
     }
 
     #[test]
@@ -351,22 +361,13 @@ mod tests {
 
     #[test]
     fn shared_cube_edges_produce_identical_directions() {
-        let positive_x = PlanetSurfacePosition::new(
-            CubeFace::PositiveX,
-            DIRECTION_Q30_SCALE,
-            0,
-            0,
-        )
-        .expect("edge coordinate is valid")
-        .unit_direction_q30();
-        let negative_z = PlanetSurfacePosition::new(
-            CubeFace::NegativeZ,
-            -DIRECTION_Q30_SCALE,
-            0,
-            0,
-        )
-        .expect("matching edge coordinate is valid")
-        .unit_direction_q30();
+        let positive_x = PlanetSurfacePosition::new(CubeFace::PositiveX, DIRECTION_Q30_SCALE, 0, 0)
+            .expect("edge coordinate is valid")
+            .unit_direction_q30();
+        let negative_z =
+            PlanetSurfacePosition::new(CubeFace::NegativeZ, -DIRECTION_Q30_SCALE, 0, 0)
+                .expect("matching edge coordinate is valid")
+                .unit_direction_q30();
         assert_eq!(positive_x, negative_z);
     }
 
@@ -391,17 +392,17 @@ mod tests {
             .expect("Earth-like radius fits Cartesian coordinates");
         assert_eq!(point.x_mm(), 0);
         assert_eq!(point.y_mm(), 0);
-        assert_eq!(point.z_mm(), i64::try_from(config.mean_radius_mm()).unwrap());
+        assert_eq!(
+            point.z_mm(),
+            i64::try_from(config.mean_radius_mm()).unwrap()
+        );
     }
 
     #[test]
     fn invalid_face_coordinates_are_rejected() {
-        assert!(PlanetSurfacePosition::new(
-            CubeFace::PositiveX,
-            DIRECTION_Q30_SCALE + 1,
-            0,
-            0,
-        )
-        .is_err());
+        assert!(
+            PlanetSurfacePosition::new(CubeFace::PositiveX, DIRECTION_Q30_SCALE + 1, 0, 0,)
+                .is_err()
+        );
     }
 }
