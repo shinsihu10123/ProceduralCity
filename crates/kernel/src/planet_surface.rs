@@ -350,9 +350,7 @@ mod tests {
                             SurfaceEdge::North => {
                                 SurfaceTileAddress::new(face, level, offset, last)
                             }
-                            SurfaceEdge::East => {
-                                SurfaceTileAddress::new(face, level, last, offset)
-                            }
+                            SurfaceEdge::East => SurfaceTileAddress::new(face, level, last, offset),
                             SurfaceEdge::South => SurfaceTileAddress::new(face, level, offset, 0),
                             SurfaceEdge::West => SurfaceTileAddress::new(face, level, 0, offset),
                         }
@@ -376,12 +374,8 @@ mod tests {
             for edge in EDGES {
                 for offset in 0..edge_tiles {
                     let tile = match edge {
-                        SurfaceEdge::North => {
-                            SurfaceTileAddress::new(face, level, offset, last)
-                        }
-                        SurfaceEdge::East => {
-                            SurfaceTileAddress::new(face, level, last, offset)
-                        }
+                        SurfaceEdge::North => SurfaceTileAddress::new(face, level, offset, last),
+                        SurfaceEdge::East => SurfaceTileAddress::new(face, level, last, offset),
                         SurfaceEdge::South => SurfaceTileAddress::new(face, level, offset, 0),
                         SurfaceEdge::West => SurfaceTileAddress::new(face, level, 0, offset),
                     }
@@ -400,8 +394,8 @@ mod tests {
 
     #[test]
     fn root_tile_centre_maps_to_face_centre() {
-        let tile = SurfaceTileAddress::new(CubeFace::PositiveZ, 0, 0, 0)
-            .expect("root tile is valid");
+        let tile =
+            SurfaceTileAddress::new(CubeFace::PositiveZ, 0, 0, 0).expect("root tile is valid");
         let local = SurfaceTileLocalPosition::new(
             SURFACE_TILE_LOCAL_SCALE / 2,
             SURFACE_TILE_LOCAL_SCALE / 2,
@@ -412,16 +406,13 @@ mod tests {
             .expect("tile centre maps to surface");
         assert_eq!(surface.u_q30(), 0);
         assert_eq!(surface.v_q30(), 0);
-        assert_eq!(
-            surface.unit_direction_q30().z_q30(),
-            DIRECTION_Q30_SCALE
-        );
+        assert_eq!(surface.unit_direction_q30().z_q30(), DIRECTION_Q30_SCALE);
     }
 
     #[test]
     fn adjacent_tiles_share_identical_internal_boundaries() {
-        let west = SurfaceTileAddress::new(CubeFace::PositiveZ, 4, 7, 5)
-            .expect("west tile is valid");
+        let west =
+            SurfaceTileAddress::new(CubeFace::PositiveZ, 4, 7, 5).expect("west tile is valid");
         let east = west.neighbour(SurfaceEdge::East);
         let source = west
             .surface_position(
