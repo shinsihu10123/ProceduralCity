@@ -118,8 +118,7 @@ fn run() -> Result<(), String> {
     }
     if total_duration > MAX_PIPELINE_DURATION {
         return Err(format!(
-            "terrain pipeline exceeded {:?}: {:?}",
-            MAX_PIPELINE_DURATION, total_duration
+            "terrain pipeline exceeded {MAX_PIPELINE_DURATION:?}: {total_duration:?}"
         ));
     }
 
