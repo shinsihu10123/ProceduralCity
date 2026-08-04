@@ -179,7 +179,7 @@ fn multiply_potential(left: u32, right: u32) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{GEOLOGICAL_POTENTIAL_SCALE, GeologicalPotentialSample};
+    use super::{GeologicalPotentialSample, GEOLOGICAL_POTENTIAL_SCALE};
     use crate::tectonics::PlateField;
 
     #[test]
