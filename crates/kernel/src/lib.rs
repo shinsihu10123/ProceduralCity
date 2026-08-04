@@ -2,6 +2,7 @@
 
 mod space;
 mod terrain;
+mod terrain_analysis;
 mod time;
 
 pub use space::{
@@ -12,6 +13,11 @@ pub use terrain::{
     TerrainClass, TerrainConfig, TerrainError, TerrainGenerator, TerrainSample,
     DEFAULT_AMPLITUDE_MM, DEFAULT_BASE_WAVELENGTH_MM, DEFAULT_OCTAVES, DEFAULT_SEA_LEVEL_MM,
     TERRAIN_ANALYSIS_STEP_MM,
+};
+pub use terrain_analysis::{
+    FlowDirection, TerrainAnalysisError, TerrainChunk, TerrainChunkCoord, TerrainChunkSpec,
+    TerrainQualityReport, DEFAULT_TERRAIN_CHUNK_EDGE_CELLS, DEFAULT_TERRAIN_SAMPLE_SPACING_MM,
+    MAX_TERRAIN_CHUNK_EDGE_CELLS,
 };
 pub use time::{
     DurationTicks, Tick, TickDuration, TimeError, TimeSaveStateV1, TimeScale, TimeService,
