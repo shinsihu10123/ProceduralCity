@@ -45,4 +45,4 @@ jobs:
         run: cargo test --workspace --all-targets
 
       - name: Run release time soak test
-        run: cargo test --release -p artificial-world-kernel million_tick_soak_has_no_drift -- --exact
+        run: cargo test --release -p artificial-world-kernel time::tests::million_tick_soak_has_no_drift -- --exact
