@@ -1,6 +1,9 @@
 #[path = "tectonic_boundary.rs"]
 mod boundary;
 pub use boundary::{PlateBoundaryKind, PlateBoundarySample};
+#[path = "tectonic_geology.rs"]
+mod geology;
+pub use geology::{GeologicalPotentialSample, GEOLOGICAL_POTENTIAL_SCALE};
 
 use crate::{CubeFace, PlanetSurfacePosition, UnitDirectionQ30, DIRECTION_Q30_SCALE};
 
