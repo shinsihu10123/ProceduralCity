@@ -1,4 +1,5 @@
-use crate::{PlateField, PlateId, TectonicPlate, UnitDirectionQ30, DIRECTION_Q30_SCALE};
+use super::{PlateField, PlateId, TectonicPlate};
+use crate::{UnitDirectionQ30, DIRECTION_Q30_SCALE};
 
 const BOUNDARY_MARGIN_Q60: i128 =
     i128::from(DIRECTION_Q30_SCALE) * i128::from(DIRECTION_Q30_SCALE) / 96;
@@ -72,7 +73,7 @@ impl PlateField {
                 let score = dot_q60(direction, plate.center());
                 match state {
                     None => Some((plate, score, plate, i128::MIN)),
-                    Some((best, best_score, second, second_score)) if score > best_score => {
+                    Some((best, best_score, _, _)) if score > best_score => {
                         Some((plate, score, best, best_score))
                     }
                     Some((best, best_score, _, second_score)) if score > second_score => {
@@ -144,7 +145,7 @@ fn dot_q60(left: UnitDirectionQ30, right: UnitDirectionQ30) -> i128 {
 #[cfg(test)]
 mod tests {
     use super::PlateBoundaryKind;
-    use crate::PlateField;
+    use crate::tectonics::PlateField;
 
     #[test]
     fn plate_centers_are_classified_as_interior() {
