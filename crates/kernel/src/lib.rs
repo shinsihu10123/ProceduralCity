@@ -10,6 +10,7 @@ mod planet_surface;
 mod river_network;
 mod space;
 mod spherical_terrain;
+pub mod tectonics;
 mod terrain;
 #[allow(clippy::similar_names)]
 mod terrain_analysis;
