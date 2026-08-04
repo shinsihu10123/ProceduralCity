@@ -127,6 +127,12 @@ impl PlateField {
         Ok(Self { world_seed, plates })
     }
 
+    /// Generates the default Earth-like global plate field.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if the compile-time default plate count is moved outside
+    /// the validated supported range.
     #[must_use]
     pub fn earth_like(world_seed: u64) -> Self {
         Self::generate(world_seed, DEFAULT_TECTONIC_PLATE_COUNT)
@@ -143,6 +149,12 @@ impl PlateField {
         &self.plates
     }
 
+    /// Returns the plate whose spherical centre is nearest to the direction.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if a `PlateField` is internally constructed with no plates;
+    /// all fields produced by [`Self::generate`] contain at least six plates.
     #[must_use]
     pub fn plate_at(&self, direction: UnitDirectionQ30) -> TectonicPlate {
         *self
