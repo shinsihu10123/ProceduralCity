@@ -13,25 +13,25 @@ const MAX_TRANSFORM_RELIEF_MM: i64 = 750_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TectonicTerrainSample {
-    base_height_mm: i32,
-    tectonic_displacement_mm: i32,
-    final_height_mm: i32,
+    base_height: i32,
+    tectonic_displacement: i32,
+    final_height: i32,
 }
 
 impl TectonicTerrainSample {
     #[must_use]
     pub const fn base_height_mm(self) -> i32 {
-        self.base_height_mm
+        self.base_height
     }
 
     #[must_use]
     pub const fn tectonic_displacement_mm(self) -> i32 {
-        self.tectonic_displacement_mm
+        self.tectonic_displacement
     }
 
     #[must_use]
     pub const fn final_height_mm(self) -> i32 {
-        self.final_height_mm
+        self.final_height
     }
 }
 
@@ -106,13 +106,13 @@ impl SphericalTerrainGenerator {
         plate_field: &PlateField,
         direction: UnitDirectionQ30,
     ) -> TectonicTerrainSample {
-        let base_height_mm = self.height_mm(direction);
-        let tectonic_displacement_mm = self.tectonic_displacement_mm(plate_field, direction);
-        let final_height_mm = base_height_mm.saturating_add(tectonic_displacement_mm);
+        let base_height = self.height_mm(direction);
+        let tectonic_displacement = self.tectonic_displacement_mm(plate_field, direction);
+        let final_height = base_height.saturating_add(tectonic_displacement);
         TectonicTerrainSample {
-            base_height_mm,
-            tectonic_displacement_mm,
-            final_height_mm,
+            base_height,
+            tectonic_displacement,
+            final_height,
         }
     }
 
@@ -143,9 +143,9 @@ fn signed_transform_relief(seed: u64, direction: UnitDirectionQ30, potential: u3
     let sign = lattice(
         seed ^ 0x8d58_ac26_afe1_2e47,
         31,
-        i64::from(direction.x_q30()),
-        i64::from(direction.y_q30()),
-        i64::from(direction.z_q30()),
+        direction.x_q30(),
+        direction.y_q30(),
+        direction.z_q30(),
     );
     if sign.is_negative() {
         -magnitude
