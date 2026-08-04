@@ -64,10 +64,10 @@ impl TerrainChunkSurfaceAdapter {
         if index.x > edge_cells || index.z > edge_cells {
             return Err(TerrainSurfaceError::SampleIndexOutOfRange);
         }
-        let local_x = u64::from(index.x) * u64::from(SURFACE_TILE_LOCAL_SCALE)
-            / u64::from(edge_cells);
-        let local_z = u64::from(index.z) * u64::from(SURFACE_TILE_LOCAL_SCALE)
-            / u64::from(edge_cells);
+        let local_x =
+            u64::from(index.x) * u64::from(SURFACE_TILE_LOCAL_SCALE) / u64::from(edge_cells);
+        let local_z =
+            u64::from(index.z) * u64::from(SURFACE_TILE_LOCAL_SCALE) / u64::from(edge_cells);
         SurfaceTileLocalPosition::new(
             u32::try_from(local_x).map_err(|_| TerrainSurfaceError::CoordinateOverflow)?,
             u32::try_from(local_z).map_err(|_| TerrainSurfaceError::CoordinateOverflow)?,
@@ -125,9 +125,8 @@ pub enum TerrainSurfaceError {
 impl fmt::Display for TerrainSurfaceError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::ChunkSpecMismatch => formatter.write_str(
-                "terrain chunk specification does not match the surface adapter",
-            ),
+            Self::ChunkSpecMismatch => formatter
+                .write_str("terrain chunk specification does not match the surface adapter"),
             Self::SampleIndexOutOfRange => {
                 formatter.write_str("terrain sample index lies outside the chunk grid")
             }
@@ -161,8 +160,8 @@ mod tests {
 
     #[test]
     fn sample_grid_corners_map_to_tile_corners() {
-        let tile = SurfaceTileAddress::new(CubeFace::PositiveZ, 4, 7, 5)
-            .expect("test tile is valid");
+        let tile =
+            SurfaceTileAddress::new(CubeFace::PositiveZ, 4, 7, 5).expect("test tile is valid");
         let adapter = TerrainChunkSurfaceAdapter::new(tile, spec());
         let edge = spec().edge_cells();
 
@@ -181,8 +180,8 @@ mod tests {
 
     #[test]
     fn adjacent_tiles_share_every_boundary_sample() {
-        let west_tile = SurfaceTileAddress::new(CubeFace::PositiveZ, 5, 14, 11)
-            .expect("west tile is valid");
+        let west_tile =
+            SurfaceTileAddress::new(CubeFace::PositiveZ, 5, 14, 11).expect("west tile is valid");
         let east_tile = west_tile.neighbour(SurfaceEdge::East);
         let west = TerrainChunkSurfaceAdapter::new(west_tile, spec());
         let east = TerrainChunkSurfaceAdapter::new(east_tile, spec());
@@ -228,8 +227,8 @@ mod tests {
         let generator = TerrainGenerator::new(42, TerrainConfig::default());
         let chunk = TerrainChunk::generate(generator, TerrainChunkCoord::new(0, 0), spec())
             .expect("terrain chunk generates");
-        let tile = SurfaceTileAddress::new(CubeFace::PositiveZ, 5, 16, 16)
-            .expect("test tile is valid");
+        let tile =
+            SurfaceTileAddress::new(CubeFace::PositiveZ, 5, 16, 16).expect("test tile is valid");
         let adapter = TerrainChunkSurfaceAdapter::new(tile, spec());
         let index = TerrainSampleIndex::new(7, 11);
         let position = adapter
@@ -242,8 +241,8 @@ mod tests {
 
     #[test]
     fn invalid_indices_and_specs_are_rejected() {
-        let tile = SurfaceTileAddress::new(CubeFace::PositiveZ, 1, 0, 0)
-            .expect("test tile is valid");
+        let tile =
+            SurfaceTileAddress::new(CubeFace::PositiveZ, 1, 0, 0).expect("test tile is valid");
         let adapter = TerrainChunkSurfaceAdapter::new(tile, spec());
         assert_eq!(
             adapter.local_position(TerrainSampleIndex::new(spec().edge_cells() + 1, 0)),
