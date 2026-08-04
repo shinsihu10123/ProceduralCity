@@ -70,6 +70,12 @@ impl HydrologyField {
     /// [`HydrologyError::AccumulationOverflow`] if runoff accumulation exceeds
     /// `u64`, or [`HydrologyError::BasinOverflow`] if more than `u32::MAX`
     /// drainage basins are encountered.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if the internal basin-assignment pass fails to assign an ID
+    /// to a node. Strict downhill routing makes drainage paths acyclic, so this
+    /// invariant is guaranteed for a valid [`TerrainChunk`].
     pub fn analyse(chunk: &TerrainChunk) -> Result<Self, HydrologyError> {
         let edge = usize::try_from(chunk.spec().edge_samples())
             .map_err(|_| HydrologyError::InvalidChunkLayout)?;
@@ -127,25 +133,24 @@ impl HydrologyField {
                 }
 
                 path.push(current);
-                match downstream[current] {
-                    Some(next) => current = next,
-                    None => {
-                        let terminal = terminal_for(edge, current, directions[current]);
-                        basin_count = basin_count
+                if let Some(next) = downstream[current] {
+                    current = next;
+                } else {
+                    let terminal = terminal_for(edge, current, directions[current]);
+                    basin_count = basin_count
+                        .checked_add(1)
+                        .ok_or(HydrologyError::BasinOverflow)?;
+                    if terminal == DrainageTerminal::Sink {
+                        sink_count = sink_count
                             .checked_add(1)
                             .ok_or(HydrologyError::BasinOverflow)?;
-                        if terminal == DrainageTerminal::Sink {
-                            sink_count = sink_count
-                                .checked_add(1)
-                                .ok_or(HydrologyError::BasinOverflow)?;
-                        }
-                        let basin_id = basin_count - 1;
-                        for node in path {
-                            basin_ids[node] = Some(basin_id);
-                            terminals[node] = terminal;
-                        }
-                        break;
                     }
+                    let basin_id = basin_count - 1;
+                    for node in path {
+                        basin_ids[node] = Some(basin_id);
+                        terminals[node] = terminal;
+                    }
+                    break;
                 }
             }
         }
