@@ -245,7 +245,10 @@ mod tests {
             .all(|depth| *depth <= fill.maximum_fill_depth_mm()));
         assert_eq!(
             fill.raised_sample_count() as usize,
-            fill.fill_depths_mm().iter().filter(|depth| **depth > 0).count()
+            fill.fill_depths_mm()
+                .iter()
+                .filter(|depth| **depth > 0)
+                .count()
         );
     }
 
