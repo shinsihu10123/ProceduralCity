@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 mod depression;
+mod global_hydrology;
 mod hydrology;
 mod hydrology_boundary;
 mod space;
@@ -10,6 +11,10 @@ mod terrain_analysis;
 mod time;
 
 pub use depression::{DepressionError, DepressionFill};
+pub use global_hydrology::{
+    GlobalDrainageTerminal, GlobalHydrologyError, GlobalHydrologyField, GlobalHydrologyInput,
+    GlobalHydrologyNode, GlobalHydrologyNodeKey,
+};
 pub use hydrology::{
     DrainageTerminal, HydrologyError, HydrologyField, HydrologyNode,
     DEFAULT_RIVER_ACCUMULATION_THRESHOLD,
