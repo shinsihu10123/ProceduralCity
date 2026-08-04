@@ -251,9 +251,9 @@ fn flat_distances(heights: &[i32], edge: usize) -> Result<Vec<u32>, HydrologyErr
     let mut distances = vec![u32::MAX; heights.len()];
     let mut queue = VecDeque::new();
 
-    for index in 0..heights.len() {
+    for (index, distance) in distances.iter_mut().enumerate() {
         if is_boundary(edge, index) || has_lower_neighbour(heights, edge, index) {
-            distances[index] = 0;
+            *distance = 0;
             queue.push_back(index);
         }
     }
