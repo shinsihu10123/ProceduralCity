@@ -6,6 +6,8 @@ pub const DEFAULT_OCTAVES: u8 = 5;
 pub const DEFAULT_SEA_LEVEL_MM: i32 = 0;
 pub const TERRAIN_ANALYSIS_STEP_MM: i64 = 1_000;
 const INTERPOLATION_SCALE: i128 = 1 << 20;
+const INTERPOLATION_SCALE_I32: i32 = 1 << 20;
+const INTERPOLATION_SCALE_U32: u32 = 1 << 20;
 const CONTINENT_SCALE_MULTIPLIER: u64 = 32;
 const RIDGE_SCALE_MULTIPLIER: u64 = 4;
 const CONTINENT_SEED_SALT: u64 = 0xa076_1d64_78bd_642f;
@@ -247,8 +249,9 @@ impl TerrainGenerator {
             ridge_wavelength,
         );
         let ridge_strength_q20 = ridged_q20(ridge_noise);
-        let land_gate_q20 = ((i128::from(continentality_q20) + INTERPOLATION_SCALE / 5)
-            .clamp(0, INTERPOLATION_SCALE)) as u32;
+        let land_gate = (i128::from(continentality_q20) + INTERPOLATION_SCALE / 5)
+            .clamp(0, INTERPOLATION_SCALE);
+        let land_gate_q20 = u32::try_from(land_gate).expect("clamped Q20 land gate fits u32");
         let ridge_height = i128::from(ridge_strength_q20)
             * i128::from(land_gate_q20)
             * i128::from(self.config.amplitude_mm)
@@ -430,8 +433,8 @@ mod tests {
     fn negative_coordinates_are_supported() {
         let generator = TerrainGenerator::new(99, TerrainConfig::default());
         let sample = generator.sample(-1, -1);
-        assert!(sample.continentality_q20().abs() <= INTERPOLATION_SCALE as i32);
-        assert!(sample.ridge_strength_q20() <= INTERPOLATION_SCALE as u32);
+        assert!(sample.continentality_q20().abs() <= INTERPOLATION_SCALE_I32);
+        assert!(sample.ridge_strength_q20() <= INTERPOLATION_SCALE_U32);
     }
 
     #[test]
