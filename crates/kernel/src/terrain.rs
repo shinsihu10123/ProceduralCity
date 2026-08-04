@@ -230,18 +230,12 @@ impl TerrainGenerator {
             continental_wavelength,
         );
         let continentality_q20 = normalized_q20(continent_noise);
-        let continent_height = i128::from(continent_noise)
-            * i128::from(self.config.amplitude_mm)
-            * 3
-            / (2 * i128::from(i32::MAX));
+        let continent_height =
+            i128::from(continent_noise) * i128::from(self.config.amplitude_mm) * 3
+                / (2 * i128::from(i32::MAX));
 
-        let local_relief = fractal_noise_height(
-            self.world_seed,
-            self.config,
-            x_mm,
-            z_mm,
-            base_wavelength,
-        );
+        let local_relief =
+            fractal_noise_height(self.world_seed, self.config, x_mm, z_mm, base_wavelength);
 
         let diagonal_x = x_mm / 2 + z_mm / 2;
         let diagonal_z = x_mm / 2 - z_mm / 2;
@@ -306,8 +300,8 @@ fn normalized_q20(value: i32) -> i32 {
 
 fn ridged_q20(value: i32) -> u32 {
     let magnitude = i128::from(i64::from(value).abs());
-    let distance_from_extreme = INTERPOLATION_SCALE
-        - magnitude * INTERPOLATION_SCALE / i128::from(i32::MAX);
+    let distance_from_extreme =
+        INTERPOLATION_SCALE - magnitude * INTERPOLATION_SCALE / i128::from(i32::MAX);
     let ridge = distance_from_extreme * distance_from_extreme / INTERPOLATION_SCALE;
     u32::try_from(ridge.clamp(0, INTERPOLATION_SCALE)).expect("Q20 ridge value fits u32")
 }
@@ -334,7 +328,8 @@ fn classify_terrain(height: i32, sea_level: i32, slope_mm_per_m: u32) -> Terrain
 }
 
 fn value_noise_2d(seed: u64, octave: u8, x_mm: i64, z_mm: i64, wavelength: u64) -> i32 {
-    let wavelength = i64::try_from(wavelength).expect("terrain wavelengths remain bounded by u32 scale factors");
+    let wavelength =
+        i64::try_from(wavelength).expect("terrain wavelengths remain bounded by u32 scale factors");
     let x0 = x_mm.div_euclid(wavelength);
     let z0 = z_mm.div_euclid(wavelength);
     let x_fraction = fraction_q20(x_mm.rem_euclid(wavelength), wavelength);
@@ -443,7 +438,10 @@ mod tests {
     fn terrain_sample_reports_morphology() {
         let generator = TerrainGenerator::new(5, TerrainConfig::default());
         let sample = generator.sample(12_000, 34_000);
-        assert_eq!(sample.is_submerged(), sample.height_mm() < sample.sea_level_mm());
+        assert_eq!(
+            sample.is_submerged(),
+            sample.height_mm() < sample.sea_level_mm()
+        );
         assert!(matches!(
             sample.class(),
             TerrainClass::DeepOcean
