@@ -225,15 +225,19 @@ fn generate_motion(seed: u64, center: UnitDirectionQ30) -> PlateMotionQ30 {
         + i128::from(raw_y) * i128::from(center.y_q30())
         + i128::from(raw_z) * i128::from(center.z_q30()))
         / i128::from(DIRECTION_Q30_SCALE);
-    let tangent_x = i128::from(raw_x) - center_dot * i128::from(center.x_q30()) / i128::from(DIRECTION_Q30_SCALE);
-    let tangent_y = i128::from(raw_y) - center_dot * i128::from(center.y_q30()) / i128::from(DIRECTION_Q30_SCALE);
-    let tangent_z = i128::from(raw_z) - center_dot * i128::from(center.z_q30()) / i128::from(DIRECTION_Q30_SCALE);
+    let tangent_x = i128::from(raw_x)
+        - center_dot * i128::from(center.x_q30()) / i128::from(DIRECTION_Q30_SCALE);
+    let tangent_y = i128::from(raw_y)
+        - center_dot * i128::from(center.y_q30()) / i128::from(DIRECTION_Q30_SCALE);
+    let tangent_z = i128::from(raw_z)
+        - center_dot * i128::from(center.z_q30()) / i128::from(DIRECTION_Q30_SCALE);
 
     PlateMotionQ30 {
         x: clamp_i128_to_i32(tangent_x),
         y: clamp_i128_to_i32(tangent_y),
         z: clamp_i128_to_i32(tangent_z),
-        speed_micrometers_per_year: 5_000 + u32::try_from(mix64(seed ^ 0xdef0) % 95_001).expect("plate speed fits u32"),
+        speed_micrometers_per_year: 5_000
+            + u32::try_from(mix64(seed ^ 0xdef0) % 95_001).expect("plate speed fits u32"),
     }
 }
 
@@ -253,7 +257,13 @@ fn dot_q60(left: UnitDirectionQ30, right: UnitDirectionQ30) -> i128 {
 }
 
 fn clamp_i128_to_i32(value: i128) -> i32 {
-    i32::try_from(value).unwrap_or_else(|_| if value.is_negative() { i32::MIN } else { i32::MAX })
+    i32::try_from(value).unwrap_or_else(|_| {
+        if value.is_negative() {
+            i32::MIN
+        } else {
+            i32::MAX
+        }
+    })
 }
 
 fn mix64(mut value: u64) -> u64 {
@@ -295,13 +305,25 @@ mod tests {
     #[test]
     fn earth_like_field_contains_both_crust_types() {
         let field = PlateField::earth_like(42);
-        assert!(field.plates().iter().any(|plate| plate.plate_type() == PlateType::Oceanic));
-        assert!(field.plates().iter().any(|plate| plate.plate_type() == PlateType::Continental));
+        assert!(field
+            .plates()
+            .iter()
+            .any(|plate| plate.plate_type() == PlateType::Oceanic));
+        assert!(field
+            .plates()
+            .iter()
+            .any(|plate| plate.plate_type() == PlateType::Continental));
     }
 
     #[test]
     fn invalid_plate_counts_are_rejected() {
-        assert_eq!(PlateField::generate(1, 0), Err(TectonicError::InvalidPlateCount));
-        assert_eq!(PlateField::generate(1, 129), Err(TectonicError::InvalidPlateCount));
+        assert_eq!(
+            PlateField::generate(1, 0),
+            Err(TectonicError::InvalidPlateCount)
+        );
+        assert_eq!(
+            PlateField::generate(1, 129),
+            Err(TectonicError::InvalidPlateCount)
+        );
     }
 }
