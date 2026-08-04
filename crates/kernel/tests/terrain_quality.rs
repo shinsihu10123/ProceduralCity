@@ -33,8 +33,8 @@ fn analysed_chunks(seed: u64) -> Vec<AnalysedChunk> {
     .map(|coord| {
         let chunk = TerrainChunk::generate(generator, coord, spec)
             .expect("quality-test terrain chunk must generate");
-        let fill = DepressionFill::analyse(&chunk)
-            .expect("quality-test depression fill must succeed");
+        let fill =
+            DepressionFill::analyse(&chunk).expect("quality-test depression fill must succeed");
         let hydrology = HydrologyField::analyse_with_fill(&chunk, &fill)
             .expect("quality-test hydrology must succeed");
         AnalysedChunk {
@@ -107,9 +107,7 @@ fn multi_seed_terrain_quality_contract_holds() {
             "seed {seed} produced no river reaches at threshold {RIVER_THRESHOLD}"
         );
         assert!(network.reaches().iter().all(|reach| {
-            reach.width_mm() >= 1_000
-                && reach.depth_mm() >= 500
-                && reach.strahler_order() >= 1
+            reach.width_mm() >= 1_000 && reach.depth_mm() >= 500 && reach.strahler_order() >= 1
         }));
 
         aggregate_submerged += seed_submerged;
@@ -140,7 +138,10 @@ fn quality_seed_results_are_repeatable() {
         let second = analysed_chunks(seed);
         for (left, right) in first.iter().zip(&second) {
             assert_eq!(left.chunk.samples(), right.chunk.samples());
-            assert_eq!(left.fill.filled_heights_mm(), right.fill.filled_heights_mm());
+            assert_eq!(
+                left.fill.filled_heights_mm(),
+                right.fill.filled_heights_mm()
+            );
             assert_eq!(left.hydrology.nodes(), right.hydrology.nodes());
         }
     }
