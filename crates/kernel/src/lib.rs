@@ -1,11 +1,16 @@
 #![forbid(unsafe_code)]
 
+mod hydrology;
 mod space;
 mod terrain;
 #[allow(clippy::similar_names)]
 mod terrain_analysis;
 mod time;
 
+pub use hydrology::{
+    DrainageTerminal, HydrologyError, HydrologyField, HydrologyNode,
+    DEFAULT_RIVER_ACCUMULATION_THRESHOLD,
+};
 pub use space::{
     CellCoord, CellLocalPosition, RegionCoord, SpaceError, SpatialGrid, WorldBounds, WorldPosition,
     DEFAULT_CELL_SIZE_MM, DEFAULT_REGION_EDGE_CELLS, MILLIMETERS_PER_METER,
