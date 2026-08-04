@@ -47,5 +47,8 @@ jobs:
       - name: Run release time soak test
         run: cargo test --release -p artificial-world-kernel time::tests::million_tick_soak_has_no_drift -- --exact
 
+      - name: Run release terrain soak test
+        run: cargo test --release -p artificial-world-kernel --test terrain_soak large_multi_chunk_pipeline_is_deterministic_and_connected -- --exact
+
       - name: Run release terrain pipeline gate
         run: cargo run --release -p artificial-world-benchmark --bin terrain_pipeline
