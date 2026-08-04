@@ -6,6 +6,7 @@ mod global_hydrology;
 mod hydrology;
 mod hydrology_boundary;
 mod planet;
+mod planet_surface;
 mod river_network;
 mod space;
 mod terrain;
@@ -36,6 +37,10 @@ pub use planet::{
     UnitDirectionQ30, DIRECTION_Q30_SCALE, EARTH_AXIAL_TILT_MILLIDEGREES, EARTH_MEAN_RADIUS_MM,
     EARTH_SIDEREAL_ORBIT_MILLISECONDS, EARTH_SIDEREAL_ROTATION_MILLISECONDS,
     EARTH_STANDARD_GRAVITY_MICROMETERS_PER_SECOND_SQUARED,
+};
+pub use planet_surface::{
+    face_edge_transform, FaceEdgeTransform, SurfaceEdge, SurfaceTileAddress, SurfaceTileError,
+    MAX_SURFACE_TILE_LEVEL,
 };
 pub use river_network::{
     RiverJunction, RiverJunctionKind, RiverNetwork, RiverNetworkError, RiverReach,
