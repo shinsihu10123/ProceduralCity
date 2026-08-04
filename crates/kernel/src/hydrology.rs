@@ -292,14 +292,13 @@ fn select_downstream(
     for (direction, target) in neighbours_with_directions(edge, index) {
         let target_height = heights[target];
         if target_height < center_height {
-            let candidate = (target_height, direction, target);
-            if best_lower.is_none_or(|best| candidate < best) {
-                best_lower = Some(candidate);
+            if best_lower.is_none_or(|(best_height, _, _)| target_height < best_height) {
+                best_lower = Some((target_height, direction, target));
             }
         } else if target_height == center_height && flat_distance[target] < center_distance {
-            let candidate = (flat_distance[target], direction, target);
-            if best_flat.is_none_or(|best| candidate < best) {
-                best_flat = Some(candidate);
+            let target_distance = flat_distance[target];
+            if best_flat.is_none_or(|(best_distance, _, _)| target_distance < best_distance) {
+                best_flat = Some((target_distance, direction, target));
             }
         }
     }
