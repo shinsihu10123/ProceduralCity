@@ -6,6 +6,7 @@ mod global_hydrology;
 mod hydrology;
 mod hydrology_boundary;
 mod river_network;
+mod season;
 mod space;
 mod terrain;
 #[allow(clippy::similar_names)]
@@ -33,6 +34,11 @@ pub use hydrology_boundary::{
 pub use river_network::{
     RiverJunction, RiverJunctionKind, RiverNetwork, RiverNetworkError, RiverReach,
     DEFAULT_RIVER_NETWORK_THRESHOLD,
+};
+pub use season::{
+    SeasonConfig, SeasonError, SeasonGenerator, SeasonPhase, SeasonSample,
+    DEFAULT_MAX_LAND_TEMPERATURE_SWING_MILLIC, DEFAULT_MAX_OCEAN_TEMPERATURE_SWING_MILLIC,
+    DEFAULT_PRECIPITATION_SWING_PERMILLE, DEFAULT_YEAR_LENGTH_DAYS,
 };
 pub use space::{
     CellCoord, CellLocalPosition, RegionCoord, SpaceError, SpatialGrid, WorldBounds, WorldPosition,
