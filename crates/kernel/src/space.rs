@@ -237,10 +237,7 @@ impl WorldBounds {
     ///
     /// Returns [`SpaceError::InvalidBounds`] unless every minimum component is
     /// strictly smaller than its corresponding maximum component.
-    pub const fn new(
-        min: WorldPosition,
-        max_exclusive: WorldPosition,
-    ) -> Result<Self, SpaceError> {
+    pub const fn new(min: WorldPosition, max_exclusive: WorldPosition) -> Result<Self, SpaceError> {
         if min.x_mm >= max_exclusive.x_mm
             || min.y_mm >= max_exclusive.y_mm
             || min.z_mm >= max_exclusive.z_mm
@@ -354,6 +351,9 @@ mod tests {
     #[test]
     fn grid_rejects_zero_dimensions() {
         assert_eq!(SpatialGrid::new(0, 64), Err(SpaceError::InvalidCellSize));
-        assert_eq!(SpatialGrid::new(1_000, 0), Err(SpaceError::InvalidRegionSize));
+        assert_eq!(
+            SpatialGrid::new(1_000, 0),
+            Err(SpaceError::InvalidRegionSize)
+        );
     }
 }
