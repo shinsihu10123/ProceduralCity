@@ -1,4 +1,7 @@
-use std::{collections::{BTreeMap, BTreeSet}, fmt};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt,
+};
 
 use crate::{
     CrossChunkBoundary, CrossChunkError, DepressionFill, DrainageTerminal, FlowDirection,
@@ -208,14 +211,19 @@ impl GlobalHydrologyField {
                 let target = local_target.or_else(|| cross_targets.get(&key).map(|(_, key)| *key));
                 downstream.insert(key, target);
                 let terminal = match local.terminal() {
-                    DrainageTerminal::BoundaryOutlet => GlobalDrainageTerminal::LoadedBoundaryOutlet,
+                    DrainageTerminal::BoundaryOutlet => {
+                        GlobalDrainageTerminal::LoadedBoundaryOutlet
+                    }
                     DrainageTerminal::Sink => GlobalDrainageTerminal::Sink,
                 };
                 terminal_hint.insert(key, terminal);
             }
         }
 
-        let mut indegree = downstream.keys().map(|key| (*key, 0_u32)).collect::<BTreeMap<_, _>>();
+        let mut indegree = downstream
+            .keys()
+            .map(|key| (*key, 0_u32))
+            .collect::<BTreeMap<_, _>>();
         for target in downstream.values().flatten() {
             let degree = indegree
                 .get_mut(target)
@@ -348,9 +356,7 @@ impl GlobalHydrologyField {
     pub fn river_candidates(&self, minimum_accumulation: u64) -> Vec<GlobalHydrologyNodeKey> {
         self.nodes
             .iter()
-            .filter_map(|node| {
-                (node.accumulation() >= minimum_accumulation).then_some(node.key())
-            })
+            .filter_map(|node| (node.accumulation() >= minimum_accumulation).then_some(node.key()))
             .collect()
     }
 }
@@ -408,11 +414,15 @@ impl fmt::Display for GlobalHydrologyError {
                 formatter.write_str("global hydrology chunks use different specifications")
             }
             Self::InvalidLayout => formatter.write_str("global hydrology input layout is invalid"),
-            Self::IndegreeOverflow => formatter.write_str("global hydrology indegree overflowed u32"),
+            Self::IndegreeOverflow => {
+                formatter.write_str("global hydrology indegree overflowed u32")
+            }
             Self::AccumulationOverflow => {
                 formatter.write_str("global hydrology accumulation overflowed u64")
             }
-            Self::BasinOverflow => formatter.write_str("global hydrology basin count overflowed u32"),
+            Self::BasinOverflow => {
+                formatter.write_str("global hydrology basin count overflowed u32")
+            }
             Self::DrainageCycle => formatter.write_str("global hydrology graph contains a cycle"),
             Self::CrossChunk(error) => error.fmt(formatter),
         }
