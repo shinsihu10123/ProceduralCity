@@ -106,8 +106,7 @@ fn split_coordinate(value: i128, scale: i128) -> (i64, i64) {
 fn smooth_q20(value: i64) -> i64 {
     let square = i128::from(value) * i128::from(value) / i128::from(INTERPOLATION_SCALE);
     i64::try_from(
-        square * i128::from(3 * INTERPOLATION_SCALE - 2 * value)
-            / i128::from(INTERPOLATION_SCALE),
+        square * i128::from(3 * INTERPOLATION_SCALE - 2 * value) / i128::from(INTERPOLATION_SCALE),
     )
     .expect("smoothed interpolation remains Q20")
 }
