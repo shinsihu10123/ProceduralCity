@@ -100,6 +100,12 @@ impl SimulationHost {
         }
     }
 
+    /// Restores a host from a validated simulation checkpoint.
+    ///
+    /// # Panics
+    ///
+    /// Panics when the checkpoint contains an unsupported time schema or an
+    /// invalid zero tick duration. Checkpoints created by this crate are valid.
     #[must_use]
     pub fn restore(checkpoint: SimulationCheckpoint) -> Self {
         let mut time = TimeService::restore(checkpoint.time)
@@ -146,6 +152,11 @@ impl SimulationHost {
         self.time.is_running()
     }
 
+    /// Captures a checkpoint at the current committed tick boundary.
+    ///
+    /// # Panics
+    ///
+    /// Panics when called while a tick transaction is incomplete.
     #[must_use]
     pub fn checkpoint(&self) -> SimulationCheckpoint {
         let time = self
@@ -155,6 +166,13 @@ impl SimulationHost {
         SimulationCheckpoint::with_time(time, self.world_seed, self.is_running())
     }
 
+    /// Advances exactly one authoritative fixed tick.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SimulationError::Paused`] while paused,
+    /// [`SimulationError::TickOverflow`] when the tick counter is exhausted,
+    /// or [`SimulationError::Time`] for another time transaction failure.
     pub fn step(&mut self) -> Result<Tick, SimulationError> {
         self.time.advance_one_tick().map_err(Into::into)
     }
