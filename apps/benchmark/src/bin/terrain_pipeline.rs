@@ -109,8 +109,7 @@ fn run() -> Result<(), String> {
             .len()
             .saturating_mul(size_of::<artificial_world_kernel::HydrologyNode>());
         total.saturating_add(
-            u64::try_from(samples.saturating_add(filled).saturating_add(nodes))
-                .unwrap_or(u64::MAX),
+            u64::try_from(samples.saturating_add(filled).saturating_add(nodes)).unwrap_or(u64::MAX),
         )
     });
 
