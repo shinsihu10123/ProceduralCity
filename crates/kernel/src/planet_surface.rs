@@ -59,27 +59,22 @@ pub const fn face_edge_transform(face: CubeFace, edge: SurfaceEdge) -> FaceEdgeT
         (PositiveX, East) => (NegativeZ, West, false),
         (PositiveX, South) => (NegativeY, East, true),
         (PositiveX, West) => (PositiveZ, East, false),
-
         (NegativeX, North) => (PositiveY, West, true),
         (NegativeX, East) => (PositiveZ, West, false),
         (NegativeX, South) => (NegativeY, West, false),
         (NegativeX, West) => (NegativeZ, East, false),
-
         (PositiveY, North) => (NegativeZ, North, true),
         (PositiveY, East) => (PositiveX, North, false),
         (PositiveY, South) => (PositiveZ, North, false),
         (PositiveY, West) => (NegativeX, North, true),
-
         (NegativeY, North) => (PositiveZ, South, false),
         (NegativeY, East) => (PositiveX, South, true),
         (NegativeY, South) => (NegativeZ, South, true),
         (NegativeY, West) => (NegativeX, South, false),
-
         (PositiveZ, North) => (PositiveY, South, false),
         (PositiveZ, East) => (PositiveX, West, false),
         (PositiveZ, South) => (NegativeY, North, false),
         (PositiveZ, West) => (NegativeX, East, false),
-
         (NegativeZ, North) => (PositiveY, North, true),
         (NegativeZ, East) => (NegativeX, West, false),
         (NegativeZ, South) => (NegativeY, South, true),
@@ -181,24 +176,11 @@ impl SurfaceTileAddress {
     pub const fn neighbour(self, edge: SurfaceEdge) -> Self {
         let edge_tiles = self.edge_tiles();
         let last = edge_tiles - 1;
-
         match edge {
-            SurfaceEdge::North if self.y < last => Self {
-                y: self.y + 1,
-                ..self
-            },
-            SurfaceEdge::East if self.x < last => Self {
-                x: self.x + 1,
-                ..self
-            },
-            SurfaceEdge::South if self.y > 0 => Self {
-                y: self.y - 1,
-                ..self
-            },
-            SurfaceEdge::West if self.x > 0 => Self {
-                x: self.x - 1,
-                ..self
-            },
+            SurfaceEdge::North if self.y < last => Self { y: self.y + 1, ..self },
+            SurfaceEdge::East if self.x < last => Self { x: self.x + 1, ..self },
+            SurfaceEdge::South if self.y > 0 => Self { y: self.y - 1, ..self },
+            SurfaceEdge::West if self.x > 0 => Self { x: self.x - 1, ..self },
             _ => self.cross_face(edge),
         }
     }
@@ -219,10 +201,10 @@ impl SurfaceTileAddress {
         let edge_tiles = i128::from(self.edge_tiles());
         let local_scale = i128::from(SURFACE_TILE_LOCAL_SCALE);
         let face_scale = i128::from(DIRECTION_Q30_SCALE);
-        let global_u_numerator = i128::from(self.x) * local_scale + i128::from(local.u);
-        let global_v_numerator = i128::from(self.y) * local_scale + i128::from(local.v);
-        let u_q30 = -face_scale + 2 * global_u_numerator * face_scale / (edge_tiles * local_scale);
-        let v_q30 = -face_scale + 2 * global_v_numerator * face_scale / (edge_tiles * local_scale);
+        let horizontal_numerator = i128::from(self.x) * local_scale + i128::from(local.u);
+        let vertical_numerator = i128::from(self.y) * local_scale + i128::from(local.v);
+        let u_q30 = -face_scale + 2 * horizontal_numerator * face_scale / (edge_tiles * local_scale);
+        let v_q30 = -face_scale + 2 * vertical_numerator * face_scale / (edge_tiles * local_scale);
 
         PlanetSurfacePosition::new(
             self.face,
@@ -233,6 +215,12 @@ impl SurfaceTileAddress {
         .map_err(Into::into)
     }
 
+    /// Returns the midpoint of one tile edge at sea level.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if the module's compile-time Q30 constants violate their
+    /// own bounds or a valid tile address fails the Cube-Sphere contract.
     #[must_use]
     pub fn edge_midpoint(self, edge: SurfaceEdge) -> PlanetSurfacePosition {
         let midpoint = SURFACE_TILE_LOCAL_SCALE / 2;
@@ -347,9 +335,7 @@ mod tests {
                 for edge in EDGES {
                     for offset in 0..edge_tiles {
                         let tile = match edge {
-                            SurfaceEdge::North => {
-                                SurfaceTileAddress::new(face, level, offset, last)
-                            }
+                            SurfaceEdge::North => SurfaceTileAddress::new(face, level, offset, last),
                             SurfaceEdge::East => SurfaceTileAddress::new(face, level, last, offset),
                             SurfaceEdge::South => SurfaceTileAddress::new(face, level, offset, 0),
                             SurfaceEdge::West => SurfaceTileAddress::new(face, level, 0, offset),
@@ -394,8 +380,8 @@ mod tests {
 
     #[test]
     fn root_tile_centre_maps_to_face_centre() {
-        let tile =
-            SurfaceTileAddress::new(CubeFace::PositiveZ, 0, 0, 0).expect("root tile is valid");
+        let tile = SurfaceTileAddress::new(CubeFace::PositiveZ, 0, 0, 0)
+            .expect("root tile is valid");
         let local = SurfaceTileLocalPosition::new(
             SURFACE_TILE_LOCAL_SCALE / 2,
             SURFACE_TILE_LOCAL_SCALE / 2,
@@ -411,8 +397,8 @@ mod tests {
 
     #[test]
     fn adjacent_tiles_share_identical_internal_boundaries() {
-        let west =
-            SurfaceTileAddress::new(CubeFace::PositiveZ, 4, 7, 5).expect("west tile is valid");
+        let west = SurfaceTileAddress::new(CubeFace::PositiveZ, 4, 7, 5)
+            .expect("west tile is valid");
         let east = west.neighbour(SurfaceEdge::East);
         let source = west
             .surface_position(
