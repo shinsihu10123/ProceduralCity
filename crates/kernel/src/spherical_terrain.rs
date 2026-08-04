@@ -95,11 +95,7 @@ impl SphericalTerrainGenerator {
         let uplift = scale_potential(geology.orogeny(), MAX_OROGENY_UPLIFT_MM)
             + scale_potential(geology.spreading_ridge(), MAX_RIDGE_UPLIFT_MM)
             + scale_potential(geology.volcanism(), MAX_VOLCANIC_UPLIFT_MM)
-            + signed_transform_relief(
-                self.world_seed,
-                direction,
-                geology.transform_fault(),
-            );
+            + signed_transform_relief(self.world_seed, direction, geology.transform_fault());
         let subsidence = scale_potential(geology.trench(), MAX_TRENCH_SUBSIDENCE_MM);
         clamp_i128_to_i32(i128::from(uplift - subsidence))
     }
