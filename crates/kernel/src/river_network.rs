@@ -358,8 +358,8 @@ impl std::error::Error for RiverNetworkError {}
 mod tests {
     use super::*;
     use crate::{
-        DepressionFill, GlobalDrainageTerminal, GlobalHydrologyInput, HydrologyField,
-        TerrainChunk, TerrainChunkCoord, TerrainChunkSpec, TerrainConfig, TerrainGenerator,
+        DepressionFill, GlobalDrainageTerminal, GlobalHydrologyInput, HydrologyField, TerrainChunk,
+        TerrainChunkCoord, TerrainChunkSpec, TerrainConfig, TerrainGenerator,
     };
 
     struct AnalysedChunk {
