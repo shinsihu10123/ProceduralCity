@@ -1,8 +1,6 @@
 use std::{collections::BTreeMap, fmt};
 
-use crate::{
-    GlobalDrainageTerminal, GlobalHydrologyField, GlobalHydrologyNodeKey,
-};
+use crate::{GlobalDrainageTerminal, GlobalHydrologyField, GlobalHydrologyNodeKey};
 
 pub const DEFAULT_RIVER_NETWORK_THRESHOLD: u64 = 64;
 
@@ -209,8 +207,8 @@ impl RiverNetwork {
             let downstream_junction = junctions_by_key[&current];
             let discharge_units = selected[&current].accumulation();
             let strahler_order = orders[&current].max(start_junction.strahler_order());
-            let id = u32::try_from(reaches.len())
-                .map_err(|_| RiverNetworkError::NumericOverflow)?;
+            let id =
+                u32::try_from(reaches.len()).map_err(|_| RiverNetworkError::NumericOverflow)?;
             reaches.push(RiverReach {
                 id,
                 nodes,
@@ -272,7 +270,11 @@ fn compute_strahler_orders(
             let order = if sources.is_empty() {
                 1
             } else {
-                let maximum = sources.iter().map(|source| orders[source]).max().unwrap_or(1);
+                let maximum = sources
+                    .iter()
+                    .map(|source| orders[source])
+                    .max()
+                    .unwrap_or(1);
                 let maximum_count = sources
                     .iter()
                     .filter(|source| orders[source] == maximum)
@@ -356,8 +358,8 @@ impl std::error::Error for RiverNetworkError {}
 mod tests {
     use super::*;
     use crate::{
-        DepressionFill, GlobalHydrologyInput, HydrologyField, TerrainChunk,
-        TerrainChunkCoord, TerrainChunkSpec, TerrainConfig, TerrainGenerator,
+        DepressionFill, GlobalHydrologyInput, HydrologyField, TerrainChunk, TerrainChunkCoord,
+        TerrainChunkSpec, TerrainConfig, TerrainGenerator,
     };
 
     struct AnalysedChunk {
@@ -396,7 +398,8 @@ mod tests {
             .iter()
             .map(|chunk| GlobalHydrologyInput::new(&chunk.chunk, &chunk.fill, &chunk.hydrology))
             .collect::<Vec<_>>();
-        let hydrology = GlobalHydrologyField::analyse(&inputs).expect("global analysis should work");
+        let hydrology =
+            GlobalHydrologyField::analyse(&inputs).expect("global analysis should work");
         let network = RiverNetwork::extract(&hydrology, 8).expect("network should extract");
         assert!(network
             .reaches()
