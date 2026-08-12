@@ -10,9 +10,9 @@
   <main class="app">
     <header>
       <div>
-        <p class="eyebrow">ECONOMIC LAB / v0.5 · INDUSTRY & SUPPLY CHAIN</p>
+        <p class="eyebrow">ECONOMIC LAB / v0.6 · GOVERNMENT & FISCAL SYSTEM</p>
         <h1>Four-Country Agent Economy</h1>
-        <p>Agent 추론 → 신용 → 노동 → 원재료·중간재 조달 → 생산 → 설비투자 → 최종재 소비 → 복식부기 → 거시경제</p>
+        <p>미시 Agent → 생산·고용·신용 → 공급망 → 조세·복지·정부수요·국채 → 복식부기 → 거시경제</p>
       </div>
       <div class="controls">
         <button id="step1">+1개월</button>
@@ -46,6 +46,16 @@
       </article>
 
       <article class="panel">
+        <h2>Government Agent · Fiscal Reasoning</h2>
+        <pre id="governmentTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>Fiscal Flows · Public Debt</h2>
+        <pre id="fiscalTrace"></pre>
+      </article>
+
+      <article class="panel">
         <h2>Industry · Supply Chain</h2>
         <pre id="industryTrace"></pre>
       </article>
@@ -61,7 +71,7 @@
       </article>
 
       <article class="panel">
-        <h2>가계·기업·은행 재무제표</h2>
+        <h2>가계·기업·은행·정부 재무제표</h2>
         <pre id="financialTrace"></pre>
       </article>
 
@@ -71,18 +81,18 @@
       </article>
 
       <article class="panel">
-        <h2>최근 실제 결제·통화거래</h2>
+        <h2>최근 실제 결제·재정·통화거래</h2>
         <pre id="transactionTrace"></pre>
       </article>
 
       <article class="panel">
         <h2>설계 계층</h2>
         <ol class="layers">
-          <li><b>L0</b> Settlement + Double-Entry Accounting / Deposits / Loans / Inventories / Fixed Assets</li>
-          <li><b>L1</b> Household / Firm / Bank Agent</li>
-          <li><b>L2</b> Goods / Labor / Credit / Interfirm Markets</li>
+          <li><b>L0</b> Settlement + Double-Entry Accounting / Deposits / Loans / Public Debt / Inventories</li>
+          <li><b>L1</b> Household / Firm / Bank / Government Agent</li>
+          <li><b>L2</b> Goods / Labor / Credit / Interfirm / Fiscal Flows</li>
           <li><b>L3</b> Resource → Materials → Capital / Consumer Supply Chain</li>
-          <li><b>L4</b> National Macro</li>
+          <li><b>L4</b> National Macro + Fiscal Balance + Public Debt</li>
           <li><b>L5</b> International Economy</li>
         </ol>
       </article>
