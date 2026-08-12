@@ -17,9 +17,7 @@ export class GeneralLedger {
   createEntity({ id, countryId, kind, accounts }) {
     if (this.entities.has(id)) throw new Error(`duplicate accounting entity: ${id}`);
     const chart = new Map();
-    for (const account of accounts) {
-      chart.set(account.code, { ...account, balance: 0 });
-    }
+    for (const account of accounts) chart.set(account.code, { ...account, balance: 0 });
     this.entities.set(id, {
       id,
       countryId,
@@ -31,6 +29,14 @@ export class GeneralLedger {
   }
 
   hasEntity(id) { return this.entities.has(id); }
+
+  addAccount(entityId, account) {
+    const entity = this.entities.get(entityId);
+    if (!entity) throw new Error(`unknown accounting entity: ${entityId}`);
+    if (entity.accounts.has(account.code)) return false;
+    entity.accounts.set(account.code, { ...account, balance: 0 });
+    return true;
+  }
 
   account(entityId, code) {
     const entity = this.entities.get(entityId);
@@ -71,9 +77,7 @@ export class GeneralLedger {
     if (Math.abs(debit - credit) > 1e-7) throw new Error(`unbalanced journal ${entityId}: ${debit} != ${credit}`);
     if (debit <= EPS) return null;
 
-    for (const line of normalized) {
-      entity.accounts.get(line.account).balance += line.debit - line.credit;
-    }
+    for (const line of normalized) entity.accounts.get(line.account).balance += line.debit - line.credit;
 
     const journal = {
       id: `JE-${String(this.sequence++).padStart(9, '0')}`,
@@ -135,12 +139,8 @@ export class GeneralLedger {
 
     const lines = [];
     for (const account of entity.accounts.values()) {
-      if (account.type === ACCOUNT_TYPES.REVENUE && account.balance < -EPS) {
-        lines.push({ account: account.code, debit: -account.balance });
-      }
-      if (account.type === ACCOUNT_TYPES.EXPENSE && account.balance > EPS) {
-        lines.push({ account: account.code, credit: account.balance });
-      }
+      if (account.type === ACCOUNT_TYPES.REVENUE && account.balance < -EPS) lines.push({ account: account.code, debit: -account.balance });
+      if (account.type === ACCOUNT_TYPES.EXPENSE && account.balance > EPS) lines.push({ account: account.code, credit: account.balance });
     }
     if (statement.netIncome > EPS) lines.push({ account: 'retained_earnings', credit: statement.netIncome });
     else if (statement.netIncome < -EPS) lines.push({ account: 'retained_earnings', debit: -statement.netIncome });
