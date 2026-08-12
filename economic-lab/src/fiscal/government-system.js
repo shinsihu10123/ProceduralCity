@@ -16,6 +16,14 @@ const governmentChart = [
   { code: 'interest_expense', name: 'Government Interest Expense', type: ACCOUNT_TYPES.EXPENSE }
 ];
 
+function activityProxy(country, macro = null) {
+  const observedMonthlyGDP = Math.max(0, Number(macro?.gdp || 0));
+  if (observedMonthlyGDP > EPS) return observedMonthlyGDP;
+  const laborIncomeProxy = Math.max(1, Number(country.households?.length || 1) * Number(country.initialWage || 1) * 0.72);
+  const firmFlowProxy = Math.max(1, Number(country.firmsSeedCount || country.firms?.length || 1) * Number(country.initialWage || 1) * 4.2);
+  return Math.max(laborIncomeProxy, firmFlowProxy);
+}
+
 export class GovernmentSystem {
   constructor({ ledger, accounting, rng }) {
     this.ledger = ledger;
@@ -49,6 +57,7 @@ export class GovernmentSystem {
       debtRatio: 0,
       policyStance: '중립',
       accountingOk: true,
+      governmentEquationError: 0,
       bondReconciliationError: 0,
       securitiesReconciliationError: 0,
       cashReconciliationError: 0
@@ -83,7 +92,6 @@ export class GovernmentSystem {
 
     country.governments = [government];
     country.governmentBonds = [];
-    country.lastFiscal = this.emptyMetrics();
 
     this.ledger.openAccount({
       id: government.accountId,
@@ -99,10 +107,27 @@ export class GovernmentSystem {
       gl.addAccount(h.id, { code: 'tax_expense', name: 'Household Taxes', type: ACCOUNT_TYPES.EXPENSE });
       gl.addAccount(h.id, { code: 'transfer_income', name: 'Government Transfer Income', type: ACCOUNT_TYPES.REVENUE });
     }
-    for (const f of country.firms) gl.addAccount(f.id, { code: 'tax_expense', name: 'Corporate Taxes', type: ACCOUNT_TYPES.EXPENSE });
+    for (const f of country.firms) {
+      gl.addAccount(f.id, { code: 'tax_expense', name: 'Corporate Taxes', type: ACCOUNT_TYPES.EXPENSE });
+    }
 
     const bank = country.banks[0];
     government.baselineBankSecurities = Math.max(0, gl.naturalBalance(bank.id, 'securities'));
+
+    // The simulation begins with an inherited public-debt stock rather than assuming
+    // an ahistorical zero-debt government. The bank buys the opening bond through the
+    // same balance-sheet mechanism used later, creating a treasury deposit and matching
+    // government liability / bank security asset.
+    const openingMetrics = this.emptyMetrics();
+    this.metrics.set(country.id, openingMetrics);
+    const monthlyActivity = activityProxy(country, null);
+    const initialTreasuryBuffer = monthlyActivity * clamp(0.13 + this.rng.normal(0, 0.018), 0.09, 0.17);
+    this.ensureLiquidity(country, 0, initialTreasuryBuffer, 'opening_public_debt_stock');
+    openingMetrics.outstandingDebt = this.outstandingDebt(country);
+    openingMetrics.governmentCash = this.ledger.balance(government.accountId);
+    openingMetrics.debtRatio = openingMetrics.outstandingDebt / Math.max(1, monthlyActivity * 12);
+    Object.assign(openingMetrics, this.verifyCountry(country));
+    country.lastFiscal = { ...openingMetrics };
   }
 
   registerFirm(firm) {
@@ -112,7 +137,8 @@ export class GovernmentSystem {
   beginMonth(country, month, signals, previousMacro) {
     const government = country.governments[0];
     const prior = country.lastFiscal || this.emptyMetrics();
-    const annualizedGDP = Math.max(1, Number(previousMacro?.gdp || 0) * 12);
+    const monthlyActivity = activityProxy(country, previousMacro);
+    const annualizedGDP = Math.max(1, monthlyActivity * 12);
     const debt = this.outstandingDebt(country);
     const fiscalState = {
       debtRatio: debt / annualizedGDP,
@@ -203,8 +229,8 @@ export class GovernmentSystem {
       metrics.taxRevenue += paid;
     }
 
-    // Government enters final-goods markets before private final demand so its
-    // purchases compete for the same scarce inventories rather than seeing only leftovers.
+    // Government and households compete for the same final-goods inventories.
+    // Entering before household final demand avoids treating government as a leftover buyer.
     this.executeGovernmentDemand(country, month, country.previousMacro);
     return metrics.incomeTax;
   }
@@ -287,11 +313,7 @@ export class GovernmentSystem {
     if (government.lastDemandMonth === month) return;
     government.lastDemandMonth = month;
     const policy = government.currentPolicy;
-    const baseGDP = Math.max(
-      1,
-      Number(previousMacro?.gdp || 0),
-      Number(previousMacro?.consumption || 0) + Number(previousMacro?.grossInvestment || 0)
-    );
+    const baseGDP = activityProxy(country, previousMacro);
     const consumptionTarget = baseGDP * 0.055 * policy.spendingMultiplier;
     const investmentTarget = baseGDP * 0.028 * policy.investmentMultiplier;
     this.purchaseFinalGoods(country, month, consumptionTarget, 'CONSUMER', false);
@@ -382,7 +404,7 @@ export class GovernmentSystem {
     const metrics = this.metrics.get(country.id) || this.emptyMetrics();
     const governmentResult = this.accounting.gl.closeMonth(government.id, month);
     const debt = this.outstandingDebt(country);
-    const annualizedGDP = Math.max(1, Number(macroBase?.gdp || country.previousMacro?.gdp || 0) * 12);
+    const annualizedGDP = Math.max(1, activityProxy(country, macroBase) * 12);
     const spendingExInterest = metrics.transfers + metrics.governmentConsumption + metrics.publicInvestment;
     metrics.primaryBalance = metrics.taxRevenue - spendingExInterest;
     metrics.overallBalance = metrics.primaryBalance - metrics.interestPaid;
@@ -394,8 +416,7 @@ export class GovernmentSystem {
     metrics.governmentExpense = governmentResult.expense;
     metrics.governmentNetIncome = governmentResult.netIncome;
 
-    const verify = this.verifyCountry(country);
-    Object.assign(metrics, verify);
+    Object.assign(metrics, this.verifyCountry(country));
     country.lastFiscal = metrics;
     return metrics;
   }
@@ -444,7 +465,8 @@ export class GovernmentSystem {
     const amount = Math.min(shortfall, Math.max(0, capitalCapacity * 0.92));
     if (amount <= EPS) return 0;
 
-    const debtRatio = this.outstandingDebt(country) / Math.max(1, (country.previousMacro?.gdp || 1) * 12);
+    const monthlyActivity = activityProxy(country, country.previousMacro);
+    const debtRatio = this.outstandingDebt(country) / Math.max(1, monthlyActivity * 12);
     const annualRate = clamp(bank.baseAnnualRate + 0.012 + Math.max(0, debtRatio - 0.55) * 0.035, 0.015, 0.16);
     const created = this.ledger.adjustMoney({
       month,
