@@ -88,7 +88,15 @@ export class BankSystem {
 
       const scheduledPrincipal = Math.min(loan.outstanding, loan.originalPrincipal / loan.termMonths);
       const interestDue = loan.outstanding * loan.monthlyRate;
-      const totalDue = scheduledPrincipal + interestDue + Math.min(loan.arrears, scheduledPrincipal * 0.5);
+      const requestedCatchUp = Math.min(loan.arrears, scheduledPrincipal * 0.5);
+      // Arrears are a servicing-state signal, not a separate booked liability. A catch-up
+      // payment may accelerate principal repayment, but total cash destroyed can never
+      // exceed the remaining principal plus current interest. This keeps settlement cash,
+      // borrower loan liability and the bank loan asset on the same accounting basis.
+      const totalDue = Math.min(
+        loan.outstanding + interestDue,
+        scheduledPrincipal + interestDue + requestedCatchUp
+      );
       const balance = this.ledger.balance(borrower.accountId);
       const requestedPayment = Math.min(totalDue, balance);
       const monetaryDelta = this.ledger.adjustMoney({
