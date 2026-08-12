@@ -2,6 +2,7 @@ import { COUNTRY_SEEDS } from '../config/countries.js';
 import { RNG, hashSeed, clamp } from './rng.js';
 import { TransactionLedger } from './ledger.js';
 import { AccountingSystem } from '../accounting/accounting-system.js';
+import { BankSystem } from '../banking/bank-system.js';
 import { householdDecision, firmDecision, updateForecastError } from '../ai/reasoning.js';
 import { clearGoodsMarket } from '../markets/goods-market.js';
 import { clearLaborMarket, settlePayroll } from '../markets/labor-market.js';
@@ -12,6 +13,7 @@ function makeHousehold(country, i, rng) {
   const wealth = Math.max(20, country.householdWealth * clamp(rng.normal(1, 0.55), 0.08, 3.5));
   return {
     id: `${country.id}-H-${String(i + 1).padStart(4, '0')}`,
+    kind: 'household',
     accountId: `${country.id}:HH:${String(i + 1).padStart(4, '0')}`,
     countryId: country.id,
     wealth,
@@ -22,6 +24,9 @@ function makeHousehold(country, i, rng) {
     skill: clamp(country.humanCapital * rng.normal(1, 0.18), 0.15, 1.5),
     employed,
     employerId: null,
+    bankId: null,
+    loanBalance: 0,
+    creditMisses: 0,
     consumption: 0,
     desiredConsumptionBudget: 0,
     savings: 0,
@@ -40,6 +45,7 @@ function makeFirm(country, i, rng) {
   const cash = country.firmCash * clamp(rng.normal(1, 0.25), 0.4, 1.8);
   return {
     id: `${country.id}-F-${String(i + 1).padStart(3, '0')}`,
+    kind: 'firm',
     accountId: `${country.id}:FIRM:${String(i + 1).padStart(3, '0')}`,
     countryId: country.id,
     price: country.initialPrice * clamp(rng.normal(1, 0.06), 0.78, 1.25),
@@ -56,6 +62,9 @@ function makeFirm(country, i, rng) {
     safeCash: country.firmCash * 0.65,
     wageArrears: 0,
     bookUnitCost: 0,
+    bankId: null,
+    loanBalance: 0,
+    creditMisses: 0,
     demandBias: rng.normal(0, 0.018),
     riskAversion: rng.range(0.10, 0.90),
     competitionSensitivity: rng.range(0.15, 0.95),
@@ -87,6 +96,7 @@ function macroFrom(country, ledger) {
   const goods = country.lastMarkets?.goods || {};
   const labor = country.lastMarkets?.labor || {};
   const payroll = country.lastMarkets?.payroll || {};
+  const credit = country.lastCredit || {};
   const settlementAccounting = ledger.verifyCountry(country.id);
   const financial = country.lastAccounting || {};
   return {
@@ -102,6 +112,7 @@ function macroFrom(country, ledger) {
     firmCash,
     householdWealth,
     moneySupply: ledger.totalBalance(country.id),
+    moneyCreatedNet: settlementAccounting.authorizedMoneyDelta || 0,
     goodsTransactions: goods.transactions || 0,
     payrollPayments: payroll.payments || 0,
     hires: labor.hires || 0,
@@ -109,15 +120,28 @@ function macroFrom(country, ledger) {
     unfilledJobs: labor.unfilled || 0,
     unmetDemandRatio: goods.desiredBudget ? goods.unmetBudget / goods.desiredBudget : 0,
     wageArrears,
+    creditApplications: credit.applications || 0,
+    creditApproved: credit.approved || 0,
+    newCredit: credit.newCredit || 0,
+    principalRepaid: credit.principalRepaid || 0,
+    interestPaid: credit.interestPaid || 0,
+    loanDefaults: credit.defaults || 0,
+    chargeOffs: credit.chargeOffs || 0,
+    outstandingLoans: credit.outstandingLoans || 0,
+    bankDeposits: financial.bankDeposits || 0,
+    bankLoans: financial.bankLoans || 0,
     accountingBalanced: settlementAccounting.ok && financial.ok !== false ? 1 : 0,
     moneyError: settlementAccounting.moneyError,
     totalAssets: financial.assets || 0,
     totalLiabilities: financial.liabilities || 0,
     totalEquity: financial.equity || 0,
     firmProfit: financial.firmProfit || 0,
+    bankProfit: financial.bankProfit || 0,
     householdNetIncome: financial.householdNetIncome || 0,
     accountingEquationError: financial.maxEquationError || 0,
-    cashReconciliationError: financial.maxCashReconciliationError || 0
+    cashReconciliationError: financial.maxCashReconciliationError || 0,
+    depositReconciliationError: financial.depositReconciliationError || 0,
+    loanReconciliationError: financial.loanReconciliationError || 0
   };
 }
 
@@ -132,9 +156,11 @@ export class EconomicWorld {
     this.relinkEmployment();
     this.initializeLedger();
     this.syncBalances();
+    this.banking = new BankSystem({ ledger: this.ledger, accounting: this.accounting, rng: this.rng });
 
     for (const country of this.countries) {
       this.accounting.initializeCountry(country, this.ledger);
+      this.banking.initializeCountry(country);
       country.lastMarkets = {
         labor: { hires: 0, layoffs: 0, unfilled: 0 },
         payroll: { payroll: 0, unpaid: 0, payments: 0 },
@@ -148,6 +174,9 @@ export class EconomicWorld {
         firmRevenue: 0,
         firmExpense: 0,
         firmProfit: 0,
+        bankRevenue: 0,
+        bankExpense: 0,
+        bankProfit: 0,
         ...this.accounting.verifyCountry(country, this.ledger, 0)
       };
       country.macro = macroFrom(country, this.ledger);
@@ -162,10 +191,13 @@ export class EconomicWorld {
       ...seed,
       households: Array.from({ length: seed.households }, (_, i) => makeHousehold(seed, i, local)),
       firms: Array.from({ length: seed.firms }, (_, i) => makeFirm(seed, i, local)),
+      banks: [],
+      loans: [],
       macro: null,
       previousMacro: null,
       history: [],
       lastMarkets: null,
+      lastCredit: null,
       lastAccounting: null
     };
   }
@@ -177,7 +209,7 @@ export class EconomicWorld {
           id: h.accountId,
           ownerId: h.id,
           countryId: country.id,
-          type: 'household_cash',
+          type: 'household_deposit',
           openingBalance: h.wealth
         });
       }
@@ -186,7 +218,7 @@ export class EconomicWorld {
           id: f.accountId,
           ownerId: f.id,
           countryId: country.id,
-          type: 'firm_cash',
+          type: 'firm_deposit',
           openingBalance: f.cash
         });
       }
@@ -238,6 +270,9 @@ export class EconomicWorld {
     const demandGrowth = prev2.nominalSales ? prev.nominalSales / prev2.nominalSales - 1 : 0;
     const signals = { inflation, wageGrowth, demandGrowth, unemployment: prev.unemployment };
 
+    const debtService = this.banking.serviceDebt(country, this.month);
+    this.syncBalances(country);
+
     for (const f of country.firms) {
       const decision = firmDecision(f, signals, this.rng);
       f.lastTrace = decision.trace;
@@ -245,6 +280,9 @@ export class EconomicWorld {
       f.price = Math.max(0.08, f.price * (1 + clamp(decision.priceChange, -0.08, 0.10)));
       f.desiredWorkers = Math.max(0, Math.round(Math.max(1, f.workers) * (1 + clamp(decision.hiringChange, -0.10, 0.12))));
     }
+
+    const creditOriginations = this.banking.originateCredit(country, this.month, signals);
+    this.syncBalances(country);
 
     const labor = clearLaborMarket(country, this.rng);
 
@@ -289,6 +327,7 @@ export class EconomicWorld {
       f.previousSales = Math.max(0.01, f.sales);
     }
 
+    country.lastCredit = this.banking.combineMetrics(debtService, creditOriginations, country);
     country.lastMarkets = { labor, payroll, goods, accrual };
     country.lastAccounting = this.accounting.closeCountryMonth(country, this.ledger, this.month);
     country.previousMacro = country.macro;
@@ -310,24 +349,34 @@ export class EconomicWorld {
   snapshot() {
     return {
       month: this.month,
-      countries: this.countries.map(c => ({
-        id: c.id,
-        name: c.name,
-        macro: { ...c.macro },
-        markets: structuredClone(c.lastMarkets),
-        accounting: this.ledger.verifyCountry(c.id),
-        generalAccounting: structuredClone(c.lastAccounting),
-        households: c.households.length,
-        firms: c.firms.length,
-        sampleHousehold: structuredClone(c.households[0]),
-        sampleFirm: structuredClone(c.firms[0]),
-        sampleHouseholdFinancials: this.accounting.entityStatement(c.households[0].id, this.month),
-        sampleFirmFinancials: this.accounting.entityStatement(c.firms[0].id, this.month),
-        sampleHouseholdJournals: this.accounting.recentJournals(c.households[0].id, 8),
-        sampleFirmJournals: this.accounting.recentJournals(c.firms[0].id, 8),
-        recentTransactions: this.ledger.entriesFor({ month: this.month, countryId: c.id }).slice(-12),
-        history: c.history.slice()
-      }))
+      countries: this.countries.map(c => {
+        const bank = c.banks[0];
+        return {
+          id: c.id,
+          name: c.name,
+          macro: { ...c.macro },
+          markets: structuredClone(c.lastMarkets),
+          credit: structuredClone(c.lastCredit),
+          accounting: this.ledger.verifyCountry(c.id),
+          generalAccounting: structuredClone(c.lastAccounting),
+          households: c.households.length,
+          firms: c.firms.length,
+          banks: c.banks.length,
+          activeLoans: c.loans.filter(x => x.status === 'active').length,
+          sampleHousehold: structuredClone(c.households[0]),
+          sampleFirm: structuredClone(c.firms[0]),
+          sampleBank: structuredClone(bank),
+          sampleLoan: structuredClone(c.loans.find(x => x.status === 'active') || c.loans[0] || null),
+          sampleHouseholdFinancials: this.accounting.entityStatement(c.households[0].id, this.month),
+          sampleFirmFinancials: this.accounting.entityStatement(c.firms[0].id, this.month),
+          sampleBankFinancials: this.accounting.entityStatement(bank.id, this.month),
+          sampleHouseholdJournals: this.accounting.recentJournals(c.households[0].id, 8),
+          sampleFirmJournals: this.accounting.recentJournals(c.firms[0].id, 8),
+          sampleBankJournals: this.accounting.recentJournals(bank.id, 8),
+          recentTransactions: this.ledger.entriesFor({ month: this.month, countryId: c.id }).slice(-14),
+          history: c.history.slice()
+        };
+      })
     };
   }
 }
