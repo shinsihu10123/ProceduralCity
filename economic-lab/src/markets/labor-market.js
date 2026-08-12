@@ -7,44 +7,48 @@ export function clearLaborMarket(country, rng) {
   let layoffs = 0;
   for (const f of country.firms) {
     const staff = employedByFirm.get(f.id);
-    staff.sort((a, b) => (a.skill || 0) - (b.skill || 0) + rng.normal(0, 0.04));
-    while (staff.length > f.desiredWorkers) {
-      const h = staff.shift();
+    const ranked = staff.map(h => ({ h, score: (h.skill || 0) + rng.normal(0, 0.04) }))
+      .sort((a, b) => a.score - b.score || a.h.id.localeCompare(b.h.id));
+    while (ranked.length > f.desiredWorkers) {
+      const h = ranked.shift().h;
       h.employed = false;
       h.employerId = null;
       layoffs += 1;
     }
-    f.workers = staff.length;
+    f.workers = ranked.length;
   }
 
-  const unemployed = country.households.filter(h => !h.employed);
-  unemployed.sort((a, b) => (b.skill || 0) - (a.skill || 0) + rng.normal(0, 0.03));
-  const firms = [...country.firms].sort((a, b) => b.wage - a.wage);
+  const unemployed = country.households
+    .filter(h => !h.employed)
+    .map(h => ({ h, score: (h.skill || 0) + rng.normal(0, 0.03) }))
+    .sort((a, b) => b.score - a.score || a.h.id.localeCompare(b.h.id))
+    .map(x => x.h);
+  const firms = [...country.firms].sort((a, b) => b.wage - a.wage || a.id.localeCompare(b.id));
   let hires = 0;
-  let cursor = 0;
 
   for (const f of firms) {
-    while (f.workers < f.desiredWorkers && cursor < unemployed.length) {
-      let accepted = null;
-      let scan = cursor;
-      while (scan < unemployed.length) {
-        const h = unemployed[scan];
-        const reservation = h.reservationWage || h.wage * 0.72;
-        if (f.wage >= reservation * (0.96 + rng.next() * 0.08)) {
-          accepted = h;
-          unemployed[scan] = unemployed[cursor];
-          unemployed[cursor] = accepted;
-          break;
-        }
-        scan += 1;
+    const vacancy = Math.max(0, f.desiredWorkers - f.workers);
+    const monthlyHiringCapacity = Math.max(1, Math.ceil(vacancy * 0.35));
+    let hiredHere = 0;
+    let scans = 0;
+    const maxScans = Math.min(unemployed.length, Math.max(10, monthlyHiringCapacity * 8));
+
+    while (f.workers < f.desiredWorkers && unemployed.length && hiredHere < monthlyHiringCapacity && scans < maxScans) {
+      const h = unemployed.shift();
+      scans += 1;
+      const reservation = h.reservationWage || h.wage * 0.72;
+      const informationFriction = 0.95 + rng.next() * 0.12;
+      const matchProbability = Math.min(0.96, 0.58 + (h.skill || 0) * 0.24 + country.financialAccess * 0.08);
+      if (f.wage >= reservation * informationFriction && rng.next() < matchProbability) {
+        h.employed = true;
+        h.employerId = f.id;
+        h.wage = f.wage;
+        f.workers += 1;
+        hires += 1;
+        hiredHere += 1;
+      } else {
+        unemployed.push(h);
       }
-      if (!accepted) break;
-      cursor += 1;
-      accepted.employed = true;
-      accepted.employerId = f.id;
-      accepted.wage = f.wage;
-      f.workers += 1;
-      hires += 1;
     }
 
     const gap = Math.max(0, f.desiredWorkers - f.workers);
