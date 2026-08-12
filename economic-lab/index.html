@@ -10,9 +10,9 @@
   <main class="app">
     <header>
       <div>
-        <p class="eyebrow">ECONOMIC LAB / v0.1</p>
+        <p class="eyebrow">ECONOMIC LAB / v0.2 · MICRO TRANSACTION FOUNDATION</p>
         <h1>Four-Country Agent Economy</h1>
-        <p>미시 행위에서 거시지표가 파생되는 4개국 경제 시뮬레이션</p>
+        <p>Agent 추론 → 노동·상품시장 → 실제 화폐 이전 → 장부 → 거시지표</p>
       </div>
       <div class="controls">
         <button id="step1">+1개월</button>
@@ -31,7 +31,7 @@
     <section id="countries" class="country-grid"></section>
 
     <section class="detail-grid">
-      <article class="panel">
+      <article class="panel reasoning-panel">
         <div class="panel-head"><h2>Agent Reasoning Trace</h2><select id="countrySelect"></select></div>
         <div class="trace-grid">
           <div>
@@ -44,6 +44,17 @@
           </div>
         </div>
       </article>
+
+      <article class="panel">
+        <h2>시장·회계 상태</h2>
+        <pre id="marketTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>최근 실제 거래</h2>
+        <pre id="transactionTrace"></pre>
+      </article>
+
       <article class="panel">
         <h2>설계 계층</h2>
         <ol class="layers">
