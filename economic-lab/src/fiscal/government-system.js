@@ -77,7 +77,8 @@ export class GovernmentSystem {
       publicCapitalStock: 0,
       lastTrace: null,
       currentPolicy: null,
-      baselineBankSecurities: 0
+      baselineBankSecurities: 0,
+      lastDemandMonth: -1
     };
 
     country.governments = [government];
@@ -98,9 +99,7 @@ export class GovernmentSystem {
       gl.addAccount(h.id, { code: 'tax_expense', name: 'Household Taxes', type: ACCOUNT_TYPES.EXPENSE });
       gl.addAccount(h.id, { code: 'transfer_income', name: 'Government Transfer Income', type: ACCOUNT_TYPES.REVENUE });
     }
-    for (const f of country.firms) {
-      gl.addAccount(f.id, { code: 'tax_expense', name: 'Corporate Taxes', type: ACCOUNT_TYPES.EXPENSE });
-    }
+    for (const f of country.firms) gl.addAccount(f.id, { code: 'tax_expense', name: 'Corporate Taxes', type: ACCOUNT_TYPES.EXPENSE });
 
     const bank = country.banks[0];
     government.baselineBankSecurities = Math.max(0, gl.naturalBalance(bank.id, 'securities'));
@@ -203,6 +202,10 @@ export class GovernmentSystem {
       metrics.incomeTax += paid;
       metrics.taxRevenue += paid;
     }
+
+    // Government enters final-goods markets before private final demand so its
+    // purchases compete for the same scarce inventories rather than seeing only leftovers.
+    this.executeGovernmentDemand(country, month, country.previousMacro);
     return metrics.incomeTax;
   }
 
@@ -281,6 +284,8 @@ export class GovernmentSystem {
 
   executeGovernmentDemand(country, month, previousMacro) {
     const government = country.governments[0];
+    if (government.lastDemandMonth === month) return;
+    government.lastDemandMonth = month;
     const policy = government.currentPolicy;
     const baseGDP = Math.max(
       1,
