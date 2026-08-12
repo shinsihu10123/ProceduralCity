@@ -10,9 +10,9 @@
   <main class="app">
     <header>
       <div>
-        <p class="eyebrow">ECONOMIC LAB / v0.6 · GOVERNMENT & FISCAL SYSTEM</p>
+        <p class="eyebrow">ECONOMIC LAB / v0.7 · CENTRAL BANK & FINANCIAL MARKETS</p>
         <h1>Four-Country Agent Economy</h1>
-        <p>미시 Agent → 생산·고용·신용 → 공급망 → 조세·복지·정부수요·국채 → 복식부기 → 거시경제</p>
+        <p>미시 Agent → 생산·고용·신용 → 공급망·재정 → 중앙은행 정책금리·준비금 → 주식시장 → 복식부기 → 거시경제</p>
       </div>
       <div class="controls">
         <button id="step1">+1개월</button>
@@ -34,15 +34,29 @@
       <article class="panel reasoning-panel">
         <div class="panel-head"><h2>Economic Agent Reasoning</h2><select id="countrySelect"></select></div>
         <div class="trace-grid">
-          <div>
-            <h3>가계 Agent</h3>
-            <pre id="householdTrace"></pre>
-          </div>
-          <div>
-            <h3>기업 Agent</h3>
-            <pre id="firmTrace"></pre>
-          </div>
+          <div><h3>가계 Agent</h3><pre id="householdTrace"></pre></div>
+          <div><h3>기업 Agent</h3><pre id="firmTrace"></pre></div>
         </div>
+      </article>
+
+      <article class="panel">
+        <h2>Central Bank Agent · Monetary Reasoning</h2>
+        <pre id="centralBankTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>Monetary Operations · Reserves · Liquidity</h2>
+        <pre id="monetaryTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>Equity Market · Capital Raising · Trading</h2>
+        <pre id="assetTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>Bank Agent · Credit Reasoning</h2>
+        <pre id="bankTrace"></pre>
       </article>
 
       <article class="panel">
@@ -61,17 +75,12 @@
       </article>
 
       <article class="panel">
-        <h2>Bank Agent · Credit Reasoning</h2>
-        <pre id="bankTrace"></pre>
-      </article>
-
-      <article class="panel">
         <h2>시장·거시·회계 불변식</h2>
         <pre id="marketTrace"></pre>
       </article>
 
       <article class="panel">
-        <h2>가계·기업·은행·정부 재무제표</h2>
+        <h2>가계·기업·은행·중앙은행·정부 재무제표</h2>
         <pre id="financialTrace"></pre>
       </article>
 
@@ -81,23 +90,23 @@
       </article>
 
       <article class="panel">
-        <h2>최근 실제 결제·재정·통화거래</h2>
+        <h2>최근 실제 Settlement</h2>
         <pre id="transactionTrace"></pre>
       </article>
 
       <article class="panel">
         <h2>설계 계층</h2>
         <ol class="layers">
-          <li><b>L0</b> Settlement + Double-Entry Accounting / Deposits / Loans / Public Debt / Inventories</li>
-          <li><b>L1</b> Household / Firm / Bank / Government Agent</li>
-          <li><b>L2</b> Goods / Labor / Credit / Interfirm / Fiscal Flows</li>
+          <li><b>L0</b> Settlement + Double-Entry Accounting / Deposits / Reserves / Loans / Securities / Equity</li>
+          <li><b>L1</b> Household / Firm / Bank / Central Bank / Government Agent</li>
+          <li><b>L2</b> Goods / Labor / Credit / Interfirm / Fiscal / Equity Markets</li>
           <li><b>L3</b> Resource → Materials → Capital / Consumer Supply Chain</li>
-          <li><b>L4</b> National Macro + Fiscal Balance + Public Debt</li>
+          <li><b>L4</b> National Macro + Fiscal + Monetary + Financial Conditions</li>
           <li><b>L5</b> International Economy</li>
         </ol>
       </article>
     </section>
   </main>
-  <script type="module" src="/src/main.js"></script>
+  <script type="module" src="/src/main-v07.js"></script>
 </body>
 </html>
