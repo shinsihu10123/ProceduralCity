@@ -5,6 +5,7 @@ import { TransactionLedger } from './ledger.js';
 import { AccountingSystem } from '../accounting/accounting-system.js';
 import { BankSystem } from '../banking/bank-system.js';
 import { SupplyChainSystem } from '../industry/supply-chain.js';
+import { GovernmentSystem } from '../fiscal/government-system.js';
 import { householdDecision, firmDecision, updateForecastError } from '../ai/reasoning.js';
 import { clearGoodsMarket } from '../markets/goods-market.js';
 import { clearLaborMarket, settlePayroll } from '../markets/labor-market.js';
@@ -20,6 +21,9 @@ function makeHousehold(country, i, rng) {
     countryId: country.id,
     wealth,
     income: 0,
+    incomeTaxPaid: 0,
+    transferIncome: 0,
+    disposableIncome: 0,
     wage,
     reservationWage: wage * rng.range(0.66, 0.86),
     wageArrears: 0,
@@ -112,6 +116,7 @@ function macroFrom(country, ledger) {
   const consumerFirms = active.filter(f => f.consumerFacing === true);
   const employed = households.filter(h => h.employed).length;
   const consumption = households.reduce((s, h) => s + h.consumption, 0);
+  const disposableIncome = households.reduce((s, h) => s + Math.max(0, Number(h.disposableIncome || 0)), 0);
   const realOutput = consumerFirms.reduce((s, f) => s + f.output, 0);
   const nominalSales = active.reduce((s, f) => s + f.revenue, 0);
   const wages = households.reduce((s, h) => s + h.income, 0);
@@ -130,21 +135,42 @@ function macroFrom(country, ledger) {
   const payroll = country.lastMarkets?.payroll || {};
   const credit = country.lastCredit || {};
   const industry = country.lastIndustry || {};
+  const fiscal = country.lastFiscal || {};
   const settlementAccounting = ledger.verifyCountry(country.id);
   const financial = country.lastAccounting || {};
   const inventoryBook = Number(financial.inventoryBook || 0);
   const previousInventoryBook = Number(country.previousInventoryBook || inventoryBook);
   const inventoryInvestment = inventoryBook - previousInventoryBook;
   const grossInvestment = Number(industry.grossInvestment || 0);
-  const gdp = consumption + grossInvestment + inventoryInvestment;
+  const governmentConsumption = Number(fiscal.governmentConsumption || 0);
+  const publicInvestment = Number(fiscal.publicInvestment || 0);
+  const gdp = consumption + grossInvestment + publicInvestment + governmentConsumption + inventoryInvestment;
 
   return {
     gdp,
     realOutput,
     nominalSales,
     consumption,
+    disposableIncome,
     grossInvestment,
+    publicInvestment,
+    governmentConsumption,
+    governmentDemand: publicInvestment + governmentConsumption,
     inventoryInvestment,
+    taxRevenue: fiscal.taxRevenue || 0,
+    incomeTax: fiscal.incomeTax || 0,
+    consumptionTax: fiscal.consumptionTax || 0,
+    corporateTax: fiscal.corporateTax || 0,
+    governmentTransfers: fiscal.transfers || 0,
+    fiscalPrimaryBalance: fiscal.primaryBalance || 0,
+    fiscalOverallBalance: fiscal.overallBalance || 0,
+    publicDebt: fiscal.outstandingDebt || 0,
+    publicDebtRatio: fiscal.debtRatio || 0,
+    governmentCash: fiscal.governmentCash || 0,
+    publicCapital: fiscal.publicCapital || 0,
+    governmentBondIssued: fiscal.bondIssued || 0,
+    governmentInterestPaid: fiscal.interestPaid || 0,
+    governmentAccountingBalanced: fiscal.accountingOk === false ? 0 : 1,
     b2bTrade: industry.b2bSpend || 0,
     b2bTransactions: industry.b2bTransactions || 0,
     inputShortageUnits: industry.inputShortageUnits || 0,
@@ -183,7 +209,7 @@ function macroFrom(country, ledger) {
     outstandingLoans: credit.outstandingLoans || 0,
     bankDeposits: financial.bankDeposits || 0,
     bankLoans: financial.bankLoans || 0,
-    accountingBalanced: settlementAccounting.ok && financial.ok !== false ? 1 : 0,
+    accountingBalanced: settlementAccounting.ok && financial.ok !== false && fiscal.accountingOk !== false ? 1 : 0,
     moneyError: settlementAccounting.moneyError,
     totalAssets: financial.assets || 0,
     totalLiabilities: financial.liabilities || 0,
@@ -211,11 +237,13 @@ export class EconomicWorld {
     this.syncBalances();
     this.banking = new BankSystem({ ledger: this.ledger, accounting: this.accounting, rng: this.rng });
     this.supply = new SupplyChainSystem({ ledger: this.ledger, accounting: this.accounting, rng: this.rng });
+    this.fiscal = new GovernmentSystem({ ledger: this.ledger, accounting: this.accounting, rng: this.rng });
 
     for (const country of this.countries) {
       this.supply.initializeCountry(country);
       this.accounting.initializeCountry(country, this.ledger);
       this.banking.initializeCountry(country);
+      this.fiscal.initializeCountry(country);
       country.lastMarkets = {
         labor: { hires: 0, layoffs: 0, unfilled: 0 },
         payroll: { payroll: 0, unpaid: 0, payments: 0 },
@@ -252,6 +280,8 @@ export class EconomicWorld {
       nextFirmSerial: initialFirmCount + 1,
       banks: [],
       loans: [],
+      governments: [],
+      governmentBonds: [],
       macro: null,
       previousMacro: null,
       previousInventoryBook: 0,
@@ -259,6 +289,7 @@ export class EconomicWorld {
       lastMarkets: null,
       lastCredit: null,
       lastIndustry: null,
+      lastFiscal: null,
       lastAccounting: null
     };
   }
@@ -277,6 +308,7 @@ export class EconomicWorld {
     });
     this.accounting.initializeFirm(f, this.ledger, this.month);
     this.banking.registerFirm(country, f);
+    this.fiscal.registerFirm(f);
     return f;
   }
 
@@ -308,6 +340,7 @@ export class EconomicWorld {
     for (const c of countries) {
       for (const h of c.households) h.wealth = this.ledger.balance(h.accountId);
       for (const f of c.firms) f.cash = this.ledger.balance(f.accountId);
+      if (c.governments?.length) c.governments[0].cash = this.ledger.balance(c.governments[0].accountId);
     }
   }
 
@@ -349,6 +382,7 @@ export class EconomicWorld {
     const signals = { inflation, wageGrowth, demandGrowth, unemployment: prev.unemployment };
 
     const debtService = this.banking.serviceDebt(country, this.month);
+    this.fiscal.beginMonth(country, this.month, signals, prev);
     this.syncBalances(country);
     this.supply.beginMonth(country);
 
@@ -373,6 +407,10 @@ export class EconomicWorld {
     const payroll = settlePayroll(country, this.ledger, this.month);
     this.syncBalances(country);
 
+    this.fiscal.collectIncomeTaxes(country, this.month);
+    this.fiscal.payAutomaticTransfers(country, this.month);
+    this.syncBalances(country);
+
     industryMetrics = this.supply.clearInvestmentMarket(country, this.month, industryMetrics);
     this.syncBalances(country);
 
@@ -380,12 +418,13 @@ export class EconomicWorld {
       const decision = householdDecision(h, signals, this.rng);
       h.lastTrace = decision.trace;
       const cash = this.ledger.balance(h.accountId);
+      h.disposableIncome = Math.max(0, h.income - (h.incomeTaxPaid || 0) + (h.transferIncome || 0));
       const bufferDraw = h.employed
         ? Math.min(cash * 0.006, h.wage * 0.08)
         : Math.min(cash * 0.04, h.wage * 0.35);
       h.desiredConsumptionBudget = Math.min(
         cash,
-        Math.max(0, h.income * decision.consumeShare + bufferDraw)
+        Math.max(0, h.disposableIncome * decision.consumeShare + bufferDraw)
       );
     }
 
@@ -395,6 +434,10 @@ export class EconomicWorld {
       ...this.ledger.entriesFor({ month: this.month, countryId: country.id, kind: 'goods_purchase' })
     ];
     this.accounting.ingestSettlementEntries(settlementEntries, country, this.month);
+
+    this.fiscal.collectConsumptionTaxes(country, this.month);
+    this.fiscal.executeGovernmentDemand(country, this.month, prev);
+    this.fiscal.collectCorporateTaxes(country, this.month);
     this.syncBalances(country);
 
     for (const f of country.firms) {
@@ -407,6 +450,7 @@ export class EconomicWorld {
     country.lastCredit = this.banking.combineMetrics(debtService, creditOriginations, country);
     country.lastMarkets = { labor, payroll, goods, accrual };
     country.lastIndustry = this.supply.finalizeMetrics(country, industryMetrics);
+    country.lastFiscal = this.fiscal.finalizeMonth(country, this.month, prev);
     country.lastAccounting = this.accounting.closeCountryMonth(country, this.ledger, this.month);
 
     const exitIndustries = this.supply.evaluateExits(country);
@@ -433,7 +477,9 @@ export class EconomicWorld {
     return {
       settlement: this.ledger.verifyCountry(countryId),
       general: this.accounting.verifyCountry(country, this.ledger, this.month),
-      summary: { ...country.lastAccounting }
+      fiscal: this.fiscal.verifyCountry(country),
+      summary: { ...country.lastAccounting },
+      fiscalSummary: { ...country.lastFiscal }
     };
   }
 
@@ -442,10 +488,14 @@ export class EconomicWorld {
       month: this.month,
       countries: this.countries.map(c => {
         const bank = c.banks[0];
+        const government = c.governments[0];
         const sampleFirm = c.firms.find(f => f.active !== false && f.consumerFacing) || c.firms.find(f => f.active !== false) || c.firms[0];
         const recentB2B = this.ledger.entriesFor({ month: this.month, countryId: c.id })
           .filter(e => e.kind === 'interfirm_purchase' || e.kind === 'capital_investment')
           .slice(-12);
+        const recentFiscal = this.ledger.entriesFor({ month: this.month, countryId: c.id })
+          .filter(e => ['income_tax', 'consumption_tax', 'corporate_tax', 'unemployment_transfer', 'government_consumption', 'public_investment', 'government_bond_issue', 'government_bond_payment'].includes(e.kind))
+          .slice(-14);
         const sectorFirms = {};
         for (const f of c.firms.filter(x => x.active !== false)) sectorFirms[f.industryId] = (sectorFirms[f.industryId] || 0) + 1;
         return {
@@ -455,26 +505,35 @@ export class EconomicWorld {
           markets: structuredClone(c.lastMarkets),
           credit: structuredClone(c.lastCredit),
           industry: structuredClone(c.lastIndustry),
+          fiscal: structuredClone(c.lastFiscal),
           sectorFirms,
           accounting: this.ledger.verifyCountry(c.id),
           generalAccounting: structuredClone(c.lastAccounting),
+          fiscalAccounting: this.fiscal.verifyCountry(c),
           households: c.households.length,
           firms: c.firms.length,
           activeFirms: c.firms.filter(f => f.active !== false).length,
           banks: c.banks.length,
+          governments: c.governments.length,
           activeLoans: c.loans.filter(x => x.status === 'active').length,
+          activeGovernmentBonds: c.governmentBonds.filter(x => x.status === 'active').length,
           sampleHousehold: structuredClone(c.households[0]),
           sampleFirm: structuredClone(sampleFirm),
           sampleBank: structuredClone(bank),
+          sampleGovernment: structuredClone(government),
           sampleLoan: structuredClone(c.loans.find(x => x.status === 'active') || c.loans[0] || null),
+          sampleGovernmentBond: structuredClone(c.governmentBonds.find(x => x.status === 'active') || c.governmentBonds[0] || null),
           sampleHouseholdFinancials: this.accounting.entityStatement(c.households[0].id, this.month),
           sampleFirmFinancials: this.accounting.entityStatement(sampleFirm.id, this.month),
           sampleBankFinancials: this.accounting.entityStatement(bank.id, this.month),
+          sampleGovernmentFinancials: this.accounting.entityStatement(government.id, this.month),
           sampleHouseholdJournals: this.accounting.recentJournals(c.households[0].id, 8),
           sampleFirmJournals: this.accounting.recentJournals(sampleFirm.id, 10),
           sampleBankJournals: this.accounting.recentJournals(bank.id, 8),
+          sampleGovernmentJournals: this.accounting.recentJournals(government.id, 10),
           recentB2B,
-          recentTransactions: this.ledger.entriesFor({ month: this.month, countryId: c.id }).slice(-16),
+          recentFiscal,
+          recentTransactions: this.ledger.entriesFor({ month: this.month, countryId: c.id }).slice(-18),
           history: c.history.slice()
         };
       })
