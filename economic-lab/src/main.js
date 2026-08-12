@@ -14,16 +14,16 @@ function render() {
     <article class="country-card ${c.id === selectedCountryId ? 'selected' : ''}" data-country="${c.id}">
       <div class="country-head"><span>${c.id}</span><h2>${c.name}</h2></div>
       <div class="metrics">
-        <div><small>GDP</small><strong>${fmt(c.macro.gdp)}</strong></div>
+        <div><small>GDP (C+I+Δ재고)</small><strong>${fmt(c.macro.gdp)}</strong></div>
         <div><small>CPI</small><strong>${fmt(c.macro.priceIndex, 3)}</strong></div>
         <div><small>실업률</small><strong>${pct(c.macro.unemployment)}</strong></div>
-        <div><small>평균임금</small><strong>${fmt(c.macro.avgWage)}</strong></div>
+        <div><small>가계소비</small><strong>${fmt(c.macro.consumption)}</strong></div>
+        <div><small>설비투자</small><strong>${fmt(c.macro.grossInvestment)}</strong></div>
+        <div><small>기업간거래</small><strong>${fmt(c.macro.b2bTrade)}</strong></div>
         <div><small>예금통화</small><strong>${fmt(c.macro.moneySupply)}</strong></div>
         <div><small>대출잔액</small><strong>${fmt(c.macro.outstandingLoans)}</strong></div>
-        <div><small>신규신용</small><strong>${fmt(c.macro.newCredit)}</strong></div>
-        <div><small>은행이익</small><strong>${fmt(c.macro.bankProfit)}</strong></div>
       </div>
-      <footer>가계 ${fmt(c.households,0)} · 기업 ${fmt(c.firms,0)} · 은행 ${fmt(c.banks,0)} · 활성대출 ${fmt(c.activeLoans,0)} · SFC ${c.generalAccounting.ok ? 'PASS' : 'FAIL'}</footer>
+      <footer>활성기업 ${fmt(c.activeFirms,0)}/${fmt(c.firms,0)} · 은행 ${fmt(c.banks,0)} · 활성대출 ${fmt(c.activeLoans,0)} · SFC ${c.generalAccounting.ok ? 'PASS' : 'FAIL'}</footer>
     </article>`).join('');
 
   for (const el of root.querySelectorAll('[data-country]')) {
@@ -45,6 +45,7 @@ function render() {
   document.getElementById('householdTrace').textContent = formatHousehold(country.sampleHousehold);
   document.getElementById('firmTrace').textContent = formatFirm(country.sampleFirm);
   document.getElementById('bankTrace').textContent = formatBank(country);
+  document.getElementById('industryTrace').textContent = formatIndustry(country);
   document.getElementById('marketTrace').textContent = formatMarkets(country);
   document.getElementById('financialTrace').textContent = formatFinancials(country);
   document.getElementById('journalTrace').textContent = formatJournals(country);
@@ -72,26 +73,30 @@ function formatHousehold(h) {
     `[선택] ${t.selected}`,
     `주된 이유: ${t.reason}`,
     '',
-    '[실제 구매]',
-    ...(purchases.length ? purchases.map(x => `- ${x.firmId}: ${fmt(x.units,2)}단위 × ${fmt(x.price,3)} = ${fmt(x.amount)}`) : ['- 체결 거래 없음'])
+    '[최종재 구매]',
+    ...(purchases.length ? purchases.map(x => `- ${x.firmId}: ${fmt(x.units,2)} × ${fmt(x.price,3)} = ${fmt(x.amount)}`) : ['- 체결 거래 없음'])
   ].join('\n');
 }
 
 function formatFirm(f) {
   const t = f.lastTrace;
-  if (!t) return `${f.id}\n아직 첫 판단 전입니다. +1개월을 눌러주세요.`;
+  if (!t) return `${f.id}\n산업 ${f.industryId || '-'}\n아직 첫 판단 전입니다.`;
+  const inputs = Object.entries(f.inputInventory || {}).map(([k,v]) => `${k} ${fmt(v,2)}`).join(' / ') || '직접 투입재 없음';
   return [
-    f.id,
-    `가격: ${fmt(f.price,3)} / 근로자: ${fmt(f.workers,0)} / 예금: ${fmt(f.cash)} / 대출: ${fmt(f.loanBalance || 0)}`,
-    `생산: ${fmt(f.output,2)} / 판매: ${fmt(f.sales,2)} / 매출: ${fmt(f.revenue)}`,
-    `임금미지급: ${fmt(f.wageArrears || 0)} / 장부 단위원가: ${fmt(f.bookUnitCost || 0,3)}`,
+    `${f.id} · ${f.industryId} · ${f.industryName}`,
+    `생산물: ${f.product} / 상태: ${f.active === false ? 'EXITED' : 'ACTIVE'}`,
+    `가격 ${fmt(f.price,3)} / 근로자 ${fmt(f.workers,0)} / 예금 ${fmt(f.cash)} / 대출 ${fmt(f.loanBalance || 0)}`,
+    `생산 ${fmt(f.output,2)} / 완제품재고 ${fmt(f.inventory,2)} / 생산능력 ${fmt(f.capacity,2)}`,
+    `투입재고: ${inputs}`,
+    `공급부족 ${fmt(f.supplyShortage,2)} / 자본스톡 ${fmt(f.capitalStock,2)}`,
+    `B2B매출 ${fmt(f.b2bRevenue)} / 소비재매출 ${fmt(f.consumerRevenue)} / 자본재매출 ${fmt(f.capitalRevenue)}`,
+    `투입재구매 ${fmt(f.inputSpend)} / 설비투자 ${fmt(f.investmentSpend)}`,
     '',
     '[관찰·예상]',
     `관찰 수요증가: ${pct(t.perception.observedDemandGrowth)}`,
     `예상 수요증가: ${pct(t.perception.expectedDemandGrowth)}`,
     `예상 비용증가: ${pct(t.perception.expectedCostGrowth)}`,
-    `재고압력: ${fmt(t.perception.inventoryPressure,2)}`,
-    `현금스트레스: ${pct(t.perception.cashStress)}`,
+    `재고압력: ${fmt(t.perception.inventoryPressure,2)} / 현금스트레스: ${pct(t.perception.cashStress)}`,
     '',
     '[반사실적 전략 비교]',
     ...t.candidates.map(x => `- ${x.name}: 효용 ${fmt(x.utility,3)}`),
@@ -136,6 +141,37 @@ function formatBank(c) {
   return out.join('\n');
 }
 
+function formatIndustry(c) {
+  const ind = c.industry || {};
+  const sf = c.sectorFirms || {};
+  const so = ind.sectorOutputs || {};
+  const recent = c.recentB2B || [];
+  return [
+    `${c.id} · 산업·공급망`,
+    '',
+    '[산업 구조 / 활성기업]',
+    `RESOURCE   ${fmt(sf.RESOURCE,0)}개 · 생산 ${fmt(so.RESOURCE,2)}`,
+    `MATERIALS  ${fmt(sf.MATERIALS,0)}개 · 생산 ${fmt(so.MATERIALS,2)}`,
+    `CAPITAL    ${fmt(sf.CAPITAL,0)}개 · 생산 ${fmt(so.CAPITAL,2)}`,
+    `CONSUMER   ${fmt(sf.CONSUMER,0)}개 · 생산 ${fmt(so.CONSUMER,2)}`,
+    '',
+    '[기업 간 공급망]',
+    `B2B 거래 ${fmt(ind.b2bTransactions,0)}건 / ${fmt(ind.b2bSpend)}`,
+    `B2B 물량 ${fmt(ind.b2bUnits,2)} / 미충족 투입재 ${fmt(ind.inputShortageUnits,2)}`,
+    `설비투자 ${fmt(ind.investmentTransactions,0)}건 / ${fmt(ind.grossInvestment)}`,
+    `자본재 취득 ${fmt(ind.capitalGoodsUnits,2)}단위`,
+    `기업 퇴출 ${fmt(ind.exits,0)} / 진입 ${fmt(ind.entries,0)} / 현재 활성 ${fmt(ind.activeFirms,0)}`,
+    '',
+    '[최근 B2B / 투자 결제]',
+    ...(recent.length ? recent.slice().reverse().map(e => {
+      const buyer = e.meta?.buyerId || '?';
+      const seller = e.meta?.sellerId || '?';
+      const product = e.meta?.product || (e.kind === 'capital_investment' ? 'capital_good' : '?');
+      return `- ${e.kind}: ${buyer} ← ${seller} · ${product} · ${fmt(e.amount)}`;
+    }) : ['- 이번 달 체결 없음'])
+  ].join('\n');
+}
+
 function formatMarkets(c) {
   const g = c.markets.goods;
   const l = c.markets.labor;
@@ -146,10 +182,13 @@ function formatMarkets(c) {
   return [
     `${c.id} · ${c.name}`,
     '',
-    '[노동·상품시장]',
+    '[노동·최종재시장]',
     `채용 ${fmt(l.hires,0)} / 해고 ${fmt(l.layoffs,0)} / 미충원 ${fmt(l.unfilled,0)}`,
     `발생 임금 ${fmt(ac.accrued)} / 실제 급여 ${fmt(p.payroll)} / 지급 실패 ${fmt(p.unpaid)}`,
-    `상품거래 ${fmt(g.transactions,0)}건 / 소비 ${fmt(g.nominalConsumption)} / 미충족 ${pct(c.macro.unmetDemandRatio)}`,
+    `최종재 거래 ${fmt(g.transactions,0)}건 / 소비 ${fmt(g.nominalConsumption)} / 미충족 ${pct(c.macro.unmetDemandRatio)}`,
+    '',
+    '[GDP 지출접근]',
+    `C ${fmt(c.macro.consumption)} + I ${fmt(c.macro.grossInvestment)} + Δ재고 ${fmt(c.macro.inventoryInvestment)} = GDP ${fmt(c.macro.gdp)}`,
     '',
     '[Endogenous Money]',
     `기초 예금통화 ${fmt(settlement.openingMoney)}`,
@@ -161,6 +200,7 @@ function formatMarkets(c) {
     `판정: ${gl.ok ? 'PASS' : 'FAIL'}`,
     `은행 예금부채 ${fmt(gl.bankDeposits)} ↔ 고객예금 ${fmt(settlement.currentMoney)}`,
     `은행 대출자산 ${fmt(gl.bankLoans)} ↔ 차주 대출부채 ${fmt(gl.borrowerLoanLiabilities)}`,
+    `재고 장부가 ${fmt(gl.inventoryBook)} / 고정자산 ${fmt(gl.fixedAssets)}`,
     `예금 대사오차 ${Number(gl.depositReconciliationError || 0).toExponential(2)}`,
     `대출 대사오차 ${Number(gl.loanReconciliationError || 0).toExponential(2)}`,
     `최대 A=L+E 오차 ${Number(gl.maxEquationError || 0).toExponential(2)}`
@@ -200,8 +240,8 @@ function formatJournals(c) {
     return `${j.id} · ${j.kind}\n${lines.join('\n')}`;
   };
   const household = (c.sampleHouseholdJournals || []).slice(-3).map(renderJournal);
-  const firm = (c.sampleFirmJournals || []).slice(-4).map(renderJournal);
-  const bank = (c.sampleBankJournals || []).slice(-5).map(renderJournal);
+  const firm = (c.sampleFirmJournals || []).slice(-6).map(renderJournal);
+  const bank = (c.sampleBankJournals || []).slice(-4).map(renderJournal);
   return [
     `[가계] ${c.sampleHousehold.id}`,
     ...(household.length ? household : ['분개 없음']),
@@ -220,7 +260,9 @@ function formatTransactions(c) {
   return tx.slice().reverse().map(e => {
     const labels = {
       wage: '임금',
-      goods_purchase: '상품구매',
+      goods_purchase: '최종재 구매',
+      interfirm_purchase: '기업간 투입재 구매',
+      capital_investment: '설비투자',
       bank_loan_origination: '대출·예금창조',
       bank_loan_payment: '대출상환·예금소멸'
     };
