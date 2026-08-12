@@ -6,10 +6,11 @@ export function clearLaborMarket(country, rng) {
 
   let layoffs = 0;
   for (const f of country.firms) {
-    const staff = employedByFirm.get(f.id);
+    const staff = employedByFirm.get(f.id) || [];
+    const target = f.active === false ? 0 : Math.max(0, f.desiredWorkers);
     const ranked = staff.map(h => ({ h, score: (h.skill || 0) + rng.normal(0, 0.04) }))
       .sort((a, b) => a.score - b.score || a.h.id.localeCompare(b.h.id));
-    while (ranked.length > f.desiredWorkers) {
+    while (ranked.length > target) {
       const h = ranked.shift().h;
       h.employed = false;
       h.employerId = null;
@@ -23,7 +24,9 @@ export function clearLaborMarket(country, rng) {
     .map(h => ({ h, score: (h.skill || 0) + rng.normal(0, 0.03) }))
     .sort((a, b) => b.score - a.score || a.h.id.localeCompare(b.h.id))
     .map(x => x.h);
-  const firms = [...country.firms].sort((a, b) => b.wage - a.wage || a.id.localeCompare(b.id));
+  const firms = country.firms
+    .filter(f => f.active !== false)
+    .sort((a, b) => b.wage - a.wage || a.id.localeCompare(b.id));
   let hires = 0;
 
   for (const f of firms) {
@@ -55,7 +58,7 @@ export function clearLaborMarket(country, rng) {
     if (gap > 0) f.wage *= 1 + Math.min(0.025, gap / Math.max(1, f.desiredWorkers) * 0.03);
   }
 
-  const unfilled = country.firms.reduce((s, f) => s + Math.max(0, f.desiredWorkers - f.workers), 0);
+  const unfilled = firms.reduce((s, f) => s + Math.max(0, f.desiredWorkers - f.workers), 0);
   return { hires, layoffs, unfilled };
 }
 
@@ -69,6 +72,11 @@ export function settlePayroll(country, ledger, month) {
     h.income = 0;
     if (!h.employed || !h.employerId || !firmMap.has(h.employerId)) continue;
     const f = firmMap.get(h.employerId);
+    if (f.active === false) {
+      h.employed = false;
+      h.employerId = null;
+      continue;
+    }
     const priorArrears = Math.max(0, h.wageArrears || 0);
     const due = f.wage + Math.min(priorArrears, f.wage * 0.5);
     const paid = ledger.transfer({
