@@ -1,22 +1,39 @@
 import { ACCOUNT_TYPES, GeneralLedger } from './general-ledger.js';
 
 const householdChart = [
-  { code: 'cash', name: 'Cash', type: ACCOUNT_TYPES.ASSET },
+  { code: 'cash', name: 'Bank Deposit', type: ACCOUNT_TYPES.ASSET },
   { code: 'wage_receivable', name: 'Wage Receivable', type: ACCOUNT_TYPES.ASSET },
+  { code: 'loan_payable', name: 'Bank Loan Payable', type: ACCOUNT_TYPES.LIABILITY },
   { code: 'opening_equity', name: 'Opening Equity', type: ACCOUNT_TYPES.EQUITY },
   { code: 'retained_earnings', name: 'Retained Earnings', type: ACCOUNT_TYPES.EQUITY },
   { code: 'wage_income', name: 'Wage Income', type: ACCOUNT_TYPES.REVENUE },
-  { code: 'consumption_expense', name: 'Consumption Expense', type: ACCOUNT_TYPES.EXPENSE }
+  { code: 'debt_relief_income', name: 'Debt Relief Income', type: ACCOUNT_TYPES.REVENUE },
+  { code: 'consumption_expense', name: 'Consumption Expense', type: ACCOUNT_TYPES.EXPENSE },
+  { code: 'interest_expense', name: 'Interest Expense', type: ACCOUNT_TYPES.EXPENSE }
 ];
 
 const firmChart = [
-  { code: 'cash', name: 'Cash', type: ACCOUNT_TYPES.ASSET },
+  { code: 'cash', name: 'Bank Deposit', type: ACCOUNT_TYPES.ASSET },
   { code: 'inventory', name: 'Inventory', type: ACCOUNT_TYPES.ASSET },
   { code: 'wages_payable', name: 'Wages Payable', type: ACCOUNT_TYPES.LIABILITY },
+  { code: 'loan_payable', name: 'Bank Loan Payable', type: ACCOUNT_TYPES.LIABILITY },
   { code: 'opening_equity', name: 'Opening Equity', type: ACCOUNT_TYPES.EQUITY },
   { code: 'retained_earnings', name: 'Retained Earnings', type: ACCOUNT_TYPES.EQUITY },
   { code: 'sales_revenue', name: 'Sales Revenue', type: ACCOUNT_TYPES.REVENUE },
-  { code: 'cogs', name: 'Cost of Goods Sold', type: ACCOUNT_TYPES.EXPENSE }
+  { code: 'debt_relief_income', name: 'Debt Relief Income', type: ACCOUNT_TYPES.REVENUE },
+  { code: 'cogs', name: 'Cost of Goods Sold', type: ACCOUNT_TYPES.EXPENSE },
+  { code: 'interest_expense', name: 'Interest Expense', type: ACCOUNT_TYPES.EXPENSE }
+];
+
+const bankChart = [
+  { code: 'reserves', name: 'Reserves', type: ACCOUNT_TYPES.ASSET },
+  { code: 'securities', name: 'Securities', type: ACCOUNT_TYPES.ASSET },
+  { code: 'loans', name: 'Loans to Customers', type: ACCOUNT_TYPES.ASSET },
+  { code: 'deposits', name: 'Customer Deposits', type: ACCOUNT_TYPES.LIABILITY },
+  { code: 'opening_equity', name: 'Opening Equity', type: ACCOUNT_TYPES.EQUITY },
+  { code: 'retained_earnings', name: 'Retained Earnings', type: ACCOUNT_TYPES.EQUITY },
+  { code: 'interest_income', name: 'Interest Income', type: ACCOUNT_TYPES.REVENUE },
+  { code: 'credit_loss_expense', name: 'Credit Loss Expense', type: ACCOUNT_TYPES.EXPENSE }
 ];
 
 export class AccountingSystem {
@@ -60,6 +77,106 @@ export class AccountingSystem {
         ]
       });
     }
+  }
+
+  initializeBank(bank, openingDeposits) {
+    this.gl.createEntity({ id: bank.id, countryId: bank.countryId, kind: 'bank', accounts: bankChart });
+    const deposits = Math.max(0, Number(openingDeposits || 0));
+    const equity = deposits * bank.initialCapitalRatio;
+    const reserves = deposits * 0.18;
+    const securities = Math.max(0, deposits + equity - reserves);
+    bank.openingDeposits = deposits;
+    bank.openingEquity = equity;
+    bank.initialReserves = reserves;
+
+    if (deposits + equity > 0) {
+      this.gl.post({
+        month: 0,
+        entityId: bank.id,
+        kind: 'opening_bank_balance',
+        lines: [
+          ...(reserves > 0 ? [{ account: 'reserves', debit: reserves }] : []),
+          ...(securities > 0 ? [{ account: 'securities', debit: securities }] : []),
+          ...(deposits > 0 ? [{ account: 'deposits', credit: deposits }] : []),
+          ...(equity > 0 ? [{ account: 'opening_equity', credit: equity }] : [])
+        ]
+      });
+    }
+  }
+
+  recordLoanOrigination({ bank, borrower, loan, month, amount }) {
+    if (amount <= 0) return;
+    this.gl.post({
+      month,
+      entityId: borrower.id,
+      kind: 'loan_origination',
+      lines: [
+        { account: 'cash', debit: amount },
+        { account: 'loan_payable', credit: amount }
+      ],
+      meta: { bankId: bank.id, loanId: loan.id }
+    });
+    this.gl.post({
+      month,
+      entityId: bank.id,
+      kind: 'loan_origination',
+      lines: [
+        { account: 'loans', debit: amount },
+        { account: 'deposits', credit: amount }
+      ],
+      meta: { borrowerId: borrower.id, loanId: loan.id }
+    });
+  }
+
+  recordLoanPayment({ bank, borrower, loan, month, principalPaid, interestPaid }) {
+    const total = Math.max(0, principalPaid) + Math.max(0, interestPaid);
+    if (total <= 0) return;
+    const borrowerLines = [];
+    if (principalPaid > 0) borrowerLines.push({ account: 'loan_payable', debit: principalPaid });
+    if (interestPaid > 0) borrowerLines.push({ account: 'interest_expense', debit: interestPaid });
+    borrowerLines.push({ account: 'cash', credit: total });
+    this.gl.post({
+      month,
+      entityId: borrower.id,
+      kind: 'loan_payment',
+      lines: borrowerLines,
+      meta: { bankId: bank.id, loanId: loan.id, principalPaid, interestPaid }
+    });
+
+    const bankLines = [{ account: 'deposits', debit: total }];
+    if (principalPaid > 0) bankLines.push({ account: 'loans', credit: principalPaid });
+    if (interestPaid > 0) bankLines.push({ account: 'interest_income', credit: interestPaid });
+    this.gl.post({
+      month,
+      entityId: bank.id,
+      kind: 'loan_payment',
+      lines: bankLines,
+      meta: { borrowerId: borrower.id, loanId: loan.id, principalPaid, interestPaid }
+    });
+  }
+
+  recordLoanDefault({ bank, borrower, loan, month, amount }) {
+    if (amount <= 0) return;
+    this.gl.post({
+      month,
+      entityId: borrower.id,
+      kind: 'loan_default_relief',
+      lines: [
+        { account: 'loan_payable', debit: amount },
+        { account: 'debt_relief_income', credit: amount }
+      ],
+      meta: { bankId: bank.id, loanId: loan.id }
+    });
+    this.gl.post({
+      month,
+      entityId: bank.id,
+      kind: 'loan_charge_off',
+      lines: [
+        { account: 'credit_loss_expense', debit: amount },
+        { account: 'loans', credit: amount }
+      ],
+      meta: { borrowerId: borrower.id, loanId: loan.id }
+    });
   }
 
   accrueMonthlyWages(country, month) {
@@ -200,6 +317,9 @@ export class AccountingSystem {
     let firmRevenue = 0;
     let firmExpense = 0;
     let firmProfit = 0;
+    let bankRevenue = 0;
+    let bankExpense = 0;
+    let bankProfit = 0;
 
     for (const h of country.households) {
       const result = this.gl.closeMonth(h.id, month);
@@ -213,6 +333,12 @@ export class AccountingSystem {
       firmExpense += result.expense;
       firmProfit += result.netIncome;
     }
+    for (const bank of country.banks || []) {
+      const result = this.gl.closeMonth(bank.id, month);
+      bankRevenue += result.revenue;
+      bankExpense += result.expense;
+      bankProfit += result.netIncome;
+    }
 
     const report = this.verifyCountry(country, settlementLedger, month);
     const summary = {
@@ -223,6 +349,9 @@ export class AccountingSystem {
       firmRevenue,
       firmExpense,
       firmProfit,
+      bankRevenue,
+      bankExpense,
+      bankProfit,
       ...report
     };
     this.lastCountryReports.set(country.id, summary);
@@ -245,7 +374,8 @@ export class AccountingSystem {
     let liabilities = 0;
     let equity = 0;
 
-    const all = [...country.households, ...country.firms];
+    const customers = [...country.households, ...country.firms];
+    const all = [...customers, ...(country.banks || [])];
     for (const entity of all) {
       const verify = this.gl.verifyEntity(entity.id);
       const bs = this.gl.balanceSheet(entity.id);
@@ -254,17 +384,37 @@ export class AccountingSystem {
       assets += bs.assets;
       liabilities += bs.liabilities;
       equity += bs.equity;
-      const accountingCash = this.gl.naturalBalance(entity.id, 'cash');
-      const settlementCash = settlementLedger.balance(entity.accountId);
-      cashError = Math.max(cashError, Math.abs(accountingCash - settlementCash));
+
+      if (entity.kind !== 'bank') {
+        const accountingCash = this.gl.naturalBalance(entity.id, 'cash');
+        const settlementCash = settlementLedger.balance(entity.accountId);
+        cashError = Math.max(cashError, Math.abs(accountingCash - settlementCash));
+      }
     }
 
     const settlement = settlementLedger.verifyCountry(country.id);
+    const borrowerLoanLiabilities = customers.reduce((s, entity) => s + Math.max(0, this.gl.naturalBalance(entity.id, 'loan_payable')), 0);
+    const bankLoans = (country.banks || []).reduce((s, bank) => s + Math.max(0, this.gl.naturalBalance(bank.id, 'loans')), 0);
+    const bankDeposits = (country.banks || []).reduce((s, bank) => s + Math.max(0, this.gl.naturalBalance(bank.id, 'deposits')), 0);
+    const depositReconciliationError = bankDeposits - settlement.currentMoney;
+    const loanReconciliationError = bankLoans - borrowerLoanLiabilities;
+
     return {
-      ok: entityFailures === 0 && maxEquationError < 1e-6 && cashError < 1e-6 && settlement.ok,
+      ok:
+        entityFailures === 0 &&
+        maxEquationError < 1e-6 &&
+        cashError < 1e-6 &&
+        Math.abs(depositReconciliationError) < 1e-6 &&
+        Math.abs(loanReconciliationError) < 1e-6 &&
+        settlement.ok,
       entityFailures,
       maxEquationError,
       maxCashReconciliationError: cashError,
+      depositReconciliationError,
+      loanReconciliationError,
+      bankDeposits,
+      bankLoans,
+      borrowerLoanLiabilities,
       assets,
       liabilities,
       equity,
