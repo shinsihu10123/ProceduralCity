@@ -14,7 +14,9 @@ const householdChart = [
 
 const firmChart = [
   { code: 'cash', name: 'Bank Deposit', type: ACCOUNT_TYPES.ASSET },
-  { code: 'inventory', name: 'Inventory', type: ACCOUNT_TYPES.ASSET },
+  { code: 'input_inventory', name: 'Raw / Intermediate Inventory', type: ACCOUNT_TYPES.ASSET },
+  { code: 'inventory', name: 'Finished Goods Inventory', type: ACCOUNT_TYPES.ASSET },
+  { code: 'fixed_assets', name: 'Productive Fixed Assets', type: ACCOUNT_TYPES.ASSET },
   { code: 'wages_payable', name: 'Wages Payable', type: ACCOUNT_TYPES.LIABILITY },
   { code: 'loan_payable', name: 'Bank Loan Payable', type: ACCOUNT_TYPES.LIABILITY },
   { code: 'opening_equity', name: 'Opening Equity', type: ACCOUNT_TYPES.EQUITY },
@@ -43,36 +45,45 @@ export class AccountingSystem {
   }
 
   initializeCountry(country, settlementLedger) {
-    for (const h of country.households) {
-      this.gl.createEntity({ id: h.id, countryId: country.id, kind: 'household', accounts: householdChart });
-      const cash = settlementLedger.balance(h.accountId);
-      if (cash > 0) {
-        this.gl.post({
-          month: 0,
-          entityId: h.id,
-          kind: 'opening_balance',
-          lines: [
-            { account: 'cash', debit: cash },
-            { account: 'opening_equity', credit: cash }
-          ]
-        });
-      }
-    }
+    for (const h of country.households) this.initializeHousehold(h, settlementLedger, 0);
+    for (const f of country.firms) this.initializeFirm(f, settlementLedger, 0);
+  }
 
-    for (const f of country.firms) {
-      this.gl.createEntity({ id: f.id, countryId: country.id, kind: 'firm', accounts: firmChart });
-      const cash = settlementLedger.balance(f.accountId);
-      const unitCost = Math.max(0.02, f.price * 0.42);
-      const inventoryValue = Math.max(0, f.inventory * unitCost);
-      f.bookUnitCost = unitCost;
-      const openingAssets = cash + inventoryValue;
+  initializeHousehold(h, settlementLedger, month = 0) {
+    this.gl.createEntity({ id: h.id, countryId: h.countryId, kind: 'household', accounts: householdChart });
+    const cash = settlementLedger.balance(h.accountId);
+    if (cash > 0) {
       this.gl.post({
-        month: 0,
+        month,
+        entityId: h.id,
+        kind: 'opening_balance',
+        lines: [
+          { account: 'cash', debit: cash },
+          { account: 'opening_equity', credit: cash }
+        ]
+      });
+    }
+  }
+
+  initializeFirm(f, settlementLedger, month = 0) {
+    this.gl.createEntity({ id: f.id, countryId: f.countryId, kind: 'firm', accounts: firmChart });
+    const cash = settlementLedger.balance(f.accountId);
+    const unitCost = Math.max(0.02, f.price * 0.42);
+    const finishedValue = Math.max(0, f.inventory * unitCost);
+    const inputValue = Object.values(f.inputBookValues || {}).reduce((s, x) => s + Math.max(0, Number(x || 0)), 0);
+    const fixedAssets = Math.max(0, Number(f.capitalBookValue || 0));
+    f.bookUnitCost = unitCost;
+    const openingAssets = cash + finishedValue + inputValue + fixedAssets;
+    if (openingAssets > 0) {
+      this.gl.post({
+        month,
         entityId: f.id,
         kind: 'opening_balance',
         lines: [
           ...(cash > 0 ? [{ account: 'cash', debit: cash }] : []),
-          ...(inventoryValue > 0 ? [{ account: 'inventory', debit: inventoryValue }] : []),
+          ...(inputValue > 0 ? [{ account: 'input_inventory', debit: inputValue }] : []),
+          ...(finishedValue > 0 ? [{ account: 'inventory', debit: finishedValue }] : []),
+          ...(fixedAssets > 0 ? [{ account: 'fixed_assets', debit: fixedAssets }] : []),
           { account: 'opening_equity', credit: openingAssets }
         ]
       });
@@ -179,6 +190,95 @@ export class AccountingSystem {
     });
   }
 
+  recordInterfirmPurchase({ buyer, seller, month, amount, units, cost, product }) {
+    if (amount <= 0) return;
+    this.gl.post({
+      month,
+      entityId: buyer.id,
+      kind: 'interfirm_input_purchase',
+      lines: [
+        { account: 'input_inventory', debit: amount },
+        { account: 'cash', credit: amount }
+      ],
+      meta: { sellerId: seller.id, product, units }
+    });
+    this.gl.post({
+      month,
+      entityId: seller.id,
+      kind: 'interfirm_sale',
+      lines: [
+        { account: 'cash', debit: amount },
+        { account: 'sales_revenue', credit: amount }
+      ],
+      meta: { buyerId: buyer.id, product, units }
+    });
+    if (cost > 0) {
+      this.gl.post({
+        month,
+        entityId: seller.id,
+        kind: 'interfirm_cogs',
+        lines: [
+          { account: 'cogs', debit: cost },
+          { account: 'inventory', credit: cost }
+        ],
+        meta: { buyerId: buyer.id, product, units }
+      });
+    }
+  }
+
+  recordInputConsumption({ firm, month, amount, product, units }) {
+    if (amount <= 0) return;
+    const available = Math.max(0, this.gl.naturalBalance(firm.id, 'input_inventory'));
+    const moved = Math.min(available, amount);
+    if (moved <= 0) return;
+    this.gl.post({
+      month,
+      entityId: firm.id,
+      kind: 'input_to_production',
+      lines: [
+        { account: 'inventory', debit: moved },
+        { account: 'input_inventory', credit: moved }
+      ],
+      meta: { product, units }
+    });
+  }
+
+  recordCapitalInvestment({ buyer, seller, month, amount, units, cost }) {
+    if (amount <= 0) return;
+    this.gl.post({
+      month,
+      entityId: buyer.id,
+      kind: 'capital_investment',
+      lines: [
+        { account: 'fixed_assets', debit: amount },
+        { account: 'cash', credit: amount }
+      ],
+      meta: { sellerId: seller.id, units }
+    });
+    this.gl.post({
+      month,
+      entityId: seller.id,
+      kind: 'capital_goods_sale',
+      lines: [
+        { account: 'cash', debit: amount },
+        { account: 'sales_revenue', credit: amount }
+      ],
+      meta: { buyerId: buyer.id, units }
+    });
+    if (cost > 0) {
+      this.gl.post({
+        month,
+        entityId: seller.id,
+        kind: 'capital_goods_cogs',
+        lines: [
+          { account: 'cogs', debit: cost },
+          { account: 'inventory', credit: cost }
+        ],
+        meta: { buyerId: buyer.id, units }
+      });
+    }
+  }
+
   accrueMonthlyWages(country, month) {
     const firmMap = new Map(country.firms.map(f => [f.id, f]));
     const accruedByFirm = new Map();
@@ -188,6 +288,7 @@ export class AccountingSystem {
     for (const h of country.households) {
       if (!h.employed || !h.employerId || !firmMap.has(h.employerId)) continue;
       const f = firmMap.get(h.employerId);
+      if (f.active === false) continue;
       const amount = Math.max(0, f.wage);
       if (amount <= 0) continue;
 
@@ -207,6 +308,7 @@ export class AccountingSystem {
     }
 
     for (const f of country.firms) {
+      if (f.active === false) continue;
       const amount = accruedByFirm.get(f.id) || 0;
       if (amount <= 0) continue;
       this.gl.post({
@@ -219,7 +321,7 @@ export class AccountingSystem {
         ],
         meta: { workers: f.workers, output: f.output }
       });
-      const inventoryBook = this.gl.naturalBalance(f.id, 'inventory');
+      const inventoryBook = Math.max(0, this.gl.naturalBalance(f.id, 'inventory'));
       f.bookUnitCost = inventoryBook / Math.max(1e-9, f.inventory);
     }
 
@@ -373,6 +475,8 @@ export class AccountingSystem {
     let assets = 0;
     let liabilities = 0;
     let equity = 0;
+    let inventoryBook = 0;
+    let fixedAssets = 0;
 
     const customers = [...country.households, ...country.firms];
     const all = [...customers, ...(country.banks || [])];
@@ -384,6 +488,11 @@ export class AccountingSystem {
       assets += bs.assets;
       liabilities += bs.liabilities;
       equity += bs.equity;
+
+      if (entity.kind === 'firm') {
+        inventoryBook += Math.max(0, bs.accounts.inventory || 0) + Math.max(0, bs.accounts.input_inventory || 0);
+        fixedAssets += Math.max(0, bs.accounts.fixed_assets || 0);
+      }
 
       if (entity.kind !== 'bank') {
         const accountingCash = this.gl.naturalBalance(entity.id, 'cash');
@@ -415,6 +524,8 @@ export class AccountingSystem {
       bankDeposits,
       bankLoans,
       borrowerLoanLiabilities,
+      inventoryBook,
+      fixedAssets,
       assets,
       liabilities,
       equity,
