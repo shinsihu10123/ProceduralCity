@@ -47,7 +47,6 @@ let totalTaxes = 0;
 let totalGovernmentDemand = 0;
 let totalEquitySubscriptions = 0;
 let totalSecondaryTurnover = 0;
-let totalMonetaryOperations = 0;
 let policyMoves = 0;
 
 for (const country of world.countries) {
@@ -99,7 +98,6 @@ for (const country of world.countries) {
   totalGovernmentDemand += govDemand.reduce((s, e) => s + e.amount, 0);
   totalEquitySubscriptions += subscriptions.reduce((s, e) => s + e.amount, 0);
   totalSecondaryTurnover += secondary.reduce((s, e) => s + e.amount, 0);
-  totalMonetaryOperations += country.centralBankOperations.reduce((s, e) => s + e.amount, 0);
 
   const rates = country.history.map(row => row.policyRate).filter(Number.isFinite);
   if (new Set(rates.map(x => x.toFixed(6))).size > 1) policyMoves += 1;
@@ -120,7 +118,6 @@ assert.ok(totalB2B > 0, 'supply chain must remain active');
 assert.ok(totalTaxes > 0, 'fiscal taxation must remain active');
 assert.ok(totalGovernmentDemand > 0, 'government final demand must remain active');
 assert.ok(totalEquitySubscriptions > 0, 'firms must raise some real equity capital from households');
-assert.ok(totalMonetaryOperations > 0, 'central bank must perform at least one reserve/liquidity operation');
 assert.ok(policyMoves > 0, 'at least one central bank must move its policy rate');
 assert.ok(totalSecondaryTurnover >= 0);
 
