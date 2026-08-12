@@ -19,6 +19,9 @@ export class EconomicWorld extends MonetaryFinancialWorld {
     // Imported intermediate inputs therefore arrive with a one-month planning/shipping lag
     // and can be used by the current domestic production round.
     this.international.beginMonth(this.countries, this.month);
+    // Cross-border FX settlement changes actual deposits before the v0.7 asset/credit layers
+    // run. Refresh cached household wealth and firm cash so all agents reason from current funds.
+    this.syncBalances();
 
     for (const country of this.countries) super.stepCountry(country);
 
