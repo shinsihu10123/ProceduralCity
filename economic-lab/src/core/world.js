@@ -1,6 +1,7 @@
 import { COUNTRY_SEEDS } from '../config/countries.js';
 import { RNG, hashSeed, clamp } from './rng.js';
 import { TransactionLedger } from './ledger.js';
+import { AccountingSystem } from '../accounting/accounting-system.js';
 import { householdDecision, firmDecision, updateForecastError } from '../ai/reasoning.js';
 import { clearGoodsMarket } from '../markets/goods-market.js';
 import { clearLaborMarket, settlePayroll } from '../markets/labor-market.js';
@@ -54,6 +55,7 @@ function makeFirm(country, i, rng) {
     cash,
     safeCash: country.firmCash * 0.65,
     wageArrears: 0,
+    bookUnitCost: 0,
     demandBias: rng.normal(0, 0.018),
     riskAversion: rng.range(0.10, 0.90),
     competitionSensitivity: rng.range(0.15, 0.95),
@@ -85,7 +87,8 @@ function macroFrom(country, ledger) {
   const goods = country.lastMarkets?.goods || {};
   const labor = country.lastMarkets?.labor || {};
   const payroll = country.lastMarkets?.payroll || {};
-  const accounting = ledger.verifyCountry(country.id);
+  const settlementAccounting = ledger.verifyCountry(country.id);
+  const financial = country.lastAccounting || {};
   return {
     gdp: nominalOutput,
     realOutput,
@@ -106,8 +109,15 @@ function macroFrom(country, ledger) {
     unfilledJobs: labor.unfilled || 0,
     unmetDemandRatio: goods.desiredBudget ? goods.unmetBudget / goods.desiredBudget : 0,
     wageArrears,
-    accountingBalanced: accounting.ok ? 1 : 0,
-    moneyError: accounting.moneyError
+    accountingBalanced: settlementAccounting.ok && financial.ok !== false ? 1 : 0,
+    moneyError: settlementAccounting.moneyError,
+    totalAssets: financial.assets || 0,
+    totalLiabilities: financial.liabilities || 0,
+    totalEquity: financial.equity || 0,
+    firmProfit: financial.firmProfit || 0,
+    householdNetIncome: financial.householdNetIncome || 0,
+    accountingEquationError: financial.maxEquationError || 0,
+    cashReconciliationError: financial.maxCashReconciliationError || 0
   };
 }
 
@@ -117,15 +127,28 @@ export class EconomicWorld {
     this.rng = new RNG(hashSeed(seedText));
     this.month = 0;
     this.ledger = new TransactionLedger();
+    this.accounting = new AccountingSystem();
     this.countries = COUNTRY_SEEDS.map(seed => this.createCountry(seed));
     this.relinkEmployment();
     this.initializeLedger();
     this.syncBalances();
+
     for (const country of this.countries) {
+      this.accounting.initializeCountry(country, this.ledger);
       country.lastMarkets = {
         labor: { hires: 0, layoffs: 0, unfilled: 0 },
         payroll: { payroll: 0, unpaid: 0, payments: 0 },
-        goods: { transactions: 0, nominalConsumption: 0, units: 0, desiredBudget: 0, unmetBudget: 0 }
+        goods: { transactions: 0, nominalConsumption: 0, units: 0, desiredBudget: 0, unmetBudget: 0 },
+        accrual: { accrued: 0, workers: 0 }
+      };
+      country.lastAccounting = {
+        householdIncome: 0,
+        householdExpense: 0,
+        householdNetIncome: 0,
+        firmRevenue: 0,
+        firmExpense: 0,
+        firmProfit: 0,
+        ...this.accounting.verifyCountry(country, this.ledger, 0)
       };
       country.macro = macroFrom(country, this.ledger);
       country.previousMacro = { ...country.macro };
@@ -142,7 +165,8 @@ export class EconomicWorld {
       macro: null,
       previousMacro: null,
       history: [],
-      lastMarkets: null
+      lastMarkets: null,
+      lastAccounting: null
     };
   }
 
@@ -234,6 +258,7 @@ export class EconomicWorld {
       f.inventory += Math.max(0, f.output);
     }
 
+    const accrual = this.accounting.accrueMonthlyWages(country, this.month);
     const payroll = settlePayroll(country, this.ledger, this.month);
     this.syncBalances(country);
 
@@ -251,6 +276,11 @@ export class EconomicWorld {
     }
 
     const goods = clearGoodsMarket(country, this.ledger, this.rng, this.month);
+    const settlementEntries = [
+      ...this.ledger.entriesFor({ month: this.month, countryId: country.id, kind: 'wage' }),
+      ...this.ledger.entriesFor({ month: this.month, countryId: country.id, kind: 'goods_purchase' })
+    ];
+    this.accounting.ingestSettlementEntries(settlementEntries, country, this.month);
     this.syncBalances(country);
 
     for (const f of country.firms) {
@@ -259,7 +289,8 @@ export class EconomicWorld {
       f.previousSales = Math.max(0.01, f.sales);
     }
 
-    country.lastMarkets = { labor, payroll, goods };
+    country.lastMarkets = { labor, payroll, goods, accrual };
+    country.lastAccounting = this.accounting.closeCountryMonth(country, this.ledger, this.month);
     country.previousMacro = country.macro;
     country.macro = macroFrom(country, this.ledger);
     country.history.push({ month: this.month, ...country.macro });
@@ -267,7 +298,13 @@ export class EconomicWorld {
   }
 
   accountingReport(countryId) {
-    return this.ledger.verifyCountry(countryId);
+    const country = this.countries.find(c => c.id === countryId);
+    if (!country) return null;
+    return {
+      settlement: this.ledger.verifyCountry(countryId),
+      general: this.accounting.verifyCountry(country, this.ledger, this.month),
+      summary: { ...country.lastAccounting }
+    };
   }
 
   snapshot() {
@@ -279,10 +316,15 @@ export class EconomicWorld {
         macro: { ...c.macro },
         markets: structuredClone(c.lastMarkets),
         accounting: this.ledger.verifyCountry(c.id),
+        generalAccounting: structuredClone(c.lastAccounting),
         households: c.households.length,
         firms: c.firms.length,
         sampleHousehold: structuredClone(c.households[0]),
         sampleFirm: structuredClone(c.firms[0]),
+        sampleHouseholdFinancials: this.accounting.entityStatement(c.households[0].id, this.month),
+        sampleFirmFinancials: this.accounting.entityStatement(c.firms[0].id, this.month),
+        sampleHouseholdJournals: this.accounting.recentJournals(c.households[0].id, 8),
+        sampleFirmJournals: this.accounting.recentJournals(c.firms[0].id, 8),
         recentTransactions: this.ledger.entriesFor({ month: this.month, countryId: c.id }).slice(-12),
         history: c.history.slice()
       }))
