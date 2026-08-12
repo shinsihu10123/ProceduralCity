@@ -10,9 +10,9 @@
   <main class="app">
     <header>
       <div>
-        <p class="eyebrow">ECONOMIC LAB / v0.2 · MICRO TRANSACTION FOUNDATION</p>
+        <p class="eyebrow">ECONOMIC LAB / v0.3 · DOUBLE-ENTRY ACCOUNTING</p>
         <h1>Four-Country Agent Economy</h1>
-        <p>Agent 추론 → 노동·상품시장 → 실제 화폐 이전 → 장부 → 거시지표</p>
+        <p>Agent 추론 → 실제 거래 → Settlement Ledger → General Ledger → 재무제표 → 거시지표</p>
       </div>
       <div class="controls">
         <button id="step1">+1개월</button>
@@ -46,19 +46,29 @@
       </article>
 
       <article class="panel">
-        <h2>시장·회계 상태</h2>
+        <h2>시장·회계 불변식</h2>
         <pre id="marketTrace"></pre>
       </article>
 
       <article class="panel">
-        <h2>최근 실제 거래</h2>
+        <h2>재무제표</h2>
+        <pre id="financialTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>General Ledger 분개</h2>
+        <pre id="journalTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>최근 실제 결제거래</h2>
         <pre id="transactionTrace"></pre>
       </article>
 
       <article class="panel">
         <h2>설계 계층</h2>
         <ol class="layers">
-          <li><b>L0</b> Accounting / Money / Inventory</li>
+          <li><b>L0</b> Settlement + Double-Entry Accounting / Money / Inventory</li>
           <li><b>L1</b> Household / Firm / Bank Agent</li>
           <li><b>L2</b> Goods / Labor / Credit / Asset Markets</li>
           <li><b>L3</b> Industry / Supply Chain</li>
