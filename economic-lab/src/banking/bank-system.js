@@ -48,6 +48,13 @@ export class BankSystem {
     country.lastCredit = this.emptyMetrics();
   }
 
+  registerFirm(country, firm) {
+    const bank = country.banks[0];
+    firm.bankId = bank.id;
+    firm.loanBalance = firm.loanBalance || 0;
+    firm.creditMisses = firm.creditMisses || 0;
+  }
+
   emptyMetrics() {
     return {
       applications: 0,
@@ -231,9 +238,11 @@ export class BankSystem {
     const apps = [];
 
     for (const f of country.firms) {
+      if (f.active === false) continue;
       const cash = this.ledger.balance(f.accountId);
       const payrollNeed = Math.max(1, f.wage * Math.max(1, f.desiredWorkers));
-      const workingCapitalTarget = Math.max(payrollNeed * 1.8, f.safeCash * 0.72);
+      const inputNeed = Math.max(0, (f.supplyShortage || 0) * Math.max(0.1, f.price));
+      const workingCapitalTarget = Math.max(payrollNeed * 1.8 + inputNeed * 0.6, f.safeCash * 0.72);
       const shortfall = Math.max(0, workingCapitalTarget - cash);
       const expansionNeed = f.currentPlan?.selected === '확장' ? payrollNeed * 0.45 : 0;
       const amount = Math.min(Math.max(shortfall, expansionNeed), f.safeCash * 0.75);
