@@ -18,12 +18,12 @@ function render() {
         <div><small>CPI</small><strong>${fmt(c.macro.priceIndex, 3)}</strong></div>
         <div><small>실업률</small><strong>${pct(c.macro.unemployment)}</strong></div>
         <div><small>평균임금</small><strong>${fmt(c.macro.avgWage)}</strong></div>
-        <div><small>소비</small><strong>${fmt(c.macro.consumption)}</strong></div>
-        <div><small>상품거래</small><strong>${fmt(c.macro.goodsTransactions, 0)}</strong></div>
+        <div><small>기업이익</small><strong>${fmt(c.macro.firmProfit)}</strong></div>
+        <div><small>총부채</small><strong>${fmt(c.macro.totalLiabilities)}</strong></div>
         <div><small>화폐량</small><strong>${fmt(c.macro.moneySupply)}</strong></div>
-        <div><small>미충족수요</small><strong>${pct(c.macro.unmetDemandRatio)}</strong></div>
+        <div><small>상품거래</small><strong>${fmt(c.macro.goodsTransactions, 0)}</strong></div>
       </div>
-      <footer>가계 ${fmt(c.households,0)} · 기업 ${fmt(c.firms,0)} · 장부 ${c.accounting.ok ? 'PASS' : 'FAIL'}</footer>
+      <footer>가계 ${fmt(c.households,0)} · 기업 ${fmt(c.firms,0)} · 결제원장 ${c.accounting.ok ? 'PASS' : 'FAIL'} · 총계정원장 ${c.generalAccounting.ok ? 'PASS' : 'FAIL'}</footer>
     </article>`).join('');
 
   for (const el of root.querySelectorAll('[data-country]')) {
@@ -45,6 +45,8 @@ function render() {
   document.getElementById('householdTrace').textContent = formatHousehold(country.sampleHousehold);
   document.getElementById('firmTrace').textContent = formatFirm(country.sampleFirm);
   document.getElementById('marketTrace').textContent = formatMarkets(country);
+  document.getElementById('financialTrace').textContent = formatFinancials(country);
+  document.getElementById('journalTrace').textContent = formatJournals(country);
   document.getElementById('transactionTrace').textContent = formatTransactions(country);
 }
 
@@ -81,7 +83,7 @@ function formatFirm(f) {
     f.id,
     `가격: ${fmt(f.price,3)} / 근로자: ${fmt(f.workers,0)} / 현금: ${fmt(f.cash)}`,
     `생산: ${fmt(f.output,2)} / 판매: ${fmt(f.sales,2)} / 매출: ${fmt(f.revenue)}`,
-    `임금미지급채무: ${fmt(f.wageArrears || 0)}`,
+    `임금미지급채무: ${fmt(f.wageArrears || 0)} / 장부 단위원가: ${fmt(f.bookUnitCost || 0,3)}`,
     '',
     '[관찰·예상]',
     `관찰 수요증가: ${pct(t.perception.observedDemandGrowth)}`,
@@ -102,25 +104,76 @@ function formatMarkets(c) {
   const g = c.markets.goods;
   const l = c.markets.labor;
   const p = c.markets.payroll;
-  const a = c.accounting;
+  const ac = c.markets.accrual || {};
+  const settlement = c.accounting;
+  const gl = c.generalAccounting;
   return [
     `${c.id} · ${c.name}`,
     '',
     '[노동시장]',
     `채용 ${fmt(l.hires,0)} / 해고 ${fmt(l.layoffs,0)} / 미충원 ${fmt(l.unfilled,0)}`,
-    `임금 지급건수 ${fmt(p.payments,0)} / 실제 급여 ${fmt(p.payroll)} / 미지급 ${fmt(p.unpaid)}`,
+    `발생 임금 ${fmt(ac.accrued)} / 실제 급여 ${fmt(p.payroll)} / 지급 실패 ${fmt(p.unpaid)}`,
     '',
     '[상품시장]',
     `거래 ${fmt(g.transactions,0)}건 / 판매수량 ${fmt(g.units,2)}`,
     `실제 소비지출 ${fmt(g.nominalConsumption)} / 계획예산 ${fmt(g.desiredBudget)}`,
     `미충족 예산 ${fmt(g.unmetBudget)} (${pct(c.macro.unmetDemandRatio)})`,
     '',
-    '[회계 불변식]',
-    `판정: ${a.ok ? 'PASS' : 'FAIL'}`,
-    `초기 화폐 ${fmt(a.openingMoney)} / 현재 화폐 ${fmt(a.currentMoney)}`,
-    `화폐 보존오차 ${a.moneyError.toExponential(2)}`,
-    `불균형 분개 ${fmt(a.unbalancedEntries,0)} / 음수 계정 ${fmt(a.negativeAccounts,0)}`
+    '[Settlement Ledger]',
+    `판정: ${settlement.ok ? 'PASS' : 'FAIL'}`,
+    `초기 화폐 ${fmt(settlement.openingMoney)} / 현재 화폐 ${fmt(settlement.currentMoney)}`,
+    `화폐 보존오차 ${settlement.moneyError.toExponential(2)}`,
+    '',
+    '[General Ledger / A = L + E]',
+    `판정: ${gl.ok ? 'PASS' : 'FAIL'}`,
+    `총자산 ${fmt(gl.assets)} / 총부채 ${fmt(gl.liabilities)} / 총자본 ${fmt(gl.equity)}`,
+    `최대 회계식 오차 ${Number(gl.maxEquationError || 0).toExponential(2)}`,
+    `결제현금 ↔ 회계현금 오차 ${Number(gl.maxCashReconciliationError || 0).toExponential(2)}`,
+    `기업 당월이익 ${fmt(gl.firmProfit)} / 가계 당월순소득 ${fmt(gl.householdNetIncome)}`
   ].join('\n');
+}
+
+function formatStatement(title, id, statement) {
+  const bs = statement.balanceSheet;
+  const is = statement.incomeStatement;
+  return [
+    `[${title}] ${id}`,
+    `자산 ${fmt(bs.assets)} / 부채 ${fmt(bs.liabilities)} / 자본 ${fmt(bs.equity)}`,
+    `회계식 오차 ${Number(bs.equationError || 0).toExponential(2)}`,
+    `당월 수익 ${fmt(is.revenue)} / 비용 ${fmt(is.expense)} / 순이익 ${fmt(is.netIncome)}`,
+    '',
+    ...Object.entries(bs.accounts).map(([k,v]) => `${k.padEnd(22,' ')} ${fmt(v,2)}`)
+  ].join('\n');
+}
+
+function formatFinancials(c) {
+  return [
+    formatStatement('가계 대차대조표·손익', c.sampleHousehold.id, c.sampleHouseholdFinancials),
+    '',
+    '────────────────────────',
+    '',
+    formatStatement('기업 대차대조표·손익', c.sampleFirm.id, c.sampleFirmFinancials)
+  ].join('\n');
+}
+
+function formatJournals(c) {
+  const renderJournal = j => {
+    const lines = j.lines.map(line => {
+      const dr = line.debit ? `DR ${fmt(line.debit,2)}` : '';
+      const cr = line.credit ? `CR ${fmt(line.credit,2)}` : '';
+      return `  ${line.account.padEnd(22,' ')} ${dr}${cr}`;
+    });
+    return `${j.id} · ${j.kind}\n${lines.join('\n')}`;
+  };
+  const household = (c.sampleHouseholdJournals || []).slice(-4).map(renderJournal);
+  const firm = (c.sampleFirmJournals || []).slice(-5).map(renderJournal);
+  return [
+    `[가계 General Ledger] ${c.sampleHousehold.id}`,
+    ...(household.length ? household : ['분개 없음']),
+    '',
+    `[기업 General Ledger] ${c.sampleFirm.id}`,
+    ...(firm.length ? firm : ['분개 없음'])
+  ].join('\n\n');
 }
 
 function formatTransactions(c) {
@@ -130,7 +183,7 @@ function formatTransactions(c) {
     const label = e.kind === 'wage' ? '임금' : e.kind === 'goods_purchase' ? '상품구매' : e.kind;
     const from = e.postings.find(p => p.delta < 0)?.accountId || '?';
     const to = e.postings.find(p => p.delta > 0)?.accountId || '?';
-    return `${e.id}  ${label}\n${from} → ${to}\n금액 ${fmt(e.amount,2)} · 분개합 ${fmt(e.postings.reduce((s,p)=>s+p.delta,0),6)}`;
+    return `${e.id}  ${label}\n${from} → ${to}\n금액 ${fmt(e.amount,2)} · 결제 posting합 ${fmt(e.postings.reduce((s,p)=>s+p.delta,0),6)}`;
   }).join('\n\n');
 }
 
