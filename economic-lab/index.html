@@ -10,9 +10,9 @@
   <main class="app">
     <header>
       <div>
-        <p class="eyebrow">ECONOMIC LAB / v0.7 · CENTRAL BANK & FINANCIAL MARKETS</p>
+        <p class="eyebrow">ECONOMIC LAB / v0.8 · INTERNATIONAL ECONOMY</p>
         <h1>Four-Country Agent Economy</h1>
-        <p>미시 Agent → 생산·고용·신용 → 공급망·재정 → 중앙은행 정책금리·준비금 → 주식시장 → 복식부기 → 거시경제</p>
+        <p>미시 Agent → 국내 생산·신용·재정·통화·금융 → 국제무역·환율·관세·대외금융 → 복식부기 → 개방경제 거시</p>
       </div>
       <div class="controls">
         <button id="step1">+1개월</button>
@@ -37,6 +37,11 @@
           <div><h3>가계 Agent</h3><pre id="householdTrace"></pre></div>
           <div><h3>기업 Agent</h3><pre id="firmTrace"></pre></div>
         </div>
+      </article>
+
+      <article class="panel">
+        <h2>International Economy · FX · Trade · External Finance</h2>
+        <pre id="internationalTrace"></pre>
       </article>
 
       <article class="panel">
@@ -70,12 +75,12 @@
       </article>
 
       <article class="panel">
-        <h2>Industry · Supply Chain</h2>
+        <h2>Industry · Domestic & International Supply Chain</h2>
         <pre id="industryTrace"></pre>
       </article>
 
       <article class="panel">
-        <h2>시장·거시·회계 불변식</h2>
+        <h2>Open-Economy Macro · Accounting Invariants</h2>
         <pre id="marketTrace"></pre>
       </article>
 
@@ -90,23 +95,23 @@
       </article>
 
       <article class="panel">
-        <h2>최근 실제 Settlement</h2>
+        <h2>Domestic · International Settlement</h2>
         <pre id="transactionTrace"></pre>
       </article>
 
       <article class="panel">
         <h2>설계 계층</h2>
         <ol class="layers">
-          <li><b>L0</b> Settlement + Double-Entry Accounting / Deposits / Reserves / Loans / Securities / Equity</li>
+          <li><b>L0</b> Settlement + Double-Entry / Deposits / Reserves / Domestic & Foreign Claims</li>
           <li><b>L1</b> Household / Firm / Bank / Central Bank / Government Agent</li>
-          <li><b>L2</b> Goods / Labor / Credit / Interfirm / Fiscal / Equity Markets</li>
-          <li><b>L3</b> Resource → Materials → Capital / Consumer Supply Chain</li>
-          <li><b>L4</b> National Macro + Fiscal + Monetary + Financial Conditions</li>
-          <li><b>L5</b> International Economy</li>
+          <li><b>L2</b> Goods / Labor / Credit / Interfirm / Fiscal / Equity / FX Settlement</li>
+          <li><b>L3</b> Domestic + Cross-Border Resource → Materials → Capital / Consumer Supply Chain</li>
+          <li><b>L4</b> National Open-Economy Macro + Fiscal + Monetary + Financial Conditions</li>
+          <li><b>L5</b> Four-Country Trade / FX / Current Account / External Finance / Shock Transmission</li>
         </ol>
       </article>
     </section>
   </main>
-  <script type="module" src="/src/main-v07.js"></script>
+  <script type="module" src="/src/main-v08.js"></script>
 </body>
 </html>
