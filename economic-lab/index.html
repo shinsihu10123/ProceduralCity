@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Economic Lab — Four-Country Agent Economy</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <p class="eyebrow">ECONOMIC LAB / v0.1</p>
+        <h1>Four-Country Agent Economy</h1>
+        <p>미시 행위에서 거시지표가 파생되는 4개국 경제 시뮬레이션</p>
+      </div>
+      <div class="controls">
+        <button id="step1">+1개월</button>
+        <button id="step12">+12개월</button>
+        <button id="reset">재시작</button>
+      </div>
+    </header>
+
+    <section class="status">
+      <span>시뮬레이션 시점</span>
+      <strong id="month">0개월</strong>
+      <span>Seed</span>
+      <strong>ECON-4-001</strong>
+    </section>
+
+    <section id="countries" class="country-grid"></section>
+
+    <section class="detail-grid">
+      <article class="panel">
+        <div class="panel-head"><h2>Agent Reasoning Trace</h2><select id="countrySelect"></select></div>
+        <div class="trace-grid">
+          <div>
+            <h3>가계 Agent</h3>
+            <pre id="householdTrace"></pre>
+          </div>
+          <div>
+            <h3>기업 Agent</h3>
+            <pre id="firmTrace"></pre>
+          </div>
+        </div>
+      </article>
+      <article class="panel">
+        <h2>설계 계층</h2>
+        <ol class="layers">
+          <li><b>L0</b> Accounting / Money / Inventory</li>
+          <li><b>L1</b> Household / Firm / Bank Agent</li>
+          <li><b>L2</b> Goods / Labor / Credit / Asset Markets</li>
+          <li><b>L3</b> Industry / Supply Chain</li>
+          <li><b>L4</b> National Macro</li>
+          <li><b>L5</b> International Economy</li>
+        </ol>
+      </article>
+    </section>
+  </main>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
