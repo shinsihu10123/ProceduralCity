@@ -10,9 +10,9 @@
   <main class="app">
     <header>
       <div>
-        <p class="eyebrow">ECONOMIC LAB / v0.4 · BANKING & ENDOGENOUS CREDIT</p>
+        <p class="eyebrow">ECONOMIC LAB / v0.5 · INDUSTRY & SUPPLY CHAIN</p>
         <h1>Four-Country Agent Economy</h1>
-        <p>Agent 추론 → 시장 → 은행 신용판단 → 예금창조·상환 → 복식부기 → 거시지표</p>
+        <p>Agent 추론 → 신용 → 노동 → 원재료·중간재 조달 → 생산 → 설비투자 → 최종재 소비 → 복식부기 → 거시경제</p>
       </div>
       <div class="controls">
         <button id="step1">+1개월</button>
@@ -46,12 +46,17 @@
       </article>
 
       <article class="panel">
+        <h2>Industry · Supply Chain</h2>
+        <pre id="industryTrace"></pre>
+      </article>
+
+      <article class="panel">
         <h2>Bank Agent · Credit Reasoning</h2>
         <pre id="bankTrace"></pre>
       </article>
 
       <article class="panel">
-        <h2>시장·회계·금융 불변식</h2>
+        <h2>시장·거시·회계 불변식</h2>
         <pre id="marketTrace"></pre>
       </article>
 
@@ -73,10 +78,10 @@
       <article class="panel">
         <h2>설계 계층</h2>
         <ol class="layers">
-          <li><b>L0</b> Settlement + Double-Entry Accounting / Deposits / Loans / Inventory</li>
+          <li><b>L0</b> Settlement + Double-Entry Accounting / Deposits / Loans / Inventories / Fixed Assets</li>
           <li><b>L1</b> Household / Firm / Bank Agent</li>
-          <li><b>L2</b> Goods / Labor / Credit / Asset Markets</li>
-          <li><b>L3</b> Industry / Supply Chain</li>
+          <li><b>L2</b> Goods / Labor / Credit / Interfirm Markets</li>
+          <li><b>L3</b> Resource → Materials → Capital / Consumer Supply Chain</li>
           <li><b>L4</b> National Macro</li>
           <li><b>L5</b> International Economy</li>
         </ol>
