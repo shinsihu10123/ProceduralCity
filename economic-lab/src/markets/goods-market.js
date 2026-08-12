@@ -4,7 +4,7 @@ function chooseSeller(firms, rng, sampleSize = 8) {
   const seen = new Set();
   const attempts = Math.min(sampleSize, firms.length);
   for (let k = 0; k < attempts; k++) {
-    let i = rng.int(0, firms.length - 1);
+    let i = rng.int(0, firms.length);
     let guard = 0;
     while (seen.has(i) && guard++ < firms.length * 2) i = (i + 1) % firms.length;
     seen.add(i);
