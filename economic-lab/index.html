@@ -10,9 +10,9 @@
   <main class="app">
     <header>
       <div>
-        <p class="eyebrow">ECONOMIC LAB / v0.3 · DOUBLE-ENTRY ACCOUNTING</p>
+        <p class="eyebrow">ECONOMIC LAB / v0.4 · BANKING & ENDOGENOUS CREDIT</p>
         <h1>Four-Country Agent Economy</h1>
-        <p>Agent 추론 → 실제 거래 → Settlement Ledger → General Ledger → 재무제표 → 거시지표</p>
+        <p>Agent 추론 → 시장 → 은행 신용판단 → 예금창조·상환 → 복식부기 → 거시지표</p>
       </div>
       <div class="controls">
         <button id="step1">+1개월</button>
@@ -32,7 +32,7 @@
 
     <section class="detail-grid">
       <article class="panel reasoning-panel">
-        <div class="panel-head"><h2>Agent Reasoning Trace</h2><select id="countrySelect"></select></div>
+        <div class="panel-head"><h2>Economic Agent Reasoning</h2><select id="countrySelect"></select></div>
         <div class="trace-grid">
           <div>
             <h3>가계 Agent</h3>
@@ -46,12 +46,17 @@
       </article>
 
       <article class="panel">
-        <h2>시장·회계 불변식</h2>
+        <h2>Bank Agent · Credit Reasoning</h2>
+        <pre id="bankTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>시장·회계·금융 불변식</h2>
         <pre id="marketTrace"></pre>
       </article>
 
       <article class="panel">
-        <h2>재무제표</h2>
+        <h2>가계·기업·은행 재무제표</h2>
         <pre id="financialTrace"></pre>
       </article>
 
@@ -61,14 +66,14 @@
       </article>
 
       <article class="panel">
-        <h2>최근 실제 결제거래</h2>
+        <h2>최근 실제 결제·통화거래</h2>
         <pre id="transactionTrace"></pre>
       </article>
 
       <article class="panel">
         <h2>설계 계층</h2>
         <ol class="layers">
-          <li><b>L0</b> Settlement + Double-Entry Accounting / Money / Inventory</li>
+          <li><b>L0</b> Settlement + Double-Entry Accounting / Deposits / Loans / Inventory</li>
           <li><b>L1</b> Household / Firm / Bank Agent</li>
           <li><b>L2</b> Goods / Labor / Credit / Asset Markets</li>
           <li><b>L3</b> Industry / Supply Chain</li>
