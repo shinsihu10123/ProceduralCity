@@ -2,7 +2,9 @@
 
 경제에 집중한 4개국 Agent-Based Economy다. 거시지표를 직접 조작하지 않고 **가계·기업·은행·정부·중앙은행의 제한된 인지와 실제 생산·거래·계약·회계에서 국내경제와 국제경제가 파생**되도록 만든다.
 
-현재 기준 버전은 **v0.9 — Deep Cognitive Economy**다.
+현재 기준 버전은 **v0.10 — Scale / Experiment / Long-Run Stability / Operational Hardening**이다.
+
+v0.10은 v0.9 경제모형을 대체하지 않는다. 기존 심층 인지 경제 위에 **대규모 실행, 반사실적 실험, multi-seed ensemble, 장기 안정성 검사, emergence 측정, 실행 프로파일링과 성능 증빙**을 추가한 검증·운영 계층이다. 세부 closeout 증빙은 `V0.10_CLOSEOUT.md`, 단계 복구 기록은 `MILESTONE_HISTORY.md`를 기준으로 한다.
 
 ## 최상위 원칙
 
@@ -360,18 +362,48 @@ v0.9 심층 정책경로가 드러낸 미세 국채상환 경계조건도 수정
 
 이 조건은 CI에서 별도 Gate로 검사한다.
 
+## v0.10 Research / Operations Layer
+
+v0.10은 경제적 결과를 강제로 추가하는 단계가 아니라, 기존 자율 경제가 더 큰 규모와 장기 실험에서도 같은 회계·인과·결정론적 원칙을 유지하는지 검증하는 단계다.
+
+구현된 범위:
+
+- explicit scale profiles와 runtime instrumentation
+- 동일 seed의 control/treatment를 비교하는 counterfactual experiment harness
+- deterministic paired multi-seed ensemble
+- 48개월 compact-population long-run health gate
+- emergence metrics
+- settlement ledger ring-buffer / indexed audit hardening
+- compact decision-history policy와 entrant inheritance
+- cold-start / steady-state scale benchmark
+- CPU hotspot profiling
+- GitHub Actions structured performance evidence artifact
+
+성능 수치는 현재 **SLA가 아니라 측정 증빙**이다. 성능 benchmark는 임의의 시간 상한보다 health/invariant 실패 여부를 기준으로 판정한다.
+
 ## Validation
 
-`npm test`는 두 개의 독립 검증을 연속 실행한다.
+`npm test`는 다음 aggregate gate를 연속 실행한다.
 
 1. `smoke-v09.mjs` — Deep Cognitive Economy Gate
 2. `smoke-v09-social.mjs` — Social Learning / Herding Gate
+3. `smoke-v10-ledger.mjs` — settlement ledger hardening Gate
+4. `smoke-v10-decision-history.mjs` — compact decision-history Gate
+5. `smoke-v10.mjs` — scale / counterfactual / long-run Gate
+6. `smoke-v10-ensemble.mjs` — paired multi-seed ensemble Gate
 
-그리고 `npm run build`로 실제 브라우저 Observer UI를 빌드한다.
+추가 명령:
+
+- `npm run test:v10` — v0.10 전용 회귀 Gate
+- `npm run bench:v10` — scale / health benchmark
+- `npm run profile:v10` — CPU hotspot profile
+- `npm run build` — 실제 브라우저 Observer UI build
+
+GitHub Actions `Economic Lab CI`는 이 검증과 성능 증빙 파이프라인을 자동 실행한다.
 
 ## Observer UI
 
-v0.9 화면에서 국가별로 다음을 관찰할 수 있다.
+v0.9에서 구축한 심층 인지 관찰 화면을 v0.10에서도 유지한다. 국가별로 다음을 관찰할 수 있다.
 
 - L0~L4 사고깊이 분포
 - 경기국면 확률
@@ -404,6 +436,8 @@ npm run build
 npm run dev
 ```
 
-## 다음 단계
+## 현재 단계
 
-v0.9를 통과한 뒤 10단계에서는 **대규모 실행·성능·실험 프레임워크·충격 실험·분포 검증·장기 안정성**에 집중한다. 새로운 거시결과를 강제로 설계하기보다 현재의 자율 경제주체 AI가 더 큰 규모에서도 일관된 회계와 재현성을 유지하는지를 검증하는 단계다.
+**v0.10 구현·회귀검증·실험검증·장기 health 검증·성능증빙·README 동기화까지 완료했다.**
+
+v0.11 기능 범위는 이 README에서 임의로 정의하지 않는다. 다음 구현 단계는 프로젝트의 확정된 실행 순서 또는 별도의 권위 있는 기준 문서에서 복구·확정한 뒤 시작한다.
