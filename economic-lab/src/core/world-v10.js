@@ -49,6 +49,14 @@ export class EconomicWorld extends CognitiveEconomicWorld {
     this.healthCheckInterval = Math.max(0, Math.round(Number(options.healthCheckInterval ?? 6)));
     this.runtime = this.emptyRuntimeMetrics();
     this.profiler = new RuntimeProfiler({ historyLimit: options.profileHistoryLimit || 60 });
+    for (const country of this.countries) {
+      Object.defineProperty(country, '__runtimeProfiler', {
+        value: this.profiler,
+        enumerable: false,
+        configurable: true,
+        writable: false
+      });
+    }
     this.installSubsystemProfiling();
     this.lastExperimentEvents = [];
   }
