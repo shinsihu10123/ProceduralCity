@@ -1,4 +1,4 @@
-import { EconomicWorld } from './core/world-v10.js';
+import { EconomicWorld } from './core/world-v10-stable.js';
 import { buildLiveObserverSnapshot } from './observer/live-observer-bridge.js';
 import { EconomicObserverScene } from './observer/economic-scene-fast.js';
 
