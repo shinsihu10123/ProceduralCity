@@ -7,6 +7,37 @@ import {
   registerForecast,
   topHypotheses
 } from './cognitive-core.js';
+import {
+  analogicalForecast,
+  causalExplanations,
+  causalForecast,
+  retrieveAnalogies
+} from './episodic-reasoning.js';
+
+function blend(base, sources = []) {
+  let value = Number(base || 0);
+  let weight = 1;
+  for (const source of sources) {
+    const confidence = clamp(Number(source?.confidence || 0), 0, 1);
+    const maxWeight = clamp(Number(source?.maxWeight ?? 0.25), 0, 0.5);
+    const w = confidence * maxWeight;
+    if (w <= 0 || !Number.isFinite(Number(source?.value))) continue;
+    value = (value * weight + Number(source.value) * w) / (weight + w);
+    weight += w;
+  }
+  return value;
+}
+
+function compactAnalogies(rows) {
+  return (rows || []).slice(0, 5).map(x => ({
+    month: x.month,
+    similarity: x.similarity,
+    topHypothesis: x.topHypothesis,
+    decision: x.decision,
+    reward: x.reward,
+    outcome: x.outcome
+  }));
+}
 
 function legacyGovernmentDecision(government, signals, fiscalState, rng) {
   const unemployment = clamp(Number(signals.unemployment || 0), 0, 1);
@@ -110,18 +141,52 @@ export function governmentDecision(government, signals, fiscalState, rng) {
   const inflation = Number(signals.inflation || 0);
   const debtRatio = Math.max(0, Number(fiscalState.debtRatio || 0));
   const priorBalanceRatio = Number(fiscalState.priorBalanceRatio || 0);
+  const currentState = {
+    ...(cognition.lastObservation || {}),
+    month,
+    unemployment,
+    inflation,
+    debtRatio,
+    fiscalBalanceRatio: priorBalanceRatio,
+    demandGrowth: Number(signals.demandGrowth || cognition.lastObservation?.demandGrowth || 0),
+    policyRate: Number(cognition.lastObservation?.policyRate || 0)
+  };
 
-  const perceivedUnemployment = clamp(
+  const currentUnemploymentEstimate = clamp(
     unemployment * 0.48 + beliefMean(government, 'unemployment', unemployment) * 0.52 + rng.normal(0, 0.002 + beliefUncertainty(government, 'unemployment') * 0.008),
     0,
     1
   );
-  const perceivedInflation =
-    inflation * 0.46 + beliefMean(government, 'inflation', inflation) * 0.54 + rng.normal(0, 0.0015 + beliefUncertainty(government, 'inflation') * 0.008);
-  const perceivedDebtRatio = Math.max(0, debtRatio * (1 + rng.normal(0, 0.008 + government.modelUncertainty * 0.018)));
+  const unemploymentMemory = analogicalForecast(government, 'unemployment', currentState, currentUnemploymentEstimate, 5);
+  const unemploymentCausal = causalForecast(government, 'unemployment', currentState, currentUnemploymentEstimate);
+  const expectedUnemployment = clamp(
+    blend(currentUnemploymentEstimate, [
+      { ...unemploymentMemory, maxWeight: 0.30 },
+      { ...unemploymentCausal, maxWeight: 0.18 }
+    ]),
+    0,
+    0.50
+  );
 
-  const unemploymentGap = perceivedUnemployment - government.unemploymentReference;
-  const inflationGap = perceivedInflation - government.inflationReference;
+  const currentInflationEstimate =
+    inflation * 0.46 + beliefMean(government, 'inflation', inflation) * 0.54 + rng.normal(0, 0.0015 + beliefUncertainty(government, 'inflation') * 0.008);
+  const inflationMemory = analogicalForecast(government, 'inflation', currentState, currentInflationEstimate, 5);
+  const inflationCausal = causalForecast(government, 'inflation', currentState, currentInflationEstimate);
+  const expectedInflation = clamp(
+    blend(currentInflationEstimate, [
+      { ...inflationMemory, maxWeight: 0.28 },
+      { ...inflationCausal, maxWeight: 0.18 }
+    ]),
+    -0.15,
+    0.50
+  );
+
+  const rawDebtEstimate = Math.max(0, debtRatio * (1 + rng.normal(0, 0.008 + government.modelUncertainty * 0.018)));
+  const debtMemory = analogicalForecast(government, 'debtRatio', currentState, rawDebtEstimate, 5);
+  const perceivedDebtRatio = Math.max(0, blend(rawDebtEstimate, [{ ...debtMemory, maxWeight: 0.24 }]));
+
+  const unemploymentGap = expectedUnemployment - government.unemploymentReference;
+  const inflationGap = expectedInflation - government.inflationReference;
   const debtPressure = Math.max(0, perceivedDebtRatio - government.debtComfortRatio);
   const deficitPressure = Math.max(0, -priorBalanceRatio - 0.015);
 
@@ -191,12 +256,12 @@ export function governmentDecision(government, signals, fiscalState, rng) {
 
   const baseScenario = selectedPlan.counterfactual.scenarios.reduce((best, row) => Math.abs(row.shock) < Math.abs(best.shock) ? row : best, selectedPlan.counterfactual.scenarios[0]);
   const oneMonthUnemployment = clamp(
-    perceivedUnemployment * cognition.worldModel.unemploymentPersistence - selectedPlan.impulse * cognition.worldModel.fiscalDemandMultiplier * 0.018,
+    expectedUnemployment * cognition.worldModel.unemploymentPersistence - selectedPlan.impulse * cognition.worldModel.fiscalDemandMultiplier * 0.018,
     0,
     0.45
   );
   const oneMonthInflation = clamp(
-    perceivedInflation * cognition.worldModel.inflationPersistence + selectedPlan.impulse * cognition.worldModel.fiscalInflationMultiplier * 0.010,
+    expectedInflation * cognition.worldModel.inflationPersistence + selectedPlan.impulse * cognition.worldModel.fiscalInflationMultiplier * 0.010,
     -0.15,
     0.45
   );
@@ -212,14 +277,33 @@ export function governmentDecision(government, signals, fiscalState, rng) {
   });
   registerForecast(government, 'debtRatio', oneMonthDebtRatio, month, 1);
 
+  const memoryAnalogies = retrieveAnalogies(government, currentState, 5);
   const trace = {
     perception: {
-      unemployment: perceivedUnemployment,
-      inflation: perceivedInflation,
+      currentUnemployment: currentUnemploymentEstimate,
+      expectedUnemployment,
+      currentInflation: currentInflationEstimate,
+      expectedInflation,
       debtRatio: perceivedDebtRatio,
       priorBalanceRatio
     },
     hypotheses: topHypotheses(government, 6),
+    memoryReasoning: {
+      analogies: compactAnalogies(memoryAnalogies),
+      unemploymentForecast: { value: unemploymentMemory.value, confidence: unemploymentMemory.confidence },
+      inflationForecast: { value: inflationMemory.value, confidence: inflationMemory.confidence },
+      debtForecast: { value: debtMemory.value, confidence: debtMemory.confidence }
+    },
+    causalReasoning: {
+      unemployment: {
+        forecast: { value: unemploymentCausal.value, confidence: unemploymentCausal.confidence },
+        explanations: causalExplanations(government, 'unemployment', currentState, 6)
+      },
+      inflation: {
+        forecast: { value: inflationCausal.value, confidence: inflationCausal.confidence },
+        explanations: causalExplanations(government, 'inflation', currentState, 6)
+      }
+    },
     gaps: { unemploymentGap, inflationGap, debtPressure, deficitPressure },
     worldModel: {
       fiscalDemandMultiplier: cognition.worldModel.fiscalDemandMultiplier,
@@ -256,7 +340,9 @@ export function governmentDecision(government, signals, fiscalState, rng) {
       oneMonthDebtRatio,
       mediumTerm: baseScenario.outcomes || null
     },
-    reason: `${selectedPlan.counterfactual.horizon}개월 재정경로에서 고용·물가·부채 손실을 함께 비교해 ${selectedPlan.name} 선택`
+    reason: memoryAnalogies.length
+      ? `과거 재정정책 결과·학습된 인과관계·${selectedPlan.counterfactual.horizon}개월 반사실적 경로를 함께 비교해 ${selectedPlan.name} 선택`
+      : `${selectedPlan.counterfactual.horizon}개월 재정경로에서 고용·물가·부채 손실을 함께 비교해 ${selectedPlan.name} 선택`
   };
 
   const result = { ...trace.policy, selected, trace };
