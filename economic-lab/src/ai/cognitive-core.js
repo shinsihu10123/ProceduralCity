@@ -1,4 +1,5 @@
 import { clamp } from '../core/rng.js';
+import { compactDecisionTrace } from '../research/decision-history.js';
 
 const EPS = 1e-9;
 const MAX_EPISODES = 48;
@@ -373,12 +374,24 @@ export function recordDecision(agent, decision, month, realizedReward = null) {
   const c = agent.cognition;
   if (!c?.enabled) return;
   const selected = decision?.selected || decision?.name || 'unknown';
-  const traceSnapshot = decision?.trace ? structuredClone(decision.trace) : null;
-  c.decisions.push({ month, selected, trace: traceSnapshot, realizedReward });
+  const detailedTrace = decision?.trace || null;
+  const compactMode = c.decisionHistoryMode === 'compact-v1';
+  const historyTrace = detailedTrace
+    ? compactMode
+      ? compactDecisionTrace(detailedTrace)
+      : structuredClone(detailedTrace)
+    : null;
+  c.decisions.push({
+    month,
+    selected,
+    trace: historyTrace,
+    realizedReward,
+    ...(compactMode ? { historyFormat: 'compact-v1' } : {})
+  });
   if (c.decisions.length > MAX_DECISIONS) c.decisions.shift();
   if (!c.strategyStats[selected]) c.strategyStats[selected] = { count: 0, meanReward: 0, lastReward: 0 };
   c.strategyStats[selected].count += 1;
-  c.lastReasoning = traceSnapshot;
+  c.lastReasoning = compactMode ? detailedTrace : historyTrace;
 }
 
 export function updateLastDecisionReward(agent, reward) {
