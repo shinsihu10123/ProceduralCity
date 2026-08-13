@@ -41,51 +41,9 @@ function deepFreeze(value) {
   return value;
 }
 
-function isLiveWorld(source) {
-  return Boolean(
-    source &&
-    Array.isArray(source.countries) &&
-    typeof source.step === 'function' &&
-    typeof source.snapshot === 'function'
-  );
-}
-
-function liveCountryView(world, country) {
-  const firms = Array.isArray(country.firms) ? country.firms : [];
-  const households = Array.isArray(country.households) ? country.households : [];
-  const recentInternationalTrades = world.international?.recentTrades
-    ? world.international.recentTrades(world.month, country.id, 18)
-    : [];
-  const recentForeignFunding = world.international?.recentFunding
-    ? world.international.recentFunding(country.id, 12)
-    : [];
-
-  return {
-    ...country,
-    households: households.length,
-    firms: firms.length,
-    activeFirms: firms.filter(firm => firm.active !== false).length,
-    cognitive: country.lastCognitive || country.cognitive || null,
-    international: country.lastInternational || country.international || null,
-    recentInternationalTrades,
-    recentForeignFunding
-  };
-}
-
 function sourceSnapshot(source) {
-  if (isLiveWorld(source)) {
-    return {
-      version: source.version || 'unknown',
-      month: source.month,
-      countries: source.countries.map(country => liveCountryView(source, country)),
-      scale: { profile: source.scaleProfile || null },
-      globalInternational: null,
-      health: null,
-      emergence: null
-    };
-  }
-  if (source && Array.isArray(source.countries)) return source;
   if (source && typeof source.snapshot === 'function') return source.snapshot();
+  if (source && Array.isArray(source.countries)) return source;
   throw new TypeError('Observer bridge requires EconomicWorld or an EconomicWorld snapshot.');
 }
 
@@ -114,7 +72,7 @@ function sectorOutput(country, sector) {
 }
 
 function regimeShares(country) {
-  const cognitive = country.cognitive || country.lastCognitive || {};
+  const cognitive = country.cognitive || {};
   const regimes = cognitive.regimes || {};
   const agents = Math.max(0, finite(cognitive.agents, finite(country.macro?.cognitiveAgents)));
   const keys = ['normal', 'recession', 'inflation', 'overheating', 'credit_crisis', 'external_crisis'];
@@ -130,26 +88,20 @@ function regimeShares(country) {
 
 function rawCountry(country, index) {
   const macro = country.macro || {};
-  const intl = country.international || country.lastInternational || {};
+  const intl = country.international || {};
   const position = COUNTRY_LAYOUT[country.id] || FALLBACK_LAYOUT[index % FALLBACK_LAYOUT.length];
   const regimes = regimeShares(country);
   const sectors = Object.fromEntries(SECTORS.map(sector => [sector, sectorOutput(country, sector)]));
   const industryOutput = Object.values(sectors).reduce((sum, value) => sum + value, 0);
 
-  const householdCount = Array.isArray(country.households) ? country.households.length : finite(country.households);
-  const firmCount = Array.isArray(country.firms) ? country.firms.length : finite(country.firms);
-  const activeFirmCount = Array.isArray(country.firms)
-    ? country.firms.filter(firm => firm.active !== false).length
-    : finite(country.activeFirms);
-
   return {
     id: String(country.id || `COUNTRY-${index + 1}`),
     name: String(country.name || country.id || `Country ${index + 1}`),
     position: { ...position },
-    populationProxy: Math.max(0, Math.round(householdCount)),
+    populationProxy: Math.max(0, Math.round(finite(country.households))),
     firms: {
-      total: Math.max(0, Math.round(firmCount)),
-      active: Math.max(0, Math.round(activeFirmCount))
+      total: Math.max(0, Math.round(finite(country.firms))),
+      active: Math.max(0, Math.round(finite(country.activeFirms)))
     },
     macro: {
       gdp: finite(macro.gdp),
@@ -196,8 +148,8 @@ function rawCountry(country, index) {
       crisisShare: regimes.crisisShare,
       l3Agents: nonNegative(macro.cognitiveL3),
       l4Agents: nonNegative(macro.cognitiveL4),
-      hypothesisTests: nonNegative(country.cognitive?.hypothesisTests, country.lastCognitive?.hypothesisTests),
-      causalUpdates: nonNegative(country.cognitive?.causalUpdates, country.lastCognitive?.causalUpdates)
+      hypothesisTests: nonNegative(country.cognitive?.hypothesisTests),
+      causalUpdates: nonNegative(country.cognitive?.causalUpdates)
     },
     integrity: {
       settlement: country.accounting?.ok !== false,
@@ -317,7 +269,7 @@ export function buildObserverSnapshot(source) {
       foreignFunding: fundingExposures
     },
     world: {
-      scaleProfile: snapshot.scale?.profile?.id || snapshot.scale?.profile?.name || snapshot.scale?.profile?.id || null,
+      scaleProfile: snapshot.scale?.profile?.id || snapshot.scale?.profile?.name || null,
       globalInternationalOk: snapshot.globalInternational?.ok !== false,
       healthOk: snapshot.health?.ok !== false,
       emergence: snapshot.emergence ? structuredClone(snapshot.emergence) : null
