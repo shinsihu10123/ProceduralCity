@@ -151,6 +151,28 @@ function influenceOne(agent, key, signal, month) {
   };
 }
 
+function recordEntryRegistration(social, month) {
+  const row = {
+    month,
+    updates: [],
+    meanInfluence: 0,
+    meanDispersion: 0,
+    herdingIndex: 0,
+    cascade: false,
+    entryRegistration: true
+  };
+  social.lastInfluence = row;
+  social.history.push({
+    month,
+    meanInfluence: 0,
+    meanDispersion: 0,
+    herdingIndex: 0,
+    cascade: false,
+    entryRegistration: true
+  });
+  if (social.history.length > MAX_HISTORY) social.history.shift();
+}
+
 export class InformationNetworkSystem {
   constructor({ rng }) {
     this.rng = rng;
@@ -165,7 +187,13 @@ export class InformationNetworkSystem {
   }
 
   initializeAgent(country, agent) {
-    return ensureSocialState(country, agent, this.rng);
+    const social = ensureSocialState(country, agent, this.rng);
+    const entryMonth = Number(agent?.cognition?.lastObservation?.month || 0);
+    // Firms are created after the month's information-spread phase. Record an explicit
+    // zero-influence entry cycle so lifecycle state is complete without pretending that
+    // the entrant observed peers before it existed. The next month uses normal propagation.
+    if (social && entryMonth > 0 && !social.lastInfluence) recordEntryRegistration(social, entryMonth);
+    return social;
   }
 
   agents(country) {
