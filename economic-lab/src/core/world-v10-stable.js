@@ -9,13 +9,23 @@ export class EconomicWorld extends BaseWorld {
     for (const seed of COUNTRY_SEEDS) seed.initialPrice = Number(seed.initialPrice) * PRICE_UNIT_SCALE;
     try {
       super(seedText, options);
-      this.runtimeCalibration = {
-        id: 'nominal-price-unit-v2',
-        priceUnitScale: PRICE_UNIT_SCALE,
-        reason: 'align product-price units with production costs'
-      };
+      this.runtimeCalibration = { id: 'nominal-price-unit-v2', priceUnitScale: PRICE_UNIT_SCALE };
     } finally {
       COUNTRY_SEEDS.forEach((seed, index) => { seed.initialPrice = originalPrices[index]; });
+    }
+  }
+
+  stepMonth() {
+    super.stepMonth();
+    if (this.month === 24 && globalThis.process?.env?.GITHUB_ACTIONS) {
+      console.log('MONTH24', JSON.stringify(this.countries.map(c => ({
+        id:c.id,
+        u:c.macro.unemployment,
+        c:c.macro.consumption,
+        y:c.macro.realOutput,
+        af:c.firms.filter(f=>f.active!==false).map(f=>f.industryId),
+        w:c.firms.filter(f=>f.active!==false).map(f=>[f.industryId,f.workers])
+      }))));
     }
   }
 }
