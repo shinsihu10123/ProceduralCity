@@ -1,0 +1,76 @@
+name: Deploy Economic Lab 3D Observer
+
+on:
+  push:
+    branches:
+      - feature/economic-lab-3d-observer-v1
+    paths:
+      - 'economic-lab/**'
+      - '.github/workflows/economic-lab-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}economic-lab/
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout observer branch
+        uses: actions/checkout@v4
+        with:
+          path: observer-source
+
+      - name: Checkout current main site
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main-site
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate observer bridge
+        working-directory: observer-source/economic-lab
+        run: |
+          npm install
+          npm run test:observer
+
+      - name: Build observer for repository Pages subpath
+        working-directory: observer-source/economic-lab
+        run: npm run build -- --base=/ProceduralCity/economic-lab/
+
+      - name: Compose Pages artifact without replacing the existing root app
+        run: |
+          mkdir -p pages-artifact
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='economic-lab' \
+            main-site/ pages-artifact/
+          mkdir -p pages-artifact/economic-lab
+          cp -a observer-source/economic-lab/dist/. pages-artifact/economic-lab/
+          touch pages-artifact/.nojekyll
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages-artifact
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
