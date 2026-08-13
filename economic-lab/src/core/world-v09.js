@@ -1,5 +1,6 @@
 import { EconomicWorld as InternationalEconomicWorld } from './world-v08.js';
 import { CognitiveArchitecture } from '../ai/cognitive-core.js';
+import { InformationNetworkSystem } from '../ai/information-network.js';
 import {
   attachEpisodeOutcome,
   learnCausalModel,
@@ -56,6 +57,8 @@ export class EconomicWorld extends InternationalEconomicWorld {
     this.installFiscalPaymentPrecision();
     this.cognitive = new CognitiveArchitecture({ rng: this.rng });
     this.cognitive.initializeWorld(this.countries);
+    this.information = new InformationNetworkSystem({ rng: this.rng });
+    this.information.initializeWorld(this.countries);
     for (const country of this.countries) this.refreshV09Macro(country);
   }
 
@@ -137,12 +140,14 @@ export class EconomicWorld extends InternationalEconomicWorld {
         inferRegime(cognition, inceptionObservation, this.month);
       }
     }
+    if (this.information) this.information.initializeAgent(country, firm);
     return firm;
   }
 
   stepMonth() {
     const nextMonth = this.month + 1;
     this.cognitive.beginWorldMonth(this.countries, nextMonth);
+    this.information.spreadWorld(this.countries, nextMonth);
     this.inferAgentRegimes(nextMonth);
     super.stepMonth();
     this.cognitive.endWorldMonth(this.countries, this.month);
@@ -287,6 +292,13 @@ export class EconomicWorld extends InternationalEconomicWorld {
       hypothesisTests += hypothesisRows.reduce((sum, row) => sum + Number(row.tests || 0), 0);
       if (hypothesisRows.some(row => Number(row.tests || 0) > 0)) hypothesisCalibratedAgents += 1;
     }
+    const social = this.information?.summary(country) || {
+      agents: 0,
+      meanInfluence: 0,
+      meanDispersion: 0,
+      meanHerdingIndex: 0,
+      cascadeAgents: 0
+    };
     return {
       resolvedEpisodes,
       causalUpdates,
@@ -296,6 +308,11 @@ export class EconomicWorld extends InternationalEconomicWorld {
       meanRegimeUncertainty: agents.length ? regimeUncertainty / agents.length : 0,
       hypothesisTests,
       hypothesisCalibratedAgents,
+      socialAgents: social.agents,
+      meanSocialInfluence: social.meanInfluence,
+      meanBeliefDispersion: social.meanDispersion,
+      meanHerdingIndex: social.meanHerdingIndex,
+      cascadeAgents: social.cascadeAgents,
       regimes
     };
   }
@@ -323,6 +340,10 @@ export class EconomicWorld extends InternationalEconomicWorld {
       cognitiveRegimeUncertainty: depth.meanRegimeUncertainty,
       cognitiveHypothesisTests: depth.hypothesisTests,
       cognitiveHypothesisCalibratedAgents: depth.hypothesisCalibratedAgents,
+      cognitiveSocialInfluence: depth.meanSocialInfluence,
+      cognitiveBeliefDispersion: depth.meanBeliefDispersion,
+      cognitiveHerdingIndex: depth.meanHerdingIndex,
+      cognitiveCascadeAgents: depth.cascadeAgents,
       regimeNormalAgents: depth.regimes.normal,
       regimeRecessionAgents: depth.regimes.recession,
       regimeInflationAgents: depth.regimes.inflation,
@@ -338,6 +359,7 @@ export class EconomicWorld extends InternationalEconomicWorld {
       const country = this.countries.find(c => c.id === snapCountry.id);
       const depth = this.cognitiveDepthSummary(country);
       snapCountry.cognitive = { ...this.cognitive.summary(country), ...depth };
+      snapCountry.information = this.information.summary(country);
       snapCountry.sampleHouseholdCognition = structuredClone(country.households[0]?.cognition || null);
       const sampleFirm = country.firms.find(f => f.active !== false && f.lastTrace?.cognition) || country.firms.find(f => f.active !== false) || country.firms[0];
       snapCountry.sampleFirmCognition = structuredClone(sampleFirm?.cognition || null);
