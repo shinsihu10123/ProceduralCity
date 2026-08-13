@@ -21,7 +21,7 @@ function chooseSeller(firms, rng, sampleSize = 8) {
   return best;
 }
 
-export function clearGoodsMarket(country, ledger, rng, month) {
+function clearGoodsMarketCore(country, ledger, rng, month) {
   const consumerFirms = country.firms.filter(f => f.active !== false && f.consumerFacing === true);
   for (const f of consumerFirms) {
     f.consumerSales = 0;
@@ -78,4 +78,11 @@ export function clearGoodsMarket(country, ledger, rng, month) {
   }
 
   return { transactions, nominalConsumption, units, desiredBudget, unmetBudget };
+}
+
+export function clearGoodsMarket(country, ledger, rng, month) {
+  const profiler = country?.__runtimeProfiler;
+  return profiler
+    ? profiler.measure('market.goods', () => clearGoodsMarketCore(country, ledger, rng, month))
+    : clearGoodsMarketCore(country, ledger, rng, month);
 }
