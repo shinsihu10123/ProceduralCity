@@ -51,18 +51,16 @@ jobs:
 
       - name: Build Economic Lab 3D observer for Pages subpath
         working-directory: observer-source/economic-lab
-        run: npm run build -- --base=/ProceduralCity/economic-lab/
+        run: npx vite build --base=/ProceduralCity/economic-lab/
 
       - name: Compose Pages artifact
         run: |
           mkdir -p pages-artifact
-          rsync -a \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='economic-lab' \
-            main-site/ pages-artifact/
+          rsync -a --exclude='.git' --exclude='.github' --exclude='economic-lab' main-site/ pages-artifact/
           mkdir -p pages-artifact/economic-lab
           cp -a observer-source/economic-lab/dist/. pages-artifact/economic-lab/
+          cp observer-source/economic-lab/legacy.html pages-artifact/economic-lab/legacy.html
+          cp -a observer-source/economic-lab/src pages-artifact/economic-lab/src
           touch pages-artifact/.nojekyll
 
       - name: Configure Pages
