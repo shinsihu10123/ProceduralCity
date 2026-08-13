@@ -39,6 +39,14 @@ async function waitForServer(url, timeoutMs = 30000) {
   throw new Error(`Vite preview did not become ready: ${lastError?.message || 'timeout'}`);
 }
 
+function isIgnorableMissingResource(url) {
+  try {
+    return new URL(url).pathname === '/favicon.ico';
+  } catch {
+    return false;
+  }
+}
+
 const server = spawn(process.execPath, [VITE_CLI, 'preview', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], {
   cwd: ROOT,
   stdio: ['ignore', 'pipe', 'pipe']
@@ -69,8 +77,23 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const runtimeErrors = [];
   page.on('pageerror', error => runtimeErrors.push(`pageerror: ${error.message}`));
+  page.on('response', response => {
+    if (response.status() >= 400 && !isIgnorableMissingResource(response.url())) {
+      runtimeErrors.push(`response ${response.status()}: ${response.url()}`);
+    }
+  });
+  page.on('requestfailed', request => {
+    if (!isIgnorableMissingResource(request.url())) {
+      runtimeErrors.push(`requestfailed: ${request.url()} · ${request.failure()?.errorText || 'unknown error'}`);
+    }
+  });
   page.on('console', message => {
-    if (message.type() === 'error') runtimeErrors.push(`console: ${message.text()}`);
+    if (message.type() !== 'error') return;
+    const text = message.text();
+    // Chromium emits a generic console error for a missing favicon. HTTP failures for
+    // application resources are captured with their exact URL by the response listener.
+    if (text.startsWith('Failed to load resource:')) return;
+    runtimeErrors.push(`console: ${text}`);
   });
 
   await page.goto(PREVIEW_URL, { waitUntil: 'networkidle', timeout: 60000 });
