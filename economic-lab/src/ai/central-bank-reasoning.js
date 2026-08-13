@@ -7,6 +7,37 @@ import {
   registerForecast,
   topHypotheses
 } from './cognitive-core.js';
+import {
+  analogicalForecast,
+  causalExplanations,
+  causalForecast,
+  retrieveAnalogies
+} from './episodic-reasoning.js';
+
+function blend(base, sources = []) {
+  let value = Number(base || 0);
+  let weight = 1;
+  for (const source of sources) {
+    const confidence = clamp(Number(source?.confidence || 0), 0, 1);
+    const maxWeight = clamp(Number(source?.maxWeight ?? 0.25), 0, 0.5);
+    const w = confidence * maxWeight;
+    if (w <= 0 || !Number.isFinite(Number(source?.value))) continue;
+    value = (value * weight + Number(source.value) * w) / (weight + w);
+    weight += w;
+  }
+  return value;
+}
+
+function compactAnalogies(rows) {
+  return (rows || []).slice(0, 5).map(x => ({
+    month: x.month,
+    similarity: x.similarity,
+    topHypothesis: x.topHypothesis,
+    decision: x.decision,
+    reward: x.reward,
+    outcome: x.outcome
+  }));
+}
 
 function legacyCentralBankDecision(centralBank, signals, financialState, rng) {
   const perceivedInflation = signals.inflation + rng.normal(0, 0.003 + centralBank.modelUncertainty * 0.004);
@@ -118,17 +149,50 @@ export function centralBankDecision(centralBank, signals, financialState, rng) {
 
   const cognition = centralBank.cognition;
   const month = Number(cognition.lastObservation?.month || 0);
-  const perceivedInflation =
+  const currentState = {
+    ...(cognition.lastObservation || {}),
+    month,
+    inflation: Number(signals.inflation || 0),
+    unemployment: Number(signals.unemployment || 0),
+    creditStress: Number(financialState.creditStress || 0),
+    bankStress: Number(financialState.bankStress || 0),
+    assetMomentum: Number(financialState.assetMomentum || 0),
+    policyRate: Number(centralBank.policyRate || 0)
+  };
+
+  const currentInflationEstimate =
     Number(signals.inflation || 0) * 0.46 +
     beliefMean(centralBank, 'inflation', signals.inflation) * 0.54 +
     rng.normal(0, 0.0015 + beliefUncertainty(centralBank, 'inflation') * 0.008);
-  const perceivedUnemployment = clamp(
+  const inflationMemory = analogicalForecast(centralBank, 'inflation', currentState, currentInflationEstimate, 5);
+  const inflationCausal = causalForecast(centralBank, 'inflation', currentState, currentInflationEstimate);
+  const expectedInflation = clamp(
+    blend(currentInflationEstimate, [
+      { ...inflationMemory, maxWeight: 0.30 },
+      { ...inflationCausal, maxWeight: 0.20 }
+    ]),
+    -0.15,
+    0.50
+  );
+
+  const currentUnemploymentEstimate = clamp(
     Number(signals.unemployment || 0) * 0.48 +
     beliefMean(centralBank, 'unemployment', signals.unemployment) * 0.52 +
     rng.normal(0, 0.002 + beliefUncertainty(centralBank, 'unemployment') * 0.008),
     0,
     1
   );
+  const unemploymentMemory = analogicalForecast(centralBank, 'unemployment', currentState, currentUnemploymentEstimate, 5);
+  const unemploymentCausal = causalForecast(centralBank, 'unemployment', currentState, currentUnemploymentEstimate);
+  const expectedUnemployment = clamp(
+    blend(currentUnemploymentEstimate, [
+      { ...unemploymentMemory, maxWeight: 0.30 },
+      { ...unemploymentCausal, maxWeight: 0.18 }
+    ]),
+    0,
+    0.50
+  );
+
   const perceivedCreditStress = clamp(
     Number(financialState.creditStress || 0) * 0.58 +
     beliefMean(centralBank, 'creditStress', financialState.creditStress) * 0.42 +
@@ -147,8 +211,8 @@ export function centralBankDecision(centralBank, signals, financialState, rng) {
     0.8
   );
 
-  const inflationGap = perceivedInflation - centralBank.inflationTarget;
-  const unemploymentGap = perceivedUnemployment - centralBank.unemploymentReference;
+  const inflationGap = expectedInflation - centralBank.inflationTarget;
+  const unemploymentGap = expectedUnemployment - centralBank.unemploymentReference;
   const financialStress = perceivedCreditStress * 0.55 + perceivedBankStress * 0.45;
   const neutralRate = centralBank.neutralRate;
   const taylorSignal =
@@ -215,13 +279,13 @@ export function centralBankDecision(centralBank, signals, financialState, rng) {
   const selected = selectedPlan.name.includes('완화') ? '완화' : selectedPlan.name.includes('긴축') ? '긴축' : '중립';
 
   const oneMonthInflationForecast = clamp(
-    perceivedInflation * cognition.worldModel.inflationPersistence +
+    expectedInflation * cognition.worldModel.inflationPersistence +
     cognition.worldModel.rateInflationTransmission * (policyRate - centralBank.policyRate),
     -0.15,
     0.45
   );
   const oneMonthUnemploymentForecast = clamp(
-    perceivedUnemployment * cognition.worldModel.unemploymentPersistence -
+    expectedUnemployment * cognition.worldModel.unemploymentPersistence -
     cognition.worldModel.rateDemandTransmission * (policyRate - centralBank.policyRate) * 0.035,
     0,
     0.45
@@ -236,15 +300,33 @@ export function centralBankDecision(centralBank, signals, financialState, rng) {
   });
   registerForecast(centralBank, 'creditStress', perceivedCreditStress, month, 1);
 
+  const memoryAnalogies = retrieveAnalogies(centralBank, currentState, 5);
   const trace = {
     perception: {
-      inflation: perceivedInflation,
-      unemployment: perceivedUnemployment,
+      currentInflation: currentInflationEstimate,
+      expectedInflation,
+      currentUnemployment: currentUnemploymentEstimate,
+      expectedUnemployment,
       creditStress: perceivedCreditStress,
       bankStress: perceivedBankStress,
       assetMomentum: perceivedAssetGap
     },
     hypotheses: topHypotheses(centralBank, 6),
+    memoryReasoning: {
+      analogies: compactAnalogies(memoryAnalogies),
+      inflationForecast: { value: inflationMemory.value, confidence: inflationMemory.confidence },
+      unemploymentForecast: { value: unemploymentMemory.value, confidence: unemploymentMemory.confidence }
+    },
+    causalReasoning: {
+      inflation: {
+        forecast: { value: inflationCausal.value, confidence: inflationCausal.confidence },
+        explanations: causalExplanations(centralBank, 'inflation', currentState, 6)
+      },
+      unemployment: {
+        forecast: { value: unemploymentCausal.value, confidence: unemploymentCausal.confidence },
+        explanations: causalExplanations(centralBank, 'unemployment', currentState, 6)
+      }
+    },
     gaps: { inflationGap, unemploymentGap, financialStress },
     worldModel: {
       inflationPersistence: cognition.worldModel.inflationPersistence,
@@ -277,7 +359,9 @@ export function centralBankDecision(centralBank, signals, financialState, rng) {
     },
     selected,
     selectedPlan: selectedPlan.name,
-    reason: `${selectedPlan.counterfactual.horizon}개월 정책경로의 물가·고용·금융안정 손실을 비교해 ${selectedPlan.name} 선택`
+    reason: memoryAnalogies.length
+      ? `과거 정책국면·학습된 인과전달·${selectedPlan.counterfactual.horizon}개월 반사실적 손실을 함께 비교해 ${selectedPlan.name} 선택`
+      : `${selectedPlan.counterfactual.horizon}개월 정책경로의 물가·고용·금융안정 손실을 비교해 ${selectedPlan.name} 선택`
   };
 
   const decision = { selected, policyRate, desiredRate: adjustedDesiredRate, trace };
