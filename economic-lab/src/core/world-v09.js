@@ -48,9 +48,20 @@ function lastReward(agent) {
 export class EconomicWorld extends InternationalEconomicWorld {
   constructor(seedText = 'ECON-4-001') {
     super(seedText);
+    this.installFiscalBoundaryGuard();
     this.cognitive = new CognitiveArchitecture({ rng: this.rng });
     this.cognitive.initializeWorld(this.countries);
     for (const country of this.countries) this.refreshV09Macro(country);
+  }
+
+  installFiscalBoundaryGuard() {
+    if (!this.fiscal?.recordBondPayment || this.fiscal.__v09DebtServiceGuard) return;
+    const original = this.fiscal.recordBondPayment.bind(this.fiscal);
+    this.fiscal.recordBondPayment = (country, bond, month, principalPaid, interestPaid) => {
+      if (Number(principalPaid || 0) <= 1e-8 && Number(interestPaid || 0) <= 1e-8) return;
+      return original(country, bond, month, principalPaid, interestPaid);
+    };
+    this.fiscal.__v09DebtServiceGuard = true;
   }
 
   createEntrant(country, industryId) {
