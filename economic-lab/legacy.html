@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Economic Lab — Deep Cognitive Agent Economy</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <p class="eyebrow">ECONOMIC LAB / v0.9 · DEEP COGNITIVE ECONOMY</p>
+        <h1>Four-Country Agent Economy</h1>
+        <p>관찰 → 국면추론 → 기억검색 → 가설·인과모형 → 반사실적 계획 → 실제 거래·정책 → 예측오차 → 자기모형 수정</p>
+      </div>
+      <div class="controls">
+        <button id="step1">+1개월</button>
+        <button id="step12">+12개월</button>
+        <button id="reset">재시작</button>
+      </div>
+    </header>
+
+    <section class="status">
+      <span>시뮬레이션 시점</span>
+      <strong id="month">0개월</strong>
+      <span>Seed</span>
+      <strong>ECON-4-001</strong>
+    </section>
+
+    <section id="countries" class="country-grid"></section>
+
+    <section class="detail-grid">
+      <article class="panel reasoning-panel">
+        <div class="panel-head"><h2>Deep Cognitive Observatory</h2><select id="countrySelect"></select></div>
+        <pre id="cognitiveOverview"></pre>
+      </article>
+
+      <article class="panel reasoning-panel">
+        <h2>Household · Firm Internal Reasoning</h2>
+        <div class="trace-grid">
+          <div><h3>가계 Agent</h3><pre id="householdTrace"></pre></div>
+          <div><h3>기업 Agent</h3><pre id="firmTrace"></pre></div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <h2>International Economy · FX · Trade · External Finance</h2>
+        <pre id="internationalTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>Central Bank · Memory · Causal Policy Reasoning</h2>
+        <pre id="centralBankTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>Commercial Bank · Credit Counterfactuals</h2>
+        <pre id="bankTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>Government · Fiscal Counterfactuals</h2>
+        <pre id="governmentTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>Monetary Operations · Reserves · Liquidity</h2>
+        <pre id="monetaryTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>Equity Market · Capital Raising · Trading</h2>
+        <pre id="assetTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>Fiscal Flows · Public Debt</h2>
+        <pre id="fiscalTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>Industry · Domestic & International Supply Chain</h2>
+        <pre id="industryTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>Open-Economy Macro · Accounting Invariants</h2>
+        <pre id="marketTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>Agent Financial Statements</h2>
+        <pre id="financialTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>General Ledger Journal Trace</h2>
+        <pre id="journalTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>Domestic · International Settlement</h2>
+        <pre id="transactionTrace"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>v0.9 Cognitive Stack</h2>
+        <ol class="layers">
+          <li><b>C0</b> Limited Observation / Noisy Perception</li>
+          <li><b>C1</b> Persistent Beliefs / Uncertainty / Episodic Memory</li>
+          <li><b>C2</b> Probabilistic Regime Inference / Hypothesis Reliability</li>
+          <li><b>C3</b> Learned Causal Graph / Analogical Retrieval</li>
+          <li><b>C4</b> Counterfactual World-Model Planning / L0–L4 Attention</li>
+          <li><b>C5</b> Real Market · Settlement · Accounting Outcome</li>
+          <li><b>C6</b> Forecast Error / Causal Coefficient / Strategy / Hypothesis Update</li>
+        </ol>
+      </article>
+    </section>
+  </main>
+  <script type="module" src="/src/main-v09.js"></script>
+</body>
+</html>
