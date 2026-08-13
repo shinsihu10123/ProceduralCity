@@ -7,9 +7,40 @@ import {
   registerForecast,
   topHypotheses
 } from './cognitive-core.js';
+import {
+  analogicalForecast,
+  causalExplanations,
+  causalForecast,
+  retrieveAnalogies
+} from './episodic-reasoning.js';
 
 function logistic(x) {
   return 1 / (1 + Math.exp(-x));
+}
+
+function blend(base, sources = []) {
+  let value = Number(base || 0);
+  let weight = 1;
+  for (const source of sources) {
+    const confidence = clamp(Number(source?.confidence || 0), 0, 1);
+    const maxWeight = clamp(Number(source?.maxWeight ?? 0.25), 0, 0.5);
+    const w = confidence * maxWeight;
+    if (w <= 0 || !Number.isFinite(Number(source?.value))) continue;
+    value = (value * weight + Number(source.value) * w) / (weight + w);
+    weight += w;
+  }
+  return value;
+}
+
+function compactAnalogies(rows) {
+  return (rows || []).slice(0, 5).map(x => ({
+    month: x.month,
+    similarity: x.similarity,
+    topHypothesis: x.topHypothesis,
+    decision: x.decision,
+    reward: x.reward,
+    outcome: x.outcome
+  }));
 }
 
 function legacyEvaluateCreditApplication(bank, borrower, application, bankState, signals, rng) {
@@ -115,6 +146,14 @@ export function evaluateCreditApplication(bank, borrower, application, bankState
   const requestedToIncome = amount / incomeBase;
   const liquidityMonths = cash / incomeBase;
   const arrearsRatio = arrears / incomeBase;
+  const currentState = {
+    ...(cognition.lastObservation || {}),
+    month,
+    inflation: Number(signals.inflation || 0),
+    unemployment: Number(signals.unemployment || 0),
+    demandGrowth: Number(signals.demandGrowth || 0),
+    creditStress: beliefMean(bank, 'creditStress', 0)
+  };
 
   const perceivedCreditStress = clamp(
     Number(signals.unemployment || 0) * 0.42 +
@@ -124,6 +163,7 @@ export function evaluateCreditApplication(bank, borrower, application, bankState
     0,
     1.6
   );
+  currentState.creditStress = perceivedCreditStress;
   const borrowerFragility =
     debtToIncome * 0.34 +
     requestedToIncome * 0.18 +
@@ -133,10 +173,20 @@ export function evaluateCreditApplication(bank, borrower, application, bankState
   const modelNoise = rng.normal(0, 0.045 + bank.modelUncertainty * 0.055 + beliefUncertainty(bank, 'creditStress') * 0.035);
   const latentRisk = -1.65 + borrowerFragility + perceivedCreditStress * 0.72 + kindAdjustment + modelNoise;
   const rawDefaultProbability = clamp(logistic(latentRisk), 0.01, 0.92);
-  const estimatedDefaultProbability = clamp(
+  const calibratedDefaultProbability = clamp(
     rawDefaultProbability * cognition.worldModel.creditRiskCalibration,
     0.008,
     0.94
+  );
+  const historicalDefault = analogicalForecast(bank, 'creditDefaultRate', currentState, calibratedDefaultProbability, 5);
+  const causalDefault = causalForecast(bank, 'creditDefaultRate', currentState, calibratedDefaultProbability);
+  const estimatedDefaultProbability = clamp(
+    blend(calibratedDefaultProbability, [
+      { ...historicalDefault, maxWeight: 0.14 },
+      { ...causalDefault, maxWeight: 0.12 }
+    ]),
+    0.006,
+    0.95
   );
 
   const currentCapitalRatio = bankState.assets > 0 ? bankState.equity / bankState.assets : 1;
@@ -187,11 +237,14 @@ export function evaluateCreditApplication(bank, borrower, application, bankState
   const hardConstraints = amount > 0 && affordable && capitalSafe;
   const approved = hardConstraints && riskAcceptable && preferred.approved;
 
-  registerForecast(bank, 'creditDefaultRate', estimatedDefaultProbability, month, 1, {
-    parameter: 'creditRiskCalibration',
-    predictor: Math.max(0.05, rawDefaultProbability)
-  });
+  if (!cognition.pendingForecasts.some(x => x.metric === 'creditDefaultRate' && x.createdMonth === month)) {
+    registerForecast(bank, 'creditDefaultRate', estimatedDefaultProbability, month, 1, {
+      parameter: 'creditRiskCalibration',
+      predictor: Math.max(0.05, rawDefaultProbability)
+    });
+  }
 
+  const memoryAnalogies = retrieveAnalogies(bank, currentState, 5);
   const trace = {
     borrowerId: borrower.id,
     borrowerKind: borrower.kind,
@@ -205,6 +258,14 @@ export function evaluateCreditApplication(bank, borrower, application, bankState
       currentCapitalRatio
     },
     hypotheses: topHypotheses(bank, 5),
+    memoryReasoning: {
+      analogies: compactAnalogies(memoryAnalogies),
+      historicalDefaultRate: { value: historicalDefault.value, confidence: historicalDefault.confidence }
+    },
+    causalReasoning: {
+      defaultForecast: { value: causalDefault.value, confidence: causalDefault.confidence },
+      explanations: causalExplanations(bank, 'creditDefaultRate', currentState, 6)
+    },
     worldModel: {
       creditRiskCalibration: cognition.worldModel.creditRiskCalibration,
       demandPersistence: cognition.worldModel.demandPersistence,
@@ -224,6 +285,7 @@ export function evaluateCreditApplication(bank, borrower, application, bankState
     })),
     forecast: {
       rawDefaultProbability,
+      calibratedDefaultProbability,
       estimatedDefaultProbability,
       projectedCapitalRatio,
       paymentBurden,
@@ -236,10 +298,12 @@ export function evaluateCreditApplication(bank, borrower, application, bankState
       : !affordable
         ? '차주 상환부담 과다'
         : !riskAcceptable
-          ? '학습된 신용위험 한도 초과'
+          ? '과거 부도국면과 학습된 신용위험을 반영한 부도확률이 한도 초과'
           : !preferred.approved
             ? '승인·거절 반사실적 비교에서 거절의 위험조정 가치가 더 큼'
-            : '승인 시나리오의 위험조정 기대수익이 더 큼'
+            : memoryAnalogies.length
+              ? '유사 신용국면·인과위험·반사실적 수익을 결합했을 때 승인 가치가 더 큼'
+              : '승인 시나리오의 위험조정 기대수익이 더 큼'
   };
 
   const result = {
