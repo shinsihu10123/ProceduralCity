@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "test": "node scripts/smoke-v09.mjs",
+    "test": "node scripts/smoke-v09.mjs && node scripts/smoke-v09-social.mjs",
+    "test:v09": "node scripts/smoke-v09.mjs",
+    "test:social": "node scripts/smoke-v09-social.mjs",
     "test:v08": "node scripts/smoke-v08.mjs",
     "preview": "vite preview --host 0.0.0.0"
   },
