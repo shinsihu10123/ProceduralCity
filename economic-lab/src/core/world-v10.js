@@ -4,6 +4,7 @@ import { resolveScaleProfile, scaledCountrySeeds, seedScaleSummary } from '../co
 import { ExperimentSystem } from '../research/experiment-system.js';
 import { LongRunHealthMonitor } from '../research/long-run-health.js';
 import { analyzeWorldEmergence } from '../research/emergence-metrics.js';
+import { RuntimeProfiler } from '../research/runtime-profiler.js';
 
 function nowMs() {
   return globalThis.performance?.now?.() ?? Date.now();
@@ -46,7 +47,14 @@ export class EconomicWorld extends CognitiveEconomicWorld {
     this.experiments = new ExperimentSystem({ schedule: options.experimentSchedule || [] });
     this.health = new LongRunHealthMonitor({ maxRecords: options.healthRecordLimit || 240 });
     this.healthCheckInterval = Math.max(0, Math.round(Number(options.healthCheckInterval ?? 6)));
-    this.runtime = {
+    this.runtime = this.emptyRuntimeMetrics();
+    this.profiler = new RuntimeProfiler({ historyLimit: options.profileHistoryLimit || 60 });
+    this.installSubsystemProfiling();
+    this.lastExperimentEvents = [];
+  }
+
+  emptyRuntimeMetrics() {
+    return {
       totalStepMs: 0,
       measuredMonths: 0,
       meanStepMs: 0,
@@ -54,15 +62,66 @@ export class EconomicWorld extends CognitiveEconomicWorld {
       lastStepMs: 0,
       recentStepMs: []
     };
-    this.lastExperimentEvents = [];
+  }
+
+  installSubsystemProfiling() {
+    const wrap = (target, method, label) => this.profiler.wrap(target, method, label);
+
+    wrap(this.cognitive, 'beginWorldMonth', 'cognition.begin');
+    wrap(this.information, 'spreadWorld', 'information.spread');
+    wrap(this, 'inferAgentRegimes', 'cognition.regime');
+    wrap(this.international, 'beginMonth', 'international.begin');
+
+    wrap(this.monetary, 'beginMonth', 'monetary.policy');
+    wrap(this.assetMarket, 'runMarket', 'asset.market');
+    wrap(this.banking, 'serviceDebt', 'banking.debt_service');
+    wrap(this.banking, 'originateCredit', 'banking.credit');
+
+    wrap(this, 'syncBalances', 'settlement.sync_balances');
+    wrap(this.supply, 'beginMonth', 'supply.reset');
+    wrap(this.supply, 'planProduction', 'supply.plan');
+    wrap(this.supply, 'procureInputs', 'supply.inputs');
+    wrap(this.supply, 'produce', 'supply.production');
+    wrap(this.supply, 'clearInvestmentMarket', 'supply.investment');
+    wrap(this.supply, 'finalizeMetrics', 'supply.finalize');
+    wrap(this.supply, 'evaluateExits', 'supply.exits');
+
+    wrap(this.accounting, 'accrueMonthlyWages', 'accounting.wage_accrual');
+    wrap(this.accounting, 'ingestSettlementEntries', 'accounting.settlement_ingest');
+    wrap(this.accounting, 'closeCountryMonth', 'accounting.close');
+
+    wrap(this.fiscal, 'beginMonth', 'fiscal.policy');
+    wrap(this.fiscal, 'collectIncomeTaxes', 'fiscal.income_tax');
+    wrap(this.fiscal, 'payAutomaticTransfers', 'fiscal.transfers');
+    wrap(this.fiscal, 'collectConsumptionTaxes', 'fiscal.consumption_tax');
+    wrap(this.fiscal, 'executeGovernmentDemand', 'fiscal.demand');
+    wrap(this.fiscal, 'collectCorporateTaxes', 'fiscal.corporate_tax');
+    wrap(this.fiscal, 'finalizeMonth', 'fiscal.finalize');
+
+    wrap(this, 'rebaseLegacySecurities', 'monetary.rebase_securities');
+    wrap(this.monetary, 'manageLiquidity', 'monetary.liquidity');
+    wrap(this.cognitive, 'endWorldMonth', 'cognition.end');
+    wrap(this, 'closeCognitiveLearningLoop', 'cognition.learning');
+    wrap(this, 'refreshV09Macro', 'cognition.aggregate');
+  }
+
+  resetRuntimeMetrics() {
+    this.runtime = this.emptyRuntimeMetrics();
+    this.profiler.reset();
   }
 
   stepMonth() {
     const nextMonth = this.month + 1;
-    this.lastExperimentEvents = this.experiments.beforeMonth(this, nextMonth);
     const started = nowMs();
+    this.profiler.beginMonth(nextMonth);
+    this.lastExperimentEvents = this.profiler.measure(
+      'experiment.apply',
+      () => this.experiments.beforeMonth(this, nextMonth)
+    );
+
     super.stepMonth();
     const elapsed = Math.max(0, nowMs() - started);
+    this.profiler.endMonth(elapsed);
 
     this.runtime.totalStepMs += elapsed;
     this.runtime.measuredMonths += 1;
@@ -92,6 +151,10 @@ export class EconomicWorld extends CognitiveEconomicWorld {
     };
   }
 
+  profilingReport() {
+    return this.profiler.report();
+  }
+
   experimentReport() {
     return this.experiments.summary();
   }
@@ -104,6 +167,7 @@ export class EconomicWorld extends CognitiveEconomicWorld {
     const base = super.snapshot();
     base.version = this.version;
     base.scale = this.scaleReport();
+    base.profiling = this.profilingReport();
     base.experiments = this.experimentReport();
     base.health = this.health.summary();
     base.emergence = this.emergenceReport();
