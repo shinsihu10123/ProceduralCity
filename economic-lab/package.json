@@ -16,6 +16,9 @@
     "test:v08": "node scripts/smoke-v08.mjs",
     "preview": "vite preview --host 0.0.0.0"
   },
+  "dependencies": {
+    "three": "0.185.1"
+  },
   "devDependencies": {
     "vite": "^7.1.1"
   }
