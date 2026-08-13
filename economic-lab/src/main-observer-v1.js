@@ -1,6 +1,6 @@
 import { EconomicWorld } from './core/world-v10.js';
 import { buildLiveObserverSnapshot } from './observer/live-observer-bridge.js';
-import { EconomicObserverScene } from './observer/economic-scene.js';
+import { EconomicObserverScene } from './observer/economic-scene-fast.js';
 
 const WORLD_SEED = 'ECON-4-001';
 const SPEED_DELAYS = new Map([
@@ -54,9 +54,6 @@ function selectCountry(id, { focus = false } = {}) {
 }
 
 function render() {
-  // Critical performance rule: the 3D observer never calls world.snapshot().
-  // v0.10's full snapshot clones deep cognition/accounting/history objects for thousands
-  // of agents. The live bridge reads only the small set of canonical fields needed here.
   latestObserverSnapshot = buildLiveObserverSnapshot(world);
   if (!latestObserverSnapshot.countries.some(country => country.id === selectedCountryId)) {
     selectedCountryId = latestObserverSnapshot.countries[0]?.id || null;
