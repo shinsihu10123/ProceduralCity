@@ -9,6 +9,16 @@ Development proceeds in this fixed order:
 
 Option 2 does not begin until Option 1 passes its exit gate. This document prevents the two scopes from being mixed.
 
+## Current status
+
+- Phase A — Economic Lab 3D Observer: **CLOSED / PASS**
+- Phase A focused validation: `Economic Lab 3D Observer CI` run `31682312172` — SUCCESS
+- Phase A validated observer head: `6787181d5c5f4f629b1473396ed3521c10889e43`
+- Previous full Economic Lab regression/performance/build validation: run `31681140392` — SUCCESS
+- Phase B — Full Autonomous World 3D Visualization: **ENTRY APPROVED**
+
+The Phase A focused browser gate validated the production build in system Chrome with a real WebGL canvas. The run confirmed month 0 at startup, four country labels and selectors, AST initial selection, READY engine state, country selection, +1 month stepping, continuous play/pause, reset to month 0, and a 390×844 mobile viewport with zero horizontal overflow and visible controls.
+
 ---
 
 # Phase A — Economic Lab 3D Observer
@@ -19,11 +29,11 @@ Add a real-time 3D observation layer to the existing four-country Economic Lab w
 
 The 3D layer is an observer. It does not directly set GDP, CPI, unemployment, exchange rates, trade, policy, or agent beliefs. It only visualizes state produced by the simulation engine.
 
-## A1. Data bridge
+## A1. Data bridge — PASS
 
-Create a read-only visualization snapshot derived from the current EconomicWorld snapshot.
+A read-only visualization snapshot is derived from the current EconomicWorld snapshot.
 
-Minimum visual state:
+Minimum visual state implemented:
 
 - simulation month
 - four country identities
@@ -37,9 +47,11 @@ Minimum visual state:
 - industry output by sector
 - crisis/regime probabilities
 
-## A2. 3D scene
+Observer snapshot output is frozen so the rendering layer does not become a second canonical-authority path.
 
-Create a WebGL/Three.js scene containing:
+## A2. 3D scene — PASS
+
+The WebGL/Three.js scene contains:
 
 - one persistent spatial node/territory for AST, BRN, CYR, DRN
 - ground/territory geometry
@@ -48,26 +60,26 @@ Create a WebGL/Three.js scene containing:
 - orbit / pan / zoom controls
 - country selection through 3D picking
 
-The initial geography is an observer layout, not a claim that these countries occupy real Earth locations.
+The geography is an observer layout, not a claim that these countries occupy real Earth locations.
 
-## A3. Economic state mapping
+## A3. Economic state mapping — PASS
 
-Visual properties must be derived from simulation state rather than arbitrary scripted history.
+Visual properties are derived from simulation state rather than arbitrary scripted history.
 
-Examples:
+Implemented mappings include:
 
 - economic scale → settlement/city massing scale
 - active firms / industry output → industrial structures
-- unemployment / distress → activity density / warning overlays
-- trade → animated inter-country flow lines
-- external finance → separate financial flow lines
-- regime/crisis probabilities → observer overlays
+- unemployment / distress → activity/warning representation
+- trade → inter-country flow lines
+- external finance → financial flow lines
+- regime/crisis state → observer overlays
 
-Visual mappings are display encodings only. They must never feed values back into EconomicWorld.
+Visual mappings are display encodings only. They do not feed values back into EconomicWorld.
 
-## A4. Time controls
+## A4. Time controls — PASS
 
-Required controls:
+Implemented controls:
 
 - reset to month 0
 - +1 month
@@ -77,43 +89,59 @@ Required controls:
 - selectable playback speed
 - current month indicator
 
-The observer must update after every simulation step.
+The observer updates after simulation steps.
 
-## A5. 3D + analytical UI integration
+## A5. 3D + analytical UI integration — PASS
 
-Keep the existing analytical panels. The target layout is:
+The current application provides:
 
 - primary 3D world viewport
 - compact global timeline/control bar
 - selected-country inspector
-- expandable detailed economic/cognitive/accounting panels
+- analytical economic/cognitive/accounting access
+- synchronized country selection between the 3D observer and analytical UI
+- preservation of the prior analytical observer as `legacy.html`
 
-Selecting a country in 3D and selecting it in the analytical UI must stay synchronized.
+## A6. Validation — PASS
 
-## A6. Validation
+Required gates and evidence:
 
-Required gates:
+- existing Economic Lab tests: PASS in full Economic Lab CI
+- production build: PASS
+- 3D scene initialization without runtime error: PASS in real headless Chrome
+- month 0 visible immediately after load/reset: PASS
+- step/reset/play controls update engine and scene: PASS
+- country selection: PASS
+- read-only observer bridge: PASS
+- mobile/tablet usability baseline: PASS
 
-- existing Economic Lab tests remain PASS
-- production build remains PASS
-- 3D scene initializes without runtime error
-- month 0 is visible immediately after load/reset
-- step/reset/play controls update both engine and scene
-- country picking works
-- no observer code mutates canonical economic state except through the existing simulation step/reset interface
-- mobile/tablet viewport remains usable
+Focused browser evidence from run `31682312172`:
 
-## Phase A Exit Gate
+- desktop 3D canvas: approximately `984.875 × 610`
+- country labels: `4`
+- country selectors: `4`
+- initial month: `0개월`
+- initial selected country: `AST`
+- initial engine state: `READY`
+- mobile test viewport: `390 × 844`
+- mobile world shell: approximately `390 × 481.08`
+- mobile canvas: approximately `390 × 479.08`
+- horizontal overflow: `0`
+- required controls visible: `true`
 
-Option 1 is complete only when the user can open the application and observe the Economic Lab from month 0 in an interactive 3D view while the existing analytical observer remains available.
+## Phase A Exit Gate — CLOSED
+
+The Economic Lab can now be opened at month 0 in an interactive Three.js/WebGL 3D observer, stepped or played forward, reset, inspected by country, and used in a mobile-width viewport while the analytical observer remains available.
+
+**Option 1 is complete. Phase B entry is approved.**
 
 ---
 
 # Phase B — Full Autonomous World 3D Visualization
 
-## Start condition
+## Start condition — SATISFIED
 
-Phase B begins only after the Phase A exit gate passes.
+Phase A exit gate passed. Phase B may now begin.
 
 ## Goal
 
@@ -145,6 +173,6 @@ Phase B must not simply enlarge those four country nodes. It must connect to the
 
 # Development rule
 
-**Do not start Phase B feature coding while Phase A is incomplete.**
+Phase B feature coding is now permitted because Phase A is closed.
 
 The Economic Lab engine remains a research/economic subsystem and validation environment. The 3D observer developed in Phase A may provide reusable camera, interaction, timeline, selection, rendering, and telemetry patterns, but the full-world simulation remains governed by its own frozen architecture and implementation order.
