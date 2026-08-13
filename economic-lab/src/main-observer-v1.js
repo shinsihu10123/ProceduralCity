@@ -1,5 +1,5 @@
 import { EconomicWorld } from './core/world-v10.js';
-import { buildObserverSnapshot } from './observer/visualization-bridge.js';
+import { buildLiveObserverSnapshot } from './observer/live-observer-bridge.js';
 import { EconomicObserverScene } from './observer/economic-scene.js';
 
 const WORLD_SEED = 'ECON-4-001';
@@ -15,7 +15,6 @@ let selectedCountryId = 'AST';
 let playing = false;
 let playTimer = null;
 let busy = false;
-let latestRawSnapshot = null;
 let latestObserverSnapshot = null;
 
 const fmt = (value, digits = 1) => Number(value || 0).toLocaleString('ko-KR', { maximumFractionDigits: digits });
@@ -55,8 +54,10 @@ function selectCountry(id, { focus = false } = {}) {
 }
 
 function render() {
-  latestRawSnapshot = world.snapshot();
-  latestObserverSnapshot = buildObserverSnapshot(latestRawSnapshot);
+  // Critical performance rule: the 3D observer never calls world.snapshot().
+  // v0.10's full snapshot clones deep cognition/accounting/history objects for thousands
+  // of agents. The live bridge reads only the small set of canonical fields needed here.
+  latestObserverSnapshot = buildLiveObserverSnapshot(world);
   if (!latestObserverSnapshot.countries.some(country => country.id === selectedCountryId)) {
     selectedCountryId = latestObserverSnapshot.countries[0]?.id || null;
   }
@@ -95,10 +96,10 @@ function renderCountryList(observer) {
 }
 
 function renderSelectedCountry() {
-  if (!latestObserverSnapshot || !latestRawSnapshot) return;
+  if (!latestObserverSnapshot) return;
   const country = latestObserverSnapshot.countries.find(row => row.id === selectedCountryId) || latestObserverSnapshot.countries[0];
-  const raw = latestRawSnapshot.countries.find(row => row.id === country.id) || latestRawSnapshot.countries[0];
-  if (!country || !raw) return;
+  if (!country) return;
+  const report = world.accountingReport(country.id);
 
   setText('selectedCode', country.id);
   setText('selectedName', country.name);
@@ -155,14 +156,17 @@ function renderSelectedCountry() {
     ...regimeRows
   ]);
 
-  document.getElementById('accountingDetails').innerHTML = integrityRows(country.integrity, raw);
+  document.getElementById('accountingDetails').innerHTML = integrityRows(country.integrity, report);
   document.getElementById('rawSnapshot').textContent = JSON.stringify({
     month: latestObserverSnapshot.month,
     observer: country,
-    cognitiveSummary: raw.cognitive,
-    internationalAccounting: raw.internationalAccounting,
-    generalAccounting: raw.generalAccounting,
-    fiscalAccounting: raw.fiscalAccounting
+    accounting: {
+      settlement: report?.settlement,
+      general: report?.general,
+      fiscal: report?.fiscal,
+      monetary: report?.monetary,
+      international: report?.international
+    }
   }, null, 2);
 }
 
@@ -187,17 +191,17 @@ function sectorRows(country) {
   ]);
 }
 
-function integrityRows(integrity, raw) {
+function integrityRows(integrity, report) {
   const label = value => value ? 'PASS' : 'FAIL';
   return rows([
-    ['Settlement', label(integrity.settlement)],
-    ['General Accounting', label(integrity.generalAccounting)],
-    ['Fiscal Accounting', label(integrity.fiscalAccounting)],
-    ['Monetary Accounting', label(integrity.monetaryAccounting)],
-    ['International Accounting', label(integrity.internationalAccounting)],
-    ['A=L+E 최대오차', Number(raw.generalAccounting?.maxEquationError || 0).toExponential(2)],
-    ['예금 대사오차', Number(raw.generalAccounting?.depositReconciliationError || 0).toExponential(2)],
-    ['대출 대사오차', Number(raw.generalAccounting?.loanReconciliationError || 0).toExponential(2)]
+    ['Settlement', label(report?.settlement?.ok ?? integrity.settlement)],
+    ['General Accounting', label(report?.general?.ok ?? integrity.generalAccounting)],
+    ['Fiscal Accounting', label(report?.fiscal?.accountingOk ?? integrity.fiscalAccounting)],
+    ['Monetary Accounting', label(report?.monetary?.accountingOk ?? integrity.monetaryAccounting)],
+    ['International Accounting', label(report?.international?.accountingOk ?? integrity.internationalAccounting)],
+    ['A=L+E 최대오차', Number(report?.general?.maxEquationError || 0).toExponential(2)],
+    ['예금 대사오차', Number(report?.general?.depositReconciliationError || 0).toExponential(2)],
+    ['대출 대사오차', Number(report?.general?.loanReconciliationError || 0).toExponential(2)]
   ]);
 }
 
