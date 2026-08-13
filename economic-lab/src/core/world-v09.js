@@ -5,6 +5,7 @@ import {
   learnCausalModel,
   summarizeMemory
 } from '../ai/episodic-reasoning.js';
+import { inferRegime, regimeRisk } from '../ai/regime-reasoning.js';
 
 const EPS = 1e-9;
 
@@ -73,7 +74,9 @@ export class EconomicWorld extends InternationalEconomicWorld {
           wageGrowth: 0,
           externalStress: Number(country.macro?.externalStress || 0),
           creditStress: Number(country.lastMonetary?.creditStress || 0),
-          policyRate: Number(country.macro?.policyRate || 0)
+          policyRate: Number(country.macro?.policyRate || 0),
+          exchangeRateChange: Number(country.macro?.exchangeRateChange || 0),
+          currentAccountWXU: Number(country.macro?.currentAccountWXU || 0)
         };
         cognition.memory.episodes.push({
           month: this.month,
@@ -88,6 +91,7 @@ export class EconomicWorld extends InternationalEconomicWorld {
         });
         cognition.lastObservation = inceptionObservation;
         cognition.attention = { level: 2, salience: 0.5, trigger: 'firm-entry', lastLevelChangeMonth: this.month };
+        inferRegime(cognition, inceptionObservation, this.month);
       }
     }
     return firm;
@@ -96,12 +100,39 @@ export class EconomicWorld extends InternationalEconomicWorld {
   stepMonth() {
     const nextMonth = this.month + 1;
     this.cognitive.beginWorldMonth(this.countries, nextMonth);
+    this.inferAgentRegimes(nextMonth);
     super.stepMonth();
     this.cognitive.endWorldMonth(this.countries, this.month);
     for (const country of this.countries) {
       this.closeCognitiveLearningLoop(country);
       this.refreshV09Macro(country);
       country.history[country.history.length - 1] = { month: this.month, ...country.macro };
+    }
+  }
+
+  inferAgentRegimes(month) {
+    for (const country of this.countries) {
+      for (const agent of this.cognitive.agents(country)) {
+        const cognition = agent.cognition;
+        if (!cognition?.enabled || !cognition.lastObservation) continue;
+        const regime = inferRegime(cognition, cognition.lastObservation, month);
+        const risk = regimeRisk(cognition);
+        const currentLevel = Number(cognition.attention?.level || 0);
+        let targetLevel = currentLevel;
+        if (regime.changed || risk > 0.58 || regime.changeMagnitude > 0.24) targetLevel = Math.max(targetLevel, 3);
+        if ((regime.changed && regime.confidence > 0.34) || risk > 0.76 || regime.changeMagnitude > 0.38) targetLevel = Math.max(targetLevel, 4);
+        if (targetLevel > currentLevel) {
+          cognition.attention = {
+            ...cognition.attention,
+            level: targetLevel,
+            salience: Math.max(Number(cognition.attention?.salience || 0), Math.min(1.5, risk + regime.changeMagnitude)),
+            trigger: regime.changed ? `regime-shift:${regime.previous}->${regime.current}` : `regime-risk:${regime.current}`,
+            lastLevelChangeMonth: month
+          };
+          const episode = cognition.memory.episodes[cognition.memory.episodes.length - 1];
+          if (episode && Number(episode.month) === Number(month)) episode.attention = { ...cognition.attention };
+        }
+      }
     }
   }
 
@@ -181,18 +212,35 @@ export class EconomicWorld extends InternationalEconomicWorld {
     let causalUpdates = 0;
     let causalLinksWithEvidence = 0;
     let analogyReadyAgents = 0;
+    let regimeShifts = 0;
+    let regimeUncertainty = 0;
+    const regimes = {
+      normal: 0,
+      recession: 0,
+      inflation: 0,
+      overheating: 0,
+      credit_crisis: 0,
+      external_crisis: 0
+    };
     for (const agent of agents) {
       const memory = summarizeMemory(agent);
       resolvedEpisodes += memory.resolvedEpisodes;
       causalUpdates += memory.causalUpdates;
       causalLinksWithEvidence += (agent.cognition?.causalModel?.links || []).filter(x => Number(x.observations || 0) > 0).length;
       if (memory.resolvedEpisodes >= 2) analogyReadyAgents += 1;
+      const regime = agent.cognition?.regime;
+      if (regime?.current && regime.current in regimes) regimes[regime.current] += 1;
+      if (regime?.changed) regimeShifts += 1;
+      regimeUncertainty += Number(regime?.uncertainty || 0);
     }
     return {
       resolvedEpisodes,
       causalUpdates,
       causalLinksWithEvidence,
-      analogyReadyAgents
+      analogyReadyAgents,
+      regimeShifts,
+      meanRegimeUncertainty: agents.length ? regimeUncertainty / agents.length : 0,
+      regimes
     };
   }
 
@@ -214,7 +262,15 @@ export class EconomicWorld extends InternationalEconomicWorld {
       cognitiveResolvedEpisodes: depth.resolvedEpisodes,
       cognitiveCausalUpdates: depth.causalUpdates,
       cognitiveCausalLinksWithEvidence: depth.causalLinksWithEvidence,
-      cognitiveAnalogyReadyAgents: depth.analogyReadyAgents
+      cognitiveAnalogyReadyAgents: depth.analogyReadyAgents,
+      cognitiveRegimeShifts: depth.regimeShifts,
+      cognitiveRegimeUncertainty: depth.meanRegimeUncertainty,
+      regimeNormalAgents: depth.regimes.normal,
+      regimeRecessionAgents: depth.regimes.recession,
+      regimeInflationAgents: depth.regimes.inflation,
+      regimeOverheatingAgents: depth.regimes.overheating,
+      regimeCreditCrisisAgents: depth.regimes.credit_crisis,
+      regimeExternalCrisisAgents: depth.regimes.external_crisis
     };
   }
 
