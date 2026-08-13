@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - scratch/new-project-2026-08-12
+      - feature/economic-lab-3d-observer-v1
     paths:
       - 'economic-lab/**'
       - '.github/workflows/economic-lab-ci.yml'
