@@ -21,16 +21,58 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout main site
         uses: actions/checkout@v4
+        with:
+          path: main-site
+
+      - name: Checkout Economic Lab 3D Observer
+        uses: actions/checkout@v4
+        with:
+          ref: feature/economic-lab-3d-observer-v1
+          path: observer-source
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Validate independent V3 runtime
+        working-directory: main-site
         run: npm test
+
+      - name: Install Economic Lab dependencies
+        working-directory: observer-source/economic-lab
+        run: npm install
+
+      - name: Validate Economic Lab 3D observer bridge
+        working-directory: observer-source/economic-lab
+        run: npm run test:observer
+
+      - name: Build Economic Lab 3D observer for Pages subpath
+        working-directory: observer-source/economic-lab
+        run: npm run build -- --base=/ProceduralCity/economic-lab/
+
+      - name: Compose Pages artifact
+        run: |
+          mkdir -p pages-artifact
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='economic-lab' \
+            main-site/ pages-artifact/
+          mkdir -p pages-artifact/economic-lab
+          cp -a observer-source/economic-lab/dist/. pages-artifact/economic-lab/
+          touch pages-artifact/.nojekyll
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
+
       - name: Upload static site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: pages-artifact
+
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
