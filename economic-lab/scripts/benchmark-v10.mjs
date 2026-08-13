@@ -7,10 +7,12 @@ const rows = [];
 const breakdowns = [];
 
 for (const profile of profiles) {
+  const constructionStart = globalThis.performance?.now?.() ?? Date.now();
   const world = new EconomicWorld(`ECON-V10-BENCH-${profile}`, {
     scaleProfile: profile,
     healthCheckInterval: 0
   });
+  const constructionMs = (globalThis.performance?.now?.() ?? Date.now()) - constructionStart;
 
   if (warmupMonths) world.step(warmupMonths);
   world.resetRuntimeMetrics();
@@ -29,6 +31,8 @@ for (const profile of profiles) {
     households: scale.initialPopulation.households,
     firms: scale.initialPopulation.firms,
     cognitiveAgents: scale.initialPopulation.cognitiveAgents,
+    constructionMs,
+    constructionMsPer1000Agents: constructionMs / Math.max(1, scale.initialPopulation.cognitiveAgents / 1000),
     measuredMonths,
     elapsedMs: elapsed,
     msPerMonth: elapsed / measuredMonths,
@@ -44,6 +48,7 @@ for (const profile of profiles) {
 
   breakdowns.push({
     profile,
+    constructionMs,
     measuredMonths,
     totalObservedMs: profiling.totalObservedMs,
     attributedShare: profiling.attributedShare,
