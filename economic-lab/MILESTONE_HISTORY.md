@@ -15,7 +15,7 @@ This file reconstructs the implemented Economic Lab sequence from repository his
 | 7 | v0.7 — Monetary and financial markets | `f24828b` — `Document Economic Lab v0.7 monetary and financial markets` |
 | 8 | v0.8 — International economy | `f00dd84` — `Document Economic Lab v0.8 international economy` |
 | 9 | v0.9 — Deep cognitive economy | `c13795b` — `Document Economic Lab v0.9 deep cognitive economy` |
-| 10 | v0.10 — Scale / experiment / long-run / performance hardening | implementation begins at `4d44b54`; audited implementation head `27b95aa`; closeout evidence recorded after it |
+| 10 | v0.10 — Scale / experiment / long-run / performance hardening | implementation begins at `4d44b54`; audited implementation head `27b95aa`; README synchronization `0a650b3` |
 
 ## What step 10 contains
 
@@ -38,14 +38,18 @@ Recovered v0.10 scope:
 
 At audited implementation head `27b95aa84c2767fef584752479dcd9c2f3e2a212`, Economic Lab CI run `31667954288` completed successfully.
 
-After the closeout record was added, the branch CI ran again as run `31677966275` and completed successfully. This confirms the documentation-only closeout commit did not break the aggregate Economic Lab gates.
+The closeout record commit was then validated by Economic Lab CI run `31677966275` — SUCCESS.
 
-The current branch head after the closeout record is `0e31682482cca960398a469c8d150ad709e36e3f` before this milestone-history commit.
+The milestone-history recovery commit `88222ee00745eb8fe74a1525cac05ce41e269aa2` was validated by Economic Lab CI run `31678308789` — SUCCESS.
+
+The README was synchronized to v0.10 in commit `0a650b3f499dcdd2a5dfdb7be9068078b6b910ce`. Economic Lab CI run `31678863775` completed successfully, including aggregate tests, benchmarks, CPU profiles, build, and performance-evidence upload.
 
 ## Closeout interpretation
 
-Functional v0.10 implementation, regression gates, experiment gates, long-run health gates, build, and performance-evidence workflow are present and passing.
+Functional v0.10 implementation, regression gates, experiment gates, long-run health gates, build, performance-evidence workflow, README synchronization, and recovery documentation are now present.
 
-One repository-documentation mismatch remains: `economic-lab/README.md` still identifies v0.9 as the current baseline and describes v0.10 as the next step. The authoritative v0.10 closeout record is therefore `V0.10_CLOSEOUT.md` until README synchronization is completed.
+`economic-lab/README.md` and `V0.10_CLOSEOUT.md` now agree that v0.10 is the current closed milestone. The earlier repository-documentation mismatch has been eliminated.
+
+**Recovered steps 1–10: COMPLETE. v0.10 repository-level closeout: CLOSED.**
 
 No v0.11 feature scope is invented here. The next implementation scope must be recovered from the project's frozen execution order or another authoritative project record before coding begins.
