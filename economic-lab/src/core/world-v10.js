@@ -5,6 +5,7 @@ import { ExperimentSystem } from '../research/experiment-system.js';
 import { LongRunHealthMonitor } from '../research/long-run-health.js';
 import { analyzeWorldEmergence } from '../research/emergence-metrics.js';
 import { RuntimeProfiler } from '../research/runtime-profiler.js';
+import { compactWorldDecisionHistories } from '../research/decision-history.js';
 
 function nowMs() {
   return globalThis.performance?.now?.() ?? Date.now();
@@ -49,6 +50,7 @@ export class EconomicWorld extends CognitiveEconomicWorld {
     this.healthCheckInterval = Math.max(0, Math.round(Number(options.healthCheckInterval ?? 6)));
     this.runtime = this.emptyRuntimeMetrics();
     this.profiler = new RuntimeProfiler({ historyLimit: options.profileHistoryLimit || 60 });
+    this.decisionHistory = { monthsCompacted: 0, recordsConverted: 0, last: null };
     for (const country of this.countries) {
       Object.defineProperty(country, '__runtimeProfiler', {
         value: this.profiler,
@@ -124,6 +126,14 @@ export class EconomicWorld extends CognitiveEconomicWorld {
     this.profiler.reset();
   }
 
+  compactDecisionHistory() {
+    const result = compactWorldDecisionHistories(this.countries);
+    this.decisionHistory.monthsCompacted += 1;
+    this.decisionHistory.recordsConverted += Number(result.converted || 0);
+    this.decisionHistory.last = { month: this.month, ...result };
+    return result;
+  }
+
   stepMonth() {
     const nextMonth = this.month + 1;
     const started = nowMs();
@@ -134,6 +144,7 @@ export class EconomicWorld extends CognitiveEconomicWorld {
     );
 
     super.stepMonth();
+    this.profiler.measure('cognition.compact_history', () => this.compactDecisionHistory());
     const elapsed = Math.max(0, nowMs() - started);
     this.profiler.endMonth(elapsed);
 
@@ -161,7 +172,8 @@ export class EconomicWorld extends CognitiveEconomicWorld {
       seedSummary: structuredClone(this.scaleSeedSummary),
       initialPopulation: structuredClone(this.initialPopulation),
       currentPopulation: actualPopulation(this.countries),
-      runtime: structuredClone(this.runtime)
+      runtime: structuredClone(this.runtime),
+      decisionHistory: structuredClone(this.decisionHistory)
     };
   }
 
