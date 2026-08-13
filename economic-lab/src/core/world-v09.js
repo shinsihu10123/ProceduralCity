@@ -6,6 +6,11 @@ import {
   summarizeMemory
 } from '../ai/episodic-reasoning.js';
 import { inferRegime, regimeRisk } from '../ai/regime-reasoning.js';
+import {
+  applyHypothesisReliability,
+  evaluateCurrentHypotheses,
+  hypothesisSummary
+} from '../ai/hypothesis-learning.js';
 
 const EPS = 1e-9;
 
@@ -48,20 +53,47 @@ function lastReward(agent) {
 export class EconomicWorld extends InternationalEconomicWorld {
   constructor(seedText = 'ECON-4-001') {
     super(seedText);
-    this.installFiscalBoundaryGuard();
+    this.installFiscalPaymentPrecision();
     this.cognitive = new CognitiveArchitecture({ rng: this.rng });
     this.cognitive.initializeWorld(this.countries);
     for (const country of this.countries) this.refreshV09Macro(country);
   }
 
-  installFiscalBoundaryGuard() {
-    if (!this.fiscal?.recordBondPayment || this.fiscal.__v09DebtServiceGuard) return;
-    const original = this.fiscal.recordBondPayment.bind(this.fiscal);
+  installFiscalPaymentPrecision() {
+    if (!this.fiscal?.recordBondPayment || this.fiscal.__v09DebtServicePrecision) return;
+    const gl = this.accounting.gl;
     this.fiscal.recordBondPayment = (country, bond, month, principalPaid, interestPaid) => {
-      if (Number(principalPaid || 0) <= 1e-8 && Number(interestPaid || 0) <= 1e-8) return;
-      return original(country, bond, month, principalPaid, interestPaid);
+      const government = country.governments[0];
+      const bank = country.banks[0];
+      const principal = Math.max(0, Number(principalPaid || 0));
+      const interest = Math.max(0, Number(interestPaid || 0));
+      const total = principal + interest;
+      if (!(total > 0) || !Number.isFinite(total)) return;
+
+      const govLines = [];
+      if (principal > 0) govLines.push({ account: 'bonds_payable', debit: principal });
+      if (interest > 0) govLines.push({ account: 'interest_expense', debit: interest });
+      govLines.push({ account: 'cash', credit: total });
+      gl.post({
+        month,
+        entityId: government.id,
+        kind: 'government_bond_payment',
+        lines: govLines,
+        meta: { bondId: bond.id }
+      });
+
+      const bankLines = [{ account: 'deposits', debit: total }];
+      if (principal > 0) bankLines.push({ account: 'securities', credit: principal });
+      if (interest > 0) bankLines.push({ account: 'interest_income', credit: interest });
+      gl.post({
+        month,
+        entityId: bank.id,
+        kind: 'government_bond_payment',
+        lines: bankLines,
+        meta: { bondId: bond.id }
+      });
     };
-    this.fiscal.__v09DebtServiceGuard = true;
+    this.fiscal.__v09DebtServicePrecision = true;
   }
 
   createEntrant(country, industryId) {
@@ -127,6 +159,7 @@ export class EconomicWorld extends InternationalEconomicWorld {
         const cognition = agent.cognition;
         if (!cognition?.enabled || !cognition.lastObservation) continue;
         const regime = inferRegime(cognition, cognition.lastObservation, month);
+        applyHypothesisReliability(agent);
         const risk = regimeRisk(cognition);
         const currentLevel = Number(cognition.attention?.level || 0);
         let targetLevel = currentLevel;
@@ -159,6 +192,7 @@ export class EconomicWorld extends InternationalEconomicWorld {
         employed: h.employed ? 1 : 0
       };
       attachEpisodeOutcome(h, this.month, outcome, lastReward(h));
+      evaluateCurrentHypotheses(h, observation, outcome, this.month);
       learnCausalModel(h, observation, outcome);
     }
 
@@ -174,6 +208,7 @@ export class EconomicWorld extends InternationalEconomicWorld {
         revenueGrowth: growth(f.revenue, observation.revenue, 0)
       };
       attachEpisodeOutcome(f, this.month, outcome, lastReward(f));
+      evaluateCurrentHypotheses(f, observation, outcome, this.month);
       learnCausalModel(f, observation, outcome);
     }
 
@@ -188,6 +223,7 @@ export class EconomicWorld extends InternationalEconomicWorld {
         capitalStress: finite(country.lastMonetary?.bankStress)
       };
       attachEpisodeOutcome(bank, this.month, outcome, lastReward(bank));
+      evaluateCurrentHypotheses(bank, observation, outcome, this.month);
       learnCausalModel(bank, observation, outcome);
     }
 
@@ -200,6 +236,7 @@ export class EconomicWorld extends InternationalEconomicWorld {
         fiscalBalanceRatio: finite(country.macro?.fiscalOverallBalance) / Math.max(1, Math.abs(finite(country.macro?.gdp)))
       };
       attachEpisodeOutcome(government, this.month, outcome, lastReward(government));
+      evaluateCurrentHypotheses(government, observation, outcome, this.month);
       learnCausalModel(government, observation, outcome);
     }
 
@@ -213,6 +250,7 @@ export class EconomicWorld extends InternationalEconomicWorld {
         reserveRatio: finite(country.lastMonetary?.bankReserveRatio)
       };
       attachEpisodeOutcome(centralBank, this.month, outcome, lastReward(centralBank));
+      evaluateCurrentHypotheses(centralBank, observation, outcome, this.month);
       learnCausalModel(centralBank, observation, outcome);
     }
   }
@@ -225,6 +263,8 @@ export class EconomicWorld extends InternationalEconomicWorld {
     let analogyReadyAgents = 0;
     let regimeShifts = 0;
     let regimeUncertainty = 0;
+    let hypothesisTests = 0;
+    let hypothesisCalibratedAgents = 0;
     const regimes = {
       normal: 0,
       recession: 0,
@@ -243,6 +283,9 @@ export class EconomicWorld extends InternationalEconomicWorld {
       if (regime?.current && regime.current in regimes) regimes[regime.current] += 1;
       if (regime?.changed) regimeShifts += 1;
       regimeUncertainty += Number(regime?.uncertainty || 0);
+      const hypothesisRows = hypothesisSummary(agent);
+      hypothesisTests += hypothesisRows.reduce((sum, row) => sum + Number(row.tests || 0), 0);
+      if (hypothesisRows.some(row => Number(row.tests || 0) > 0)) hypothesisCalibratedAgents += 1;
     }
     return {
       resolvedEpisodes,
@@ -251,6 +294,8 @@ export class EconomicWorld extends InternationalEconomicWorld {
       analogyReadyAgents,
       regimeShifts,
       meanRegimeUncertainty: agents.length ? regimeUncertainty / agents.length : 0,
+      hypothesisTests,
+      hypothesisCalibratedAgents,
       regimes
     };
   }
@@ -276,6 +321,8 @@ export class EconomicWorld extends InternationalEconomicWorld {
       cognitiveAnalogyReadyAgents: depth.analogyReadyAgents,
       cognitiveRegimeShifts: depth.regimeShifts,
       cognitiveRegimeUncertainty: depth.meanRegimeUncertainty,
+      cognitiveHypothesisTests: depth.hypothesisTests,
+      cognitiveHypothesisCalibratedAgents: depth.hypothesisCalibratedAgents,
       regimeNormalAgents: depth.regimes.normal,
       regimeRecessionAgents: depth.regimes.recession,
       regimeInflationAgents: depth.regimes.inflation,
@@ -302,6 +349,11 @@ export class EconomicWorld extends InternationalEconomicWorld {
       snapCountry.sampleBankMemory = summarizeMemory(country.banks[0]);
       snapCountry.sampleGovernmentMemory = summarizeMemory(country.governments[0]);
       snapCountry.sampleCentralBankMemory = summarizeMemory(country.centralBanks[0]);
+      snapCountry.sampleHouseholdHypotheses = hypothesisSummary(country.households[0]);
+      snapCountry.sampleFirmHypotheses = hypothesisSummary(sampleFirm);
+      snapCountry.sampleBankHypotheses = hypothesisSummary(country.banks[0]);
+      snapCountry.sampleGovernmentHypotheses = hypothesisSummary(country.governments[0]);
+      snapCountry.sampleCentralBankHypotheses = hypothesisSummary(country.centralBanks[0]);
     }
     return base;
   }
