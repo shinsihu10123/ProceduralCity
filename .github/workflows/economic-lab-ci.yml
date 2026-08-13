@@ -57,6 +57,9 @@ jobs:
       - name: Build
         working-directory: economic-lab
         run: npm run build
+      - name: 3D observer browser smoke
+        working-directory: economic-lab
+        run: npm run test:observer-browser
       - name: Upload performance evidence
         uses: actions/upload-artifact@v4
         with:
