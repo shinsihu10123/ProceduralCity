@@ -23,16 +23,29 @@ jobs:
       - name: Test
         working-directory: economic-lab
         run: npm test
-      - name: Scale benchmark
+      - name: Cold scale benchmark
         working-directory: economic-lab
         env:
           BENCH_WARMUP: '0'
           BENCH_MONTHS: '1'
         run: npm run bench:v10 -- baseline x2 x5 x10
-      - name: CPU hotspot profile
+      - name: Cold x10 CPU hotspot profile
         working-directory: economic-lab
         env:
           CPU_PROFILE_WARMUP: '0'
+          CPU_PROFILE_MONTHS: '1'
+          CPU_PROFILE_TOP: '25'
+        run: npm run profile:v10 -- x10
+      - name: Steady-state x10 benchmark
+        working-directory: economic-lab
+        env:
+          BENCH_WARMUP: '2'
+          BENCH_MONTHS: '1'
+        run: npm run bench:v10 -- x10
+      - name: Steady-state x10 CPU hotspot profile
+        working-directory: economic-lab
+        env:
+          CPU_PROFILE_WARMUP: '2'
           CPU_PROFILE_MONTHS: '1'
           CPU_PROFILE_TOP: '25'
         run: npm run profile:v10 -- x10
