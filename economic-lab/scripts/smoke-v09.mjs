@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { EconomicWorld } from '../src/core/world-v09.js';
+import { REGIMES } from '../src/ai/regime-reasoning.js';
 
 const world = new EconomicWorld('ECON-4-001');
 assert.equal(world.countries.length, 4);
@@ -34,7 +35,10 @@ let agentsWithHypotheses = 0;
 let agentsWithDeepAttention = 0;
 let agentsWithResolvedEpisodes = 0;
 let agentsWithCausalEvidence = 0;
+let agentsWithRegimeShiftHistory = 0;
+let agentsWithTestedHypotheses = 0;
 let totalCausalUpdates = 0;
+let totalHypothesisTests = 0;
 let firmsUsingMemory = 0;
 let householdsUsingMemory = 0;
 let modelUpdates = 0;
@@ -57,8 +61,14 @@ for (const country of world.countries) {
   assert.ok(depth.causalUpdates > 0, `${country.id} must learn causal links from experience`);
   assert.ok(depth.causalLinksWithEvidence > 0, `${country.id} causal links must have observations`);
   assert.ok(depth.analogyReadyAgents > 0, `${country.id} must have agents ready for analogical retrieval`);
+  assert.ok(depth.hypothesisTests > 0, `${country.id} must test causal hypotheses against realized outcomes`);
+  assert.ok(depth.hypothesisCalibratedAgents > 0, `${country.id} must calibrate hypothesis reliability`);
+  assert.ok(Number.isFinite(depth.meanRegimeUncertainty));
+  assert.ok(depth.meanRegimeUncertainty >= 0 && depth.meanRegimeUncertainty <= 1);
+  assert.equal(Object.values(depth.regimes).reduce((a, b) => a + b, 0), summary.agents);
   assert.equal(country.macro.cognitiveCausalUpdates, depth.causalUpdates);
   assert.equal(country.macro.cognitiveResolvedEpisodes, depth.resolvedEpisodes);
+  assert.equal(country.macro.cognitiveHypothesisTests, depth.hypothesisTests);
 
   for (const value of Object.values(country.macro)) {
     assert.ok(Number.isFinite(value), `${country.id} macro value must be finite`);
@@ -91,8 +101,17 @@ for (const country of world.countries) {
     if (c.hypotheses.length > 0) agentsWithHypotheses += 1;
     const resolvedEpisodes = c.memory.episodes.filter(ep => ep.outcome);
     if (resolvedEpisodes.length > 0) agentsWithResolvedEpisodes += 1;
+
+    assert.ok(c.regime, `${agent.id} regime inference missing`);
+    assert.ok(REGIMES.includes(c.regime.current), `${agent.id} regime invalid`);
+    const regimeProbabilitySum = REGIMES.reduce((sum, regime) => sum + Number(c.regime.probabilities?.[regime] || 0), 0);
+    assert.ok(Math.abs(regimeProbabilitySum - 1) < 1e-9, `${agent.id} regime probabilities must sum to one`);
+    assert.ok(Number.isFinite(c.regime.confidence) && c.regime.confidence >= 0 && c.regime.confidence <= 1);
+    assert.ok(Number.isFinite(c.regime.uncertainty) && c.regime.uncertainty >= 0 && c.regime.uncertainty <= 1);
+    if ((c.regime.history || []).some(row => row.changed)) agentsWithRegimeShiftHistory += 1;
+
     assert.ok(c.causalModel, `${agent.id} causal model missing`);
-    assert.ok(Array.isArray(c.causalModel.links) && c.causalModel.links.length >= 8, `${agent.id} causal model too shallow`);
+    assert.ok(Array.isArray(c.causalModel.links) && c.causalModel.links.length >= 12, `${agent.id} causal model too shallow`);
     assert.ok(c.causalModel.updates >= 0);
     totalCausalUpdates += c.causalModel.updates;
     const causalWithEvidence = c.causalModel.links.filter(link => link.observations > 0);
@@ -103,6 +122,22 @@ for (const country of world.countries) {
       assert.ok(link.confidence >= 0 && link.confidence <= 1);
       assert.ok(link.observations >= 0);
     }
+
+    const hypothesisRows = Object.values(c.hypothesisLedger || {});
+    const hypothesisTests = hypothesisRows.reduce((sum, row) => sum + Number(row.tests || 0), 0);
+    totalHypothesisTests += hypothesisTests;
+    if (hypothesisTests > 0) agentsWithTestedHypotheses += 1;
+    for (const row of hypothesisRows) {
+      assert.ok(Number.isFinite(row.reliability));
+      assert.ok(row.reliability >= 0.05 && row.reliability <= 0.95);
+      assert.ok(row.tests >= 0 && row.successes >= 0 && row.failures >= 0);
+    }
+    for (const h of c.hypotheses) {
+      if ((c.hypothesisLedger?.[h.name]?.tests || 0) > 0) {
+        assert.ok(Number.isFinite(h.learnedReliability), `${agent.id} tested hypothesis must expose learned reliability`);
+      }
+    }
+
     for (const stat of Object.values(c.calibration)) {
       assert.ok(stat.count >= 0);
       assert.ok(Number.isFinite(stat.mae));
@@ -124,6 +159,7 @@ for (const country of world.countries) {
   assert.ok(household.lastTrace.memoryReasoning.analogies.length > 0, `${country.id} household must retrieve prior analogies`);
   assert.ok(Array.isArray(household.lastTrace.causalReasoning?.explanations), `${country.id} household causal explanations missing`);
   assert.ok(household.lastTrace.causalReasoning.explanations.length > 0, `${country.id} household must use causal explanations`);
+  assert.ok(household.lastTrace.hypotheses.some(h => Number.isFinite(h.learnedReliability)), `${country.id} household hypotheses must carry empirical reliability`);
   householdsUsingMemory += 1;
 
   const firm = country.firms.find(f =>
@@ -138,19 +174,26 @@ for (const country of world.countries) {
   assert.ok(firm.lastTrace.memoryReasoning.analogies.length > 0, `${country.id} firm must retrieve prior analogies`);
   assert.ok(Array.isArray(firm.lastTrace.causalReasoning?.explanations), `${country.id} firm causal explanations missing`);
   assert.ok(firm.lastTrace.causalReasoning.explanations.length > 0, `${country.id} firm must use causal explanations`);
+  assert.ok(firm.lastTrace.hypotheses.some(h => Number.isFinite(h.learnedReliability)), `${country.id} firm hypotheses must carry empirical reliability`);
   firmsUsingMemory += 1;
 
   const bank = country.banks[0];
   assert.ok(bank.lastTrace?.cognition, `${country.id} bank cognition trace missing`);
   assert.ok(Array.isArray(bank.lastTrace.counterfactuals), `${country.id} bank counterfactual trace missing`);
+  assert.ok(Array.isArray(bank.lastTrace.memoryReasoning?.analogies), `${country.id} bank memory reasoning trace missing`);
+  assert.ok(Array.isArray(bank.lastTrace.causalReasoning?.explanations), `${country.id} bank causal reasoning trace missing`);
 
   const government = country.governments[0];
   assert.ok(government.lastTrace?.cognition, `${country.id} government cognition trace missing`);
   assert.ok(government.lastTrace.candidates.length >= 5);
+  assert.ok(Array.isArray(government.lastTrace.memoryReasoning?.analogies), `${country.id} government memory trace missing`);
+  assert.ok(government.lastTrace.causalReasoning, `${country.id} government causal trace missing`);
 
   const centralBank = country.centralBanks[0];
   assert.ok(centralBank.lastTrace?.cognition, `${country.id} central-bank cognition trace missing`);
   assert.ok(centralBank.lastTrace.candidates.length >= 5);
+  assert.ok(Array.isArray(centralBank.lastTrace.memoryReasoning?.analogies), `${country.id} central-bank memory trace missing`);
+  assert.ok(centralBank.lastTrace.causalReasoning, `${country.id} central-bank causal trace missing`);
 
   const sameFirm = country.firms.find(f => openingModels.has(f.id));
   const opening = sameFirm ? openingModels.get(sameFirm.id) : null;
@@ -176,6 +219,9 @@ assert.ok(agentsWithDeepAttention > 0, 'some agents must escalate beyond routine
 assert.ok(agentsWithResolvedEpisodes > 20, 'realized outcomes must be written back into episodic memory');
 assert.ok(agentsWithCausalEvidence > 20, 'causal models must accumulate empirical evidence');
 assert.ok(totalCausalUpdates > 100, 'causal-model learning must be active at scale');
+assert.ok(totalHypothesisTests > 100, 'hypothesis evaluation must be active at scale');
+assert.ok(agentsWithTestedHypotheses > 20, 'hypothesis reliability must be learned across agents');
+assert.ok(agentsWithRegimeShiftHistory > 0, 'at least one agent must detect an economic regime transition');
 assert.equal(firmsUsingMemory, 4);
 assert.equal(householdsUsingMemory, 4);
 assert.ok(modelUpdates > 0, 'at least one persistent firm world model must learn from forecast error');
@@ -187,16 +233,19 @@ for (const c of snap.countries) {
   assert.ok(c.cognitive.agents > 0);
   assert.ok(c.cognitive.causalUpdates > 0);
   assert.ok(c.cognitive.resolvedEpisodes > 0);
+  assert.ok(c.cognitive.hypothesisTests > 0);
   assert.equal(c.sampleHouseholdCognition.version, '0.9');
   assert.equal(c.sampleBankCognition.version, '0.9');
   assert.equal(c.sampleGovernmentCognition.version, '0.9');
   assert.equal(c.sampleCentralBankCognition.version, '0.9');
   assert.ok(c.sampleHouseholdMemory.resolvedEpisodes > 0);
   assert.ok(c.sampleBankMemory.causalUpdates > 0);
+  assert.ok(Array.isArray(c.sampleHouseholdHypotheses));
+  assert.ok(Array.isArray(c.sampleCentralBankHypotheses));
 }
 
-// Determinism gate: same seed must produce identical economy, memory retrieval,
-// causal learning and counterfactual choices.
+// Determinism gate: same seed must reproduce economy, memory, causal learning,
+// regime inference, hypothesis reliability and counterfactual choices exactly.
 const a = new EconomicWorld('ECON-V09-DETERMINISM');
 const b = new EconomicWorld('ECON-V09-DETERMINISM');
 a.step(6);
@@ -207,6 +256,8 @@ for (let i = 0; i < a.countries.length; i++) {
   assert.equal(a.countries[i].firms[0].cognition.worldModel.demandPersistence, b.countries[i].firms[0].cognition.worldModel.demandPersistence);
   assert.deepEqual(a.countries[i].firms[0].cognition.hypotheses, b.countries[i].firms[0].cognition.hypotheses);
   assert.deepEqual(a.countries[i].firms[0].cognition.causalModel, b.countries[i].firms[0].cognition.causalModel);
+  assert.deepEqual(a.countries[i].firms[0].cognition.regime, b.countries[i].firms[0].cognition.regime);
+  assert.deepEqual(a.countries[i].firms[0].cognition.hypothesisLedger, b.countries[i].firms[0].cognition.hypothesisLedger);
   assert.deepEqual(a.countries[i].firms[0].lastTrace?.memoryReasoning, b.countries[i].firms[0].lastTrace?.memoryReasoning);
 }
 
