@@ -1,6 +1,7 @@
 import { clamp } from '../core/rng.js';
 
 const REGIMES = ['normal', 'recession', 'inflation', 'overheating', 'credit_crisis', 'external_crisis'];
+const SUBJECTIVE_KEYS = ['inflation', 'unemployment', 'demandGrowth', 'wageGrowth', 'externalStress', 'creditStress'];
 
 function finite(value, fallback = 0) {
   const n = Number(value);
@@ -30,6 +31,15 @@ function entropy(probabilities) {
     value -= q * Math.log(q);
   }
   return value / Math.log(REGIMES.length);
+}
+
+function subjectiveObservation(cognition, observation = {}) {
+  const perceived = { ...observation };
+  for (const key of SUBJECTIVE_KEYS) {
+    const posterior = cognition?.beliefs?.[key]?.mean;
+    if (Number.isFinite(Number(posterior))) perceived[key] = Number(posterior);
+  }
+  return perceived;
 }
 
 function regimeScores(observation) {
@@ -102,6 +112,7 @@ export function ensureRegimeState(cognition) {
       changed: false,
       changeMagnitude: 0,
       transitionCounts: transitionTable(),
+      lastPerceivedSignals: null,
       history: []
     };
   }
@@ -110,7 +121,8 @@ export function ensureRegimeState(cognition) {
 
 export function inferRegime(cognition, observation, month) {
   const state = ensureRegimeState(cognition);
-  const raw = normalize(regimeScores(observation));
+  const perceived = subjectiveObservation(cognition, observation);
+  const raw = normalize(regimeScores(perceived));
   const previousProbabilities = state.probabilities || raw;
   const inertia = clamp(0.28 + finite(cognition.profile?.confirmationBias) * 0.22, 0.20, 0.42);
   const probabilities = {};
@@ -137,12 +149,18 @@ export function inferRegime(cognition, observation, month) {
   state.probabilities = normalized;
   state.changed = changed;
   state.changeMagnitude = changeMagnitude;
+  state.lastPerceivedSignals = Object.fromEntries(
+    [...SUBJECTIVE_KEYS, 'exchangeRateChange', 'inventoryPressure', 'cashStress']
+      .filter(key => Number.isFinite(Number(perceived[key])))
+      .map(key => [key, Number(perceived[key])])
+  );
   state.history.push({
     month,
     current,
     confidence,
     uncertainty: state.uncertainty,
     probabilities: { ...normalized },
+    perceivedSignals: { ...state.lastPerceivedSignals },
     changed,
     changeMagnitude
   });
@@ -174,7 +192,8 @@ export function regimeSummary(agent) {
     uncertainty: state.uncertainty,
     changed: state.changed,
     changeMagnitude: state.changeMagnitude,
-    probabilities: { ...state.probabilities }
+    probabilities: { ...state.probabilities },
+    perceivedSignals: state.lastPerceivedSignals ? { ...state.lastPerceivedSignals } : null
   };
 }
 
