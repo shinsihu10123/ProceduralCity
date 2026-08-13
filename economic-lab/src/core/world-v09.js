@@ -11,7 +11,31 @@ export class EconomicWorld extends InternationalEconomicWorld {
 
   createEntrant(country, industryId) {
     const firm = super.createEntrant(country, industryId);
-    if (this.cognitive) this.cognitive.initializeAgent(firm);
+    if (this.cognitive) {
+      const cognition = this.cognitive.initializeAgent(firm);
+      if (cognition.memory.episodes.length === 0) {
+        cognition.memory.episodes.push({
+          month: this.month,
+          attention: { level: 2, salience: 0.5, trigger: 'firm-entry', lastLevelChangeMonth: this.month },
+          observation: {
+            month: this.month,
+            event: 'firm-entry',
+            industryId: firm.industryId,
+            cash: Number(firm.cash || 0),
+            debt: Number(firm.loanBalance || 0),
+            price: Number(firm.price || 0),
+            wage: Number(firm.wage || 0)
+          },
+          topHypothesis: {
+            name: '신규 진입 불확실성',
+            confidence: 0.72,
+            evidence: { noOperatingHistory: true },
+            causalClaim: '운영실적이 없으므로 초기 수요·비용모형의 불확실성이 큼'
+          }
+        });
+        cognition.attention = { level: 2, salience: 0.5, trigger: 'firm-entry', lastLevelChangeMonth: this.month };
+      }
+    }
     return firm;
   }
 
