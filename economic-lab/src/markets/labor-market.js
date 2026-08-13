@@ -1,4 +1,4 @@
-export function clearLaborMarket(country, rng) {
+function clearLaborMarketCore(country, rng) {
   const employedByFirm = new Map(country.firms.map(f => [f.id, []]));
   for (const h of country.households) {
     if (h.employed && h.employerId && employedByFirm.has(h.employerId)) employedByFirm.get(h.employerId).push(h);
@@ -62,7 +62,14 @@ export function clearLaborMarket(country, rng) {
   return { hires, layoffs, unfilled };
 }
 
-export function settlePayroll(country, ledger, month) {
+export function clearLaborMarket(country, rng) {
+  const profiler = country?.__runtimeProfiler;
+  return profiler
+    ? profiler.measure('market.labor', () => clearLaborMarketCore(country, rng))
+    : clearLaborMarketCore(country, rng);
+}
+
+function settlePayrollCore(country, ledger, month) {
   const firmMap = new Map(country.firms.map(f => [f.id, f]));
   let payroll = 0;
   let unpaid = 0;
@@ -103,4 +110,11 @@ export function settlePayroll(country, ledger, month) {
   }
 
   return { payroll, unpaid, payments };
+}
+
+export function settlePayroll(country, ledger, month) {
+  const profiler = country?.__runtimeProfiler;
+  return profiler
+    ? profiler.measure('market.payroll', () => settlePayrollCore(country, ledger, month))
+    : settlePayrollCore(country, ledger, month);
 }
