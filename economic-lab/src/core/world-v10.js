@@ -84,8 +84,13 @@ export class EconomicWorld extends CognitiveEconomicWorld {
     wrap(this.assetMarket, 'runMarket', 'asset.market');
     wrap(this.banking, 'serviceDebt', 'banking.debt_service');
     wrap(this.banking, 'originateCredit', 'banking.credit');
+    wrap(this.banking, 'combineMetrics', 'banking.aggregate');
 
     wrap(this, 'syncBalances', 'settlement.sync_balances');
+    wrap(this.ledger, 'entriesFor', 'ledger.query');
+    wrap(this.ledger, 'verifyCountry', 'ledger.verify');
+    wrap(this.ledger, 'totalBalance', 'ledger.total_balance');
+
     wrap(this.supply, 'beginMonth', 'supply.reset');
     wrap(this.supply, 'planProduction', 'supply.plan');
     wrap(this.supply, 'procureInputs', 'supply.inputs');
@@ -97,6 +102,7 @@ export class EconomicWorld extends CognitiveEconomicWorld {
     wrap(this.accounting, 'accrueMonthlyWages', 'accounting.wage_accrual');
     wrap(this.accounting, 'ingestSettlementEntries', 'accounting.settlement_ingest');
     wrap(this.accounting, 'closeCountryMonth', 'accounting.close');
+    wrap(this.accounting, 'verifyCountry', 'accounting.verify');
 
     wrap(this.fiscal, 'beginMonth', 'fiscal.policy');
     wrap(this.fiscal, 'collectIncomeTaxes', 'fiscal.income_tax');
