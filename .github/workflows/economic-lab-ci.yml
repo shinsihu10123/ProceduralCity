@@ -28,7 +28,7 @@ jobs:
         env:
           BENCH_WARMUP: '0'
           BENCH_MONTHS: '1'
-        run: npm run bench:v10 -- baseline x2 x5
+        run: npm run bench:v10 -- baseline x2 x5 x10
       - name: Build
         working-directory: economic-lab
         run: npm run build
