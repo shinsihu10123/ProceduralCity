@@ -9,6 +9,7 @@
     "test": "node scripts/smoke-v09.mjs && node scripts/smoke-v09-social.mjs && node scripts/smoke-v10.mjs",
     "test:v10": "node scripts/smoke-v10.mjs",
     "bench:v10": "node scripts/benchmark-v10.mjs",
+    "profile:v10": "node scripts/cpu-profile-v10.mjs",
     "test:v09": "node scripts/smoke-v09.mjs",
     "test:social": "node scripts/smoke-v09-social.mjs",
     "test:v08": "node scripts/smoke-v08.mjs",
