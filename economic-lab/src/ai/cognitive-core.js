@@ -373,11 +373,12 @@ export function recordDecision(agent, decision, month, realizedReward = null) {
   const c = agent.cognition;
   if (!c?.enabled) return;
   const selected = decision?.selected || decision?.name || 'unknown';
-  c.decisions.push({ month, selected, trace: decision?.trace ? structuredClone(decision.trace) : null, realizedReward });
+  const traceSnapshot = decision?.trace ? structuredClone(decision.trace) : null;
+  c.decisions.push({ month, selected, trace: traceSnapshot, realizedReward });
   if (c.decisions.length > MAX_DECISIONS) c.decisions.shift();
   if (!c.strategyStats[selected]) c.strategyStats[selected] = { count: 0, meanReward: 0, lastReward: 0 };
   c.strategyStats[selected].count += 1;
-  c.lastReasoning = decision?.trace ? structuredClone(decision.trace) : null;
+  c.lastReasoning = traceSnapshot;
 }
 
 export function updateLastDecisionReward(agent, reward) {
