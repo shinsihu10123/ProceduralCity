@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "test": "node scripts/smoke-v09.mjs",
+    "test": "node scripts/debug-v09-sfc.mjs",
+    "test:v09": "node scripts/smoke-v09.mjs",
     "test:v08": "node scripts/smoke-v08.mjs",
     "preview": "vite preview --host 0.0.0.0"
   },
