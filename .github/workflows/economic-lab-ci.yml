@@ -23,6 +23,12 @@ jobs:
       - name: Test
         working-directory: economic-lab
         run: npm test
+      - name: Scale benchmark
+        working-directory: economic-lab
+        env:
+          BENCH_WARMUP: '0'
+          BENCH_MONTHS: '1'
+        run: npm run bench:v10 -- baseline x2 x5
       - name: Build
         working-directory: economic-lab
         run: npm run build
