@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
+    "build": "vite build && cp legacy.html dist/legacy.html && cp -R src dist/src",
     "test": "node scripts/smoke-v09.mjs && node scripts/smoke-v09-social.mjs && node scripts/smoke-v10-ledger.mjs && node scripts/smoke-v10-decision-history.mjs && node scripts/smoke-v10.mjs && node scripts/smoke-v10-ensemble.mjs && node scripts/smoke-observer-bridge.mjs",
     "test:v10": "node scripts/smoke-v10-ledger.mjs && node scripts/smoke-v10-decision-history.mjs && node scripts/smoke-v10.mjs && node scripts/smoke-v10-ensemble.mjs",
     "test:observer": "node scripts/smoke-observer-bridge.mjs",
