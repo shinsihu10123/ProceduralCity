@@ -6,7 +6,7 @@ import { chromium } from 'playwright-core';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const VITE_CLI = fileURLToPath(new URL('../node_modules/vite/bin/vite.js', import.meta.url));
 const PORT = 4173;
-const URL = `http://127.0.0.1:${PORT}`;
+const PREVIEW_URL = `http://127.0.0.1:${PORT}`;
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -50,7 +50,7 @@ server.stderr.on('data', chunk => { serverOutput += chunk.toString(); });
 
 let browser;
 try {
-  await waitForServer(URL);
+  await waitForServer(PREVIEW_URL);
   const executablePath = chromeExecutable();
   assert(executablePath, 'No system Chrome/Chromium executable found for observer browser smoke test.');
 
@@ -73,7 +73,7 @@ try {
     if (message.type() === 'error') runtimeErrors.push(`console: ${message.text()}`);
   });
 
-  await page.goto(URL, { waitUntil: 'networkidle', timeout: 60000 });
+  await page.goto(PREVIEW_URL, { waitUntil: 'networkidle', timeout: 60000 });
   await page.waitForSelector('#world3d canvas', { timeout: 30000 });
   await page.waitForFunction(() => document.querySelector('#month')?.textContent?.includes('0개월'), null, { timeout: 30000 });
 
