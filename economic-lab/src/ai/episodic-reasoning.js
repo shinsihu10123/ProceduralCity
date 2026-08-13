@@ -12,9 +12,15 @@ const DEFAULT_LINKS = [
   { id: 'external_to_demand', cause: 'externalStress', effect: 'demandGrowth', coefficient: -0.18, confidence: 0.26, min: -2.5, max: 0.2 },
   { id: 'policy_to_demand', cause: 'policyRate', effect: 'demandGrowth', coefficient: -0.34, confidence: 0.22, min: -4.0, max: 0.1 },
   { id: 'policy_to_inflation', cause: 'policyRate', effect: 'inflation', coefficient: -0.20, confidence: 0.20, min: -3.0, max: 0.1 },
+  { id: 'policy_to_credit', cause: 'policyRate', effect: 'creditStress', coefficient: 0.22, confidence: 0.22, min: -0.4, max: 3.5 },
+  { id: 'credit_to_defaults', cause: 'creditStress', effect: 'creditDefaultRate', coefficient: 0.12, confidence: 0.26, min: -0.1, max: 2.8 },
+  { id: 'external_to_defaults', cause: 'externalStress', effect: 'creditDefaultRate', coefficient: 0.08, confidence: 0.18, min: -0.1, max: 2.4 },
+  { id: 'unemployment_to_defaults', cause: 'unemployment', effect: 'creditDefaultRate', coefficient: 0.16, confidence: 0.22, min: -0.2, max: 3.0 },
   { id: 'unemployment_to_income', cause: 'unemployment', effect: 'incomeGrowth', coefficient: -0.28, confidence: 0.30, min: -3.0, max: 0.2 },
   { id: 'inflation_to_income', cause: 'inflation', effect: 'incomeGrowth', coefficient: -0.10, confidence: 0.18, min: -2.0, max: 0.4 },
-  { id: 'external_to_credit', cause: 'externalStress', effect: 'creditStress', coefficient: 0.16, confidence: 0.20, min: -0.2, max: 2.5 }
+  { id: 'external_to_credit', cause: 'externalStress', effect: 'creditStress', coefficient: 0.16, confidence: 0.20, min: -0.2, max: 2.5 },
+  { id: 'fx_to_external', cause: 'exchangeRateChange', effect: 'externalStress', coefficient: 0.45, confidence: 0.20, min: -2.0, max: 4.0 },
+  { id: 'current_account_to_external', cause: 'currentAccountWXU', effect: 'externalStress', coefficient: -0.0008, confidence: 0.14, min: -0.05, max: 0.05 }
 ];
 
 function finite(value, fallback = 0) {
@@ -27,6 +33,7 @@ function normalizeSignal(key, value) {
   if (key === 'unemployment') return v - 0.06;
   if (key === 'policyRate') return v - 0.04;
   if (key === 'creditStress' || key === 'externalStress') return v;
+  if (key === 'currentAccountWXU') return clamp(v / 100, -2, 2);
   return v;
 }
 
@@ -38,13 +45,21 @@ export function ensureCausalModel(agent) {
       links: DEFAULT_LINKS.map(link => ({ ...link, observations: 0, meanAbsError: 0, lastError: 0 })),
       updates: 0
     };
+  } else {
+    const existing = new Set(cognition.causalModel.links.map(link => link.id));
+    for (const link of DEFAULT_LINKS) {
+      if (!existing.has(link.id)) cognition.causalModel.links.push({ ...link, observations: 0, meanAbsError: 0, lastError: 0 });
+    }
   }
   return cognition.causalModel;
 }
 
 function comparableKeys(a, b) {
-  return ['inflation', 'unemployment', 'demandGrowth', 'wageGrowth', 'externalStress', 'creditStress', 'policyRate', 'cashStress', 'inventoryPressure']
-    .filter(key => Number.isFinite(Number(a?.[key])) && Number.isFinite(Number(b?.[key])));
+  return [
+    'inflation', 'unemployment', 'demandGrowth', 'wageGrowth',
+    'externalStress', 'creditStress', 'policyRate', 'exchangeRateChange',
+    'cashStress', 'inventoryPressure'
+  ].filter(key => Number.isFinite(Number(a?.[key])) && Number.isFinite(Number(b?.[key])));
 }
 
 function distance(query, observation) {
@@ -52,7 +67,13 @@ function distance(query, observation) {
   if (!keys.length) return Infinity;
   let total = 0;
   for (const key of keys) {
-    const scale = key === 'unemployment' || key === 'policyRate' ? 10 : key === 'creditStress' || key === 'externalStress' ? 1.5 : 6;
+    const scale = key === 'unemployment' || key === 'policyRate'
+      ? 10
+      : key === 'creditStress' || key === 'externalStress'
+        ? 1.5
+        : key === 'exchangeRateChange'
+          ? 8
+          : 6;
     total += Math.min(2.5, Math.abs(finite(query[key]) - finite(observation[key])) * scale);
   }
   return total / keys.length;
