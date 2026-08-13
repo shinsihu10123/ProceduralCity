@@ -28,6 +28,10 @@ function actualPopulation(countries) {
   };
 }
 
+function observerPageActive() {
+  return Boolean(globalThis.document?.getElementById?.('world3d'));
+}
+
 export class EconomicWorld extends CognitiveEconomicWorld {
   constructor(seedText = 'ECON-4-001', options = {}) {
     const profile = resolveScaleProfile(options.scaleProfile || 'baseline');
@@ -197,7 +201,58 @@ export class EconomicWorld extends CognitiveEconomicWorld {
     return analyzeWorldEmergence(this);
   }
 
+  observerSnapshot() {
+    const countries = this.countries.map(country => {
+      const sectorFirms = {};
+      for (const firm of country.firms.filter(item => item.active !== false)) {
+        sectorFirms[firm.industryId] = (sectorFirms[firm.industryId] || 0) + 1;
+      }
+      return {
+        id: country.id,
+        name: country.name,
+        macro: { ...country.macro },
+        industry: structuredClone(country.lastIndustry || {}),
+        sectorFirms,
+        accounting: { ok: Number(country.macro?.accountingBalanced || 0) === 1 },
+        generalAccounting: {
+          ok: country.lastAccounting?.ok !== false,
+          maxEquationError: Number(country.lastAccounting?.maxEquationError || 0),
+          depositReconciliationError: Number(country.lastAccounting?.depositReconciliationError || 0),
+          loanReconciliationError: Number(country.lastAccounting?.loanReconciliationError || 0)
+        },
+        fiscalAccounting: { accountingOk: Number(country.macro?.governmentAccountingBalanced || 0) === 1 },
+        monetaryAccounting: { accountingOk: Number(country.macro?.monetaryAccountingBalanced || 0) === 1 },
+        households: country.households.length,
+        firms: country.firms.length,
+        activeFirms: country.firms.filter(firm => firm.active !== false).length,
+        history: country.history.slice(-2).map(row => ({ ...row })),
+        international: { ...(country.lastInternational || {}) },
+        internationalAccounting: { accountingOk: Number(country.macro?.internationalAccountingBalanced || 0) === 1 },
+        fx: { ...(country.fx || {}) },
+        tradePolicy: { ...(country.tradePolicy || {}) },
+        cognitive: { ...(country.lastCognitive || {}) },
+        recentInternationalTrades: this.international?.recentTrades?.(this.month, country.id, 18) || [],
+        recentForeignFunding: this.international?.recentFunding?.(country.id, 12) || []
+      };
+    });
+
+    return {
+      version: this.version,
+      month: this.month,
+      countries,
+      scale: {
+        profile: { ...this.scaleProfile },
+        currentPopulation: actualPopulation(this.countries)
+      },
+      globalInternational: null,
+      health: null,
+      emergence: null,
+      observerMode: 'lightweight-v1'
+    };
+  }
+
   snapshot() {
+    if (observerPageActive()) return this.observerSnapshot();
     const base = super.snapshot();
     base.version = this.version;
     base.scale = this.scaleReport();
