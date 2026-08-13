@@ -1,0 +1,38 @@
+name: Economic Lab 3D Observer CI
+
+on:
+  push:
+    branches:
+      - feature/economic-lab-3d-observer-v1
+    paths:
+      - 'economic-lab/index.html'
+      - 'economic-lab/legacy.html'
+      - 'economic-lab/package.json'
+      - 'economic-lab/package-lock.json'
+      - 'economic-lab/src/main-observer-v1.js'
+      - 'economic-lab/src/observer/**'
+      - 'economic-lab/scripts/smoke-observer-bridge.mjs'
+      - 'economic-lab/scripts/smoke-observer-browser.mjs'
+      - '.github/workflows/economic-lab-observer-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  observer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install
+        working-directory: economic-lab
+        run: npm install
+      - name: Observer data bridge
+        working-directory: economic-lab
+        run: npm run test:observer
+      - name: Build production observer
+        working-directory: economic-lab
+        run: npm run build
+      - name: Browser runtime and mobile gate
+        working-directory: economic-lab
+        run: npm run test:observer-browser
