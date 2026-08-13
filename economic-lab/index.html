@@ -3,121 +3,112 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Economic Lab — Deep Cognitive Agent Economy</title>
-  <link rel="stylesheet" href="/src/style.css" />
+  <meta name="theme-color" content="#090c10" />
+  <title>Economic Lab — 3D Observer</title>
+  <link rel="stylesheet" href="/src/observer/observer.css" />
 </head>
 <body>
-  <main class="app">
-    <header>
+  <main class="observer-app">
+    <header class="topbar">
       <div>
-        <p class="eyebrow">ECONOMIC LAB / v0.9 · DEEP COGNITIVE ECONOMY</p>
-        <h1>Four-Country Agent Economy</h1>
-        <p>관찰 → 국면추론 → 기억검색 → 가설·인과모형 → 반사실적 계획 → 실제 거래·정책 → 예측오차 → 자기모형 수정</p>
+        <p class="eyebrow">ECONOMIC LAB / 3D OBSERVER v1</p>
+        <h1>Four-Country Economic World</h1>
+        <p>월 0부터 경제 상태를 3D로 관측한다. 3D 레이어는 시뮬레이션 상태를 읽기만 하며 경제 엔진을 직접 수정하지 않는다.</p>
       </div>
-      <div class="controls">
-        <button id="step1">+1개월</button>
-        <button id="step12">+12개월</button>
-        <button id="reset">재시작</button>
+      <div class="top-actions" aria-label="simulation controls">
+        <button class="control" id="reset" type="button">재시작</button>
+        <button class="control" id="step1" type="button">+1개월</button>
+        <button class="control" id="step12" type="button">+12개월</button>
+        <button class="control primary" id="play" type="button">재생</button>
+        <button class="control" id="pause" type="button">일시정지</button>
+        <label>
+          <span class="eyebrow">SPEED</span>
+          <select id="speed" aria-label="playback speed">
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+          </select>
+        </label>
+        <a class="link-control" href="/legacy.html">기존 분석화면</a>
       </div>
     </header>
 
-    <section class="status">
-      <span>시뮬레이션 시점</span>
-      <strong id="month">0개월</strong>
-      <span>Seed</span>
-      <strong>ECON-4-001</strong>
+    <section class="statusbar" aria-label="global simulation status">
+      <div class="status-item"><span>Simulation</span><strong id="month">0개월</strong></div>
+      <div class="status-item"><span>Engine</span><strong id="engineState">READY</strong></div>
+      <div class="status-item"><span>Version</span><strong id="sourceVersion">ENGINE v0.10</strong></div>
+      <div class="status-item"><span>Global GDP</span><strong id="globalGdp">-</strong></div>
+      <div class="status-item"><span>Cognitive Agents</span><strong id="globalAgents">-</strong></div>
+      <div class="status-item"><span>Seed</span><strong>ECON-4-001</strong></div>
     </section>
 
-    <section id="countries" class="country-grid"></section>
+    <section class="workspace">
+      <div class="world-column">
+        <section class="world-shell" aria-label="interactive 3d economic world">
+          <div id="world3d"></div>
+          <div class="world-overlay">
+            <span class="overlay-chip"><b id="monthBadge">MONTH 0</b></span>
+            <span class="overlay-chip">무역 흐름 <b id="tradeFlowCount">0</b></span>
+            <span class="overlay-chip">대외금융 연결 <b id="fundingFlowCount">0</b></span>
+            <span class="overlay-chip">드래그 회전 · 스크롤 확대 · 국가 클릭</span>
+          </div>
+        </section>
 
-    <section class="detail-grid">
-      <article class="panel reasoning-panel">
-        <div class="panel-head"><h2>Deep Cognitive Observatory</h2><select id="countrySelect"></select></div>
-        <pre id="cognitiveOverview"></pre>
-      </article>
-
-      <article class="panel reasoning-panel">
-        <h2>Household · Firm Internal Reasoning</h2>
-        <div class="trace-grid">
-          <div><h3>가계 Agent</h3><pre id="householdTrace"></pre></div>
-          <div><h3>기업 Agent</h3><pre id="firmTrace"></pre></div>
+        <div id="countryList" class="country-list" aria-label="country selector"></div>
+        <div class="hint">
+          <strong>표현 규칙:</strong> 도시 질량은 상대 GDP·활성기업·산업생산에서, 활동 밀도는 실업률에서, 외곽 경고 링은 대외 스트레스·위기판단 비중에서 파생된다. 주황 곡선은 현재 월의 실제 국제무역, 파란 곡선은 대외금융 계약의 잔존 익스포저다.
         </div>
-      </article>
+      </div>
 
-      <article class="panel">
-        <h2>International Economy · FX · Trade · External Finance</h2>
-        <pre id="internationalTrace"></pre>
-      </article>
+      <aside class="analysis-column">
+        <section class="panel">
+          <div class="panel-head">
+            <div class="inspector-title"><b id="selectedCode">AST</b><strong id="selectedName">아스테라</strong></div>
+            <button id="focusSelected" type="button" class="control">3D 초점</button>
+          </div>
+          <div class="metric-grid">
+            <div class="metric"><span>GDP</span><strong id="selectedGdp">-</strong></div>
+            <div class="metric"><span>Unemployment</span><strong id="selectedUnemployment">-</strong></div>
+            <div class="metric"><span>Inflation</span><strong id="selectedInflation">-</strong></div>
+            <div class="metric"><span>Policy Rate</span><strong id="selectedPolicyRate">-</strong></div>
+            <div class="metric"><span>FX / WXU</span><strong id="selectedFx">-</strong></div>
+            <div class="metric"><span>Active Firms</span><strong id="selectedFirms">-</strong></div>
+            <div class="metric"><span>External Stress</span><strong id="selectedStress">-</strong></div>
+            <div class="metric"><span>Crisis Share</span><strong id="selectedCrisis">-</strong></div>
+          </div>
 
-      <article class="panel">
-        <h2>Central Bank · Memory · Causal Policy Reasoning</h2>
-        <pre id="centralBankTrace"></pre>
-      </article>
-
-      <article class="panel">
-        <h2>Commercial Bank · Credit Counterfactuals</h2>
-        <pre id="bankTrace"></pre>
-      </article>
-
-      <article class="panel">
-        <h2>Government · Fiscal Counterfactuals</h2>
-        <pre id="governmentTrace"></pre>
-      </article>
-
-      <article class="panel">
-        <h2>Monetary Operations · Reserves · Liquidity</h2>
-        <pre id="monetaryTrace"></pre>
-      </article>
-
-      <article class="panel">
-        <h2>Equity Market · Capital Raising · Trading</h2>
-        <pre id="assetTrace"></pre>
-      </article>
-
-      <article class="panel">
-        <h2>Fiscal Flows · Public Debt</h2>
-        <pre id="fiscalTrace"></pre>
-      </article>
-
-      <article class="panel">
-        <h2>Industry · Domestic & International Supply Chain</h2>
-        <pre id="industryTrace"></pre>
-      </article>
-
-      <article class="panel">
-        <h2>Open-Economy Macro · Accounting Invariants</h2>
-        <pre id="marketTrace"></pre>
-      </article>
-
-      <article class="panel">
-        <h2>Agent Financial Statements</h2>
-        <pre id="financialTrace"></pre>
-      </article>
-
-      <article class="panel">
-        <h2>General Ledger Journal Trace</h2>
-        <pre id="journalTrace"></pre>
-      </article>
-
-      <article class="panel">
-        <h2>Domestic · International Settlement</h2>
-        <pre id="transactionTrace"></pre>
-      </article>
-
-      <article class="panel">
-        <h2>v0.9 Cognitive Stack</h2>
-        <ol class="layers">
-          <li><b>C0</b> Limited Observation / Noisy Perception</li>
-          <li><b>C1</b> Persistent Beliefs / Uncertainty / Episodic Memory</li>
-          <li><b>C2</b> Probabilistic Regime Inference / Hypothesis Reliability</li>
-          <li><b>C3</b> Learned Causal Graph / Analogical Retrieval</li>
-          <li><b>C4</b> Counterfactual World-Model Planning / L0–L4 Attention</li>
-          <li><b>C5</b> Real Market · Settlement · Accounting Outcome</li>
-          <li><b>C6</b> Forecast Error / Causal Coefficient / Strategy / Hypothesis Update</li>
-        </ol>
-      </article>
+          <div class="details-stack">
+            <details open>
+              <summary>거시경제</summary>
+              <div id="macroDetails" class="detail-body"></div>
+            </details>
+            <details>
+              <summary>산업·공급망</summary>
+              <div id="industryDetails" class="detail-body"></div>
+            </details>
+            <details>
+              <summary>국제경제·외환·대외금융</summary>
+              <div id="internationalDetails" class="detail-body"></div>
+            </details>
+            <details>
+              <summary>인지 AI·경기국면</summary>
+              <div id="cognitiveDetails" class="detail-body"></div>
+            </details>
+            <details>
+              <summary>회계·정합성</summary>
+              <div id="accountingDetails" class="detail-body"></div>
+            </details>
+            <details>
+              <summary>Observer Snapshot</summary>
+              <div class="detail-body"><pre id="rawSnapshot" class="raw-snapshot"></pre></div>
+            </details>
+          </div>
+        </section>
+      </aside>
     </section>
   </main>
-  <script type="module" src="/src/main-v09.js"></script>
+
+  <script type="module" src="/src/main-observer-v1.js"></script>
 </body>
 </html>
