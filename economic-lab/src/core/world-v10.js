@@ -5,7 +5,6 @@ import { ExperimentSystem } from '../research/experiment-system.js';
 import { LongRunHealthMonitor } from '../research/long-run-health.js';
 import { analyzeWorldEmergence } from '../research/emergence-metrics.js';
 import { RuntimeProfiler } from '../research/runtime-profiler.js';
-import { compactWorldDecisionHistories } from '../research/decision-history.js';
 
 function nowMs() {
   return globalThis.performance?.now?.() ?? Date.now();
@@ -50,8 +49,14 @@ export class EconomicWorld extends CognitiveEconomicWorld {
     this.healthCheckInterval = Math.max(0, Math.round(Number(options.healthCheckInterval ?? 6)));
     this.runtime = this.emptyRuntimeMetrics();
     this.profiler = new RuntimeProfiler({ historyLimit: options.profileHistoryLimit || 60 });
-    this.decisionHistory = { monthsCompacted: 0, recordsConverted: 0, last: null };
+    this.decisionHistory = {
+      mode: 'compact-v1',
+      currentDetail: 'full',
+      historyDetail: 'compact'
+    };
+
     for (const country of this.countries) {
+      for (const agent of this.cognitive.agents(country)) this.enableCompactDecisionHistory(agent);
       Object.defineProperty(country, '__runtimeProfiler', {
         value: this.profiler,
         enumerable: false,
@@ -59,8 +64,14 @@ export class EconomicWorld extends CognitiveEconomicWorld {
         writable: false
       });
     }
+
     this.installSubsystemProfiling();
     this.lastExperimentEvents = [];
+  }
+
+  enableCompactDecisionHistory(agent) {
+    if (agent?.cognition?.enabled) agent.cognition.decisionHistoryMode = 'compact-v1';
+    return agent;
   }
 
   emptyRuntimeMetrics() {
@@ -126,12 +137,10 @@ export class EconomicWorld extends CognitiveEconomicWorld {
     this.profiler.reset();
   }
 
-  compactDecisionHistory() {
-    const result = compactWorldDecisionHistories(this.countries);
-    this.decisionHistory.monthsCompacted += 1;
-    this.decisionHistory.recordsConverted += Number(result.converted || 0);
-    this.decisionHistory.last = { month: this.month, ...result };
-    return result;
+  createEntrant(country, industryId) {
+    const firm = super.createEntrant(country, industryId);
+    this.enableCompactDecisionHistory(firm);
+    return firm;
   }
 
   stepMonth() {
@@ -144,7 +153,6 @@ export class EconomicWorld extends CognitiveEconomicWorld {
     );
 
     super.stepMonth();
-    this.profiler.measure('cognition.compact_history', () => this.compactDecisionHistory());
     const elapsed = Math.max(0, nowMs() - started);
     this.profiler.endMonth(elapsed);
 
