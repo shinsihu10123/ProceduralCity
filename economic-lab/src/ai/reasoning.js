@@ -7,6 +7,37 @@ import {
   registerForecast,
   topHypotheses
 } from './cognitive-core.js';
+import {
+  analogicalForecast,
+  causalExplanations,
+  causalForecast,
+  retrieveAnalogies
+} from './episodic-reasoning.js';
+
+function blendForecast(base, sources = []) {
+  let value = Number(base || 0);
+  let weight = 1;
+  for (const source of sources) {
+    const confidence = clamp(Number(source?.confidence || 0), 0, 1);
+    const maxWeight = clamp(Number(source?.maxWeight ?? 0.25), 0, 0.5);
+    const w = confidence * maxWeight;
+    if (w <= 0 || !Number.isFinite(Number(source?.value))) continue;
+    value = (value * weight + Number(source.value) * w) / (weight + w);
+    weight += w;
+  }
+  return value;
+}
+
+function compactAnalogies(rows) {
+  return (rows || []).slice(0, 4).map(x => ({
+    month: x.month,
+    similarity: x.similarity,
+    topHypothesis: x.topHypothesis,
+    decision: x.decision,
+    reward: x.reward,
+    outcome: x.outcome
+  }));
+}
 
 function legacyHouseholdDecision(h, signals, rng) {
   const perceivedInflation = signals.inflation + h.biasInflation + rng.normal(0, 0.008);
@@ -42,22 +73,46 @@ export function householdDecision(h, signals, rng) {
 
   const cognition = h.cognition;
   const month = Number(cognition.lastObservation?.month || 0);
-  const perceivedInflation =
+  const currentState = {
+    ...(cognition.lastObservation || {}),
+    month,
+    inflation: Number(signals.inflation || 0),
+    unemployment: Number(signals.unemployment || 0),
+    demandGrowth: Number(signals.demandGrowth || 0),
+    wageGrowth: Number(signals.wageGrowth || 0),
+    cashStress: clamp(1 - Number(h.wealth || 0) / Math.max(1, Number(h.wage || 1) * 2.2), 0, 1.5)
+  };
+
+  const rawInflation =
     signals.inflation * 0.42 +
     beliefMean(h, 'inflation', signals.inflation) * 0.58 +
     h.biasInflation * 0.65 +
     rng.normal(0, 0.003 + beliefUncertainty(h, 'inflation') * 0.012);
-  const perceivedUnemployment = clamp(
+  const inflationMemory = analogicalForecast(h, 'inflation', currentState, rawInflation, 4);
+  const perceivedInflation = clamp(
+    blendForecast(rawInflation, [{ ...inflationMemory, maxWeight: 0.18 }]),
+    -0.15,
+    0.45
+  );
+
+  const rawUnemployment = clamp(
     signals.unemployment * 0.45 + beliefMean(h, 'unemployment', signals.unemployment) * 0.55 + rng.normal(0, 0.006),
     0,
     1
   );
-  const perceivedJobRisk = clamp(
-    perceivedUnemployment * (0.62 + h.riskAversion * 0.72) + (h.employed ? 0 : 0.22) + rng.normal(0, 0.008),
+  const unemploymentMemory = analogicalForecast(h, 'unemployment', currentState, rawUnemployment, 4);
+  const expectedUnemployment = clamp(
+    blendForecast(rawUnemployment, [{ ...unemploymentMemory, maxWeight: 0.22 }]),
     0,
     1
   );
-  const expectedIncomeGrowth = clamp(
+  const perceivedJobRisk = clamp(
+    expectedUnemployment * (0.62 + h.riskAversion * 0.72) + (h.employed ? 0 : 0.22) + rng.normal(0, 0.008),
+    0,
+    1
+  );
+
+  const baseIncomeGrowth = clamp(
     beliefMean(h, 'incomeGrowth', signals.wageGrowth) * 0.50 +
     signals.wageGrowth * 0.28 +
     cognition.worldModel.wagePersistence * signals.wageGrowth * 0.18 -
@@ -66,6 +121,18 @@ export function householdDecision(h, signals, rng) {
     -0.35,
     0.35
   );
+  const incomeMemory = analogicalForecast(h, 'incomeGrowth', currentState, baseIncomeGrowth, 4);
+  const causalIncome = causalForecast(h, 'incomeGrowth', currentState, baseIncomeGrowth);
+  const expectedIncomeGrowth = clamp(
+    blendForecast(baseIncomeGrowth, [
+      { ...incomeMemory, maxWeight: 0.32 },
+      { ...causalIncome, maxWeight: 0.18 }
+    ]),
+    -0.40,
+    0.40
+  );
+  const incomeCauses = causalExplanations(h, 'incomeGrowth', currentState, 5);
+  const memoryAnalogies = retrieveAnalogies(h, currentState, 4);
 
   const cash = Math.max(0, Number(h.wealth || 0));
   const incomeBase = Math.max(1, Number(h.disposableIncome || h.income || h.wage || 1));
@@ -130,21 +197,33 @@ export function householdDecision(h, signals, rng) {
     parameter: 'inflationPersistence',
     predictor: perceivedInflation
   });
-  registerForecast(h, 'unemployment', perceivedUnemployment, month, 1, {
+  registerForecast(h, 'unemployment', expectedUnemployment, month, 1, {
     parameter: 'unemploymentPersistence',
-    predictor: perceivedUnemployment
+    predictor: expectedUnemployment
   });
 
   const trace = {
     perception: {
       inflation: perceivedInflation,
-      unemployment: perceivedUnemployment,
+      unemployment: expectedUnemployment,
       jobRisk: perceivedJobRisk,
+      baseIncomeGrowth,
       expectedIncomeGrowth,
       liquidityMonths,
       debtBurden
     },
     hypotheses: topHypotheses(h, 5),
+    memoryReasoning: {
+      analogies: compactAnalogies(memoryAnalogies),
+      incomeForecast: { value: incomeMemory.value, confidence: incomeMemory.confidence },
+      unemploymentForecast: { value: unemploymentMemory.value, confidence: unemploymentMemory.confidence },
+      inflationForecast: { value: inflationMemory.value, confidence: inflationMemory.confidence }
+    },
+    causalReasoning: {
+      target: 'incomeGrowth',
+      forecast: { value: causalIncome.value, confidence: causalIncome.confidence },
+      explanations: incomeCauses
+    },
     worldModel: {
       wagePersistence: cognition.worldModel.wagePersistence,
       inflationPersistence: cognition.worldModel.inflationPersistence,
@@ -168,9 +247,11 @@ export function householdDecision(h, signals, rng) {
     forecast: {
       incomeGrowth: predictedIncomeGrowth,
       inflation: predictedInflation,
-      unemployment: perceivedUnemployment
+      unemployment: expectedUnemployment
     },
-    reason: `반사실적 계획에서 ${selected.name}의 위험조정 효용이 가장 높음`
+    reason: memoryAnalogies.length
+      ? `과거 유사국면·인과모형·반사실적 계획을 결합한 결과 ${selected.name} 선택`
+      : `반사실적 계획에서 ${selected.name}의 위험조정 효용이 가장 높음`
   };
   const decision = { consumeShare: selected.consumeShare, trace };
   recordDecision(h, { selected: selected.name, trace }, month);
@@ -236,17 +317,45 @@ export function firmDecision(f, signals, rng) {
 
   const cognition = f.cognition;
   const month = Number(cognition.lastObservation?.month || 0);
+  const inventoryPressure = clamp((f.inventory - f.targetInventory) / Math.max(1, f.targetInventory), -1, 2.5);
+  const cashStress = clamp(1 - f.cash / Math.max(1, f.safeCash), 0, 1.3);
+  const supplyStress = clamp(Number(f.supplyShortage || 0) / Math.max(1, Number(f.desiredProduction || f.capacity || 1)), 0, 1);
+  const debtBurden = Math.max(0, Number(f.loanBalance || 0)) / Math.max(1, Number(f.safeCash || 1) * 4);
+  const currentState = {
+    ...(cognition.lastObservation || {}),
+    month,
+    inflation: Number(signals.inflation || 0),
+    unemployment: Number(signals.unemployment || 0),
+    demandGrowth: Number(signals.demandGrowth || 0),
+    wageGrowth: Number(signals.wageGrowth || 0),
+    cashStress,
+    inventoryPressure
+  };
+
   const observedDemandGrowth = clamp(
     signals.demandGrowth * 0.48 + beliefMean(f, 'demandGrowth', signals.demandGrowth) * 0.52 + f.demandBias + rng.normal(0, 0.008 + beliefUncertainty(f, 'demandGrowth') * 0.025),
     -0.65,
     0.85
   );
-  const expectedDemandGrowth = clamp(
+  const modelDemandGrowth = clamp(
     cognition.worldModel.demandPersistence * observedDemandGrowth +
     (1 - Math.min(0.92, Math.abs(cognition.worldModel.demandPersistence))) * f.beliefs.demandGrowth * 0.55,
     -0.55,
     0.75
   );
+  const memoryDemand = analogicalForecast(f, 'demandGrowth', currentState, modelDemandGrowth, 5);
+  const causalDemand = causalForecast(f, 'demandGrowth', currentState, modelDemandGrowth);
+  const expectedDemandGrowth = clamp(
+    blendForecast(modelDemandGrowth, [
+      { ...memoryDemand, maxWeight: 0.34 },
+      { ...causalDemand, maxWeight: 0.22 }
+    ]),
+    -0.65,
+    0.90
+  );
+  const demandCauses = causalExplanations(f, 'demandGrowth', currentState, 6);
+  const memoryAnalogies = retrieveAnalogies(f, currentState, 5);
+
   const expectedCostGrowth = clamp(
     signals.wageGrowth * cognition.worldModel.wagePersistence * 0.55 +
     signals.inflation * cognition.worldModel.costPassThrough * 0.45 +
@@ -254,10 +363,6 @@ export function firmDecision(f, signals, rng) {
     -0.25,
     0.45
   );
-  const inventoryPressure = clamp((f.inventory - f.targetInventory) / Math.max(1, f.targetInventory), -1, 2.5);
-  const cashStress = clamp(1 - f.cash / Math.max(1, f.safeCash), 0, 1.3);
-  const supplyStress = clamp(Number(f.supplyShortage || 0) / Math.max(1, Number(f.desiredProduction || f.capacity || 1)), 0, 1);
-  const debtBurden = Math.max(0, Number(f.loanBalance || 0)) / Math.max(1, Number(f.safeCash || 1) * 4);
 
   const plans = [
     {
@@ -360,6 +465,7 @@ export function firmDecision(f, signals, rng) {
   const trace = {
     perception: {
       observedDemandGrowth,
+      modelDemandGrowth,
       expectedDemandGrowth,
       expectedCostGrowth,
       inventoryPressure,
@@ -368,6 +474,15 @@ export function firmDecision(f, signals, rng) {
       debtBurden
     },
     hypotheses: topHypotheses(f, 6),
+    memoryReasoning: {
+      analogies: compactAnalogies(memoryAnalogies),
+      demandForecast: { value: memoryDemand.value, confidence: memoryDemand.confidence }
+    },
+    causalReasoning: {
+      target: 'demandGrowth',
+      forecast: { value: causalDemand.value, confidence: causalDemand.confidence },
+      explanations: demandCauses
+    },
     worldModel: {
       demandPersistence: cognition.worldModel.demandPersistence,
       priceElasticity: cognition.worldModel.priceElasticity,
@@ -394,7 +509,9 @@ export function firmDecision(f, signals, rng) {
     })),
     selected: selected.name,
     forecast: { demandGrowth: predictedDemandGrowth, costGrowth: expectedCostGrowth },
-    reason: `자기 수요모형으로 ${selected.counterfactual.horizon}개월 반사실적 시나리오를 비교한 결과 ${selected.name} 선택`
+    reason: memoryAnalogies.length
+      ? `과거 유사국면과 학습된 인과계수를 자기 수요모형에 결합한 뒤 ${selected.counterfactual.horizon}개월 반사실적 비교로 ${selected.name} 선택`
+      : `자기 수요모형으로 ${selected.counterfactual.horizon}개월 반사실적 시나리오를 비교한 결과 ${selected.name} 선택`
   };
   const decision = {
     name: selected.name,
