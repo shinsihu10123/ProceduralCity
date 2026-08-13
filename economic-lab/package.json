@@ -9,6 +9,7 @@
     "test": "node scripts/smoke-v09.mjs && node scripts/smoke-v09-social.mjs && node scripts/smoke-v10-ledger.mjs && node scripts/smoke-v10-decision-history.mjs && node scripts/smoke-v10.mjs && node scripts/smoke-v10-ensemble.mjs && node scripts/smoke-observer-bridge.mjs",
     "test:v10": "node scripts/smoke-v10-ledger.mjs && node scripts/smoke-v10-decision-history.mjs && node scripts/smoke-v10.mjs && node scripts/smoke-v10-ensemble.mjs",
     "test:observer": "node scripts/smoke-observer-bridge.mjs",
+    "test:observer-browser": "node scripts/smoke-observer-browser.mjs",
     "bench:v10": "node scripts/benchmark-v10.mjs",
     "profile:v10": "node scripts/cpu-profile-v10.mjs",
     "test:v09": "node scripts/smoke-v09.mjs",
@@ -20,6 +21,7 @@
     "three": "0.185.1"
   },
   "devDependencies": {
+    "playwright-core": "^1.50.0",
     "vite": "^7.1.1"
   }
 }
