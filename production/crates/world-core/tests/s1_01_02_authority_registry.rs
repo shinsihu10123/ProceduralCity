@@ -2,9 +2,7 @@ use gaonn_world_core::authority::{
     AuthorityLifecycle, AuthorityRecordId, AuthorityRegistration, AuthorityRegistry,
     AuthorityRegistryError, ReadOnlyRole,
 };
-use gaonn_world_core::{
-    CanonicalCandidate, CanonicalStateContract, StateClass, ValidationReceipt,
-};
+use gaonn_world_core::{CanonicalCandidate, CanonicalStateContract, StateClass, ValidationReceipt};
 
 fn source_receipt() -> ValidationReceipt {
     CanonicalStateContract
@@ -48,7 +46,10 @@ fn behavior_normal_registers_one_owner_and_resolves_exact_version() {
     assert_eq!(resolved.authority_epoch, 1);
     assert_eq!(resolved.version, 1);
     assert_eq!(resolved.lifecycle, AuthorityLifecycle::Active);
-    assert_eq!(registry.reference_for_fact(&resolved.fact_key).unwrap(), reference);
+    assert_eq!(
+        registry.reference_for_fact(&resolved.fact_key).unwrap(),
+        reference
+    );
 }
 
 #[test]
@@ -104,12 +105,7 @@ fn boundary_distinguishes_active_inactive_tombstone_and_never_reuses_retired_id(
     );
 
     let inactive_ref = registry
-        .retire(
-            &active_ref,
-            "domain01.celestial_frame",
-            2,
-            "retire-event",
-        )
+        .retire(&active_ref, "domain01.celestial_frame", 2, "retire-event")
         .expect("active authority may retire through owner");
     assert_eq!(
         registry.resolve(&inactive_ref).unwrap().lifecycle,
@@ -261,20 +257,10 @@ fn replay_fixture() -> AuthorityRegistry {
         .register_read_only_role("objective.planet.mass", ReadOnlyRole::Renderer)
         .unwrap();
     let updated = registry
-        .update_epoch(
-            &reference,
-            "domain01.celestial_frame",
-            2,
-            "replay-event-2",
-        )
+        .update_epoch(&reference, "domain01.celestial_frame", 2, "replay-event-2")
         .unwrap();
     registry
-        .retire(
-            &updated,
-            "domain01.celestial_frame",
-            3,
-            "replay-event-3",
-        )
+        .retire(&updated, "domain01.celestial_frame", 3, "replay-event-3")
         .unwrap();
     registry
 }

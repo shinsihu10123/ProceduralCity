@@ -6,7 +6,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-use crate::{StateClass, ValidationReceipt, S1_01_01_CONTRACT_VERSION};
+use crate::{S1_01_01_CONTRACT_VERSION, StateClass, ValidationReceipt};
 
 pub const S1_01_02_REGISTRY_VERSION: u32 = 1;
 
@@ -99,12 +99,29 @@ pub struct AuthorityRegistration {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuthorityRegistryError {
     EmptyIdentityField(&'static str),
-    UnsupportedRegistryVersion { expected: u32, found: u32 },
-    SourceContractVersionMismatch { expected: u32, found: u32 },
-    SourceFactMismatch { source: String, requested: String },
-    SourceOwnerMismatch { source: String, requested: String },
-    SourceWriterMismatch { source: String, requested: String },
-    NonCanonicalOwnerState { state_class: StateClass },
+    UnsupportedRegistryVersion {
+        expected: u32,
+        found: u32,
+    },
+    SourceContractVersionMismatch {
+        expected: u32,
+        found: u32,
+    },
+    SourceFactMismatch {
+        source: String,
+        requested: String,
+    },
+    SourceOwnerMismatch {
+        source: String,
+        requested: String,
+    },
+    SourceWriterMismatch {
+        source: String,
+        requested: String,
+    },
+    NonCanonicalOwnerState {
+        state_class: StateClass,
+    },
     DuplicateIdentity(AuthorityRecordId),
     RetiredIdentityReuse(AuthorityRecordId),
     DuplicateFactOwner {
@@ -117,10 +134,19 @@ pub enum AuthorityRegistryError {
         existing_owner: String,
         requested_owner: String,
     },
-    WrongOwner { expected: String, found: String },
-    InvalidAuthorityEpoch { current: u64, requested: u64 },
+    WrongOwner {
+        expected: String,
+        found: String,
+    },
+    InvalidAuthorityEpoch {
+        current: u64,
+        requested: u64,
+    },
     DanglingReference(AuthorityRecordId),
-    StaleReference { expected: u32, found: u32 },
+    StaleReference {
+        expected: u32,
+        found: u32,
+    },
     ReferenceNotActive(AuthorityLifecycle),
     InvalidLifecycleTransition {
         from: AuthorityLifecycle,
@@ -155,10 +181,15 @@ impl fmt::Display for AuthorityRegistryError {
                 "source writer mismatch: source={source}, requested={requested}"
             ),
             Self::NonCanonicalOwnerState { state_class } => {
-                write!(f, "non-canonical state cannot own canonical authority: {state_class:?}")
+                write!(
+                    f,
+                    "non-canonical state cannot own canonical authority: {state_class:?}"
+                )
             }
             Self::DuplicateIdentity(id) => write!(f, "duplicate authority identity: {id:?}"),
-            Self::RetiredIdentityReuse(id) => write!(f, "retired authority identity reused: {id:?}"),
+            Self::RetiredIdentityReuse(id) => {
+                write!(f, "retired authority identity reused: {id:?}")
+            }
             Self::DuplicateFactOwner {
                 fact_key,
                 existing_owner,
@@ -176,7 +207,10 @@ impl fmt::Display for AuthorityRegistryError {
                 "authority namespace owner conflict: namespace={namespace}, existing={existing_owner}, requested={requested_owner}"
             ),
             Self::WrongOwner { expected, found } => {
-                write!(f, "wrong authority owner/writer: expected={expected}, found={found}")
+                write!(
+                    f,
+                    "wrong authority owner/writer: expected={expected}, found={found}"
+                )
             }
             Self::InvalidAuthorityEpoch { current, requested } => write!(
                 f,
@@ -184,13 +218,19 @@ impl fmt::Display for AuthorityRegistryError {
             ),
             Self::DanglingReference(id) => write!(f, "dangling authority reference: {id:?}"),
             Self::StaleReference { expected, found } => {
-                write!(f, "stale authority reference: expected={expected}, found={found}")
+                write!(
+                    f,
+                    "stale authority reference: expected={expected}, found={found}"
+                )
             }
             Self::ReferenceNotActive(lifecycle) => {
                 write!(f, "authority reference is not active: {lifecycle:?}")
             }
             Self::InvalidLifecycleTransition { from, to } => {
-                write!(f, "invalid authority lifecycle transition: {from:?} -> {to:?}")
+                write!(
+                    f,
+                    "invalid authority lifecycle transition: {from:?} -> {to:?}"
+                )
             }
             Self::UnknownFact(fact_key) => write!(f, "unknown canonical fact: {fact_key}"),
             Self::SnapshotCorrupt(reason) => write!(f, "authority snapshot corrupt: {reason}"),
@@ -294,7 +334,11 @@ impl AuthorityRegistry {
                 found: registration.source_contract.contract_version,
             });
         }
-        if !registration.source_contract.state_class.is_canonical_plane() {
+        if !registration
+            .source_contract
+            .state_class
+            .is_canonical_plane()
+        {
             return Err(AuthorityRegistryError::NonCanonicalOwnerState {
                 state_class: registration.source_contract.state_class,
             });
@@ -339,7 +383,9 @@ impl AuthorityRegistry {
                 existing.lifecycle,
                 AuthorityLifecycle::Inactive | AuthorityLifecycle::Tombstone
             ) {
-                Err(AuthorityRegistryError::RetiredIdentityReuse(registration.id))
+                Err(AuthorityRegistryError::RetiredIdentityReuse(
+                    registration.id,
+                ))
             } else {
                 Err(AuthorityRegistryError::DuplicateIdentity(registration.id))
             };
