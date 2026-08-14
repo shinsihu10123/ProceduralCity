@@ -6,6 +6,8 @@
 //! It intentionally validates candidates without mutating world state. Canonical mutation itself
 //! remains behind later transaction/commit work packages.
 
+pub mod authority;
+
 use std::fmt;
 
 pub const S1_01_01_CONTRACT_VERSION: u32 = 1;
