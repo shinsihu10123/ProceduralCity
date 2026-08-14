@@ -7,6 +7,7 @@
 //! remains behind later transaction/commit work packages.
 
 pub mod authority;
+pub mod boundary;
 
 use std::fmt;
 
