@@ -203,7 +203,10 @@ impl fmt::Display for RejectionReason {
             Self::MissingField(field) => write!(f, "missing required field: {field}"),
             Self::EmptyField(field) => write!(f, "required field is empty: {field}"),
             Self::StaleVersion { expected, found } => {
-                write!(f, "stale/unsupported version: expected {expected}, found {found}")
+                write!(
+                    f,
+                    "stale/unsupported version: expected {expected}, found {found}"
+                )
             }
             Self::NonCanonicalState { state_class } => write!(
                 f,
@@ -214,7 +217,11 @@ impl fmt::Display for RejectionReason {
                 write!(f, "wrong-owner write: owner={owner}, writer={writer}")
             }
             Self::ProhibitedDirectWrite { origin } => {
-                write!(f, "prohibited reverse/direct canonical write from {}", origin.as_str())
+                write!(
+                    f,
+                    "prohibited reverse/direct canonical write from {}",
+                    origin.as_str()
+                )
             }
         }
     }

@@ -1,6 +1,6 @@
 use gaonn_world_core::{
-    CanonicalCandidate, CanonicalStateContract, RejectionReason, StateClass, WriteOrigin,
-    S1_01_01_CONTRACT_VERSION, ValidationReceipt,
+    CanonicalCandidate, CanonicalStateContract, RejectionReason, S1_01_01_CONTRACT_VERSION,
+    StateClass, ValidationReceipt, WriteOrigin,
 };
 
 fn contract() -> CanonicalStateContract {
