@@ -1,11 +1,11 @@
 use gaonn_world_core::authority::{AuthorityRecordId, AuthorityRegistration, AuthorityRegistry};
 use gaonn_world_core::boundary::{
     BoundaryCandidate, BoundaryWriteTarget, CanonicalDerivedBoundary, CanonicalSourceReference,
-    StateLayer, S1_01_03_BOUNDARY_VERSION,
+    S1_01_03_BOUNDARY_VERSION, StateLayer,
 };
 use gaonn_world_core::write_authority::{
-    CanonicalWriteAuthorityRule, WriteAuthorityDeclaration, WriteAuthorityError,
-    WriteInterfaceBinding, WriteInterfaceCatalog, S1_01_04_DECLARATION_VERSION,
+    CanonicalWriteAuthorityRule, S1_01_04_DECLARATION_VERSION, WriteAuthorityDeclaration,
+    WriteAuthorityError, WriteInterfaceBinding, WriteInterfaceCatalog,
 };
 use gaonn_world_core::{CanonicalCandidate, CanonicalStateContract};
 
@@ -118,11 +118,7 @@ fn behavior_failure_rejects_missing_field_stale_epoch_and_unknown_interface_with
     let mut missing = declaration(&fixture);
     missing.owner = None;
     assert_eq!(
-        CanonicalWriteAuthorityRule.declare(
-            &fixture.registry,
-            &fixture.interfaces,
-            &missing,
-        ),
+        CanonicalWriteAuthorityRule.declare(&fixture.registry, &fixture.interfaces, &missing,),
         Err(WriteAuthorityError::MissingField("owner"))
     );
 
@@ -139,17 +135,16 @@ fn behavior_failure_rejects_missing_field_stale_epoch_and_unknown_interface_with
     let mut unknown = declaration(&fixture);
     unknown.interface_id = Some("unregistered.interface".to_owned());
     assert_eq!(
-        CanonicalWriteAuthorityRule.declare(
-            &fixture.registry,
-            &fixture.interfaces,
-            &unknown,
-        ),
+        CanonicalWriteAuthorityRule.declare(&fixture.registry, &fixture.interfaces, &unknown,),
         Err(WriteAuthorityError::UnknownInterface(
             "unregistered.interface".to_owned()
         ))
     );
 
-    assert_eq!(fixture.registry.snapshot().evidence_digest64(), authority_digest);
+    assert_eq!(
+        fixture.registry.snapshot().evidence_digest64(),
+        authority_digest
+    );
     assert_eq!(
         fixture.interfaces.snapshot().evidence_digest64(),
         interface_digest
@@ -168,11 +163,8 @@ fn boundary_rejects_derived_and_observation_like_sources_even_with_similar_names
         candidate.source_boundary.as_mut().unwrap().layer = layer;
 
         assert_eq!(
-            CanonicalWriteAuthorityRule.declare(
-                &fixture.registry,
-                &fixture.interfaces,
-                &candidate,
-            ),
+            CanonicalWriteAuthorityRule
+                .declare(&fixture.registry, &fixture.interfaces, &candidate,),
             Err(WriteAuthorityError::NonCanonicalSourceLayer(layer))
         );
     }
@@ -186,22 +178,14 @@ fn authority_wrong_owner_writer_or_interface_binding_is_rejected_before_commit()
     let mut wrong_owner = declaration(&fixture);
     wrong_owner.owner = Some("observer.read_model".to_owned());
     assert!(matches!(
-        CanonicalWriteAuthorityRule.declare(
-            &fixture.registry,
-            &fixture.interfaces,
-            &wrong_owner,
-        ),
+        CanonicalWriteAuthorityRule.declare(&fixture.registry, &fixture.interfaces, &wrong_owner,),
         Err(WriteAuthorityError::WrongOwner { .. })
     ));
 
     let mut wrong_writer = declaration(&fixture);
     wrong_writer.writer = Some("renderer.projection".to_owned());
     assert!(matches!(
-        CanonicalWriteAuthorityRule.declare(
-            &fixture.registry,
-            &fixture.interfaces,
-            &wrong_writer,
-        ),
+        CanonicalWriteAuthorityRule.declare(&fixture.registry, &fixture.interfaces, &wrong_writer,),
         Err(WriteAuthorityError::WrongWriter { .. })
     ));
 
@@ -265,14 +249,13 @@ fn integration_root_to_boundary_to_write_declaration_has_no_shortcut_or_partial_
     let mut invalid = declaration(&fixture);
     invalid.authority = None;
     assert_eq!(
-        CanonicalWriteAuthorityRule.declare(
-            &fixture.registry,
-            &fixture.interfaces,
-            &invalid,
-        ),
+        CanonicalWriteAuthorityRule.declare(&fixture.registry, &fixture.interfaces, &invalid,),
         Err(WriteAuthorityError::MissingField("authority"))
     );
-    assert_eq!(fixture.registry.snapshot().evidence_digest64(), authority_digest);
+    assert_eq!(
+        fixture.registry.snapshot().evidence_digest64(),
+        authority_digest
+    );
 }
 
 #[test]

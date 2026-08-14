@@ -7,7 +7,9 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use crate::authority::{AuthorityRecordId, AuthorityReference, AuthorityRegistry, AuthorityRegistryError};
+use crate::authority::{
+    AuthorityRecordId, AuthorityReference, AuthorityRegistry, AuthorityRegistryError,
+};
 use crate::boundary::{BoundaryResult, StateLayer};
 
 pub const S1_01_04_DECLARATION_VERSION: u32 = 1;
@@ -50,10 +52,7 @@ pub struct WriteInterfaceCatalog {
 }
 
 impl WriteInterfaceCatalog {
-    pub fn register(
-        &mut self,
-        binding: WriteInterfaceBinding,
-    ) -> Result<(), WriteAuthorityError> {
+    pub fn register(&mut self, binding: WriteInterfaceBinding) -> Result<(), WriteAuthorityError> {
         required_text(Some(binding.interface_id.as_str()), "interface_id")?;
         required_text(Some(binding.owner.as_str()), "interface_owner")?;
         required_text(Some(binding.writer.as_str()), "interface_writer")?;
@@ -64,7 +63,9 @@ impl WriteInterfaceCatalog {
             });
         }
         if self.bindings.contains_key(&binding.interface_id) {
-            return Err(WriteAuthorityError::DuplicateInterface(binding.interface_id));
+            return Err(WriteAuthorityError::DuplicateInterface(
+                binding.interface_id,
+            ));
         }
         self.bindings.insert(binding.interface_id.clone(), binding);
         Ok(())
@@ -80,9 +81,7 @@ impl WriteInterfaceCatalog {
         }
     }
 
-    pub fn restore(
-        snapshot: WriteInterfaceCatalogSnapshot,
-    ) -> Result<Self, WriteAuthorityError> {
+    pub fn restore(snapshot: WriteInterfaceCatalogSnapshot) -> Result<Self, WriteAuthorityError> {
         let mut catalog = Self::default();
         for binding in snapshot.bindings {
             catalog.register(binding)?;
@@ -145,42 +144,21 @@ impl WriteAuthorityReceipt {
 pub enum WriteAuthorityError {
     MissingField(&'static str),
     EmptyField(&'static str),
-    UnsupportedDeclarationVersion {
-        expected: u32,
-        found: u32,
-    },
-    UnsupportedInterfaceVersion {
-        interface_id: String,
-        found: u32,
-    },
+    UnsupportedDeclarationVersion { expected: u32, found: u32 },
+    UnsupportedInterfaceVersion { interface_id: String, found: u32 },
     DuplicateInterface(String),
     UnknownInterface(String),
     Authority(AuthorityRegistryError),
     NonCanonicalSourceLayer(StateLayer),
-    FactMismatch {
-        expected: String,
-        found: String,
-    },
+    FactMismatch { expected: String, found: String },
     AuthorityReferenceMismatch,
-    WrongOwner {
-        expected: String,
-        found: String,
-    },
-    WrongWriter {
-        expected: String,
-        found: String,
-    },
-    StaleAuthorityEpoch {
-        expected: u64,
-        found: u64,
-    },
+    WrongOwner { expected: String, found: String },
+    WrongWriter { expected: String, found: String },
+    StaleAuthorityEpoch { expected: u64, found: u64 },
     InterfaceAuthorityMismatch,
     InterfaceOwnerMismatch,
     InterfaceWriterMismatch,
-    InterfaceVersionMismatch {
-        expected: u32,
-        found: u32,
-    },
+    InterfaceVersionMismatch { expected: u32, found: u32 },
 }
 
 impl fmt::Display for WriteAuthorityError {
@@ -207,7 +185,10 @@ impl fmt::Display for WriteAuthorityError {
             }
             Self::Authority(error) => write!(f, "authority validation failed: {error}"),
             Self::NonCanonicalSourceLayer(layer) => {
-                write!(f, "non-canonical source cannot declare canonical writer: {layer:?}")
+                write!(
+                    f,
+                    "non-canonical source cannot declare canonical writer: {layer:?}"
+                )
             }
             Self::FactMismatch { expected, found } => {
                 write!(f, "fact mismatch: expected={expected}, found={found}")
@@ -220,7 +201,10 @@ impl fmt::Display for WriteAuthorityError {
                 write!(f, "wrong writer: expected={expected}, found={found}")
             }
             Self::StaleAuthorityEpoch { expected, found } => {
-                write!(f, "stale authority epoch: expected={expected}, found={found}")
+                write!(
+                    f,
+                    "stale authority epoch: expected={expected}, found={found}"
+                )
             }
             Self::InterfaceAuthorityMismatch => write!(f, "write interface authority mismatch"),
             Self::InterfaceOwnerMismatch => write!(f, "write interface owner mismatch"),
@@ -319,9 +303,7 @@ impl CanonicalWriteAuthorityRule {
                 found: authority_epoch,
             });
         }
-        if boundary.owner != owner
-            || boundary.allowed_writer.as_deref() != Some(writer)
-        {
+        if boundary.owner != owner || boundary.allowed_writer.as_deref() != Some(writer) {
             return Err(WriteAuthorityError::AuthorityReferenceMismatch);
         }
 
