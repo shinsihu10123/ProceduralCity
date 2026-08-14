@@ -1,0 +1,35 @@
+name: Validate production world core
+
+on:
+  push:
+    branches:
+      - main
+      - 'execution/**'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  world-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+
+      - name: Rust format check
+        run: cargo fmt --manifest-path production/Cargo.toml --all -- --check
+
+      - name: Rust Clippy
+        run: cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings
+
+      - name: Rust tests
+        run: cargo test --manifest-path production/Cargo.toml --workspace
