@@ -3,7 +3,7 @@ use gaonn_world_core::authority::{
 };
 use gaonn_world_core::boundary::{
     BoundaryCandidate, BoundaryError, BoundaryWriteTarget, CanonicalDerivedBoundary,
-    CanonicalSourceReference, DerivedStateCache, StateLayer, S1_01_03_BOUNDARY_VERSION,
+    CanonicalSourceReference, DerivedStateCache, S1_01_03_BOUNDARY_VERSION, StateLayer,
 };
 use gaonn_world_core::{CanonicalCandidate, CanonicalStateContract};
 
@@ -216,7 +216,10 @@ fn contract_preserves_authority_id_version_owner_dependency_and_causal_reference
     assert_eq!(result.source.state_version, 1);
     assert_eq!(result.causal_parent, "S1.01.02:authority-registry");
     assert_eq!(
-        registry.resolve_active(&result.source.authority).unwrap().owner,
+        registry
+            .resolve_active(&result.source.authority)
+            .unwrap()
+            .owner,
         "domain01.celestial_frame"
     );
 }

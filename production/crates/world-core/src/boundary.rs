@@ -84,18 +84,35 @@ impl BoundaryResult {
 pub enum BoundaryError {
     MissingField(&'static str),
     EmptyField(&'static str),
-    UnsupportedVersion { expected: u32, found: u32 },
+    UnsupportedVersion {
+        expected: u32,
+        found: u32,
+    },
     Authority(AuthorityRegistryError),
-    CanonicalFactMismatch { state_key: String, source_fact: String },
-    WrongOwner { expected: String, found: String },
-    WrongWriter { expected: String, found: Option<String> },
+    CanonicalFactMismatch {
+        state_key: String,
+        source_fact: String,
+    },
+    WrongOwner {
+        expected: String,
+        found: String,
+    },
+    WrongWriter {
+        expected: String,
+        found: Option<String>,
+    },
     InvalidWriteTarget {
         layer: StateLayer,
         target: BoundaryWriteTarget,
     },
-    ReverseCanonicalWrite { layer: StateLayer },
+    ReverseCanonicalWrite {
+        layer: StateLayer,
+    },
     ObservationWriterDeclared(String),
-    SourceRegression { current: u64, requested: u64 },
+    SourceRegression {
+        current: u64,
+        requested: u64,
+    },
     DerivedNotStale(String),
     UnknownDerivedState(String),
 }
@@ -118,20 +135,32 @@ impl fmt::Display for BoundaryError {
                 "canonical state key/source mismatch: state={state_key}, source={source_fact}"
             ),
             Self::WrongOwner { expected, found } => {
-                write!(f, "boundary owner mismatch: expected={expected}, found={found}")
+                write!(
+                    f,
+                    "boundary owner mismatch: expected={expected}, found={found}"
+                )
             }
             Self::WrongWriter { expected, found } => write!(
                 f,
                 "boundary writer mismatch: expected={expected}, found={found:?}"
             ),
             Self::InvalidWriteTarget { layer, target } => {
-                write!(f, "invalid boundary write target: layer={layer:?}, target={target:?}")
+                write!(
+                    f,
+                    "invalid boundary write target: layer={layer:?}, target={target:?}"
+                )
             }
             Self::ReverseCanonicalWrite { layer } => {
-                write!(f, "non-canonical reverse write to canonical state: {layer:?}")
+                write!(
+                    f,
+                    "non-canonical reverse write to canonical state: {layer:?}"
+                )
             }
             Self::ObservationWriterDeclared(writer) => {
-                write!(f, "observation view is read-only; writer declared: {writer}")
+                write!(
+                    f,
+                    "observation view is read-only; writer declared: {writer}"
+                )
             }
             Self::SourceRegression { current, requested } => write!(
                 f,
@@ -326,7 +355,10 @@ pub struct DerivedStateCache {
 
 impl DerivedStateCache {
     pub fn register(&mut self, boundary: &BoundaryResult) -> Result<(), BoundaryError> {
-        if !matches!(boundary.layer, StateLayer::Derived | StateLayer::TransientCache) {
+        if !matches!(
+            boundary.layer,
+            StateLayer::Derived | StateLayer::TransientCache
+        ) {
             return Err(BoundaryError::InvalidWriteTarget {
                 layer: boundary.layer,
                 target: BoundaryWriteTarget::OwnLayer,
@@ -434,7 +466,10 @@ impl DerivedStateCache {
     }
 }
 
-fn required_text<'a>(value: Option<&'a str>, field: &'static str) -> Result<&'a str, BoundaryError> {
+fn required_text<'a>(
+    value: Option<&'a str>,
+    field: &'static str,
+) -> Result<&'a str, BoundaryError> {
     let value = value.ok_or(BoundaryError::MissingField(field))?;
     if value.trim().is_empty() {
         return Err(BoundaryError::EmptyField(field));
