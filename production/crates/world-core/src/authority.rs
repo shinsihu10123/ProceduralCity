@@ -368,14 +368,14 @@ impl AuthorityRegistry {
             });
         }
 
-        if let Some(existing_owner) = self.namespace_owners.get(&registration.id.namespace) {
-            if existing_owner != &registration.owner {
-                return Err(AuthorityRegistryError::NamespaceOwnerConflict {
-                    namespace: registration.id.namespace,
-                    existing_owner: existing_owner.clone(),
-                    requested_owner: registration.owner,
-                });
-            }
+        if let Some(existing_owner) = self.namespace_owners.get(&registration.id.namespace)
+            && existing_owner != &registration.owner
+        {
+            return Err(AuthorityRegistryError::NamespaceOwnerConflict {
+                namespace: registration.id.namespace,
+                existing_owner: existing_owner.clone(),
+                requested_owner: registration.owner,
+            });
         }
 
         if let Some(existing) = self.records.get(&registration.id) {
