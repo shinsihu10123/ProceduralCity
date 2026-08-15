@@ -1,12 +1,10 @@
 use gaonn_world_core::acceptance::{
     AcceptanceReviewError, AcceptanceReviewRequest, AcceptanceVerdict, MemberL3Evidence,
-    ReviewIssueKind, ReviewOrigin, S101AcceptanceReviewer, TestVerdict,
-    S1_01_08_ACCEPTANCE_OWNER, S1_01_08_ACCEPTANCE_SCHEMA_VERSION,
+    ReviewIssueKind, ReviewOrigin, S1_01_08_ACCEPTANCE_OWNER, S1_01_08_ACCEPTANCE_SCHEMA_VERSION,
+    S101AcceptanceReviewer, TestVerdict,
 };
 use gaonn_world_core::authority::AuthorityRecordId;
-use gaonn_world_core::exclusion_audit::{
-    NonCanonicalAuditEvidence, S1_01_07_AUDIT_SCHEMA_VERSION,
-};
+use gaonn_world_core::exclusion_audit::{NonCanonicalAuditEvidence, S1_01_07_AUDIT_SCHEMA_VERSION};
 use gaonn_world_core::{CanonicalCandidate, CanonicalStateContract, ValidationReceipt};
 
 const RUN_ID: &str = "wp001-acceptance-run-001";
@@ -67,13 +65,7 @@ fn member_fixture(work_id: &str) -> MemberL3Evidence {
 
 fn member_set() -> Vec<MemberL3Evidence> {
     [
-        "S1.01.01",
-        "S1.01.02",
-        "S1.01.03",
-        "S1.01.04",
-        "S1.01.05",
-        "S1.01.06",
-        "S1.01.07",
+        "S1.01.01", "S1.01.02", "S1.01.03", "S1.01.04", "S1.01.05", "S1.01.06", "S1.01.07",
     ]
     .into_iter()
     .map(member_fixture)
@@ -127,12 +119,7 @@ fn behavior_failure_missing_evidence_blocks_and_failed_test_cannot_be_promoted()
     promoted_failure[4].behavior_verdict = TestVerdict::Fail;
     promoted_failure[4].declared_pass = true;
     let failed = S101AcceptanceReviewer
-        .review(
-            &request_fixture(),
-            &root,
-            Some(&audit),
-            &promoted_failure,
-        )
+        .review(&request_fixture(), &root, Some(&audit), &promoted_failure)
         .expect("failed test promotion must yield an explicit fail record");
     assert_eq!(failed.verdict, AcceptanceVerdict::Fail);
     assert!(failed.issues.iter().any(|issue| {
@@ -302,11 +289,16 @@ fn frozen_baseline_change_request_blocks_closure_without_reclassifying_failure()
 
     assert_eq!(record.verdict, AcceptanceVerdict::Blocked);
     assert!(record.downstream_blocked);
-    assert!(record
-        .issues
-        .iter()
-        .any(|issue| issue.kind == ReviewIssueKind::BaselineChangeRequested));
-    assert_eq!(request.schema_version, Some(S1_01_08_ACCEPTANCE_SCHEMA_VERSION));
+    assert!(
+        record
+            .issues
+            .iter()
+            .any(|issue| issue.kind == ReviewIssueKind::BaselineChangeRequested)
+    );
+    assert_eq!(
+        request.schema_version,
+        Some(S1_01_08_ACCEPTANCE_SCHEMA_VERSION)
+    );
     assert_eq!(
         request.actor_owner.as_deref(),
         Some(S1_01_08_ACCEPTANCE_OWNER)

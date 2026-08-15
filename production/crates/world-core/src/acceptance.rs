@@ -8,22 +8,14 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-use crate::exclusion_audit::{
-    NonCanonicalAuditEvidence, S1_01_07_AUDIT_SCHEMA_VERSION,
-};
-use crate::{ValidationReceipt, S1_01_01_CONTRACT_VERSION};
+use crate::exclusion_audit::{NonCanonicalAuditEvidence, S1_01_07_AUDIT_SCHEMA_VERSION};
+use crate::{S1_01_01_CONTRACT_VERSION, ValidationReceipt};
 
 pub const S1_01_08_ACCEPTANCE_SCHEMA_VERSION: u32 = 1;
 pub const S1_01_08_ACCEPTANCE_OWNER: &str = "world-core.validation.acceptance";
 const OPERANDS: [&str; 3] = ["Canonical", "Authority", "Registry"];
 const REQUIRED_MEMBERS: [&str; 7] = [
-    "S1.01.01",
-    "S1.01.02",
-    "S1.01.03",
-    "S1.01.04",
-    "S1.01.05",
-    "S1.01.06",
-    "S1.01.07",
+    "S1.01.01", "S1.01.02", "S1.01.03", "S1.01.04", "S1.01.05", "S1.01.06", "S1.01.07",
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -266,7 +258,10 @@ impl fmt::Display for AcceptanceReviewError {
                 write!(f, "unauthorized acceptance review origin: {origin:?}")
             }
             Self::WrongReviewOwner { expected, found } => {
-                write!(f, "wrong acceptance review owner: expected={expected}, found={found}")
+                write!(
+                    f,
+                    "wrong acceptance review owner: expected={expected}, found={found}"
+                )
             }
             Self::CorruptRecord(reason) => write!(f, "corrupt acceptance record: {reason}"),
         }
@@ -312,13 +307,7 @@ impl S101AcceptanceReviewer {
 
         let (audit_digest, pre_state_digest, post_state_digest) = match predecessor_audit {
             Some(audit) => {
-                validate_predecessor_audit(
-                    audit,
-                    root,
-                    run_identity,
-                    source_version,
-                    &mut issues,
-                );
+                validate_predecessor_audit(audit, root, run_identity, source_version, &mut issues);
                 (
                     Some(audit.evidence_digest64()),
                     audit.pre_state_digest,
@@ -359,12 +348,8 @@ impl S101AcceptanceReviewer {
         for work_id in REQUIRED_MEMBERS {
             match by_id.get(work_id) {
                 Some(member) => {
-                    let verdict = validate_member(
-                        member,
-                        run_identity,
-                        source_version,
-                        &mut issues,
-                    );
+                    let verdict =
+                        validate_member(member, run_identity, source_version, &mut issues);
                     member_results.push(MemberReviewResult {
                         work_id: work_id.to_owned(),
                         verdict,
@@ -420,8 +405,7 @@ impl S101AcceptanceReviewer {
             operands: OPERANDS,
             member_results,
             issues,
-            required_output:
-                "Implemented + validated L3 set S1.01.01…S1.01.08; evidence and acceptance record.",
+            required_output: "Implemented + validated L3 set S1.01.01…S1.01.08; evidence and acceptance record.",
         })
     }
 }
@@ -638,11 +622,7 @@ fn merge_test_verdict(
     }
 }
 
-fn member_issue(
-    member: &MemberL3Evidence,
-    kind: ReviewIssueKind,
-    detail: &str,
-) -> ReviewIssue {
+fn member_issue(member: &MemberL3Evidence, kind: ReviewIssueKind, detail: &str) -> ReviewIssue {
     ReviewIssue {
         work_id: Some(member.work_id.clone()),
         kind,
