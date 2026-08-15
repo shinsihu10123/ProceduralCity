@@ -5,6 +5,8 @@
 //! It validates a stable identity candidate against the frozen owner/causal boundary and
 //! produces candidate-only evidence. Canonical mutation remains downstream.
 
+pub mod namespace_versioning;
+
 use std::fmt;
 
 use gaonn_world_core::acceptance::{AcceptanceRecord, AcceptanceVerdict};

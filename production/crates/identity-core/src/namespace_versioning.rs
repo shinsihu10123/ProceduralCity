@@ -129,7 +129,9 @@ impl NamespaceVersioningOutcome {
         }
     }
 
-    pub fn restore(snapshot: NamespaceVersioningSnapshot) -> Result<Self, NamespaceVersioningRejection> {
+    pub fn restore(
+        snapshot: NamespaceVersioningSnapshot,
+    ) -> Result<Self, NamespaceVersioningRejection> {
         if snapshot.schema_version != S1_02_02_SCHEMA_VERSION {
             return Err(NamespaceVersioningRejection::UnsupportedSnapshotVersion {
                 expected: S1_02_02_SCHEMA_VERSION,
@@ -138,7 +140,9 @@ impl NamespaceVersioningOutcome {
         }
         let outcome = snapshot.outcome;
         if outcome.work_id != "S1.02.02" || outcome.work_package != "WP-002" {
-            return Err(NamespaceVersioningRejection::CorruptSnapshot("wrong work identity"));
+            return Err(NamespaceVersioningRejection::CorruptSnapshot(
+                "wrong work identity",
+            ));
         }
         if outcome.disposition != IdentityDisposition::CandidateOnly {
             return Err(NamespaceVersioningRejection::CorruptSnapshot(
@@ -225,7 +229,9 @@ impl fmt::Display for NamespaceVersioningRejection {
                 f,
                 "unsupported namespace/versioning snapshot version: expected={expected}, found={found}"
             ),
-            Self::CorruptSnapshot(reason) => write!(f, "corrupt namespace/versioning snapshot: {reason}"),
+            Self::CorruptSnapshot(reason) => {
+                write!(f, "corrupt namespace/versioning snapshot: {reason}")
+            }
         }
     }
 }
@@ -260,9 +266,12 @@ impl NamespaceVersioningProcessor {
             });
         }
 
-        let source_identity_version = request
-            .source_identity_version
-            .ok_or(NamespaceVersioningRejection::MissingField("source_identity_version"))?;
+        let source_identity_version =
+            request
+                .source_identity_version
+                .ok_or(NamespaceVersioningRejection::MissingField(
+                    "source_identity_version",
+                ))?;
         if source_identity_version != stable_identity.schema_version {
             return Err(NamespaceVersioningRejection::StaleIdentityVersion {
                 expected: stable_identity.schema_version,
@@ -270,14 +279,10 @@ impl NamespaceVersioningProcessor {
             });
         }
 
-        let namespace_version = required_text(
-            request.namespace_version.as_deref(),
-            "namespace_version",
-        )?;
-        let lifecycle_lineage = required_text(
-            request.lifecycle_lineage.as_deref(),
-            "lifecycle_lineage",
-        )?;
+        let namespace_version =
+            required_text(request.namespace_version.as_deref(), "namespace_version")?;
+        let lifecycle_lineage =
+            required_text(request.lifecycle_lineage.as_deref(), "lifecycle_lineage")?;
         let issuance_scope = required_text(request.issuance_scope.as_deref(), "issuance_scope")?;
         let collision_prevention_rule = required_text(
             request.collision_prevention_rule.as_deref(),
@@ -398,9 +403,7 @@ fn validate_predecessor(
         return Err(NamespaceVersioningRejection::InvalidRoot("owner"));
     }
     if stable_identity.root_causal_parent != root.causal_parent {
-        return Err(NamespaceVersioningRejection::InvalidRoot(
-            "causal_parent",
-        ));
+        return Err(NamespaceVersioningRejection::InvalidRoot("causal_parent"));
     }
     Ok(())
 }
