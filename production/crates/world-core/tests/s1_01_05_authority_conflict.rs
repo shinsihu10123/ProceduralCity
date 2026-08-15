@@ -1,13 +1,11 @@
-use gaonn_world_core::authority::{
-    AuthorityRecordId, AuthorityRegistration, AuthorityRegistry,
-};
+use gaonn_world_core::authority::{AuthorityRecordId, AuthorityRegistration, AuthorityRegistry};
 use gaonn_world_core::boundary::{
     BoundaryCandidate, BoundaryWriteTarget, CanonicalDerivedBoundary, CanonicalSourceReference,
     S1_01_03_BOUNDARY_VERSION, StateLayer,
 };
 use gaonn_world_core::conflict::{
-    AuthorityConflictDetector, CompetingWriteIntent, ConflictInput, ConflictInputError, ConflictKind,
-    IntentAccess, S1_01_05_CONFLICT_VERSION, WriteScope,
+    AuthorityConflictDetector, CompetingWriteIntent, ConflictInput, ConflictInputError,
+    ConflictKind, IntentAccess, S1_01_05_CONFLICT_VERSION, WriteScope,
 };
 use gaonn_world_core::write_authority::{
     CanonicalWriteAuthorityRule, S1_01_04_DECLARATION_VERSION, WriteAuthorityDeclaration,
@@ -216,7 +214,10 @@ fn authority_detects_duplicate_owner_and_noncanonical_writer_claim_without_mutat
         let result = AuthorityConflictDetector
             .detect(&fixture.registry, &fixture.receipt, &noncanonical)
             .unwrap();
-        assert_eq!(result.conflict, ConflictKind::NonCanonicalWriterClaim(layer));
+        assert_eq!(
+            result.conflict,
+            ConflictKind::NonCanonicalWriterClaim(layer)
+        );
         assert!(result.block_commit);
     }
 
@@ -239,11 +240,7 @@ fn contract_requires_exact_s1_01_04_authority_owner_writer_and_causal_reference(
     let mut mismatched_receipt = fixture.receipt.clone();
     mismatched_receipt.writer = "component.other".to_owned();
     assert_eq!(
-        AuthorityConflictDetector.detect(
-            &fixture.registry,
-            &mismatched_receipt,
-            &input(&fixture),
-        ),
+        AuthorityConflictDetector.detect(&fixture.registry, &mismatched_receipt, &input(&fixture),),
         Err(ConflictInputError::UpstreamReceiptMismatch("writer"))
     );
 }
