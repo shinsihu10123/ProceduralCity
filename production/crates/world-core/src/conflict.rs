@@ -181,11 +181,13 @@ impl AuthorityConflictDetector {
         }
 
         let state_key = required_text(input.state_key.as_deref(), "state_key")?;
-        let registered_owner = required_text(input.registered_owner.as_deref(), "registered_owner")?;
+        let registered_owner =
+            required_text(input.registered_owner.as_deref(), "registered_owner")?;
         let registered_writer =
             required_text(input.registered_writer.as_deref(), "registered_writer")?;
         let candidate_owner = required_text(input.candidate_owner.as_deref(), "candidate_owner")?;
-        let candidate_writer = required_text(input.candidate_writer.as_deref(), "candidate_writer")?;
+        let candidate_writer =
+            required_text(input.candidate_writer.as_deref(), "candidate_writer")?;
         let candidate_epoch = input
             .authority_epoch
             .ok_or(ConflictInputError::MissingField("authority_epoch"))?;
@@ -219,12 +221,22 @@ impl AuthorityConflictDetector {
         let authority = registry.resolve_active(authority_ref)?;
         let pre_state_digest = registry.snapshot().evidence_digest64();
 
-        verify_upstream(upstream, state_key, authority_ref, authority.owner.as_str(), authority.allowed_writer.as_str())?;
+        verify_upstream(
+            upstream,
+            state_key,
+            authority_ref,
+            authority.owner.as_str(),
+            authority.allowed_writer.as_str(),
+        )?;
         if registered_owner != authority.owner {
-            return Err(ConflictInputError::UpstreamReceiptMismatch("registered_owner"));
+            return Err(ConflictInputError::UpstreamReceiptMismatch(
+                "registered_owner",
+            ));
         }
         if registered_writer != authority.allowed_writer {
-            return Err(ConflictInputError::UpstreamReceiptMismatch("registered_writer"));
+            return Err(ConflictInputError::UpstreamReceiptMismatch(
+                "registered_writer",
+            ));
         }
 
         let conflict = if candidate_access == IntentAccess::ReadOnly {
