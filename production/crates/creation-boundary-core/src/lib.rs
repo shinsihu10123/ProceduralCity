@@ -151,10 +151,12 @@ impl CommittedEntityCreationValidation {
         snapshot: CommittedEntityCreationSnapshot,
     ) -> Result<Self, CommittedEntityCreationRejection> {
         if snapshot.schema_version != S1_02_04_SCHEMA_VERSION {
-            return Err(CommittedEntityCreationRejection::UnsupportedSnapshotVersion {
-                expected: S1_02_04_SCHEMA_VERSION,
-                found: snapshot.schema_version,
-            });
+            return Err(
+                CommittedEntityCreationRejection::UnsupportedSnapshotVersion {
+                    expected: S1_02_04_SCHEMA_VERSION,
+                    found: snapshot.schema_version,
+                },
+            );
         }
         let validation = snapshot.validation;
         if validation.work_id != "S1.02.04" || validation.work_package != "WP-002" {
@@ -197,24 +199,48 @@ pub struct CommittedEntityCreationSnapshot {
 pub enum CommittedEntityCreationRejection {
     MissingField(&'static str),
     EmptyField(&'static str),
-    StaleSchemaVersion { expected: u32, found: u32 },
-    StaleLifecycleSchemaVersion { expected: u32, found: u32 },
-    PredecessorDigestMismatch { expected: u64, found: u64 },
-    StableIdMismatch { expected: String, found: String },
-    LifecycleStateMismatch { expected: LifecycleState, found: LifecycleState },
+    StaleSchemaVersion {
+        expected: u32,
+        found: u32,
+    },
+    StaleLifecycleSchemaVersion {
+        expected: u32,
+        found: u32,
+    },
+    PredecessorDigestMismatch {
+        expected: u64,
+        found: u64,
+    },
+    StableIdMismatch {
+        expected: String,
+        found: String,
+    },
+    LifecycleStateMismatch {
+        expected: LifecycleState,
+        found: LifecycleState,
+    },
     TransitionMismatch {
         expected: LifecycleTransition,
         found: LifecycleTransition,
     },
     ReferenceIntegrityNotVerified(ReferenceIntegrityStatus),
-    WrongOwner { expected: String, found: String },
-    WrongWriter { expected: String, found: String },
+    WrongOwner {
+        expected: String,
+        found: String,
+    },
+    WrongWriter {
+        expected: String,
+        found: String,
+    },
     UnauthorizedOrigin(IdentityOrigin),
     IncompletePhase(IdentityOperationPhase),
     OutOfScopeBoundary(CreationBoundarySubject),
     InvalidPredecessor(&'static str),
     InvalidRoot(&'static str),
-    UnsupportedSnapshotVersion { expected: u32, found: u32 },
+    UnsupportedSnapshotVersion {
+        expected: u32,
+        found: u32,
+    },
     CorruptSnapshot(&'static str),
 }
 
@@ -328,11 +354,12 @@ impl CommittedEntityCreationBoundary {
             );
         }
 
-        let lifecycle_state = request
-            .lifecycle_state
-            .ok_or(CommittedEntityCreationRejection::MissingField(
-                "lifecycle_state",
-            ))?;
+        let lifecycle_state =
+            request
+                .lifecycle_state
+                .ok_or(CommittedEntityCreationRejection::MissingField(
+                    "lifecycle_state",
+                ))?;
         if lifecycle_state != predecessor.candidate_state {
             return Err(CommittedEntityCreationRejection::LifecycleStateMismatch {
                 expected: predecessor.candidate_state,
@@ -350,9 +377,12 @@ impl CommittedEntityCreationBoundary {
             });
         }
 
-        let reference_integrity = request.reference_integrity.ok_or(
-            CommittedEntityCreationRejection::MissingField("reference_integrity"),
-        )?;
+        let reference_integrity =
+            request
+                .reference_integrity
+                .ok_or(CommittedEntityCreationRejection::MissingField(
+                    "reference_integrity",
+                ))?;
         if reference_integrity != ReferenceIntegrityStatus::Verified {
             return Err(
                 CommittedEntityCreationRejection::ReferenceIntegrityNotVerified(
@@ -370,11 +400,12 @@ impl CommittedEntityCreationBoundary {
             "creation_provenance",
         )?;
 
-        let schema_version = request
-            .schema_version
-            .ok_or(CommittedEntityCreationRejection::MissingField(
-                "schema_version",
-            ))?;
+        let schema_version =
+            request
+                .schema_version
+                .ok_or(CommittedEntityCreationRejection::MissingField(
+                    "schema_version",
+                ))?;
         if schema_version != S1_02_04_SCHEMA_VERSION {
             return Err(CommittedEntityCreationRejection::StaleSchemaVersion {
                 expected: S1_02_04_SCHEMA_VERSION,
@@ -412,13 +443,14 @@ impl CommittedEntityCreationBoundary {
             .origin
             .ok_or(CommittedEntityCreationRejection::MissingField("origin"))?;
         if origin != IdentityOrigin::OwningResolver {
-            return Err(CommittedEntityCreationRejection::UnauthorizedOrigin(
-                origin,
-            ));
+            return Err(CommittedEntityCreationRejection::UnauthorizedOrigin(origin));
         }
-        let boundary_subject = request.boundary_subject.ok_or(
-            CommittedEntityCreationRejection::MissingField("boundary_subject"),
-        )?;
+        let boundary_subject =
+            request
+                .boundary_subject
+                .ok_or(CommittedEntityCreationRejection::MissingField(
+                    "boundary_subject",
+                ))?;
         if boundary_subject != CreationBoundarySubject::CommittedEntityCreation {
             return Err(CommittedEntityCreationRejection::OutOfScopeBoundary(
                 boundary_subject,

@@ -27,13 +27,7 @@ fn root_fixture() -> ValidationReceipt {
 
 fn wp001_fixture(root: &ValidationReceipt) -> AcceptanceRecord {
     let member_results = [
-        "S1.01.01",
-        "S1.01.02",
-        "S1.01.03",
-        "S1.01.04",
-        "S1.01.05",
-        "S1.01.06",
-        "S1.01.07",
+        "S1.01.01", "S1.01.02", "S1.01.03", "S1.01.04", "S1.01.05", "S1.01.06", "S1.01.07",
     ]
     .into_iter()
     .map(|work_id| MemberReviewResult {
@@ -63,8 +57,7 @@ fn wp001_fixture(root: &ValidationReceipt) -> AcceptanceRecord {
         operands: ["Canonical", "Authority", "Registry"],
         member_results,
         issues: Vec::new(),
-        required_output:
-            "Implemented + validated L3 set S1.01.01…S1.01.08; evidence and acceptance record.",
+        required_output: "Implemented + validated L3 set S1.01.01…S1.01.08; evidence and acceptance record.",
     }
 }
 
@@ -112,7 +105,10 @@ fn behavior_normal_valid_creation_boundary_returns_versioned_candidate_only_vali
     assert_eq!(result.stable_id, lifecycle.stable_id);
     assert_eq!(result.lifecycle_state, lifecycle.candidate_state);
     assert_eq!(result.validated_transition, lifecycle.pending_transition);
-    assert_eq!(result.reference_integrity, ReferenceIntegrityStatus::Verified);
+    assert_eq!(
+        result.reference_integrity,
+        ReferenceIntegrityStatus::Verified
+    );
     assert_eq!(result.owner, S1_02_04_OWNER);
     assert_eq!(result.disposition, IdentityDisposition::CandidateOnly);
     assert_eq!(
@@ -163,7 +159,9 @@ fn boundary_scope_excludes_projection_and_similar_named_out_of_scope_state() {
         request.boundary_subject = Some(subject);
         assert_eq!(
             CommittedEntityCreationBoundary.validate(&request, &root, &lifecycle),
-            Err(CommittedEntityCreationRejection::OutOfScopeBoundary(subject))
+            Err(CommittedEntityCreationRejection::OutOfScopeBoundary(
+                subject
+            ))
         );
     }
 
@@ -244,7 +242,10 @@ fn contract_preserves_root_and_s1_02_03_causal_references() {
 
     assert_eq!(result.predecessor_work_id, "S1.02.03");
     assert_eq!(result.predecessor_work_package, "WP-002");
-    assert_eq!(result.predecessor_evidence_digest, lifecycle.evidence_digest64());
+    assert_eq!(
+        result.predecessor_evidence_digest,
+        lifecycle.evidence_digest64()
+    );
     assert_eq!(result.root_fact_key, root.fact_key);
     assert_eq!(result.root_contract_version, root.contract_version);
     assert_eq!(result.root_owner, root.owner);
@@ -256,9 +257,11 @@ fn integration_root_to_lifecycle_to_creation_boundary_has_no_shortcut_and_propag
     let root = root_fixture();
     let lifecycle = lifecycle_fixture(&root);
     let request = CommittedEntityCreationRequest::valid_fixture(&lifecycle);
-    assert!(CommittedEntityCreationBoundary
-        .validate(&request, &root, &lifecycle)
-        .is_ok());
+    assert!(
+        CommittedEntityCreationBoundary
+            .validate(&request, &root, &lifecycle)
+            .is_ok()
+    );
 
     let mut mismatched_root = root.clone();
     mismatched_root.causal_parent = "other-root".to_owned();
@@ -292,9 +295,7 @@ fn reference_integrity_and_transition_must_be_explicitly_valid() {
         request.reference_integrity = Some(status);
         assert_eq!(
             CommittedEntityCreationBoundary.validate(&request, &root, &lifecycle),
-            Err(CommittedEntityCreationRejection::ReferenceIntegrityNotVerified(
-                status
-            ))
+            Err(CommittedEntityCreationRejection::ReferenceIntegrityNotVerified(status))
         );
     }
 
