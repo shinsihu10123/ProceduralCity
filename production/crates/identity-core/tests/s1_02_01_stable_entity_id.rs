@@ -1,11 +1,10 @@
-use gaonn_world_core::acceptance::{
-    AcceptanceRecord, AcceptanceVerdict, MemberReviewResult,
-    S1_01_08_ACCEPTANCE_SCHEMA_VERSION,
-};
 use gaonn_identity_core::{
     IdentityDisposition, IdentityIdSource, IdentityOperationPhase, IdentityOrigin,
-    IdentityRejection, StableIdentityOutcome, StableIdentityProcessor, StableIdentityRequest,
-    S1_02_01_OWNER, S1_02_01_SCHEMA_VERSION,
+    IdentityRejection, S1_02_01_OWNER, S1_02_01_SCHEMA_VERSION, StableIdentityOutcome,
+    StableIdentityProcessor, StableIdentityRequest,
+};
+use gaonn_world_core::acceptance::{
+    AcceptanceRecord, AcceptanceVerdict, MemberReviewResult, S1_01_08_ACCEPTANCE_SCHEMA_VERSION,
 };
 use gaonn_world_core::{CanonicalCandidate, CanonicalStateContract, ValidationReceipt};
 
@@ -17,13 +16,7 @@ fn root_fixture() -> ValidationReceipt {
 
 fn predecessor_fixture(root: &ValidationReceipt) -> AcceptanceRecord {
     let member_results = [
-        "S1.01.01",
-        "S1.01.02",
-        "S1.01.03",
-        "S1.01.04",
-        "S1.01.05",
-        "S1.01.06",
-        "S1.01.07",
+        "S1.01.01", "S1.01.02", "S1.01.03", "S1.01.04", "S1.01.05", "S1.01.06", "S1.01.07",
     ]
     .into_iter()
     .map(|work_id| MemberReviewResult {
@@ -53,8 +46,7 @@ fn predecessor_fixture(root: &ValidationReceipt) -> AcceptanceRecord {
         operands: ["Canonical", "Authority", "Registry"],
         member_results,
         issues: Vec::new(),
-        required_output:
-            "Implemented + validated L3 set S1.01.01…S1.01.08; evidence and acceptance record.",
+        required_output: "Implemented + validated L3 set S1.01.01…S1.01.08; evidence and acceptance record.",
     }
 }
 
@@ -193,11 +185,7 @@ fn contract_requires_closed_wp001_and_preserves_root_and_predecessor_references(
     let root = root_fixture();
     let predecessor = predecessor_fixture(&root);
     let outcome = StableIdentityProcessor
-        .evaluate(
-            &StableIdentityRequest::valid_fixture(),
-            &root,
-            &predecessor,
-        )
+        .evaluate(&StableIdentityRequest::valid_fixture(), &root, &predecessor)
         .unwrap();
 
     assert_eq!(outcome.predecessor_work_id, "S1.01.08");
@@ -215,11 +203,7 @@ fn contract_requires_closed_wp001_and_preserves_root_and_predecessor_references(
     blocked.verdict = AcceptanceVerdict::Blocked;
     blocked.downstream_blocked = true;
     assert!(matches!(
-        StableIdentityProcessor.evaluate(
-            &StableIdentityRequest::valid_fixture(),
-            &root,
-            &blocked,
-        ),
+        StableIdentityProcessor.evaluate(&StableIdentityRequest::valid_fixture(), &root, &blocked,),
         Err(IdentityRejection::InvalidPredecessor(_))
     ));
 }

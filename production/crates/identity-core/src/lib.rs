@@ -8,7 +8,7 @@
 use std::fmt;
 
 use gaonn_world_core::acceptance::{AcceptanceRecord, AcceptanceVerdict};
-use gaonn_world_core::{ValidationReceipt, S1_01_01_CONTRACT_VERSION};
+use gaonn_world_core::{S1_01_01_CONTRACT_VERSION, ValidationReceipt};
 
 pub const S1_02_01_SCHEMA_VERSION: u32 = 1;
 pub const S1_02_01_OWNER: &str = "identity-core.entity-identity-registry";
@@ -173,7 +173,9 @@ impl StableIdentityOutcome {
             ));
         }
         if outcome.operands != OPERANDS {
-            return Err(IdentityRejection::CorruptSnapshot("frozen operands changed"));
+            return Err(IdentityRejection::CorruptSnapshot(
+                "frozen operands changed",
+            ));
         }
         required_snapshot_text(&outcome.stable_id, "stable_id")?;
         required_snapshot_text(&outcome.namespace, "namespace")?;
@@ -216,7 +218,10 @@ impl fmt::Display for IdentityRejection {
                 "unsupported stable identity schema version: expected={expected}, found={found}"
             ),
             Self::WrongOwner { expected, found } => {
-                write!(f, "wrong PA-003 identity owner: expected={expected}, found={found}")
+                write!(
+                    f,
+                    "wrong PA-003 identity owner: expected={expected}, found={found}"
+                )
             }
             Self::WrongWriter { expected, found } => write!(
                 f,
@@ -269,10 +274,11 @@ impl StableIdentityProcessor {
         let stable_id = required_text(request.stable_id.as_deref(), "stable_id")?;
         let namespace = required_text(request.namespace.as_deref(), "namespace")?;
         let entity_kind = required_text(request.entity_kind.as_deref(), "entity_kind")?;
-        let creation_provenance =
-            required_text(request.creation_provenance.as_deref(), "creation_provenance")?;
-        let lifecycle_state =
-            required_text(request.lifecycle_state.as_deref(), "lifecycle_state")?;
+        let creation_provenance = required_text(
+            request.creation_provenance.as_deref(),
+            "creation_provenance",
+        )?;
+        let lifecycle_state = required_text(request.lifecycle_state.as_deref(), "lifecycle_state")?;
         let reference_integrity_evidence = required_text(
             request.reference_integrity_evidence.as_deref(),
             "reference_integrity_evidence",
@@ -304,8 +310,10 @@ impl StableIdentityProcessor {
         }
 
         let causal_parent = required_text(request.causal_parent.as_deref(), "causal_parent")?;
-        let completion_evidence =
-            required_text(request.completion_evidence.as_deref(), "completion_evidence")?;
+        let completion_evidence = required_text(
+            request.completion_evidence.as_deref(),
+            "completion_evidence",
+        )?;
 
         let phase = request
             .phase
@@ -429,10 +437,7 @@ fn required_text<'a>(
     Ok(value)
 }
 
-fn required_snapshot_text(
-    value: &str,
-    field: &'static str,
-) -> Result<(), IdentityRejection> {
+fn required_snapshot_text(value: &str, field: &'static str) -> Result<(), IdentityRejection> {
     if value.trim().is_empty() {
         return Err(IdentityRejection::CorruptSnapshot(field));
     }
