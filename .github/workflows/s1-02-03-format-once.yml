@@ -1,0 +1,42 @@
+name: One-time format S1.02.03
+
+on:
+  push:
+    branches:
+      - execution/week1-wp002-s1-02-03
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: execution/week1-wp002-s1-02-03
+
+      - name: Format, validate, and commit once
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          if [ "$COMMIT_MESSAGE" = "fix(lifecycle-core): rustfmt S1.02.03" ]; then
+            echo "Format commit observed; nothing to do."
+            exit 0
+          fi
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+          cargo fmt --manifest-path production/Cargo.toml --all
+          cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings
+          cargo test --manifest-path production/Cargo.toml --workspace
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add production/crates/lifecycle-core production/Cargo.lock
+          if git diff --cached --quiet; then
+            echo "No formatting changes needed"
+            exit 0
+          fi
+          git commit -m "fix(lifecycle-core): rustfmt S1.02.03"
+          git push origin HEAD:execution/week1-wp002-s1-02-03
