@@ -9,6 +9,7 @@
 pub mod authority;
 pub mod boundary;
 pub mod conflict;
+pub mod manifest;
 pub mod write_authority;
 
 use std::fmt;
