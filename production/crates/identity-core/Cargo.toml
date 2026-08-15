@@ -1,0 +1,11 @@
+[package]
+name = "gaonn-identity-core"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+gaonn-world-core = { path = "../world-core" }
