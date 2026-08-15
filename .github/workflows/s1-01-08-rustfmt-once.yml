@@ -1,0 +1,40 @@
+name: One-time rustfmt S1.01.08
+
+on:
+  push:
+    branches:
+      - execution/week1-wp001-s1-01-01
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.event.head_commit.message != 'chore(world-core): rustfmt S1.01.08'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: execution/week1-wp001-s1-01-01
+
+      - name: Install stable Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt
+          rustup default stable
+
+      - name: Format S1.01.08 files
+        run: cargo fmt --manifest-path production/Cargo.toml --all
+
+      - name: Commit formatted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add production/crates/world-core/src/acceptance.rs production/crates/world-core/tests/s1_01_08_acceptance_review.rs
+          if git diff --cached --quiet; then
+            echo "No formatting changes required"
+            exit 0
+          fi
+          git commit -m "chore(world-core): rustfmt S1.01.08"
+          git push origin HEAD:execution/week1-wp001-s1-01-01
