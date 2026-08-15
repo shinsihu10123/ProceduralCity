@@ -1,6 +1,4 @@
-use gaonn_world_core::authority::{
-    AuthorityRecordId, AuthorityRegistration, AuthorityRegistry,
-};
+use gaonn_world_core::authority::{AuthorityRecordId, AuthorityRegistration, AuthorityRegistry};
 use gaonn_world_core::exclusion_audit::{
     AuditAttempt, AuditDisposition, AuditError, AuditLayer, AuditOperation, AuditRequest,
     FirstFailureLocation, NonCanonicalStateExclusionAuditor, ViolationKind,
@@ -29,8 +27,9 @@ fn fixture() -> Fixture {
             source_contract: root.clone(),
         })
         .expect("S1.01.02 must pass");
-    let (manifest, _) = AuthorityMappingManifest::create(&registry, &ManifestRequest::valid_fixture())
-        .expect("S1.01.06 must pass");
+    let (manifest, _) =
+        AuthorityMappingManifest::create(&registry, &ManifestRequest::valid_fixture())
+            .expect("S1.01.06 must pass");
 
     Fixture {
         root,
@@ -120,7 +119,10 @@ fn behavior_failure_missing_required_evidence_blocks_without_changing_prestate()
         ),
         Err(AuditError::MissingField("source_hash"))
     );
-    assert_eq!(fixture.registry.snapshot().evidence_digest64(), registry_digest);
+    assert_eq!(
+        fixture.registry.snapshot().evidence_digest64(),
+        registry_digest
+    );
     assert_eq!(fixture.manifest.evidence_digest64(), manifest_digest);
 }
 
@@ -184,15 +186,21 @@ fn authority_blocks_wrong_owner_and_noncanonical_writer_claims_but_keeps_read_pa
     .unwrap();
 
     assert_eq!(evidence.violations.len(), 3);
-    assert!(evidence.violations.iter().any(|record| {
-        record.violation == ViolationKind::WrongOwnerCanonicalWrite
-    }));
+    assert!(
+        evidence
+            .violations
+            .iter()
+            .any(|record| { record.violation == ViolationKind::WrongOwnerCanonicalWrite })
+    );
     assert!(evidence.violations.iter().any(|record| {
         record.violation == ViolationKind::ObservationSnapshotWriterRegistration
     }));
-    assert!(evidence.violations.iter().any(|record| {
-        record.violation == ViolationKind::AnalyticsCanonicalWrite
-    }));
+    assert!(
+        evidence
+            .violations
+            .iter()
+            .any(|record| { record.violation == ViolationKind::AnalyticsCanonicalWrite })
+    );
     assert_eq!(
         evidence.attempt_results[3].disposition,
         AuditDisposition::AllowedReadOnly
@@ -215,7 +223,10 @@ fn contract_preserves_root_id_version_owner_causal_parent_and_frozen_operands() 
 
     assert_eq!(evidence.work_id, "S1.01.07");
     assert_eq!(evidence.root_fact_key, fixture.root.fact_key);
-    assert_eq!(evidence.root_contract_version, fixture.root.contract_version);
+    assert_eq!(
+        evidence.root_contract_version,
+        fixture.root.contract_version
+    );
     assert_eq!(evidence.root_owner, fixture.root.owner);
     assert_eq!(evidence.root_causal_parent, fixture.root.causal_parent);
     assert_eq!(
@@ -326,7 +337,10 @@ fn persistence_evidence_snapshot_restore_preserves_source_version_provenance_lin
 
     assert_eq!(restored.evidence_digest64(), digest);
     assert_eq!(restored.attempt_results[0].source_version, 11);
-    assert_eq!(restored.attempt_results[0].provenance, "source:DerivedCache");
+    assert_eq!(
+        restored.attempt_results[0].provenance,
+        "source:DerivedCache"
+    );
     assert_eq!(restored.attempt_results[0].lineage_digest, 0xA11D_0007);
     assert_eq!(
         restored.attempt_results[0].evidence_hash,

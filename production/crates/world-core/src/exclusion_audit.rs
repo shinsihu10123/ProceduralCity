@@ -319,7 +319,8 @@ impl NonCanonicalStateExclusionAuditor {
         let manifest_snapshot = manifest.snapshot();
         let source_registry_digest = registry_snapshot.evidence_digest64();
         let source_manifest_digest = manifest_snapshot.evidence_digest64();
-        let pre_state_digest = combined_prestate_digest(source_registry_digest, source_manifest_digest);
+        let pre_state_digest =
+            combined_prestate_digest(source_registry_digest, source_manifest_digest);
 
         let mut attempt_results = Vec::with_capacity(attempts.len());
         let mut violations = Vec::new();
@@ -332,10 +333,9 @@ impl NonCanonicalStateExclusionAuditor {
                 let entry = manifest
                     .entry(&attempt.fact_key)
                     .ok_or_else(|| AuditError::UnknownManifestFact(attempt.fact_key.clone()))?;
-                let authority = attempt
-                    .authority
-                    .as_ref()
-                    .ok_or_else(|| AuditError::MissingAttemptAuthority(attempt.attempt_id.clone()))?;
+                let authority = attempt.authority.as_ref().ok_or_else(|| {
+                    AuditError::MissingAttemptAuthority(attempt.attempt_id.clone())
+                })?;
                 if authority != &entry.authority {
                     return Err(AuditError::AuthorityReferenceMismatch(
                         attempt.attempt_id.clone(),
@@ -387,7 +387,8 @@ impl NonCanonicalStateExclusionAuditor {
 
         let post_registry_digest = registry.snapshot().evidence_digest64();
         let post_manifest_digest = manifest.snapshot().evidence_digest64();
-        let post_state_digest = combined_prestate_digest(post_registry_digest, post_manifest_digest);
+        let post_state_digest =
+            combined_prestate_digest(post_registry_digest, post_manifest_digest);
         if pre_state_digest != post_state_digest {
             return Err(AuditError::EvidenceCorrupt(
                 "audit mutated canonical source state".to_owned(),
@@ -492,11 +493,15 @@ fn classify_attempt(attempt: &AuditAttempt, owner: &str, writer: &str) -> AuditD
             if matches!(
                 attempt.operation,
                 AuditOperation::DirectCanonicalCommit | AuditOperation::DuplicateCanonicalWrite
-            ) => AuditDisposition::Violation(ViolationKind::DerivedCacheDirectCommit),
+            ) =>
+        {
+            AuditDisposition::Violation(ViolationKind::DerivedCacheDirectCommit)
+        }
         AuditLayer::ObservationSnapshot
-            if attempt.operation == AuditOperation::RegisterCanonicalWriter => {
-                AuditDisposition::Violation(ViolationKind::ObservationSnapshotWriterRegistration)
-            }
+            if attempt.operation == AuditOperation::RegisterCanonicalWriter =>
+        {
+            AuditDisposition::Violation(ViolationKind::ObservationSnapshotWriterRegistration)
+        }
         AuditLayer::RenderBuffer if attempt.operation == AuditOperation::RestoreAsCanonical => {
             AuditDisposition::Violation(ViolationKind::RenderBufferRestorePromotion)
         }
