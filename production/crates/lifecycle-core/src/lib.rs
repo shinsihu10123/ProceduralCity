@@ -241,7 +241,10 @@ impl fmt::Display for PersistentLifecycleRejection {
                 "lifecycle lineage mismatch: expected={expected}, found={found}"
             ),
             Self::UnsupportedTransition(transition) => {
-                write!(f, "transition is not in the supplied allowed-transition set: {transition:?}")
+                write!(
+                    f,
+                    "transition is not in the supplied allowed-transition set: {transition:?}"
+                )
             }
             Self::WrongOwner { expected, found } => write!(
                 f,
@@ -297,11 +300,9 @@ impl PersistentLifecycleProcessor {
             });
         }
 
-        let source_namespace_schema_version = request
-            .source_namespace_schema_version
-            .ok_or(PersistentLifecycleRejection::MissingField(
-                "source_namespace_schema_version",
-            ))?;
+        let source_namespace_schema_version = request.source_namespace_schema_version.ok_or(
+            PersistentLifecycleRejection::MissingField("source_namespace_schema_version"),
+        )?;
         if source_namespace_schema_version != predecessor.schema_version {
             return Err(PersistentLifecycleRejection::StaleNamespaceSchemaVersion {
                 expected: predecessor.schema_version,
@@ -452,7 +453,9 @@ fn validate_predecessor(
         return Err(PersistentLifecycleRejection::InvalidRoot("fact_key"));
     }
     if predecessor.root_contract_version != root.contract_version {
-        return Err(PersistentLifecycleRejection::InvalidRoot("contract_version"));
+        return Err(PersistentLifecycleRejection::InvalidRoot(
+            "contract_version",
+        ));
     }
     if predecessor.root_owner != root.owner {
         return Err(PersistentLifecycleRejection::InvalidRoot("owner"));

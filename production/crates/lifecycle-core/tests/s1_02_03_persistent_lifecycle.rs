@@ -23,8 +23,7 @@ fn root_fixture() -> ValidationReceipt {
 
 fn wp001_fixture(root: &ValidationReceipt) -> AcceptanceRecord {
     let member_results = [
-        "S1.01.01", "S1.01.02", "S1.01.03", "S1.01.04", "S1.01.05", "S1.01.06",
-        "S1.01.07",
+        "S1.01.01", "S1.01.02", "S1.01.03", "S1.01.04", "S1.01.05", "S1.01.06", "S1.01.07",
     ]
     .into_iter()
     .map(|work_id| MemberReviewResult {
@@ -102,7 +101,8 @@ fn behavior_normal_valid_cause_state_and_allowed_transition_produce_candidate_on
 }
 
 #[test]
-fn behavior_failure_missing_cause_stale_reference_and_unsupported_transition_reject_without_result() {
+fn behavior_failure_missing_cause_stale_reference_and_unsupported_transition_reject_without_result()
+{
     let root = root_fixture();
     let predecessor = namespace_fixture(&root);
 
@@ -237,9 +237,11 @@ fn integration_root_to_namespace_to_lifecycle_has_no_shortcut_and_propagates_pre
     let root = root_fixture();
     let predecessor = namespace_fixture(&root);
     let request = PersistentLifecycleRequest::valid_fixture(&predecessor);
-    assert!(PersistentLifecycleProcessor
-        .evaluate(&request, &root, &predecessor)
-        .is_ok());
+    assert!(
+        PersistentLifecycleProcessor
+            .evaluate(&request, &root, &predecessor)
+            .is_ok()
+    );
 
     let mut mismatched_root = root.clone();
     mismatched_root.causal_parent = "other-root".to_owned();
