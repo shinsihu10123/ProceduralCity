@@ -329,10 +329,10 @@ impl S101AcceptanceReviewer {
         let mut duplicates = BTreeSet::new();
 
         for member in members {
-            if required.contains(member.work_id.as_str()) {
-                if by_id.insert(member.work_id.as_str(), member).is_some() {
-                    duplicates.insert(member.work_id.clone());
-                }
+            if required.contains(member.work_id.as_str())
+                && by_id.insert(member.work_id.as_str(), member).is_some()
+            {
+                duplicates.insert(member.work_id.clone());
             }
         }
 
