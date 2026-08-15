@@ -3,8 +3,8 @@ use gaonn_world_core::authority::{
     AuthorityRegistryError, LineageAction,
 };
 use gaonn_world_core::manifest::{
-    AuthorityMappingManifest, ManifestError, ManifestRequest, ManifestWriteOrigin, MigrationDecision,
-    AUTHORITY_MANIFEST_OWNER, S1_01_06_MANIFEST_SCHEMA_VERSION,
+    AUTHORITY_MANIFEST_OWNER, AuthorityMappingManifest, ManifestError, ManifestRequest,
+    ManifestWriteOrigin, MigrationDecision, S1_01_06_MANIFEST_SCHEMA_VERSION,
 };
 use gaonn_world_core::{CanonicalCandidate, CanonicalStateContract};
 
@@ -51,7 +51,9 @@ fn behavior_normal_create_lookup_and_exact_version_resolution_survive_manifest_r
             "S1.01.06:test-epoch-update",
         )
         .unwrap();
-    let refresh = manifest.replace_from_registry(&registry, &request()).unwrap();
+    let refresh = manifest
+        .replace_from_registry(&registry, &request())
+        .unwrap();
     assert_eq!(refresh.migration, MigrationDecision::ForwardCompatible);
 
     let after = manifest.entry("objective.planet.mass").unwrap();
@@ -63,7 +65,8 @@ fn behavior_normal_create_lookup_and_exact_version_resolution_survive_manifest_r
 }
 
 #[test]
-fn behavior_failure_missing_stale_duplicate_and_dangling_inputs_are_rejected_without_partial_result() {
+fn behavior_failure_missing_stale_duplicate_and_dangling_inputs_are_rejected_without_partial_result()
+{
     let registry = registry_fixture();
 
     let mut missing = request();
@@ -88,10 +91,12 @@ fn behavior_failure_missing_stale_duplicate_and_dangling_inputs_are_rejected_wit
     stale.entries[0].authority.version = 99;
     assert_eq!(
         AuthorityMappingManifest::load(stale, &registry),
-        Err(ManifestError::Registry(AuthorityRegistryError::StaleReference {
-            expected: 1,
-            found: 99,
-        }))
+        Err(ManifestError::Registry(
+            AuthorityRegistryError::StaleReference {
+                expected: 1,
+                found: 99,
+            }
+        ))
     );
 
     let mut dangling = manifest.snapshot();
@@ -126,7 +131,9 @@ fn boundary_preserves_stable_identity_across_active_inactive_and_tombstone_lifec
         .id
         .clone();
 
-    let active_v1 = registry.reference_for_fact("objective.planet.mass").unwrap();
+    let active_v1 = registry
+        .reference_for_fact("objective.planet.mass")
+        .unwrap();
     let inactive_v2 = registry
         .retire(
             &active_v1,
@@ -135,7 +142,9 @@ fn boundary_preserves_stable_identity_across_active_inactive_and_tombstone_lifec
             "S1.01.06:test-retire",
         )
         .unwrap();
-    manifest.replace_from_registry(&registry, &request()).unwrap();
+    manifest
+        .replace_from_registry(&registry, &request())
+        .unwrap();
     let retired = manifest.entry("objective.planet.mass").unwrap();
     assert_eq!(retired.authority.id, stable_id);
     assert_eq!(retired.authority, inactive_v2);
@@ -149,7 +158,9 @@ fn boundary_preserves_stable_identity_across_active_inactive_and_tombstone_lifec
             "S1.01.06:test-tombstone",
         )
         .unwrap();
-    manifest.replace_from_registry(&registry, &request()).unwrap();
+    manifest
+        .replace_from_registry(&registry, &request())
+        .unwrap();
     let tombstoned = manifest.entry("objective.planet.mass").unwrap();
     assert_eq!(tombstoned.authority.id, stable_id);
     assert_eq!(tombstoned.authority, tombstone_v3);
@@ -214,23 +225,33 @@ fn authority_only_registered_manifest_owner_can_write_and_projection_layers_rema
 fn contract_preserves_versioned_authority_canonical_registry_operands_and_causal_parent() {
     let registry = registry_fixture();
     let (manifest, receipt) = AuthorityMappingManifest::create(&registry, &request()).unwrap();
-    let registry_reference = registry.reference_for_fact("objective.planet.mass").unwrap();
+    let registry_reference = registry
+        .reference_for_fact("objective.planet.mass")
+        .unwrap();
     let mapped = manifest.entry("objective.planet.mass").unwrap();
 
-    assert_eq!(receipt.operands, ["Versioned", "Authority", "Canonical", "Registry"]);
+    assert_eq!(
+        receipt.operands,
+        ["Versioned", "Authority", "Canonical", "Registry"]
+    );
     assert_eq!(receipt.causal_parent, "S1.01.05:authority-conflict");
     assert_eq!(mapped.authority, registry_reference);
     assert_eq!(mapped.owner, "domain01.celestial_frame");
     assert_eq!(mapped.allowed_writer, "domain01.celestial_frame");
     assert_eq!(mapped.authority_epoch, 7);
-    assert_eq!(manifest.manifest_lineage()[0].causal_parent, receipt.causal_parent);
+    assert_eq!(
+        manifest.manifest_lineage()[0].causal_parent,
+        receipt.causal_parent
+    );
 }
 
 #[test]
 fn integration_atomic_refresh_advances_lineage_and_failed_candidate_keeps_previous_manifest() {
     let mut registry = registry_fixture();
     let (mut manifest, _) = AuthorityMappingManifest::create(&registry, &request()).unwrap();
-    let v1 = registry.reference_for_fact("objective.planet.mass").unwrap();
+    let v1 = registry
+        .reference_for_fact("objective.planet.mass")
+        .unwrap();
     registry
         .update_epoch(
             &v1,
@@ -240,7 +261,9 @@ fn integration_atomic_refresh_advances_lineage_and_failed_candidate_keeps_previo
         )
         .unwrap();
 
-    let receipt = manifest.replace_from_registry(&registry, &request()).unwrap();
+    let receipt = manifest
+        .replace_from_registry(&registry, &request())
+        .unwrap();
     assert_eq!(receipt.manifest_version, 2);
     assert_eq!(receipt.migration, MigrationDecision::ForwardCompatible);
     assert!(manifest.authority_lineage().iter().any(|entry| {
@@ -269,7 +292,9 @@ fn integration_atomic_refresh_advances_lineage_and_failed_candidate_keeps_previo
 fn persistence_snapshot_restore_and_registry_load_preserve_identity_version_lineage_and_digest() {
     let mut registry = registry_fixture();
     let (mut manifest, _) = AuthorityMappingManifest::create(&registry, &request()).unwrap();
-    let v1 = registry.reference_for_fact("objective.planet.mass").unwrap();
+    let v1 = registry
+        .reference_for_fact("objective.planet.mass")
+        .unwrap();
     registry
         .update_epoch(
             &v1,
@@ -278,7 +303,9 @@ fn persistence_snapshot_restore_and_registry_load_preserve_identity_version_line
             "S1.01.06:persistence-update",
         )
         .unwrap();
-    manifest.replace_from_registry(&registry, &request()).unwrap();
+    manifest
+        .replace_from_registry(&registry, &request())
+        .unwrap();
 
     let snapshot = manifest.snapshot();
     let digest = snapshot.evidence_digest64();
@@ -289,7 +316,11 @@ fn persistence_snapshot_restore_and_registry_load_preserve_identity_version_line
     let loaded = AuthorityMappingManifest::load(snapshot, &registry).unwrap();
     assert_eq!(loaded.evidence_digest64(), digest);
     assert_eq!(
-        loaded.entry("objective.planet.mass").unwrap().authority.version,
+        loaded
+            .entry("objective.planet.mass")
+            .unwrap()
+            .authority
+            .version,
         2
     );
 }
