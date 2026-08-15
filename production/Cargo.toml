@@ -1,3 +1,8 @@
 [workspace]
 resolver = "2"
-members = ["crates/world-core", "crates/identity-core", "crates/lifecycle-core"]
+members = [
+    "crates/world-core",
+    "crates/identity-core",
+    "crates/lifecycle-core",
+    "crates/creation-boundary-core",
+]
