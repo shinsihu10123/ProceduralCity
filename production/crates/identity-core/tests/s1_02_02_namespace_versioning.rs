@@ -60,14 +60,6 @@ fn stable_identity_fixture(root: &ValidationReceipt) -> StableIdentityOutcome {
         .expect("S1.02.01 predecessor fixture must pass")
 }
 
-fn evaluate(
-    request: &NamespaceVersioningRequest,
-) -> Result<NamespaceVersioningOutcome, NamespaceVersioningRejection> {
-    let root = root_fixture();
-    let stable = stable_identity_fixture(&root);
-    NamespaceVersioningProcessor.evaluate(request, &root, &stable)
-}
-
 #[test]
 fn behavior_normal_valid_namespace_versioning_produces_candidate_only_causal_outcome() {
     let root = root_fixture();
