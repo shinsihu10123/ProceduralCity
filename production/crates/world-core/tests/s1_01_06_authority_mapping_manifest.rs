@@ -66,7 +66,7 @@ fn behavior_normal_create_lookup_and_exact_version_resolution_survive_manifest_r
 
 #[test]
 fn behavior_failure_missing_stale_duplicate_and_dangling_inputs_are_rejected_without_partial_result()
-{
+ {
     let registry = registry_fixture();
 
     let mut missing = request();
