@@ -186,15 +186,26 @@ pub struct AuthorityMappingManifest {
 pub enum ManifestError {
     MissingField(&'static str),
     EmptyField(&'static str),
-    UnsupportedSchemaVersion { expected: u32, found: u32 },
-    WrongManifestOwner { expected: String, found: String },
+    UnsupportedSchemaVersion {
+        expected: u32,
+        found: u32,
+    },
+    WrongManifestOwner {
+        expected: String,
+        found: String,
+    },
     ProhibitedWriteOrigin(ManifestWriteOrigin),
     DuplicateFactMapping(String),
     DuplicateAuthorityIdentity(AuthorityRecordId),
     ManifestIdentityMismatch,
-    ManifestVersionRegressed { current: u32, candidate: u32 },
+    ManifestVersionRegressed {
+        current: u32,
+        candidate: u32,
+    },
     MissingPreviousFact(String),
-    AuthorityIdentityChanged { fact_key: String },
+    AuthorityIdentityChanged {
+        fact_key: String,
+    },
     AuthorityVersionRegressed {
         fact_key: String,
         current: u32,
@@ -205,10 +216,18 @@ pub enum ManifestError {
         from_version: u32,
         to_version: u32,
     },
-    OwnerMismatch { fact_key: String },
-    WriterMismatch { fact_key: String },
-    EpochMismatch { fact_key: String },
-    LifecycleMismatch { fact_key: String },
+    OwnerMismatch {
+        fact_key: String,
+    },
+    WriterMismatch {
+        fact_key: String,
+    },
+    EpochMismatch {
+        fact_key: String,
+    },
+    LifecycleMismatch {
+        fact_key: String,
+    },
     SnapshotCorrupt(String),
     Registry(AuthorityRegistryError),
 }
@@ -223,7 +242,10 @@ impl fmt::Display for ManifestError {
                 "unsupported manifest schema version: expected={expected}, found={found}"
             ),
             Self::WrongManifestOwner { expected, found } => {
-                write!(f, "wrong manifest owner: expected={expected}, found={found}")
+                write!(
+                    f,
+                    "wrong manifest owner: expected={expected}, found={found}"
+                )
             }
             Self::ProhibitedWriteOrigin(origin) => {
                 write!(f, "prohibited manifest write origin: {origin:?}")
@@ -243,7 +265,10 @@ impl fmt::Display for ManifestError {
                 write!(f, "replacement manifest lost previous fact: {fact_key}")
             }
             Self::AuthorityIdentityChanged { fact_key } => {
-                write!(f, "authority identity changed for existing fact: {fact_key}")
+                write!(
+                    f,
+                    "authority identity changed for existing fact: {fact_key}"
+                )
             }
             Self::AuthorityVersionRegressed {
                 fact_key,
@@ -426,10 +451,9 @@ impl AuthorityMappingManifest {
             &candidate_entries,
             &candidate_snapshot.lineage,
         )?;
-        let next_version = self
-            .manifest_version
-            .checked_add(1)
-            .ok_or_else(|| ManifestError::SnapshotCorrupt("manifest version overflow".to_owned()))?;
+        let next_version = self.manifest_version.checked_add(1).ok_or_else(|| {
+            ManifestError::SnapshotCorrupt("manifest version overflow".to_owned())
+        })?;
         let source_hash = required_text(request.source_hash.as_deref(), "source_hash")?.to_owned();
         let causal_parent =
             required_text(request.causal_parent.as_deref(), "causal_parent")?.to_owned();
@@ -547,7 +571,8 @@ fn validate_manifest_snapshot_header(
             found: snapshot.schema_version,
         });
     }
-    if snapshot.manifest_id != manifest_id() || snapshot.manifest_owner != AUTHORITY_MANIFEST_OWNER {
+    if snapshot.manifest_id != manifest_id() || snapshot.manifest_owner != AUTHORITY_MANIFEST_OWNER
+    {
         return Err(ManifestError::ManifestIdentityMismatch);
     }
     if snapshot.manifest_version == 0 {
