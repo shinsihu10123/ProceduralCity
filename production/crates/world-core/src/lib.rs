@@ -6,6 +6,7 @@
 //! It intentionally validates candidates without mutating world state. Canonical mutation itself
 //! remains behind later transaction/commit work packages.
 
+pub mod acceptance;
 pub mod authority;
 pub mod boundary;
 pub mod conflict;
