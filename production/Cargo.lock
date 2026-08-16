@@ -27,6 +27,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "gaonn-retention-core"
+version = "0.1.0"
+dependencies = [
+ "gaonn-creation-boundary-core",
+ "gaonn-identity-core",
+ "gaonn-lifecycle-core",
+ "gaonn-retirement-state-core",
+ "gaonn-world-core",
+]
+
+[[package]]
 name = "gaonn-retirement-state-core"
 version = "0.1.0"
 dependencies = [
