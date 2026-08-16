@@ -1,0 +1,10 @@
+[package]
+name = "gaonn-retirement-state-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gaonn-creation-boundary-core = { path = "../creation-boundary-core" }
+gaonn-lifecycle-core = { path = "../lifecycle-core" }
+gaonn-identity-core = { path = "../identity-core" }
+gaonn-world-core = { path = "../world-core" }

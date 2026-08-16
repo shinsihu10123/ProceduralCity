@@ -5,4 +5,5 @@ members = [
     "crates/identity-core",
     "crates/lifecycle-core",
     "crates/creation-boundary-core",
+    "crates/retirement-state-core",
 ]
