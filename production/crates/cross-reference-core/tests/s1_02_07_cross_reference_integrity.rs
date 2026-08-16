@@ -36,13 +36,7 @@ fn root_fixture() -> ValidationReceipt {
 
 fn wp001_fixture(root: &ValidationReceipt) -> AcceptanceRecord {
     let member_results = [
-        "S1.01.01",
-        "S1.01.02",
-        "S1.01.03",
-        "S1.01.04",
-        "S1.01.05",
-        "S1.01.06",
-        "S1.01.07",
+        "S1.01.01", "S1.01.02", "S1.01.03", "S1.01.04", "S1.01.05", "S1.01.06", "S1.01.07",
     ]
     .into_iter()
     .map(|work_id| MemberReviewResult {
@@ -198,7 +192,9 @@ fn behavior_failure_missing_stale_and_wrong_owner_inputs_reject_without_success_
     missing.reference_id = None;
     assert!(matches!(
         CrossReferenceIntegrityContract.validate(&missing, &root, &predecessor, &target),
-        Err(CrossReferenceIntegrityRejection::MissingField("reference_id"))
+        Err(CrossReferenceIntegrityRejection::MissingField(
+            "reference_id"
+        ))
     ));
 
     let mut stale = CrossReferenceIntegrityRequest::valid_fixture(&predecessor, &target);
@@ -240,12 +236,7 @@ fn function_specific_failure_dangling_digest_mismatch_and_prohibited_transition_
     let mut digest_mismatch = CrossReferenceIntegrityRequest::valid_fixture(&predecessor, &target);
     digest_mismatch.target_evidence_digest = Some(target.evidence_digest64() ^ 1);
     assert!(matches!(
-        CrossReferenceIntegrityContract.validate(
-            &digest_mismatch,
-            &root,
-            &predecessor,
-            &target,
-        ),
+        CrossReferenceIntegrityContract.validate(&digest_mismatch, &root, &predecessor, &target,),
         Err(CrossReferenceIntegrityRejection::TargetDigestMismatch { .. })
     ));
 
@@ -340,12 +331,7 @@ fn contract_preserves_frozen_root_predecessor_target_and_causal_references() {
     let mut missing_required = request.clone();
     missing_required.target_lifecycle_lineage = None;
     assert!(matches!(
-        CrossReferenceIntegrityContract.validate(
-            &missing_required,
-            &root,
-            &predecessor,
-            &target,
-        ),
+        CrossReferenceIntegrityContract.validate(&missing_required, &root, &predecessor, &target,),
         Err(CrossReferenceIntegrityRejection::MissingField(
             "target_lifecycle_lineage"
         ))
@@ -392,10 +378,9 @@ fn persistence_and_replay_preserve_id_version_pending_causal_target_and_digest()
     let first = CrossReferenceIntegrityContract
         .validate(&request, &root, &predecessor, &target)
         .expect("first replay input must pass");
-    let restored = gaonn_cross_reference_core::CrossReferenceIntegrityValidation::restore(
-        first.snapshot(),
-    )
-    .expect("valid snapshot must restore");
+    let restored =
+        gaonn_cross_reference_core::CrossReferenceIntegrityValidation::restore(first.snapshot())
+            .expect("valid snapshot must restore");
     let replayed = CrossReferenceIntegrityContract
         .validate(&request, &root, &predecessor, &target)
         .expect("identical replay must pass");

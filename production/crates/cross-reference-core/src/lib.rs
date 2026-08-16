@@ -9,8 +9,8 @@ use std::fmt;
 
 use gaonn_identity_core::{IdentityDisposition, IdentityOperationPhase, IdentityOrigin};
 use gaonn_retention_core::{
-    CutReferenceStatus, RetentionSegmentStatus, TombstoneRetentionArtifact, S1_02_06_OWNER,
-    S1_02_06_SCHEMA_VERSION,
+    CutReferenceStatus, RetentionSegmentStatus, S1_02_06_OWNER, S1_02_06_SCHEMA_VERSION,
+    TombstoneRetentionArtifact,
 };
 use gaonn_world_core::ValidationReceipt;
 
@@ -234,10 +234,12 @@ impl CrossReferenceIntegrityValidation {
         snapshot: CrossReferenceIntegritySnapshot,
     ) -> Result<Self, CrossReferenceIntegrityRejection> {
         if snapshot.schema_version != S1_02_07_SCHEMA_VERSION {
-            return Err(CrossReferenceIntegrityRejection::UnsupportedSnapshotVersion {
-                expected: S1_02_07_SCHEMA_VERSION,
-                found: snapshot.schema_version,
-            });
+            return Err(
+                CrossReferenceIntegrityRejection::UnsupportedSnapshotVersion {
+                    expected: S1_02_07_SCHEMA_VERSION,
+                    found: snapshot.schema_version,
+                },
+            );
         }
         let validation = snapshot.validation;
         if validation.work_id != "S1.02.07" || validation.work_package != "WP-002" {
@@ -351,7 +353,10 @@ impl fmt::Display for CrossReferenceIntegrityRejection {
                 write!(f, "unauthorized cross-reference origin: {origin:?}")
             }
             Self::IncompletePhase(phase) => {
-                write!(f, "cross-reference contract operation is incomplete: {phase:?}")
+                write!(
+                    f,
+                    "cross-reference contract operation is incomplete: {phase:?}"
+                )
             }
             Self::OutOfScopeSubject(subject) => {
                 write!(f, "out-of-scope cross-reference subject: {subject:?}")
@@ -387,9 +392,12 @@ impl CrossReferenceIntegrityContract {
         validate_predecessor(root, predecessor)?;
         validate_target(target)?;
 
-        let schema_version = request
-            .schema_version
-            .ok_or(CrossReferenceIntegrityRejection::MissingField("schema_version"))?;
+        let schema_version =
+            request
+                .schema_version
+                .ok_or(CrossReferenceIntegrityRejection::MissingField(
+                    "schema_version",
+                ))?;
         if schema_version != S1_02_07_SCHEMA_VERSION {
             return Err(CrossReferenceIntegrityRejection::StaleSchemaVersion {
                 expected: S1_02_07_SCHEMA_VERSION,
@@ -431,9 +439,12 @@ impl CrossReferenceIntegrityContract {
         }
 
         let reference_id = required_text(request.reference_id.as_deref(), "reference_id")?;
-        let reference_version = request
-            .reference_version
-            .ok_or(CrossReferenceIntegrityRejection::MissingField("reference_version"))?;
+        let reference_version =
+            request
+                .reference_version
+                .ok_or(CrossReferenceIntegrityRejection::MissingField(
+                    "reference_version",
+                ))?;
         let source_stable_id =
             required_text(request.source_stable_id.as_deref(), "source_stable_id")?;
         if source_stable_id != predecessor.stable_id {
@@ -451,9 +462,12 @@ impl CrossReferenceIntegrityContract {
             request.target_namespace_version.as_deref(),
             "target_namespace_version",
         )?;
-        let target_entity_version = request.target_entity_version.ok_or(
-            CrossReferenceIntegrityRejection::MissingField("target_entity_version"),
-        )?;
+        let target_entity_version =
+            request
+                .target_entity_version
+                .ok_or(CrossReferenceIntegrityRejection::MissingField(
+                    "target_entity_version",
+                ))?;
         let target_lifecycle_lineage = required_text(
             request.target_lifecycle_lineage.as_deref(),
             "target_lifecycle_lineage",
@@ -491,12 +505,18 @@ impl CrossReferenceIntegrityContract {
             ));
         }
 
-        let current_state = request
-            .current_state
-            .ok_or(CrossReferenceIntegrityRejection::MissingField("current_state"))?;
-        let next_state = request
-            .target_state
-            .ok_or(CrossReferenceIntegrityRejection::MissingField("target_state"))?;
+        let current_state =
+            request
+                .current_state
+                .ok_or(CrossReferenceIntegrityRejection::MissingField(
+                    "current_state",
+                ))?;
+        let next_state =
+            request
+                .target_state
+                .ok_or(CrossReferenceIntegrityRejection::MissingField(
+                    "target_state",
+                ))?;
         let transition = CrossReferenceTransition {
             from: current_state,
             to: next_state,

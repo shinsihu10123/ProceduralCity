@@ -12,6 +12,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "gaonn-cross-reference-core"
+version = "0.1.0"
+dependencies = [
+ "gaonn-creation-boundary-core",
+ "gaonn-identity-core",
+ "gaonn-lifecycle-core",
+ "gaonn-retention-core",
+ "gaonn-retirement-state-core",
+ "gaonn-world-core",
+]
+
+[[package]]
 name = "gaonn-identity-core"
 version = "0.1.0"
 dependencies = [
