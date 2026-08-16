@@ -33,13 +33,7 @@ fn root_fixture() -> ValidationReceipt {
 
 fn wp001_fixture(root: &ValidationReceipt) -> AcceptanceRecord {
     let member_results = [
-        "S1.01.01",
-        "S1.01.02",
-        "S1.01.03",
-        "S1.01.04",
-        "S1.01.05",
-        "S1.01.06",
-        "S1.01.07",
+        "S1.01.01", "S1.01.02", "S1.01.03", "S1.01.04", "S1.01.05", "S1.01.06", "S1.01.07",
     ]
     .into_iter()
     .map(|work_id| MemberReviewResult {
@@ -69,8 +63,7 @@ fn wp001_fixture(root: &ValidationReceipt) -> AcceptanceRecord {
         operands: ["Canonical", "Authority", "Registry"],
         member_results,
         issues: Vec::new(),
-        required_output:
-            "Implemented + validated L3 set S1.01.01…S1.01.08; evidence and acceptance record.",
+        required_output: "Implemented + validated L3 set S1.01.01…S1.01.08; evidence and acceptance record.",
     }
 }
 
@@ -117,7 +110,11 @@ fn creation_fixture(root: &ValidationReceipt) -> CommittedEntityCreationValidati
 fn terminal_fixture(root: &ValidationReceipt) -> TerminalStateRepresentation {
     let creation = creation_fixture(root);
     TerminalStateProcessor
-        .evaluate(&TerminalStateRequest::valid_fixture(&creation), root, &creation)
+        .evaluate(
+            &TerminalStateRequest::valid_fixture(&creation),
+            root,
+            &creation,
+        )
         .expect("S1.02.05 fixture must pass")
 }
 
@@ -361,9 +358,11 @@ fn integration_has_no_shortcut_and_source_or_predecessor_failure_propagates() {
     let terminal = terminal_fixture(&root);
     let request = TombstoneRetentionRequest::valid_fixture(&namespace, &terminal);
 
-    assert!(TombstoneRetentionProcessor
-        .evaluate(&request, &root, &namespace, &terminal)
-        .is_ok());
+    assert!(
+        TombstoneRetentionProcessor
+            .evaluate(&request, &root, &namespace, &terminal)
+            .is_ok()
+    );
 
     let mut bad_namespace = namespace.clone();
     bad_namespace.phase = IdentityOperationPhase::Partial;

@@ -11,7 +11,7 @@ use gaonn_identity_core::namespace_versioning::{
 };
 use gaonn_identity_core::{IdentityDisposition, IdentityOperationPhase, IdentityOrigin};
 use gaonn_retirement_state_core::{
-    TerminalStateRepresentation, S1_02_05_OWNER, S1_02_05_SCHEMA_VERSION,
+    S1_02_05_OWNER, S1_02_05_SCHEMA_VERSION, TerminalStateRepresentation,
 };
 use gaonn_world_core::ValidationReceipt;
 
@@ -450,9 +450,12 @@ impl TombstoneRetentionProcessor {
         }
 
         let commit_marker = required_text(request.commit_marker.as_deref(), "commit_marker")?;
-        let commit_marker_state = request
-            .commit_marker_state
-            .ok_or(TombstoneRetentionRejection::MissingField("commit_marker_state"))?;
+        let commit_marker_state =
+            request
+                .commit_marker_state
+                .ok_or(TombstoneRetentionRejection::MissingField(
+                    "commit_marker_state",
+                ))?;
         if commit_marker_state != CommitMarkerState::Committed {
             return Err(TombstoneRetentionRejection::CommitMarkerNotCommitted(
                 commit_marker_state,
@@ -462,9 +465,12 @@ impl TombstoneRetentionProcessor {
         let parent_cut = required_text(request.parent_cut.as_deref(), "parent_cut")?;
         let durable_artifact =
             required_text(request.durable_artifact.as_deref(), "durable_artifact")?;
-        let recovery_position = request
-            .recovery_position
-            .ok_or(TombstoneRetentionRejection::MissingField("recovery_position"))?;
+        let recovery_position =
+            request
+                .recovery_position
+                .ok_or(TombstoneRetentionRejection::MissingField(
+                    "recovery_position",
+                ))?;
         let replay_reference =
             required_text(request.replay_reference.as_deref(), "replay_reference")?;
 
@@ -476,9 +482,12 @@ impl TombstoneRetentionProcessor {
                 segment_status,
             ));
         }
-        let cut_reference_status = request.cut_reference_status.ok_or(
-            TombstoneRetentionRejection::MissingField("cut_reference_status"),
-        )?;
+        let cut_reference_status =
+            request
+                .cut_reference_status
+                .ok_or(TombstoneRetentionRejection::MissingField(
+                    "cut_reference_status",
+                ))?;
         if cut_reference_status != CutReferenceStatus::WithinCut {
             return Err(TombstoneRetentionRejection::CutOutside(
                 cut_reference_status,
@@ -527,8 +536,10 @@ impl TombstoneRetentionProcessor {
             return Err(TombstoneRetentionRejection::OutOfScopeSubject(subject));
         }
         let causal_parent = required_text(request.causal_parent.as_deref(), "causal_parent")?;
-        let completion_evidence =
-            required_text(request.completion_evidence.as_deref(), "completion_evidence")?;
+        let completion_evidence = required_text(
+            request.completion_evidence.as_deref(),
+            "completion_evidence",
+        )?;
 
         Ok(TombstoneRetentionArtifact {
             work_id: "S1.02.06",
@@ -630,9 +641,7 @@ fn validate_sources(
     if namespace.root_contract_version != root.contract_version
         || predecessor.root_contract_version != root.contract_version
     {
-        return Err(TombstoneRetentionRejection::InvalidRoot(
-            "contract_version",
-        ));
+        return Err(TombstoneRetentionRejection::InvalidRoot("contract_version"));
     }
     if namespace.root_owner != root.owner || predecessor.root_owner != root.owner {
         return Err(TombstoneRetentionRejection::InvalidRoot("owner"));
