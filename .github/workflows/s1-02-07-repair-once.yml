@@ -1,0 +1,44 @@
+name: One-time bounded repair S1.02.07
+
+on:
+  push:
+    branches:
+      - execution/week1-wp002-s1-02-07
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: execution/week1-wp002-s1-02-07
+
+      - name: Bounded repair, validate, and commit once
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          if [ "$COMMIT_MESSAGE" = "fix(cross-reference): bounded repair S1.02.07" ]; then
+            echo "Repair commit observed; nothing to do."
+            exit 0
+          fi
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+          cargo fmt --manifest-path production/Cargo.toml --all
+          cargo clippy --fix --allow-dirty --allow-staged --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings
+          cargo fmt --manifest-path production/Cargo.toml --all
+          cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings
+          cargo test --manifest-path production/Cargo.toml --workspace
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add production/Cargo.toml production/Cargo.lock production/crates/cross-reference-core
+          if git diff --cached --quiet; then
+            echo "No repair changes needed"
+            exit 0
+          fi
+          git commit -m "fix(cross-reference): bounded repair S1.02.07"
+          git push origin HEAD:execution/week1-wp002-s1-02-07
