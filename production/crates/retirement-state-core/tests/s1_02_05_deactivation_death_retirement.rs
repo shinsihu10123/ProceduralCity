@@ -16,7 +16,7 @@ use gaonn_lifecycle_core::{
 use gaonn_retirement_state_core::{
     PriorStateRecord, S1_02_05_OWNER, S1_02_05_SCHEMA_VERSION, StateRecordMutation,
     StateRecordStatus, TerminalStateKind, TerminalStateProcessor, TerminalStateRejection,
-    TerminalStateRequest, TerminalStateRepresentation, TerminalStateSubject, WorldTimeReference,
+    TerminalStateRepresentation, TerminalStateRequest, TerminalStateSubject, WorldTimeReference,
 };
 use gaonn_world_core::acceptance::{
     AcceptanceRecord, AcceptanceVerdict, MemberReviewResult, S1_01_08_ACCEPTANCE_SCHEMA_VERSION,
@@ -110,7 +110,11 @@ fn representation_fixture(
     creation: &CommittedEntityCreationValidation,
 ) -> TerminalStateRepresentation {
     TerminalStateProcessor
-        .evaluate(&TerminalStateRequest::valid_fixture(creation), root, creation)
+        .evaluate(
+            &TerminalStateRequest::valid_fixture(creation),
+            root,
+            creation,
+        )
         .expect("S1.02.05 fixture must pass")
 }
 
@@ -304,8 +308,14 @@ fn boundary_keeps_state_kind_subject_and_worldtime_frame_distinct() {
         .evaluate(&retirement, &root, &creation)
         .expect("source-supplied retirement transition must pass");
 
-    assert_ne!(death_result.terminal_state_kind, retirement_result.terminal_state_kind);
-    assert_ne!(death_result.world_time.frame, retirement_result.world_time.frame);
+    assert_ne!(
+        death_result.terminal_state_kind,
+        retirement_result.terminal_state_kind
+    );
+    assert_ne!(
+        death_result.world_time.frame,
+        retirement_result.world_time.frame
+    );
     assert_eq!(death_result.stable_id, retirement_result.stable_id);
 }
 
@@ -344,8 +354,14 @@ fn contract_preserves_root_predecessor_id_version_owner_and_causal_reference() {
 
     assert_eq!(result.predecessor_work_id, "S1.02.04");
     assert_eq!(result.predecessor_work_package, "WP-002");
-    assert_eq!(result.predecessor_evidence_digest, creation.evidence_digest64());
-    assert_eq!(result.source_creation_schema_version, creation.schema_version);
+    assert_eq!(
+        result.predecessor_evidence_digest,
+        creation.evidence_digest64()
+    );
+    assert_eq!(
+        result.source_creation_schema_version,
+        creation.schema_version
+    );
     assert_eq!(result.root_fact_key, root.fact_key);
     assert_eq!(result.root_contract_version, root.contract_version);
     assert_eq!(result.root_owner, root.owner);
@@ -357,9 +373,11 @@ fn integration_has_no_shortcut_and_predecessor_or_root_failure_propagates() {
     let root = root_fixture();
     let creation = creation_fixture(&root);
     let request = TerminalStateRequest::valid_fixture(&creation);
-    assert!(TerminalStateProcessor
-        .evaluate(&request, &root, &creation)
-        .is_ok());
+    assert!(
+        TerminalStateProcessor
+            .evaluate(&request, &root, &creation)
+            .is_ok()
+    );
 
     let mut mismatched_root = root.clone();
     mismatched_root.causal_parent = "other-root".to_owned();
@@ -387,8 +405,8 @@ fn persistence_and_replay_preserve_id_version_pending_causal_worldtime_and_diges
     let first = TerminalStateProcessor
         .evaluate(&request, &root, &creation)
         .expect("first execution must pass");
-    let restored = TerminalStateRepresentation::restore(first.snapshot())
-        .expect("snapshot restore must pass");
+    let restored =
+        TerminalStateRepresentation::restore(first.snapshot()).expect("snapshot restore must pass");
     let replay = TerminalStateProcessor
         .evaluate(&request, &root, &creation)
         .expect("replay must pass");

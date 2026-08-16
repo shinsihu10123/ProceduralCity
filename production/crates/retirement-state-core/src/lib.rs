@@ -232,7 +232,13 @@ impl TerminalStateRepresentation {
             self.root_owner,
             self.root_causal_parent,
         );
-        fnv1a64(format!("{encoded}|{}|{}", self.causal_parent, self.completion_evidence).as_bytes())
+        fnv1a64(
+            format!(
+                "{encoded}|{}|{}",
+                self.causal_parent, self.completion_evidence
+            )
+            .as_bytes(),
+        )
     }
 
     pub fn snapshot(&self) -> TerminalStateSnapshot {
@@ -251,7 +257,9 @@ impl TerminalStateRepresentation {
         }
         let representation = snapshot.representation;
         if representation.work_id != "S1.02.05" || representation.work_package != "WP-002" {
-            return Err(TerminalStateRejection::CorruptSnapshot("wrong work identity"));
+            return Err(TerminalStateRejection::CorruptSnapshot(
+                "wrong work identity",
+            ));
         }
         if representation.disposition != IdentityDisposition::CandidateOnly {
             return Err(TerminalStateRejection::CorruptSnapshot(
@@ -285,28 +293,55 @@ pub struct TerminalStateSnapshot {
 pub enum TerminalStateRejection {
     MissingField(&'static str),
     EmptyField(&'static str),
-    StaleSchemaVersion { expected: u32, found: u32 },
-    StaleCreationSchemaVersion { expected: u32, found: u32 },
-    PredecessorDigestMismatch { expected: u64, found: u64 },
-    StableIdMismatch { expected: String, found: String },
-    LifecycleStateMismatch { expected: LifecycleState, found: LifecycleState },
+    StaleSchemaVersion {
+        expected: u32,
+        found: u32,
+    },
+    StaleCreationSchemaVersion {
+        expected: u32,
+        found: u32,
+    },
+    PredecessorDigestMismatch {
+        expected: u64,
+        found: u64,
+    },
+    StableIdMismatch {
+        expected: String,
+        found: String,
+    },
+    LifecycleStateMismatch {
+        expected: LifecycleState,
+        found: LifecycleState,
+    },
     UnsupportedTransition(LifecycleTransition),
     DuplicateStateRecordId(String),
-    InvalidRecordVersion { expected: u32, found: u32 },
+    InvalidRecordVersion {
+        expected: u32,
+        found: u32,
+    },
     MissingPriorRecord,
     UnexpectedPriorRecord,
     PriorRecordMismatch(&'static str),
     PriorRecordClosed,
     ReferenceIntegrityNotVerified(ReferenceIntegrityStatus),
     InvalidWorldTime(&'static str),
-    WrongOwner { expected: String, found: String },
-    WrongWriter { expected: String, found: String },
+    WrongOwner {
+        expected: String,
+        found: String,
+    },
+    WrongWriter {
+        expected: String,
+        found: String,
+    },
     UnauthorizedOrigin(IdentityOrigin),
     IncompletePhase(IdentityOperationPhase),
     OutOfScopeSubject(TerminalStateSubject),
     InvalidPredecessor(&'static str),
     InvalidRoot(&'static str),
-    UnsupportedSnapshotVersion { expected: u32, found: u32 },
+    UnsupportedSnapshotVersion {
+        expected: u32,
+        found: u32,
+    },
     CorruptSnapshot(&'static str),
 }
 
@@ -315,28 +350,69 @@ impl fmt::Display for TerminalStateRejection {
         match self {
             Self::MissingField(field) => write!(f, "missing terminal-state field: {field}"),
             Self::EmptyField(field) => write!(f, "empty terminal-state field: {field}"),
-            Self::StaleSchemaVersion { expected, found } => write!(f, "unsupported S1.02.05 schema version: expected={expected}, found={found}"),
-            Self::StaleCreationSchemaVersion { expected, found } => write!(f, "stale S1.02.04 reference: expected={expected}, found={found}"),
-            Self::PredecessorDigestMismatch { expected, found } => write!(f, "S1.02.04 evidence digest mismatch: expected={expected}, found={found}"),
-            Self::StableIdMismatch { expected, found } => write!(f, "stable ID mismatch: expected={expected}, found={found}"),
-            Self::LifecycleStateMismatch { expected, found } => write!(f, "lifecycle state mismatch: expected={expected:?}, found={found:?}"),
-            Self::UnsupportedTransition(transition) => write!(f, "transition is not in the supplied source-defined set: {transition:?}"),
-            Self::DuplicateStateRecordId(id) => write!(f, "duplicate terminal-state record ID: {id}"),
-            Self::InvalidRecordVersion { expected, found } => write!(f, "invalid terminal-state record version: expected={expected}, found={found}"),
+            Self::StaleSchemaVersion { expected, found } => write!(
+                f,
+                "unsupported S1.02.05 schema version: expected={expected}, found={found}"
+            ),
+            Self::StaleCreationSchemaVersion { expected, found } => write!(
+                f,
+                "stale S1.02.04 reference: expected={expected}, found={found}"
+            ),
+            Self::PredecessorDigestMismatch { expected, found } => write!(
+                f,
+                "S1.02.04 evidence digest mismatch: expected={expected}, found={found}"
+            ),
+            Self::StableIdMismatch { expected, found } => {
+                write!(f, "stable ID mismatch: expected={expected}, found={found}")
+            }
+            Self::LifecycleStateMismatch { expected, found } => write!(
+                f,
+                "lifecycle state mismatch: expected={expected:?}, found={found:?}"
+            ),
+            Self::UnsupportedTransition(transition) => write!(
+                f,
+                "transition is not in the supplied source-defined set: {transition:?}"
+            ),
+            Self::DuplicateStateRecordId(id) => {
+                write!(f, "duplicate terminal-state record ID: {id}")
+            }
+            Self::InvalidRecordVersion { expected, found } => write!(
+                f,
+                "invalid terminal-state record version: expected={expected}, found={found}"
+            ),
             Self::MissingPriorRecord => write!(f, "revision/close requires prior state record"),
             Self::UnexpectedPriorRecord => write!(f, "create must not supply prior state record"),
             Self::PriorRecordMismatch(field) => write!(f, "prior state record mismatch: {field}"),
             Self::PriorRecordClosed => write!(f, "closed terminal-state record cannot be revised"),
-            Self::ReferenceIntegrityNotVerified(status) => write!(f, "reference integrity is not verified: {status:?}"),
-            Self::InvalidWorldTime(field) => write!(f, "invalid WorldTime reference field: {field}"),
-            Self::WrongOwner { expected, found } => write!(f, "wrong PA-003 terminal-state owner: expected={expected}, found={found}"),
-            Self::WrongWriter { expected, found } => write!(f, "wrong PA-003 terminal-state writer: expected={expected}, found={found}"),
-            Self::UnauthorizedOrigin(origin) => write!(f, "unauthorized terminal-state origin: {origin:?}"),
-            Self::IncompletePhase(phase) => write!(f, "terminal-state operation is incomplete: {phase:?}"),
-            Self::OutOfScopeSubject(subject) => write!(f, "out-of-scope terminal-state subject: {subject:?}"),
+            Self::ReferenceIntegrityNotVerified(status) => {
+                write!(f, "reference integrity is not verified: {status:?}")
+            }
+            Self::InvalidWorldTime(field) => {
+                write!(f, "invalid WorldTime reference field: {field}")
+            }
+            Self::WrongOwner { expected, found } => write!(
+                f,
+                "wrong PA-003 terminal-state owner: expected={expected}, found={found}"
+            ),
+            Self::WrongWriter { expected, found } => write!(
+                f,
+                "wrong PA-003 terminal-state writer: expected={expected}, found={found}"
+            ),
+            Self::UnauthorizedOrigin(origin) => {
+                write!(f, "unauthorized terminal-state origin: {origin:?}")
+            }
+            Self::IncompletePhase(phase) => {
+                write!(f, "terminal-state operation is incomplete: {phase:?}")
+            }
+            Self::OutOfScopeSubject(subject) => {
+                write!(f, "out-of-scope terminal-state subject: {subject:?}")
+            }
             Self::InvalidPredecessor(reason) => write!(f, "S1.02.04 predecessor invalid: {reason}"),
             Self::InvalidRoot(field) => write!(f, "frozen root mismatch: {field}"),
-            Self::UnsupportedSnapshotVersion { expected, found } => write!(f, "unsupported terminal-state snapshot version: expected={expected}, found={found}"),
+            Self::UnsupportedSnapshotVersion { expected, found } => write!(
+                f,
+                "unsupported terminal-state snapshot version: expected={expected}, found={found}"
+            ),
             Self::CorruptSnapshot(reason) => write!(f, "corrupt terminal-state snapshot: {reason}"),
         }
     }
@@ -371,13 +447,20 @@ impl TerminalStateProcessor {
         let mutation = request
             .mutation
             .ok_or(TerminalStateRejection::MissingField("mutation"))?;
-        validate_record_mutation(request, state_record_id, record_version, stable_id, mutation)?;
+        validate_record_mutation(
+            request,
+            state_record_id,
+            record_version,
+            stable_id,
+            mutation,
+        )?;
 
-        let source_creation_schema_version = request
-            .source_creation_schema_version
-            .ok_or(TerminalStateRejection::MissingField(
-                "source_creation_schema_version",
-            ))?;
+        let source_creation_schema_version =
+            request
+                .source_creation_schema_version
+                .ok_or(TerminalStateRejection::MissingField(
+                    "source_creation_schema_version",
+                ))?;
         if source_creation_schema_version != predecessor.schema_version {
             return Err(TerminalStateRejection::StaleCreationSchemaVersion {
                 expected: predecessor.schema_version,
@@ -385,11 +468,12 @@ impl TerminalStateProcessor {
             });
         }
 
-        let source_creation_evidence_digest = request
-            .source_creation_evidence_digest
-            .ok_or(TerminalStateRejection::MissingField(
-                "source_creation_evidence_digest",
-            ))?;
+        let source_creation_evidence_digest =
+            request
+                .source_creation_evidence_digest
+                .ok_or(TerminalStateRejection::MissingField(
+                    "source_creation_evidence_digest",
+                ))?;
         let expected_digest = predecessor.evidence_digest64();
         if source_creation_evidence_digest != expected_digest {
             return Err(TerminalStateRejection::PredecessorDigestMismatch {
@@ -398,22 +482,24 @@ impl TerminalStateProcessor {
             });
         }
 
-        let current_lifecycle_state = request
-            .current_lifecycle_state
-            .ok_or(TerminalStateRejection::MissingField(
-                "current_lifecycle_state",
-            ))?;
+        let current_lifecycle_state =
+            request
+                .current_lifecycle_state
+                .ok_or(TerminalStateRejection::MissingField(
+                    "current_lifecycle_state",
+                ))?;
         if current_lifecycle_state != predecessor.lifecycle_state {
             return Err(TerminalStateRejection::LifecycleStateMismatch {
                 expected: predecessor.lifecycle_state,
                 found: current_lifecycle_state,
             });
         }
-        let target_lifecycle_state = request
-            .target_lifecycle_state
-            .ok_or(TerminalStateRejection::MissingField(
-                "target_lifecycle_state",
-            ))?;
+        let target_lifecycle_state =
+            request
+                .target_lifecycle_state
+                .ok_or(TerminalStateRejection::MissingField(
+                    "target_lifecycle_state",
+                ))?;
         let transition = LifecycleTransition {
             from: current_lifecycle_state,
             to: target_lifecycle_state,
@@ -431,16 +517,14 @@ impl TerminalStateProcessor {
             .ok_or(TerminalStateRejection::MissingField("world_time"))?;
         validate_world_time(&world_time)?;
         let cause_event = required_text(request.cause_event.as_deref(), "cause_event")?;
-        let lineage_reference = required_text(
-            request.lineage_reference.as_deref(),
-            "lineage_reference",
-        )?;
-        if let Some(prior) = request.prior_record.as_ref() {
-            if prior.lineage_reference != lineage_reference {
-                return Err(TerminalStateRejection::PriorRecordMismatch(
-                    "lineage_reference",
-                ));
-            }
+        let lineage_reference =
+            required_text(request.lineage_reference.as_deref(), "lineage_reference")?;
+        if let Some(prior) = request.prior_record.as_ref()
+            && prior.lineage_reference != lineage_reference
+        {
+            return Err(TerminalStateRejection::PriorRecordMismatch(
+                "lineage_reference",
+            ));
         }
 
         let reference_integrity = request
@@ -687,10 +771,7 @@ fn required_text<'a>(
     Ok(value)
 }
 
-fn required_snapshot_text(
-    value: &str,
-    field: &'static str,
-) -> Result<(), TerminalStateRejection> {
+fn required_snapshot_text(value: &str, field: &'static str) -> Result<(), TerminalStateRejection> {
     if value.trim().is_empty() {
         return Err(TerminalStateRejection::CorruptSnapshot(field));
     }
