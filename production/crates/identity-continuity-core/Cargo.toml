@@ -1,0 +1,8 @@
+[package]
+name = "gaonn-identity-continuity-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gaonn-cross-reference-core = { path = "../cross-reference-core" }
+gaonn-identity-core = { path = "../identity-core" }
