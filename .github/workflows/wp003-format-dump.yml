@@ -1,0 +1,25 @@
+name: WP003 rustfmt capture
+on:
+  push:
+    branches: [execution/week1-wp003-closure]
+    paths:
+      - 'production/crates/planetary-space-core/**'
+      - '.github/workflows/wp003-format-dump.yml'
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          rustup toolchain install stable --profile minimal --component rustfmt
+          rustup default stable
+      - run: cargo fmt --manifest-path production/Cargo.toml --all
+      - run: |
+          echo 'LIB_BEGIN'
+          base64 -w0 production/crates/planetary-space-core/src/lib.rs
+          echo
+          echo 'LIB_END'
+          echo 'TEST_BEGIN'
+          base64 -w0 production/crates/planetary-space-core/tests/wp003.rs
+          echo
+          echo 'TEST_END'
