@@ -5,3 +5,6 @@ edition = "2024"
 
 [dependencies]
 gaonn-identity-continuity-core = { path = "../identity-continuity-core" }
+
+[dev-dependencies]
+gaonn-identity-core = { path = "../identity-core" }
