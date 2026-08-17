@@ -1,8 +1,101 @@
-use gaonn_cross_reference_core::*; use gaonn_identity_continuity_core::*; use gaonn_identity_core::{IdentityOperationPhase,IdentityOrigin,IdentityDisposition};
-fn pred()->CrossReferenceIntegrityValidation{CrossReferenceIntegrityValidation{work_id:"S1.02.07",work_package:"WP-002",schema_version:1,reference_id:"r".into(),reference_version:1,source_stable_id:"s".into(),target_stable_id:"t".into(),target_namespace:"entity".into(),target_namespace_version:"v1".into(),target_entity_version:7,target_lifecycle_lineage:"lineage".into(),target_state:ReferenceTargetState::Active,validated_transition:CrossReferenceTransition{from:CrossReferenceState::Pending,to:CrossReferenceState::Active},owner:S1_02_07_OWNER.into(),causal_parent:"p".into(),completion_evidence:"e".into(),phase:IdentityOperationPhase::Complete,disposition:IdentityDisposition::CandidateOnly,operands:["Cross-Reference","Integrity","Stable","Entity","ID"],predecessor_work_id:"S1.02.06",predecessor_work_package:"WP-002",predecessor_evidence_digest:1,target_evidence_digest:2,root_fact_key:"root".into(),root_contract_version:1,root_owner:"owner".into(),root_causal_parent:"root-parent".into()}}
-fn req()->ContinuityRequest{ContinuityRequest{schema_version:1,owner:S1_02_08_OWNER.into(),writer:S1_02_08_OWNER.into(),origin:IdentityOrigin::OwningResolver,phase:IdentityOperationPhase::Complete,snapshot_id:"snap-1".into(),reload_id:"reload-1".into(),stable_id:"t".into(),namespace:"entity".into(),namespace_version:"v1".into(),entity_version:7,lifecycle_lineage:"lineage".into(),causal_parent:"S1.02.07:PASS".into(),bundle:RuntimeBundle{committed_causal_cut:"cut-9".into(),partition_state:"partition".into(),scheduler_state:"scheduler".into(),pending_state:"pending".into()}}}
-#[test]fn round_trip_preserves_identity(){let e=validate(&req(),&pred()).unwrap();let r=e.reload().unwrap();assert_eq!(e,r);assert_eq!(e.digest64(),r.digest64())}
-#[test]fn identity_mismatch_rejected(){let mut r=req();r.stable_id="other".into();assert!(matches!(validate(&r,&pred()),Err(ContinuityError::IdentityMismatch("stable_id"))))}
-#[test]fn partial_not_complete(){let mut r=req();r.phase=IdentityOperationPhase::Partial;assert_eq!(validate(&r,&pred()),Err(ContinuityError::Incomplete))}
-#[test]fn observer_cannot_write(){let mut r=req();r.origin=IdentityOrigin::Observer;assert_eq!(validate(&r,&pred()),Err(ContinuityError::UnauthorizedOrigin))}
-#[test]fn missing_runtime_bundle_rejected(){let mut r=req();r.bundle.pending_state.clear();assert_eq!(validate(&r,&pred()),Err(ContinuityError::Missing("pending_state")))}
+use gaonn_cross_reference_core::*;
+use gaonn_identity_continuity_core::*;
+use gaonn_identity_core::{IdentityDisposition, IdentityOperationPhase, IdentityOrigin};
+
+fn pred() -> CrossReferenceIntegrityValidation {
+    CrossReferenceIntegrityValidation {
+        work_id: "S1.02.07",
+        work_package: "WP-002",
+        schema_version: 1,
+        reference_id: "r".into(),
+        reference_version: 1,
+        source_stable_id: "s".into(),
+        target_stable_id: "t".into(),
+        target_namespace: "entity".into(),
+        target_namespace_version: "v1".into(),
+        target_entity_version: 7,
+        target_lifecycle_lineage: "lineage".into(),
+        target_state: ReferenceTargetState::Active,
+        validated_transition: CrossReferenceTransition {
+            from: CrossReferenceState::Pending,
+            to: CrossReferenceState::Active,
+        },
+        owner: S1_02_07_OWNER.into(),
+        causal_parent: "p".into(),
+        completion_evidence: "e".into(),
+        phase: IdentityOperationPhase::Complete,
+        disposition: IdentityDisposition::CandidateOnly,
+        operands: ["Cross-Reference", "Integrity", "Stable", "Entity", "ID"],
+        predecessor_work_id: "S1.02.06",
+        predecessor_work_package: "WP-002",
+        predecessor_evidence_digest: 1,
+        target_evidence_digest: 2,
+        root_fact_key: "root".into(),
+        root_contract_version: 1,
+        root_owner: "owner".into(),
+        root_causal_parent: "root-parent".into(),
+    }
+}
+fn req() -> ContinuityRequest {
+    ContinuityRequest {
+        schema_version: 1,
+        owner: S1_02_08_OWNER.into(),
+        writer: S1_02_08_OWNER.into(),
+        origin: IdentityOrigin::OwningResolver,
+        phase: IdentityOperationPhase::Complete,
+        snapshot_id: "snap-1".into(),
+        reload_id: "reload-1".into(),
+        stable_id: "t".into(),
+        namespace: "entity".into(),
+        namespace_version: "v1".into(),
+        entity_version: 7,
+        lifecycle_lineage: "lineage".into(),
+        causal_parent: "S1.02.07:PASS".into(),
+        bundle: RuntimeBundle {
+            committed_causal_cut: "cut-9".into(),
+            partition_state: "partition".into(),
+            scheduler_state: "scheduler".into(),
+            pending_state: "pending".into(),
+        },
+    }
+}
+#[test]
+fn round_trip_preserves_identity() {
+    let e = validate(&req(), &pred()).unwrap();
+    let r = e.reload().unwrap();
+    assert_eq!(e, r);
+    assert_eq!(e.digest64(), r.digest64())
+}
+#[test]
+fn identity_mismatch_rejected() {
+    let mut r = req();
+    r.stable_id = "other".into();
+    assert!(matches!(
+        validate(&r, &pred()),
+        Err(ContinuityError::IdentityMismatch("stable_id"))
+    ))
+}
+#[test]
+fn partial_not_complete() {
+    let mut r = req();
+    r.phase = IdentityOperationPhase::Partial;
+    assert_eq!(validate(&r, &pred()), Err(ContinuityError::Incomplete))
+}
+#[test]
+fn observer_cannot_write() {
+    let mut r = req();
+    r.origin = IdentityOrigin::Observer;
+    assert_eq!(
+        validate(&r, &pred()),
+        Err(ContinuityError::UnauthorizedOrigin)
+    )
+}
+#[test]
+fn missing_runtime_bundle_rejected() {
+    let mut r = req();
+    r.bundle.pending_state.clear();
+    assert_eq!(
+        validate(&r, &pred()),
+        Err(ContinuityError::Missing("pending_state"))
+    )
+}
