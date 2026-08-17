@@ -8,4 +8,5 @@ members = [
     "crates/retirement-state-core",
     "crates/retention-core",
     "crates/cross-reference-core",
+    "crates/identity-continuity-core",
 ]
