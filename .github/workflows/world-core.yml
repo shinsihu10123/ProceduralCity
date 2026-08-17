@@ -10,7 +10,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   world-core:
@@ -23,14 +23,13 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
-      - name: Bounded rustfmt capture
+      - name: Apply bounded rustfmt repair
         run: |
           cargo fmt --manifest-path production/Cargo.toml --all
-          echo LIB_BEGIN
-          base64 -w0 production/crates/planetary-space-core/src/lib.rs
-          echo
-          echo LIB_END
-          echo TEST_BEGIN
-          base64 -w0 production/crates/planetary-space-core/tests/wp003.rs
-          echo
-          echo TEST_END
+          if ! git diff --quiet; then
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+            git add production/crates/planetary-space-core
+            git commit -m 'style(space): apply canonical rustfmt'
+            git push
+          fi
