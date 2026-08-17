@@ -9,4 +9,5 @@ members = [
     "crates/retention-core",
     "crates/cross-reference-core",
     "crates/identity-continuity-core",
+    "crates/identity-reuse-audit-core",
 ]
