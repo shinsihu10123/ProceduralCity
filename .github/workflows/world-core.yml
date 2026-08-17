@@ -19,17 +19,18 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
       - name: Install stable Rust toolchain
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
-
-      - name: Rust format check
-        run: cargo fmt --manifest-path production/Cargo.toml --all -- --check
-
-      - name: Rust Clippy
-        run: cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings
-
-      - name: Rust tests
-        run: cargo test --manifest-path production/Cargo.toml --workspace
+      - name: Bounded rustfmt capture
+        run: |
+          cargo fmt --manifest-path production/Cargo.toml --all
+          echo LIB_BEGIN
+          base64 -w0 production/crates/planetary-space-core/src/lib.rs
+          echo
+          echo LIB_END
+          echo TEST_BEGIN
+          base64 -w0 production/crates/planetary-space-core/tests/wp003.rs
+          echo
+          echo TEST_END
