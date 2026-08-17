@@ -1,0 +1,7 @@
+[package]
+name = "gaonn-identity-reuse-audit-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gaonn-identity-continuity-core = { path = "../identity-continuity-core" }
