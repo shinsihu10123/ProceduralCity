@@ -1,13 +1,74 @@
 use gaonn_planetary_space_core::*;
-use gaonn_world_core::{CanonicalCandidate,CanonicalStateContract};
-fn root()->gaonn_world_core::ValidationReceipt{CanonicalStateContract.validate(&CanonicalCandidate::valid_fixture()).unwrap()}
-fn rec()->SpatialRecord{SpatialRecord{stable_id:"place-1".into(),namespace:"space".into(),version:1,owner:OWNER.into(),causal_parent:"S1.01.08:PASS".into(),cell:CellAddress{face:Face::PosX,level:2,x:3,y:1},position:Position{u:0.75,v:0.25,height:0.0},lineage:"created:1".into()}}
-#[test]fn admission_and_semantic_contract(){assert_eq!(admit(&root()),Ok(()));assert_eq!(validate_authority(OWNER,Origin::OwningResolver),Ok(()));assert_eq!(validate_authority(OWNER,Origin::Observer),Err(SpaceError::UnauthorizedWrite));}
-#[test]fn hierarchy_and_address_boundaries(){assert_eq!(validate_cell(CellAddress{face:Face::PosX,level:2,x:3,y:3}),Ok(()));assert_eq!(validate_cell(CellAddress{face:Face::PosX,level:2,x:4,y:0}),Err(SpaceError::InvalidCell));}
-#[test]fn cross_face_is_deterministic(){let c=CellAddress{face:Face::PosX,level:2,x:3,y:1};assert_eq!(cross_face_neighbor(c,1,0).unwrap(),CellAddress{face:Face::NegZ,level:2,x:0,y:1});}
-#[test]fn continuous_and_vertical_contract(){assert_eq!(validate_position(rec().position),Ok(()));assert_eq!(vertical_class(-1.0),VerticalClass::Subsurface);assert_eq!(vertical_class(0.0),VerticalClass::Surface);assert_eq!(vertical_class(1.0),VerticalClass::Altitude);}
-#[test]fn geodesic_query_is_read_only_and_repeatable(){let a=(Face::PosX,Position{u:0.5,v:0.5,height:0.0});let b=(Face::PosZ,Position{u:0.5,v:0.5,height:0.0});let x=geodesic(a,b,10.0).unwrap();let y=geodesic(a,b,10.0).unwrap();assert_eq!(x,y);assert!((x.0-std::f64::consts::FRAC_PI_2*10.0).abs()<1e-10);}
-#[test]fn tangent_frame_is_orthogonal(){let(e,n,u)=tangent_frame(Face::PosZ,Position{u:0.5,v:0.5,height:0.0}).unwrap();let dot=|a:[f64;3],b:[f64;3]|a[0]*b[0]+a[1]*b[1]+a[2]*b[2];assert!(dot(e,n).abs()<1e-12&&dot(e,u).abs()<1e-12&&dot(n,u).abs()<1e-12);}
-#[test]fn canonical_index_has_single_writer_and_no_duplicates(){let mut i=SpatialIndex::default();assert_eq!(i.insert(rec(),Origin::Observer),Err(SpaceError::UnauthorizedWrite));assert_eq!(i.digest64(),SpatialIndex::default().digest64());i.insert(rec(),Origin::OwningResolver).unwrap();assert_eq!(i.insert(rec(),Origin::OwningResolver),Err(SpaceError::DuplicateId));assert_eq!(i.get("place-1").unwrap().stable_id,"place-1");}
-#[test]fn serialization_round_trip_preserves_state(){let r=rec();let s=serialize(&r);let rr=deserialize(&s,&r.lineage).unwrap();assert_eq!(r,rr);assert_eq!(serialize(&rr),s);}
-#[test]fn acceptance_requires_every_member_and_evidence(){let passes=[true;11];let evidence=[1u64;11];let a=accept(&root(),&passes,&evidence).unwrap();assert!(a.closed);assert_eq!(a.member_ids,MEMBER_IDS);let mut missing=passes;missing[7]=false;assert_eq!(accept(&root(),&missing,&evidence),Err(SpaceError::MissingEvidence("S1.04.08")));let mut noev=evidence;noev[10]=0;assert_eq!(accept(&root(),&passes,&noev),Err(SpaceError::MissingEvidence("S1.04.11")));}
+use gaonn_world_core::{CanonicalCandidate, CanonicalStateContract};
+fn root() -> gaonn_world_core::ValidationReceipt {
+    CanonicalStateContract
+        .validate(&CanonicalCandidate::valid_fixture())
+        .unwrap()
+}
+fn rec() -> SpatialRecord {
+    SpatialRecord {
+        stable_id: "place-1".into(), namespace: "space".into(), version: 1, owner: OWNER.into(),
+        causal_parent: "S1.01.08:PASS".into(),
+        cell: CellAddress { face: Face::PosX, level: 2, x: 3, y: 1 },
+        position: Position { u: 0.75, v: 0.25, height: 0.0 }, lineage: "created:1".into(),
+    }
+}
+#[test]
+fn admission_and_semantic_contract() {
+    assert_eq!(admit(&root()), Ok(()));
+    assert_eq!(validate_authority(OWNER, Origin::OwningResolver), Ok(()));
+    assert_eq!(validate_authority(OWNER, Origin::Observer), Err(SpaceError::UnauthorizedWrite));
+}
+#[test]
+fn hierarchy_and_address_boundaries() {
+    assert_eq!(validate_cell(CellAddress { face: Face::PosX, level: 2, x: 3, y: 3 }), Ok(()));
+    assert_eq!(validate_cell(CellAddress { face: Face::PosX, level: 2, x: 4, y: 0 }), Err(SpaceError::InvalidCell));
+}
+#[test]
+fn cross_face_is_deterministic() {
+    let c = CellAddress { face: Face::PosX, level: 2, x: 3, y: 1 };
+    assert_eq!(cross_face_neighbor(c, 1, 0).unwrap(), CellAddress { face: Face::NegZ, level: 2, x: 0, y: 1 });
+}
+#[test]
+fn continuous_and_vertical_contract() {
+    assert_eq!(validate_position(rec().position), Ok(()));
+    assert_eq!(vertical_class(-1.0), VerticalClass::Subsurface);
+    assert_eq!(vertical_class(0.0), VerticalClass::Surface);
+    assert_eq!(vertical_class(1.0), VerticalClass::Altitude);
+}
+#[test]
+fn geodesic_query_is_read_only_and_repeatable() {
+    let a = (Face::PosX, Position { u: 0.5, v: 0.5, height: 0.0 });
+    let b = (Face::PosZ, Position { u: 0.5, v: 0.5, height: 0.0 });
+    let x = geodesic(a, b, 10.0).unwrap(); let y = geodesic(a, b, 10.0).unwrap();
+    assert_eq!(x, y); assert!((x.0 - std::f64::consts::FRAC_PI_2 * 10.0).abs() < 1e-10);
+}
+#[test]
+fn tangent_frame_is_orthogonal() {
+    let (e, n, u) = tangent_frame(Face::PosZ, Position { u: 0.5, v: 0.5, height: 0.0 }).unwrap();
+    let dot = |a: [f64; 3], b: [f64; 3]| a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    assert!(dot(e, n).abs() < 1e-12 && dot(e, u).abs() < 1e-12 && dot(n, u).abs() < 1e-12);
+}
+#[test]
+fn canonical_index_has_single_writer_and_no_duplicates() {
+    let mut i = SpatialIndex::default();
+    assert_eq!(i.insert(rec(), Origin::Observer), Err(SpaceError::UnauthorizedWrite));
+    assert_eq!(i.digest64(), SpatialIndex::default().digest64());
+    i.insert(rec(), Origin::OwningResolver).unwrap();
+    assert_eq!(i.insert(rec(), Origin::OwningResolver), Err(SpaceError::DuplicateId));
+    assert_eq!(i.get("place-1").unwrap().stable_id, "place-1");
+}
+#[test]
+fn serialization_round_trip_preserves_state() {
+    let r = rec(); let s = serialize(&r); let rr = deserialize(&s, &r.lineage).unwrap();
+    assert_eq!(r, rr); assert_eq!(serialize(&rr), s);
+}
+#[test]
+fn acceptance_requires_every_member_and_evidence() {
+    let passes = [true; 11]; let evidence = [1u64; 11];
+    let a = accept(&root(), &passes, &evidence).unwrap(); assert!(a.closed); assert_eq!(a.member_ids, MEMBER_IDS);
+    let mut missing = passes; missing[7] = false;
+    assert_eq!(accept(&root(), &missing, &evidence), Err(SpaceError::MissingEvidence("S1.04.08")));
+    let mut noev = evidence; noev[10] = 0;
+    assert_eq!(accept(&root(), &passes, &noev), Err(SpaceError::MissingEvidence("S1.04.11")));
+}
