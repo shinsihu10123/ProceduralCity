@@ -40,6 +40,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gaonn-identity-acceptance-core"
+version = "0.1.0"
+dependencies = [
+ "gaonn-identity-continuity-core",
+ "gaonn-identity-core",
+ "gaonn-identity-reuse-audit-core",
+ "gaonn-world-core",
+]
+
+[[package]]
 name = "gaonn-identity-continuity-core"
 version = "0.1.0"
 dependencies = [

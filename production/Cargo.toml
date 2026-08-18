@@ -10,6 +10,7 @@ members = [
     "crates/cross-reference-core",
     "crates/identity-continuity-core",
     "crates/identity-reuse-audit-core",
+    "crates/identity-acceptance-core",
     "crates/planetary-space-core",
     "crates/world-time-core",
     "crates/world-time-acceptance-core",

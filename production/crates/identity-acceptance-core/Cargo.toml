@@ -1,0 +1,10 @@
+[package]
+name = "gaonn-identity-acceptance-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gaonn-world-core = { path = "../world-core" }
+gaonn-identity-core = { path = "../identity-core" }
+gaonn-identity-continuity-core = { path = "../identity-continuity-core" }
+gaonn-identity-reuse-audit-core = { path = "../identity-reuse-audit-core" }
