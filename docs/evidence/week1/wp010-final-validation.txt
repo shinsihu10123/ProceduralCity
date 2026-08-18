@@ -1,0 +1,30 @@
+WP010_FINAL_VALIDATED_HEAD=b831daa186fee157be686eb9f6da238f9d8e7150
+EVIDENCE_PRESENT=1
+EVIDENCE_CLOSED=1
+FMT_EXIT=0
+CLIPPY_EXIT=0
+WORKSPACE_TEST_EXIT=0
+WP010_TEST_EXIT=0
+WP010_TEST_COUNT=14
+--- WP010 TEST SUMMARY ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.01s
+     Running tests/wp010.rs (production/target/debug/deps/wp010-48ca0c5b37b3f32f)
+
+running 14 tests
+test admission_requires_complete_wp002_pass_evidence ... ok
+test authority_wrong_origin_never_mutates_future_queue ... ok
+test s1_06_01_contract_validates_owner_version_transition_and_read_only_origins ... ok
+test s1_06_02_deadline_representation_preserves_identity_owner_and_causal_parent ... ok
+test persistence_restore_and_replay_preserve_pending_state_identity_and_digest ... ok
+test s1_06_04_same_time_bucket_rejects_mixed_time_and_duplicate_keys ... ok
+test s1_06_03_deterministic_key_is_semantic_and_input_order_independent ... ok
+test s1_06_05_same_time_resolution_tracks_dependency_and_resource_rejections ... ok
+test s1_06_06_future_event_queue_orders_and_blocks_without_partial_write ... ok
+test s1_06_07_inactive_process_wake_sleep_distinguishes_ready_sleep_blocked_and_expired ... ok
+test s1_06_09_budget_handoff_transfers_source_reference_without_inventing_policy ... ok
+test s1_06_08_scheduler_admission_preserves_pass_version_and_block_reason ... ok
+test s1_06_10_render_frame_time_coupling_audit_is_read_only_and_precise ... ok
+test wp010_integration_and_acceptance_require_all_ten_members_and_snapshot_evidence ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
