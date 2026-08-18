@@ -20,4 +20,5 @@ members = [
     "crates/causal-random-core",
     "crates/authority-placement-core",
     "crates/transaction-precommit-core",
+    "crates/multi-rate-coupling-core",
 ]
