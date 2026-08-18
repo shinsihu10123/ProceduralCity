@@ -1,4 +1,4 @@
-name: WP010 bounded repair cycle 2
+name: WP010 final closure validation
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  repair-and-validate:
+  validate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -20,21 +20,7 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
-      - name: Repair strict Clippy finding and format
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('production/crates/scheduler-core/src/lib.rs')
-          s = p.read_text()
-          old = 'proof.member_evidence.iter().any(|digest| *digest == 0)'
-          new = 'proof.member_evidence.contains(&0)'
-          if old not in s:
-              raise SystemExit('expected manual_contains pattern not found')
-          p.write_text(s.replace(old, new, 1))
-          PY
-          cargo fmt --manifest-path production/Cargo.toml --all
-      - name: Strict validation
+      - name: Validate closed evidence-bearing WP-010 state
         shell: bash
         run: |
           set +e
@@ -47,25 +33,24 @@ jobs:
           cargo test --manifest-path production/Cargo.toml -p gaonn-scheduler-core --test wp010 > /tmp/wp010.log 2>&1
           WP010=$?
           set -e
-          mkdir -p docs/evidence/week1
+          PRESENT=$(test -f docs/evidence/week1/wp010-causal-scheduler.md && echo 1 || echo 0)
+          CLOSED=$(grep -q '^Status: PASS / CLOSED$' docs/evidence/week1/wp010-causal-scheduler.md && echo 1 || echo 0)
+          COUNT=$(grep -E '^running [0-9]+ tests$' /tmp/wp010.log | tail -n 1 | awk '{print $2}')
           {
-            echo "WP010_REPAIR2_BASE=$(git rev-parse HEAD)"
+            echo "WP010_FINAL_VALIDATED_HEAD=$(git rev-parse HEAD)"
+            echo "EVIDENCE_PRESENT=$PRESENT"
+            echo "EVIDENCE_CLOSED=$CLOSED"
             echo "FMT_EXIT=$FMT"
             echo "CLIPPY_EXIT=$CLIPPY"
             echo "WORKSPACE_TEST_EXIT=$WORKSPACE"
             echo "WP010_TEST_EXIT=$WP010"
-            echo '--- CLIPPY ---'
-            tail -n 120 /tmp/clippy.log
-            echo '--- WP010 TEST ---'
-            cat /tmp/wp010.log
-            echo '--- WORKSPACE TEST TAIL ---'
-            tail -n 120 /tmp/workspace.log
-          } > docs/evidence/week1/wp010-ci-probe.txt
+            echo "WP010_TEST_COUNT=${COUNT:-unknown}"
+            echo '--- WP010 TEST SUMMARY ---'
+            tail -n 35 /tmp/wp010.log
+          } > docs/evidence/week1/wp010-final-validation.txt
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add production/crates/scheduler-core production/Cargo.lock docs/evidence/week1/wp010-ci-probe.txt || true
-          if ! git diff --cached --quiet; then
-            git commit -m 'fix(scheduler): bounded WP-010 repair cycle 2 [skip ci]'
-            git push
-          fi
-          if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$WORKSPACE" -ne 0 ] || [ "$WP010" -ne 0 ]; then exit 1; fi
+          git add docs/evidence/week1/wp010-final-validation.txt
+          git commit -m 'ci(scheduler): publish final WP-010 closure validation [skip ci]'
+          git push
+          if [ "$PRESENT" -ne 1 ] || [ "$CLOSED" -ne 1 ] || [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$WORKSPACE" -ne 0 ] || [ "$WP010" -ne 0 ]; then exit 1; fi
