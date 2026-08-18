@@ -1,5 +1,5 @@
 name: Economic Lab CI
-# WP-RV02 execution: 3-seed 36-month compact reproduction plus baseline compute envelope.
+# Core v0.10 regression/performance evidence. Long WP-RV02 suites run in the dedicated reality-validation workflow.
 
 on:
   push:
@@ -58,24 +58,6 @@ jobs:
           DIAG_SEEDS: 'ECON-RV01-DIAG-A'
           OUTPUT_JSON: 'performance-results/reality-diagnostics-rv01.json'
         run: npm run diagnose:reality:v10
-      - name: WP-RV02 R0 compact baseline reproduction
-        working-directory: economic-lab
-        env:
-          DIAG_LABEL: 'WP-RV02-R0-compact'
-          DIAG_MONTHS: '36'
-          DIAG_SCALE: 'compact'
-          DIAG_SEEDS: 'ECON-RV02-A,ECON-RV02-B,ECON-RV02-C'
-          OUTPUT_JSON: 'performance-results/reality-diagnostics-rv02-r0-compact.json'
-        run: node scripts/baseline-reproduction-v10.mjs
-      - name: WP-RV02 R1 baseline compute envelope
-        working-directory: economic-lab
-        env:
-          DIAG_LABEL: 'WP-RV02-R1-baseline'
-          DIAG_MONTHS: '36'
-          DIAG_SCALE: 'baseline'
-          DIAG_SEEDS: 'ECON-RV02-A,ECON-RV02-B,ECON-RV02-C'
-          OUTPUT_JSON: 'performance-results/reality-diagnostics-rv02-r1-baseline.json'
-        run: node scripts/baseline-reproduction-v10.mjs
       - name: Multi-shock stress matrix
         working-directory: economic-lab
         env:
