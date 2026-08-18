@@ -7,3 +7,6 @@ edition = "2024"
 gaonn-world-core = { path = "../world-core" }
 gaonn-world-time-core = { path = "../world-time-core" }
 gaonn-scheduler-core = { path = "../scheduler-core" }
+
+[dev-dependencies]
+gaonn-identity-reuse-audit-core = { path = "../identity-reuse-audit-core" }
