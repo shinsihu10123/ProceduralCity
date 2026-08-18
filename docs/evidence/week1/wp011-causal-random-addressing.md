@@ -14,12 +14,12 @@ Frozen scope: S1.10.01…S1.10.08 only. S1.10.09+ remain outside WP-011.
 
 ## Frozen Member L3 coverage
 1. **S1.10.01 Causal Random Address 의미 계약** — validates schema/version/PA-056 owner/causal parent, source-supplied allowed transition, versioned seed reference and the semantic random address. The receipt preserves operands `Causal / Random / Address / Versioned / World` and is `CandidateOnly`.
-2. **S1.10.02 Versioned World Seed** — `WorldRandomRoot256` is represented as a non-zero 256-bit root with Stable ID, namespace, version, PA-056 owner, causal parent, deterministic creation token and explicit predecessor continuity for revisions.
+2. **S1.10.02 Versioned World Seed** — `WorldRandomRoot256` is represented as a non-zero 256-bit root with Stable ID, namespace, version, PA-056 owner, causal parent, deterministic creation token and explicit predecessor continuity for revisions. The registry retains historical seed versions instead of overwriting them, so a lineage pinned to an older exact seed reference remains replayable after a newer seed version is registered.
 3. **S1.10.03 Entity Identity Address Component** — random subject identity uses Stable Entity ID, identity namespace/version and lifecycle lineage; display names or transient object addresses are not canonical random identity.
 4. **S1.10.04 Process / Episode Address Component** — semantic process key and episode key are required address components and fail closed when absent.
 5. **S1.10.05 WorldTime / Counter Address Component** — uses validated WP-004 absolute WorldTime epoch/tick plus an explicit semantic counter; wall-clock/frame time is not accepted as the address time source.
 6. **S1.10.06 Domain Random Namespace** — versioned PA-056-owned domain namespace registers explicit Purpose IDs. Sampling with an unregistered purpose fails before sample generation.
-7. **S1.10.07 Stateless Sample Generation** — sampling is a pure function of the versioned world seed/lineage and the complete semantic causal address. Repeating the exact address reproduces the exact sample and does not mutate a stream position or registry state.
+7. **S1.10.07 Stateless Sample Generation** — sampling is a pure function of the exact versioned world seed/lineage reference and the complete semantic causal address. Repeating the exact address reproduces the exact sample and does not mutate a stream position or registry state. Historical lineages resolve the exact referenced seed version rather than whichever seed version is newest.
 8. **S1.10.08 Deterministic Distribution Primitives** — deterministic raw-u64, integer-threshold Bernoulli and bounded-u64 transforms operate on the stateless sample; invalid parameters fail closed.
 
 ## PA-056 architecture boundary
@@ -31,27 +31,32 @@ Frozen scope: S1.10.01…S1.10.08 only. S1.10.09+ remain outside WP-011.
 - `S1.10.09 Stable Stochastic Event Identity`, resolution invariance, schedule/worker independence, branch namespace hooks and global mutable-RNG audit remain for later Frozen members/WPs and are not claimed complete here.
 
 ## Persistence / replay
-- `RandomSnapshot` carries schema version, commit marker, causal cut and the complete seed/lineage/domain-namespace registry.
-- Restore validates seed and versioned references and reproduces the same registry digest.
+- `RandomSnapshot` carries schema version, commit marker, causal cut and the complete seed-version/lineage/domain-namespace registry.
+- Restore validates every retained seed version and exact lineage-to-seed references and reproduces the same registry digest.
 - The same semantic address after restore produces the same stateless sample.
+- A specific replay fixture proves a lineage referencing seed v1 still resolves seed v1 and yields the same sample after seed v2 exists, including after Snapshot restore.
 - No mutable RNG cursor/stream position is persisted because no canonical mutable stream exists at this WP boundary.
 
 ## Tests
 Dedicated target: `production/crates/causal-random-core/tests/wp011.rs`.
-It contains 14 tests covering both Hard Predecessor admission, all eight Frozen Member L3s, PA-056 authority boundaries, forbidden execution-environment address inputs, persistence/replay, failure propagation and complete WP integration/acceptance.
+It contains 15 tests covering both Hard Predecessor admission, all eight Frozen Member L3s, PA-056 authority boundaries, forbidden execution-environment address inputs, persistence/replay, retained historical seed-version replay, failure propagation and complete WP integration/acceptance.
 
 Strict bounded validation report: `docs/evidence/week1/wp011-ci-probe.txt`.
-Repair cycle 1 result:
+Final repair-cycle result:
 - `FMT_EXIT=0`
 - `CLIPPY_EXIT=0`
 - `WORKSPACE_TEST_EXIT=0`
 - `WP011_TEST_EXIT=0`
-- dedicated WP-011 tests: 14 / 14 PASS
+- dedicated WP-011 tests: 15 / 15 PASS
 
 ## Bounded correction record
 Initial probe found canonical rustfmt differences and one Rust test name-shadowing compile error in the S1.10.07 fixture. No Frozen semantic or architecture change was required.
 
-Repair cycle 1 renamed the local test binding, applied canonical rustfmt, then reran format check, strict Clippy, full workspace tests and the dedicated WP-011 target. All gates passed. No second production correction was required.
+Repair cycle 1 renamed the local test binding, applied canonical rustfmt, then reran format check, strict Clippy, full workspace tests and the dedicated WP-011 target. All gates passed.
+
+A post-pass implementation self-audit then found that the first seed-registry representation replaced an older `VersionedWorldSeed` when a newer version was registered. That could invalidate an existing `RandomLineage` pinned to the exact older seed reference and break historical replay. Because WP-011 explicitly covers a versioned world seed and persistence/replay, this was treated as a substantive quality defect rather than accepted as an implementation detail.
+
+Repair cycle 2 changed seed storage to retain each `(Stable ID, version)` entry, added exact `seed_by_ref` resolution for lineage validation/sampling, and added a regression test proving seed-v1 replay remains unchanged after seed-v2 registration and Snapshot restore. Format, strict Clippy, full workspace tests and all 15 dedicated tests passed. Exactly two bounded production correction cycles were used; no further production correction is permitted or required.
 
 ## Acceptance gate
 `accept_wp` requires:
@@ -69,4 +74,4 @@ A missing member blocks closure at the exact L3 ID. Later S1.10 members cannot s
 - Frozen Week Change: 0
 - BCR Trigger: none
 
-Final CLOSED status is retained only if the Evidence-bearing branch state itself repeats repository-standard format, strict Clippy, full-workspace tests, dedicated WP-011 tests, and Evidence presence/status validation. The temporary WP-specific workflow is removed afterward without changing production code or this Evidence record.
+Final CLOSED status is retained only if the Evidence-bearing branch state itself repeats repository-standard format, strict Clippy, full-workspace tests, dedicated WP-011 tests, and Evidence presence/status validation. Temporary WP-specific workflows are removed afterward without changing production code or this Evidence record.
