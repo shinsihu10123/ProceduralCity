@@ -1,0 +1,123 @@
+name: Economic Lab WP-RV02 Parallel Evidence
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - '.github/workflows/economic-lab-rv02-parallel.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  start:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish pending beacon
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python - <<'PY' > /tmp/rv02-parallel-pending.json
+          import json, os
+          print(json.dumps({
+              "state": "pending",
+              "target_url": os.environ["RUN_URL"],
+              "description": "WP-RV02 parallel evidence matrix is running",
+              "context": "economic-lab/wp-rv02-parallel"
+          }))
+          PY
+          curl -fsS -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" \
+            --data-binary @/tmp/rv02-parallel-pending.json
+
+  reproduce:
+    needs: start
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - case_id: r0-compact-a
+            label: WP-RV02-R0-compact-A
+            scale: compact
+            seed: ECON-RV02-A
+          - case_id: r0-compact-b
+            label: WP-RV02-R0-compact-B
+            scale: compact
+            seed: ECON-RV02-B
+          - case_id: r0-compact-c
+            label: WP-RV02-R0-compact-C
+            scale: compact
+            seed: ECON-RV02-C
+          - case_id: r1-baseline-a
+            label: WP-RV02-R1-baseline-A
+            scale: baseline
+            seed: ECON-RV02-A
+          - case_id: r1-baseline-b
+            label: WP-RV02-R1-baseline-B
+            scale: baseline
+            seed: ECON-RV02-B
+          - case_id: r1-baseline-c
+            label: WP-RV02-R1-baseline-C
+            scale: baseline
+            seed: ECON-RV02-C
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Execute ${{ matrix.case_id }}
+        working-directory: economic-lab
+        env:
+          DIAG_LABEL: ${{ matrix.label }}
+          DIAG_MONTHS: '36'
+          DIAG_SCALE: ${{ matrix.scale }}
+          DIAG_SEEDS: ${{ matrix.seed }}
+          OUTPUT_JSON: performance-results/${{ matrix.case_id }}.json
+        run: node scripts/baseline-reproduction-v10.mjs
+      - name: Upload ${{ matrix.case_id }} evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: economic-lab-wp-rv02-${{ matrix.case_id }}
+          path: economic-lab/performance-results/${{ matrix.case_id }}.json
+          if-no-files-found: error
+          retention-days: 30
+
+  finalize:
+    if: always()
+    needs: [start, reproduce]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish final beacon
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          MATRIX_RESULT: ${{ needs.reproduce.result }}
+        run: |
+          python - <<'PY' > /tmp/rv02-parallel-final.json
+          import json, os
+          ok = os.environ.get("MATRIX_RESULT") == "success"
+          print(json.dumps({
+              "state": "success" if ok else "failure",
+              "target_url": os.environ["RUN_URL"],
+              "description": "WP-RV02 parallel evidence gates passed" if ok else "WP-RV02 parallel evidence gates failed",
+              "context": "economic-lab/wp-rv02-parallel"
+          }))
+          PY
+          curl -fsS -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" \
+            --data-binary @/tmp/rv02-parallel-final.json
