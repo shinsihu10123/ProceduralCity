@@ -1,4 +1,4 @@
-name: WP011 bounded repair cycle 1
+name: WP011 final closure validation
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  repair-and-validate:
+  validate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -20,21 +20,7 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
-      - name: Repair test shadow and apply canonical rustfmt
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('production/crates/causal-random-core/tests/wp011.rs')
-          s = p.read_text()
-          old = '''fn s1_10_07_stateless_generation_retries_same_address_without_stream_consumption() {\n    let registry = registry();\n    let a = address(12);\n    let first = stateless_sample_u64(&registry, &a).unwrap();\n    let second = stateless_sample_u64(&registry, &a).unwrap();\n    assert_eq!(first, second);\n    assert_eq!(registry.digest64(), registry().digest64());\n    let other = stateless_sample_u64(&registry, &address(13)).unwrap();'''
-          new = '''fn s1_10_07_stateless_generation_retries_same_address_without_stream_consumption() {\n    let reg = registry();\n    let a = address(12);\n    let first = stateless_sample_u64(&reg, &a).unwrap();\n    let second = stateless_sample_u64(&reg, &a).unwrap();\n    assert_eq!(first, second);\n    assert_eq!(reg.digest64(), registry().digest64());\n    let other = stateless_sample_u64(&reg, &address(13)).unwrap();'''
-          if old not in s:
-              raise SystemExit('expected S1.10.07 shadow block not found')
-          p.write_text(s.replace(old, new, 1))
-          PY
-          cargo fmt --manifest-path production/Cargo.toml --all
-      - name: Strict validation
+      - name: Validate closed evidence-bearing WP-011 state
         shell: bash
         run: |
           set +e
@@ -47,25 +33,24 @@ jobs:
           cargo test --manifest-path production/Cargo.toml -p gaonn-causal-random-core --test wp011 > /tmp/wp011.log 2>&1
           WP011=$?
           set -e
-          mkdir -p docs/evidence/week1
+          PRESENT=$(test -f docs/evidence/week1/wp011-causal-random-addressing.md && echo 1 || echo 0)
+          CLOSED=$(grep -q '^Status: PASS / CLOSED$' docs/evidence/week1/wp011-causal-random-addressing.md && echo 1 || echo 0)
+          COUNT=$(grep -E '^running [0-9]+ tests$' /tmp/wp011.log | tail -n 1 | awk '{print $2}')
           {
-            echo "WP011_REPAIR1_BASE=$(git rev-parse HEAD)"
+            echo "WP011_FINAL_VALIDATED_HEAD=$(git rev-parse HEAD)"
+            echo "EVIDENCE_PRESENT=$PRESENT"
+            echo "EVIDENCE_CLOSED=$CLOSED"
             echo "FMT_EXIT=$FMT"
             echo "CLIPPY_EXIT=$CLIPPY"
             echo "WORKSPACE_TEST_EXIT=$WORKSPACE"
             echo "WP011_TEST_EXIT=$WP011"
-            echo '--- CLIPPY ---'
-            tail -n 120 /tmp/clippy.log
-            echo '--- WP011 TEST ---'
-            cat /tmp/wp011.log
-            echo '--- WORKSPACE TEST TAIL ---'
-            tail -n 120 /tmp/workspace.log
-          } > docs/evidence/week1/wp011-ci-probe.txt
+            echo "WP011_TEST_COUNT=${COUNT:-unknown}"
+            echo '--- WP011 TEST SUMMARY ---'
+            tail -n 35 /tmp/wp011.log
+          } > docs/evidence/week1/wp011-final-validation.txt
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add production/crates/causal-random-core production/Cargo.lock docs/evidence/week1/wp011-ci-probe.txt || true
-          if ! git diff --cached --quiet; then
-            git commit -m 'fix(random): bounded WP-011 repair cycle 1 [skip ci]'
-            git push
-          fi
-          if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$WORKSPACE" -ne 0 ] || [ "$WP011" -ne 0 ]; then exit 1; fi
+          git add docs/evidence/week1/wp011-final-validation.txt
+          git commit -m 'ci(random): publish final WP-011 closure validation [skip ci]'
+          git push
+          if [ "$PRESENT" -ne 1 ] || [ "$CLOSED" -ne 1 ] || [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$WORKSPACE" -ne 0 ] || [ "$WP011" -ne 0 ]; then exit 1; fi
