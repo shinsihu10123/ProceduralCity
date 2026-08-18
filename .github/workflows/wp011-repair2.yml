@@ -1,0 +1,55 @@
+name: WP011 repair2 trigger
+on:
+  push:
+    branches: [execution/week1-wp011-go]
+    paths: ['.github/workflows/wp011-repair2.yml']
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+      - name: Preserve seed version history
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('production/crates/causal-random-core/src/lib.rs'); s=p.read_text()
+          reps=[
+          ('    seeds: BTreeMap<String, VersionedWorldSeed>,','    seeds: BTreeMap<(String, u32), VersionedWorldSeed>,'),
+          ('''        if self.seeds.contains_key(&seed.stable_id) {\n            return Err(RandomError::DuplicateStableId(seed.stable_id));\n        }\n        let reference = seed.reference();\n        self.seeds.insert(seed.stable_id.clone(), seed);\n        Ok(reference)''','''        if self.seeds.keys().any(|(stable_id, _)| stable_id == &seed.stable_id) {\n            return Err(RandomError::DuplicateStableId(seed.stable_id));\n        }\n        let reference = seed.reference();\n        self.seeds.insert((seed.stable_id.clone(), seed.version), seed);\n        Ok(reference)'''),
+          ('''        let previous = self\n            .seeds\n            .get(&seed.stable_id)\n            .ok_or_else(|| RandomError::DanglingReference(seed.stable_id.clone()))?;\n        if seed.predecessor.as_ref() != Some(&previous.reference()) {\n            return Err(RandomError::ReferenceMismatch("seed.predecessor"));\n        }\n        let reference = seed.reference();\n        self.seeds.insert(seed.stable_id.clone(), seed);\n        Ok(reference)\n    }\n\n    pub fn seed(&self, stable_id: &str) -> Result<&VersionedWorldSeed, RandomError> {\n        self.seeds\n            .get(stable_id)\n            .ok_or_else(|| RandomError::DanglingReference(stable_id.to_owned()))\n    }''','''        let previous = self.seed(&seed.stable_id)?;\n        if seed.predecessor.as_ref() != Some(&previous.reference()) {\n            return Err(RandomError::ReferenceMismatch("seed.predecessor"));\n        }\n        let key = (seed.stable_id.clone(), seed.version);\n        if self.seeds.contains_key(&key) {\n            return Err(RandomError::DuplicateStableId(format!("{}@{}", seed.stable_id, seed.version)));\n        }\n        let reference = seed.reference();\n        self.seeds.insert(key, seed);\n        Ok(reference)\n    }\n\n    pub fn seed(&self, stable_id: &str) -> Result<&VersionedWorldSeed, RandomError> {\n        self.seeds.values().filter(|seed| seed.stable_id == stable_id).max_by_key(|seed| seed.version).ok_or_else(|| RandomError::DanglingReference(stable_id.to_owned()))\n    }\n\n    pub fn seed_by_ref(&self, reference: &VersionRef) -> Result<&VersionedWorldSeed, RandomError> {\n        let key = (reference.stable_id.clone(), reference.version);\n        let seed = self.seeds.get(&key).ok_or_else(|| RandomError::DanglingReference(format!("{}@{}", reference.stable_id, reference.version)))?;\n        if seed.reference() != *reference {\n            return Err(RandomError::ReferenceMismatch("seed.reference"));\n        }\n        Ok(seed)\n    }'''),
+          ('''    let seed = registry.seed(&lineage.seed_ref.stable_id)?;\n    if seed.reference() != lineage.seed_ref {\n        return Err(RandomError::ReferenceMismatch("lineage.seed_ref"));\n    }''','''    let seed = registry.seed_by_ref(&lineage.seed_ref)?;'''),
+          ('''    let seed = registry.seed(&lineage.seed_ref.stable_id)?;\n    if seed.reference() != lineage.seed_ref {\n        return Err(RandomError::ReferenceMismatch("lineage.seed_ref"));\n    }\n    Ok(())''','''    registry.seed_by_ref(&lineage.seed_ref)?;\n    Ok(())''')]
+          for old,new in reps:
+              if old not in s: raise SystemExit('missing source patch pattern')
+              s=s.replace(old,new,1)
+          p.write_text(s)
+          t=Path('production/crates/causal-random-core/tests/wp011.rs'); ts=t.read_text()
+          marker='''#[test]\nfn identity_audit_fixture_does_not_create_random_identity_shortcut() {'''
+          test='''#[test]\nfn versioned_seed_history_remains_replayable_after_new_seed_version() {\n    let mut reg = registry();\n    let old_address = address(21);\n    let old_sample = stateless_sample_u64(&reg, &old_address).unwrap();\n    let old_ref = reg.seed("world-seed").unwrap().reference();\n    let mut revised = seed();\n    revised.version = 2;\n    revised.predecessor = Some(old_ref.clone());\n    revised.causal_parent = "seed:revision-2".to_owned();\n    revised.root256 = [0x91, 0x92, 0x93, 0x94];\n    reg.update_seed(revised, WriteOrigin::RegistryAuthority).unwrap();\n    assert_eq!(reg.seed("world-seed").unwrap().version, 2);\n    assert_eq!(reg.seed_by_ref(&old_ref).unwrap().version, 1);\n    assert_eq!(old_sample, stateless_sample_u64(&reg, &old_address).unwrap());\n    let snapshot = RandomSnapshot { schema_version: 1, commit_marker: "commit:seed-history".to_owned(), causal_cut: "cut:seed-history".to_owned(), registry: reg };\n    let restored = snapshot.restore().unwrap();\n    assert_eq!(restored.seed("world-seed").unwrap().version, 2);\n    assert_eq!(restored.seed_by_ref(&old_ref).unwrap().version, 1);\n    assert_eq!(old_sample, stateless_sample_u64(&restored, &old_address).unwrap());\n}\n\n'''
+          if marker not in ts: raise SystemExit('missing test marker')
+          if 'versioned_seed_history_remains_replayable_after_new_seed_version' not in ts: ts=ts.replace(marker,test+marker,1)
+          t.write_text(ts)
+          PY
+          cargo fmt --manifest-path production/Cargo.toml --all
+      - name: Validate and publish
+        shell: bash
+        run: |
+          set +e
+          cargo fmt --manifest-path production/Cargo.toml --all -- --check >/tmp/fmt 2>&1; FMT=$?
+          cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings >/tmp/clippy 2>&1; CLIPPY=$?
+          cargo test --manifest-path production/Cargo.toml --workspace >/tmp/ws 2>&1; WS=$?
+          cargo test --manifest-path production/Cargo.toml -p gaonn-causal-random-core --test wp011 >/tmp/wp 2>&1; WP=$?
+          set -e
+          { echo "WP011_REPAIR2_BASE=$(git rev-parse HEAD)"; echo "FMT_EXIT=$FMT"; echo "CLIPPY_EXIT=$CLIPPY"; echo "WORKSPACE_TEST_EXIT=$WS"; echo "WP011_TEST_EXIT=$WP"; echo '--- WP011 TEST ---'; cat /tmp/wp; echo '--- CLIPPY ---'; tail -n 80 /tmp/clippy; } > docs/evidence/week1/wp011-ci-probe.txt
+          git config user.name github-actions; git config user.email github-actions@github.com
+          git add production/crates/causal-random-core production/Cargo.lock docs/evidence/week1/wp011-ci-probe.txt
+          git commit -m 'fix(random): bounded WP-011 repair cycle 2 [skip ci]'
+          git push
+          test "$FMT" -eq 0 -a "$CLIPPY" -eq 0 -a "$WS" -eq 0 -a "$WP" -eq 0
