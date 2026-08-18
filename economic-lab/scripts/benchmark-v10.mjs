@@ -24,6 +24,113 @@ function memoryDelta(after, before) {
   return Object.fromEntries(Object.keys(after).map(key => [key, Number(after[key] || 0) - Number(before[key] || 0)]));
 }
 
+function jsonBytes(value) {
+  if (value === undefined) return 0;
+  try {
+    return Buffer.byteLength(JSON.stringify(value) || '', 'utf8');
+  } catch {
+    return -1;
+  }
+}
+
+function retainedStateCensus(world, sampleLimitPerKind = 16) {
+  const components = [
+    'memory',
+    'causalModel',
+    'decisions',
+    'lastReasoning',
+    'forecastHistory',
+    'pendingForecasts',
+    'hypotheses'
+  ];
+  const totals = {
+    agents: 0,
+    episodes: 0,
+    decisions: 0,
+    pendingForecasts: 0,
+    forecastHistory: 0,
+    causalLinks: 0,
+    hypotheses: 0,
+    withLastReasoning: 0
+  };
+  const byKind = {};
+  const samples = {};
+
+  for (const country of world.countries || []) {
+    for (const agent of world.cognitive.agents(country)) {
+      const cognition = agent?.cognition;
+      if (!cognition?.enabled) continue;
+      const kind = agent.kind || 'agent';
+      totals.agents += 1;
+      totals.episodes += cognition.memory?.episodes?.length || 0;
+      totals.decisions += cognition.decisions?.length || 0;
+      totals.pendingForecasts += cognition.pendingForecasts?.length || 0;
+      totals.forecastHistory += cognition.forecastHistory?.length || 0;
+      totals.causalLinks += cognition.causalModel?.links?.length || 0;
+      totals.hypotheses += cognition.hypotheses?.length || 0;
+      if (cognition.lastReasoning) totals.withLastReasoning += 1;
+
+      if (!byKind[kind]) {
+        byKind[kind] = {
+          agents: 0,
+          episodes: 0,
+          decisions: 0,
+          pendingForecasts: 0,
+          forecastHistory: 0,
+          causalLinks: 0,
+          hypotheses: 0,
+          withLastReasoning: 0
+        };
+      }
+      const row = byKind[kind];
+      row.agents += 1;
+      row.episodes += cognition.memory?.episodes?.length || 0;
+      row.decisions += cognition.decisions?.length || 0;
+      row.pendingForecasts += cognition.pendingForecasts?.length || 0;
+      row.forecastHistory += cognition.forecastHistory?.length || 0;
+      row.causalLinks += cognition.causalModel?.links?.length || 0;
+      row.hypotheses += cognition.hypotheses?.length || 0;
+      if (cognition.lastReasoning) row.withLastReasoning += 1;
+
+      if (!samples[kind]) samples[kind] = [];
+      if (samples[kind].length < sampleLimitPerKind) {
+        const componentBytes = { cognition: jsonBytes(cognition) };
+        for (const component of components) componentBytes[component] = jsonBytes(cognition[component]);
+        samples[kind].push(componentBytes);
+      }
+    }
+  }
+
+  const sampleSummary = {};
+  for (const [kind, kindSamples] of Object.entries(samples)) {
+    const keys = ['cognition', ...components];
+    const averageBytes = {};
+    for (const key of keys) {
+      const valid = kindSamples.map(row => row[key]).filter(value => value >= 0);
+      averageBytes[key] = valid.length ? valid.reduce((sum, value) => sum + value, 0) / valid.length : null;
+    }
+    sampleSummary[kind] = {
+      samples: kindSamples.length,
+      averageSerializedBytes: averageBytes,
+      estimatedSerializedBytesByComponent: Object.fromEntries(
+        keys.map(key => [key, averageBytes[key] === null ? null : averageBytes[key] * (byKind[kind]?.agents || 0)])
+      )
+    };
+  }
+
+  return {
+    methodology: {
+      exactCounts: true,
+      serializedSizeIsHeapEstimate: false,
+      sampleLimitPerKind,
+      note: 'Counts are exact. Serialized byte estimates are deterministic diagnostic samples and are not V8 heap-size measurements.'
+    },
+    totals,
+    byKind,
+    sampleSummary
+  };
+}
+
 for (const profile of profiles) {
   const memoryBeforeConstruction = memorySnapshot();
   const constructionStart = globalThis.performance?.now?.() ?? Date.now();
@@ -47,6 +154,7 @@ for (const profile of profiles) {
   const profiling = world.profilingReport();
   const topPhases = profiling.phases.slice(0, 10);
   const top = topPhases[0] || { label: '-', exclusiveMs: 0, shareOfObservedTime: 0 };
+  const retainedState = retainedStateCensus(world);
 
   rows.push({
     profile,
@@ -70,6 +178,9 @@ for (const profile of profiles) {
     heapUsedAfterMeasured: memoryAfterMeasured.heapUsed,
     rssAfterMeasured: memoryAfterMeasured.rss,
     heapUsedMeasuredDelta: memoryAfterMeasured.heapUsed - memoryAfterWarmup.heapUsed,
+    retainedEpisodes: retainedState.totals.episodes,
+    retainedDecisions: retainedState.totals.decisions,
+    retainedCausalLinks: retainedState.totals.causalLinks,
     healthOk: health.ok,
     failures: health.failures
   });
@@ -91,6 +202,7 @@ for (const profile of profiles) {
       warmupDelta: memoryDelta(memoryAfterWarmup, memoryAfterConstruction),
       measuredDelta: memoryDelta(memoryAfterMeasured, memoryAfterWarmup)
     },
+    retainedState,
     phases: topPhases.map(row => ({
       label: row.label,
       calls: row.calls,
@@ -102,7 +214,7 @@ for (const profile of profiles) {
 }
 
 const result = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   kind: 'economic-lab-v10-benchmark',
   generatedAt: new Date().toISOString(),
   node: process.version,
@@ -117,6 +229,7 @@ console.table(rows);
 for (const breakdown of breakdowns) {
   console.log(`PROFILE_BREAKDOWN ${breakdown.profile}`);
   console.table(breakdown.phases);
+  console.log(`RETAINED_STATE ${breakdown.profile}`, JSON.stringify(breakdown.retainedState));
 }
 console.log(JSON.stringify(result, null, 2));
 
