@@ -12,14 +12,7 @@ use std::fmt;
 pub const SCHEMA_VERSION: u32 = 1;
 pub const OWNER: &str = "domain01.celestial_world_state";
 pub const MEMBER_IDS: [&str; 8] = [
-    "S4.01.01",
-    "S4.01.02",
-    "S4.01.03",
-    "S4.01.04",
-    "S4.01.05",
-    "S4.01.06",
-    "S4.01.07",
-    "S4.01.08",
+    "S4.01.01", "S4.01.02", "S4.01.03", "S4.01.04", "S4.01.05", "S4.01.06", "S4.01.07", "S4.01.08",
 ];
 
 pub type Vector3 = [f64; 3];
@@ -154,7 +147,9 @@ pub fn validate_contract(
         .validate()
         .map_err(|_| CelestialError::InvalidWorldTime)?;
     if !input.allowed_transitions.contains(&input.transition) {
-        return Err(CelestialError::ProhibitedTransition(input.transition.clone()));
+        return Err(CelestialError::ProhibitedTransition(
+            input.transition.clone(),
+        ));
     }
     Ok(ContractReceipt {
         work_id: "S4.01.01",
@@ -199,7 +194,9 @@ impl FrameRegistry {
         validate_write(&record.identity.owner, origin)?;
         validate_receipt_identity(receipt, &record.identity, &record.celestial_id)?;
         if record.identity.version != 1 || record.identity.predecessor.is_some() {
-            return Err(CelestialError::InvalidInitialVersion(record.identity.version));
+            return Err(CelestialError::InvalidInitialVersion(
+                record.identity.version,
+            ));
         }
         validate_frame_geometry(&record)?;
         if self.records.contains_key(&record.identity.stable_id) {
@@ -208,7 +205,8 @@ impl FrameRegistry {
             ));
         }
         let reference = record.identity.reference();
-        self.records.insert(record.identity.stable_id.clone(), record);
+        self.records
+            .insert(record.identity.stable_id.clone(), record);
         Ok(reference)
     }
 
@@ -238,7 +236,8 @@ impl FrameRegistry {
             .ok_or_else(|| CelestialError::DanglingReference(record.identity.stable_id.clone()))?;
         validate_revision(&previous.identity, &record.identity)?;
         let reference = record.identity.reference();
-        self.records.insert(record.identity.stable_id.clone(), record);
+        self.records
+            .insert(record.identity.stable_id.clone(), record);
         Ok(reference)
     }
 
@@ -303,7 +302,9 @@ pub fn validate_rotation(
     validate_receipt_identity(receipt, &state.identity, &state.celestial_id)?;
     validate_reference(&frame.identity, &state.frame_ref)?;
     if frame.celestial_id != state.celestial_id {
-        return Err(CelestialError::ReferenceMismatch("rotation celestial/frame"));
+        return Err(CelestialError::ReferenceMismatch(
+            "rotation celestial/frame",
+        ));
     }
     validate_unit_vector(state.axis_unit, "rotation.axis_unit")?;
     finite(state.phase_rad, "rotation.phase_rad")?;
@@ -372,7 +373,9 @@ pub fn solar_forcing(
 ) -> Result<SolarForcing, CelestialError> {
     required(causal_parent, "solar.causal_parent")?;
     if !normal_irradiance_w_m2.is_finite() || normal_irradiance_w_m2 < 0.0 {
-        return Err(CelestialError::InvalidNumeric("solar.normal_irradiance_w_m2"));
+        return Err(CelestialError::InvalidNumeric(
+            "solar.normal_irradiance_w_m2",
+        ));
     }
     let direction = normalize(sun_vector_in_frame, "solar.sun_vector")?;
     Ok(SolarForcing {
@@ -540,7 +543,9 @@ pub fn map_astronomical_time(
     validate_anchor(anchor)?;
     required(causal_parent, "astronomical_mapping.causal_parent")?;
     if world_time.epoch.id != anchor.world_epoch_id {
-        return Err(CelestialError::ReferenceMismatch("astronomical world epoch"));
+        return Err(CelestialError::ReferenceMismatch(
+            "astronomical world epoch",
+        ));
     }
     let delta = world_time
         .tick
@@ -689,8 +694,12 @@ impl fmt::Display for CelestialError {
                 write!(f, "initial version must be 1, found {found}")
             }
             Self::WrongOwner(owner) => write!(f, "wrong PA-057 owner {owner}"),
-            Self::UnauthorizedWrite(origin) => write!(f, "unauthorized celestial write from {origin:?}"),
-            Self::ProhibitedTransition(value) => write!(f, "prohibited celestial transition {value}"),
+            Self::UnauthorizedWrite(origin) => {
+                write!(f, "unauthorized celestial write from {origin:?}")
+            }
+            Self::ProhibitedTransition(value) => {
+                write!(f, "prohibited celestial transition {value}")
+            }
             Self::InvalidWorldTime => write!(f, "invalid WP-004 WorldTime input"),
             Self::InvalidNumeric(field) => write!(f, "invalid numeric field {field}"),
             Self::DuplicateStableId(value) => write!(f, "duplicate stable ID {value}"),
@@ -757,7 +766,10 @@ fn validate_revision(previous: &StateIdentity, next: &StateIdentity) -> Result<(
     }
 }
 
-fn validate_reference(identity: &StateIdentity, reference: &VersionRef) -> Result<(), CelestialError> {
+fn validate_reference(
+    identity: &StateIdentity,
+    reference: &VersionRef,
+) -> Result<(), CelestialError> {
     if identity.status != RecordStatus::Active || reference != &identity.reference() {
         return Err(CelestialError::ReferenceMismatch("versioned reference"));
     }

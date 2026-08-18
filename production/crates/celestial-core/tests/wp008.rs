@@ -89,7 +89,11 @@ fn frame_registry(tick: i128) -> (FrameRegistry, FrameRecord) {
     let mut registry = FrameRegistry::default();
     let frame = frame_record(tick);
     registry
-        .create(&receipt("earth", tick), frame.clone(), WriteOrigin::OwningResolver)
+        .create(
+            &receipt("earth", tick),
+            frame.clone(),
+            WriteOrigin::OwningResolver,
+        )
         .unwrap();
     (registry, frame)
 }
@@ -153,10 +157,16 @@ fn admission_requires_both_hard_predecessors_closed_with_evidence() {
     assert_eq!(admission().space_evidence_digest64, 33);
     let mut broken = space_acceptance();
     broken.closed = false;
-    assert_eq!(admit(&broken, &time_acceptance()), Err(CelestialError::InvalidPredecessor));
+    assert_eq!(
+        admit(&broken, &time_acceptance()),
+        Err(CelestialError::InvalidPredecessor)
+    );
     let mut stale = time_acceptance();
     stale.evidence_digest64 = 0;
-    assert_eq!(admit(&space_acceptance(), &stale), Err(CelestialError::InvalidPredecessor));
+    assert_eq!(
+        admit(&space_acceptance(), &stale),
+        Err(CelestialError::InvalidPredecessor)
+    );
 }
 
 #[test]
@@ -167,15 +177,26 @@ fn s4_01_01_contract_is_candidate_only_and_rejects_missing_wrong_owner_and_trans
     assert_eq!(ok.operands, ["Celestial", "Frame"]);
 
     let mut input = ContractInput {
-        celestial_id: "earth".into(), frame_id: "frame".into(), source_version: 1,
-        owner: "observer".into(), causal_parent: "cause".into(), world_time: world_time(1),
-        transition: "represent".into(), allowed_transitions: BTreeSet::from(["represent".into()]),
+        celestial_id: "earth".into(),
+        frame_id: "frame".into(),
+        source_version: 1,
+        owner: "observer".into(),
+        causal_parent: "cause".into(),
+        world_time: world_time(1),
+        transition: "represent".into(),
+        allowed_transitions: BTreeSet::from(["represent".into()]),
         origin: WriteOrigin::OwningResolver,
     };
-    assert!(matches!(validate_contract(&admission(), &input), Err(CelestialError::WrongOwner(_))));
+    assert!(matches!(
+        validate_contract(&admission(), &input),
+        Err(CelestialError::WrongOwner(_))
+    ));
     input.owner = OWNER.into();
     input.transition = "invented".into();
-    assert!(matches!(validate_contract(&admission(), &input), Err(CelestialError::ProhibitedTransition(_))));
+    assert!(matches!(
+        validate_contract(&admission(), &input),
+        Err(CelestialError::ProhibitedTransition(_))
+    ));
 }
 
 #[test]
@@ -183,20 +204,40 @@ fn s4_01_02_reference_frame_has_versioned_create_read_update_retire_boundary() {
     let tick = 5;
     let mut registry = FrameRegistry::default();
     let first = frame_record(tick);
-    let first_ref = registry.create(&receipt("earth", tick), first.clone(), WriteOrigin::OwningResolver).unwrap();
+    let first_ref = registry
+        .create(
+            &receipt("earth", tick),
+            first.clone(),
+            WriteOrigin::OwningResolver,
+        )
+        .unwrap();
     assert_eq!(registry.get("frame-1").unwrap(), &first);
-    assert!(matches!(registry.create(&receipt("earth", tick), first.clone(), WriteOrigin::OwningResolver), Err(CelestialError::DuplicateStableId(_))));
+    assert!(matches!(
+        registry.create(
+            &receipt("earth", tick),
+            first.clone(),
+            WriteOrigin::OwningResolver
+        ),
+        Err(CelestialError::DuplicateStableId(_))
+    ));
 
     let mut second = first.clone();
     second.identity.version = 2;
     second.identity.predecessor = Some(first_ref);
     second.identity.causal_parent = "event:update".into();
     second.reference_tick = 6;
-    let second_ref = registry.update(&receipt("earth", tick), second, WriteOrigin::OwningResolver).unwrap();
+    let second_ref = registry
+        .update(&receipt("earth", tick), second, WriteOrigin::OwningResolver)
+        .unwrap();
     assert_eq!(second_ref.version, 2);
-    let retired = registry.retire("frame-1", 3, "event:retire", WriteOrigin::OwningResolver).unwrap();
+    let retired = registry
+        .retire("frame-1", 3, "event:retire", WriteOrigin::OwningResolver)
+        .unwrap();
     assert_eq!(retired.version, 3);
-    assert!(matches!(registry.get("frame-1"), Err(CelestialError::RetiredRecord(_))));
+    assert!(matches!(
+        registry.get("frame-1"),
+        Err(CelestialError::RetiredRecord(_))
+    ));
 }
 
 #[test]
@@ -204,9 +245,26 @@ fn s4_01_03_rotation_state_preserves_frame_time_owner_and_rejects_invalid_axis()
     let tick = 9;
     let (_, frame) = frame_registry(tick);
     let state = rotation(&frame, tick);
-    assert_eq!(validate_rotation(&receipt("earth", tick), &frame, &state, WriteOrigin::OwningResolver), Ok(()));
-    let mut invalid = state.clone(); invalid.axis_unit = [0.0, 0.0, 2.0];
-    assert!(matches!(validate_rotation(&receipt("earth", tick), &frame, &invalid, WriteOrigin::OwningResolver), Err(CelestialError::InvalidNumeric(_))));
+    assert_eq!(
+        validate_rotation(
+            &receipt("earth", tick),
+            &frame,
+            &state,
+            WriteOrigin::OwningResolver
+        ),
+        Ok(())
+    );
+    let mut invalid = state.clone();
+    invalid.axis_unit = [0.0, 0.0, 2.0];
+    assert!(matches!(
+        validate_rotation(
+            &receipt("earth", tick),
+            &frame,
+            &invalid,
+            WriteOrigin::OwningResolver
+        ),
+        Err(CelestialError::InvalidNumeric(_))
+    ));
 }
 
 #[test]
@@ -214,20 +272,46 @@ fn s4_01_04_orbital_state_is_versioned_unit_explicit_and_same_cut() {
     let tick = 10;
     let (_, frame) = frame_registry(tick);
     let state = orbit(&frame, tick);
-    assert_eq!(validate_orbit(&receipt("earth", tick), &frame, &state, WriteOrigin::OwningResolver), Ok(()));
-    let mut invalid = state.clone(); invalid.position_unit.clear();
-    assert_eq!(validate_orbit(&receipt("earth", tick), &frame, &invalid, WriteOrigin::OwningResolver), Err(CelestialError::MissingField("orbit.position_unit")));
+    assert_eq!(
+        validate_orbit(
+            &receipt("earth", tick),
+            &frame,
+            &state,
+            WriteOrigin::OwningResolver
+        ),
+        Ok(())
+    );
+    let mut invalid = state.clone();
+    invalid.position_unit.clear();
+    assert_eq!(
+        validate_orbit(
+            &receipt("earth", tick),
+            &frame,
+            &invalid,
+            WriteOrigin::OwningResolver
+        ),
+        Err(CelestialError::MissingField("orbit.position_unit"))
+    );
 }
 
 #[test]
 fn s4_01_05_solar_forcing_emits_domain1_port_without_downstream_response() {
     let tick = 12;
     let (_, frame) = frame_registry(tick);
-    let forcing = solar_forcing(&orbit(&frame, tick), [-1.0, 0.0, 0.0], 1361.0, "event:solar").unwrap();
+    let forcing = solar_forcing(
+        &orbit(&frame, tick),
+        [-1.0, 0.0, 0.0],
+        1361.0,
+        "event:solar",
+    )
+    .unwrap();
     assert_eq!(forcing.sun_direction_unit, [-1.0, 0.0, 0.0]);
     assert_eq!(forcing.normal_irradiance_w_m2, 1361.0);
     assert_eq!(forcing.disposition, CandidateDisposition::CandidateOnly);
-    assert!(matches!(solar_forcing(&orbit(&frame, tick), [0.0; 3], 1361.0, "event:solar"), Err(CelestialError::InvalidNumeric(_))));
+    assert!(matches!(
+        solar_forcing(&orbit(&frame, tick), [0.0; 3], 1361.0, "event:solar"),
+        Err(CelestialError::InvalidNumeric(_))
+    ));
 }
 
 #[test]
@@ -235,9 +319,26 @@ fn s4_01_06_lunar_state_keeps_reference_frame_and_time_cut() {
     let tick = 14;
     let (_, frame) = frame_registry(tick);
     let moon = lunar(&frame, tick);
-    assert_eq!(validate_lunar(&receipt("moon", tick), &frame, &moon, WriteOrigin::OwningResolver), Ok(()));
-    let mut wrong = moon.clone(); wrong.reference_epoch_id = "other-epoch".into();
-    assert_eq!(validate_lunar(&receipt("moon", tick), &frame, &wrong, WriteOrigin::OwningResolver), Err(CelestialError::ReferenceMismatch("lunar epoch")));
+    assert_eq!(
+        validate_lunar(
+            &receipt("moon", tick),
+            &frame,
+            &moon,
+            WriteOrigin::OwningResolver
+        ),
+        Ok(())
+    );
+    let mut wrong = moon.clone();
+    wrong.reference_epoch_id = "other-epoch".into();
+    assert_eq!(
+        validate_lunar(
+            &receipt("moon", tick),
+            &frame,
+            &wrong,
+            WriteOrigin::OwningResolver
+        ),
+        Err(CelestialError::ReferenceMismatch("lunar epoch"))
+    );
 }
 
 #[test]
@@ -245,11 +346,23 @@ fn s4_01_07_tidal_interface_preserves_source_version_owner_cut_and_rejects_parti
     let tick = 16;
     let (_, frame) = frame_registry(tick);
     let moon = lunar(&frame, tick);
-    let handoff = tidal_forcing_handoff(&moon, "surface-cell-1", [1.0, 0.0, 0.0], 2.0, "m2/s2", "event:tide").unwrap();
+    let handoff = tidal_forcing_handoff(
+        &moon,
+        "surface-cell-1",
+        [1.0, 0.0, 0.0],
+        2.0,
+        "m2/s2",
+        "event:tide",
+    )
+    .unwrap();
     assert_eq!(validate_tidal_handoff(&handoff, &moon), Ok(()));
     assert!((handoff.tidal_potential - 2.0).abs() < 1.0e-12);
-    let mut partial = handoff.clone(); partial.target_location_ref.clear();
-    assert_eq!(validate_tidal_handoff(&partial, &moon), Err(CelestialError::MissingField("tidal.target_location_ref")));
+    let mut partial = handoff.clone();
+    partial.target_location_ref.clear();
+    assert_eq!(
+        validate_tidal_handoff(&partial, &moon),
+        Err(CelestialError::MissingField("tidal.target_location_ref"))
+    );
 }
 
 #[test]
@@ -266,8 +379,16 @@ fn authority_boundary_blocks_observer_renderer_and_analytics_without_frame_mutat
     let tick = 20;
     let mut registry = FrameRegistry::default();
     let before = registry.digest64();
-    for origin in [WriteOrigin::Observer, WriteOrigin::Renderer, WriteOrigin::Analytics, WriteOrigin::Derived] {
-        assert!(matches!(registry.create(&receipt("earth", tick), frame_record(tick), origin), Err(CelestialError::UnauthorizedWrite(_))));
+    for origin in [
+        WriteOrigin::Observer,
+        WriteOrigin::Renderer,
+        WriteOrigin::Analytics,
+        WriteOrigin::Derived,
+    ] {
+        assert!(matches!(
+            registry.create(&receipt("earth", tick), frame_record(tick), origin),
+            Err(CelestialError::UnauthorizedWrite(_))
+        ));
         assert_eq!(registry.digest64(), before);
     }
 }
@@ -275,24 +396,68 @@ fn authority_boundary_blocks_observer_renderer_and_analytics_without_frame_mutat
 fn full_state(tick: i128) -> Wp008State {
     let (registry, frame) = frame_registry(tick);
     let rotation = rotation(&frame, tick);
-    validate_rotation(&receipt("earth", tick), &frame, &rotation, WriteOrigin::OwningResolver).unwrap();
+    validate_rotation(
+        &receipt("earth", tick),
+        &frame,
+        &rotation,
+        WriteOrigin::OwningResolver,
+    )
+    .unwrap();
     let orbit = orbit(&frame, tick);
-    validate_orbit(&receipt("earth", tick), &frame, &orbit, WriteOrigin::OwningResolver).unwrap();
+    validate_orbit(
+        &receipt("earth", tick),
+        &frame,
+        &orbit,
+        WriteOrigin::OwningResolver,
+    )
+    .unwrap();
     let solar = solar_forcing(&orbit, [-1.0, 0.0, 0.0], 1361.0, "event:solar").unwrap();
     let lunar = lunar(&frame, tick);
-    validate_lunar(&receipt("moon", tick), &frame, &lunar, WriteOrigin::OwningResolver).unwrap();
-    let tidal = tidal_forcing_handoff(&lunar, "surface-cell-1", [1.0, 0.0, 0.0], 2.0, "m2/s2", "event:tide").unwrap();
-    let mut a = anchor(); a.world_tick_at_anchor = tick; a.astronomical_tick_at_anchor = 10_000;
+    validate_lunar(
+        &receipt("moon", tick),
+        &frame,
+        &lunar,
+        WriteOrigin::OwningResolver,
+    )
+    .unwrap();
+    let tidal = tidal_forcing_handoff(
+        &lunar,
+        "surface-cell-1",
+        [1.0, 0.0, 0.0],
+        2.0,
+        "m2/s2",
+        "event:tide",
+    )
+    .unwrap();
+    let mut a = anchor();
+    a.world_tick_at_anchor = tick;
+    a.astronomical_tick_at_anchor = 10_000;
     let astronomical_mapping = map_astronomical_time(&world_time(tick), &a, "event:map").unwrap();
-    Wp008State { frame_registry: registry, rotation, orbit, solar, lunar, tidal, astronomical_mapping }
+    Wp008State {
+        frame_registry: registry,
+        rotation,
+        orbit,
+        solar,
+        lunar,
+        tidal,
+        astronomical_mapping,
+    }
 }
 
 #[test]
 fn persistence_restore_and_replay_preserve_identity_cut_digest_and_event_order_material() {
-    let snapshot = CelestialSnapshot { schema_version: 1, commit_marker: "committed".into(), causal_cut: "cut:42".into(), state: full_state(42) };
+    let snapshot = CelestialSnapshot {
+        schema_version: 1,
+        commit_marker: "committed".into(),
+        causal_cut: "cut:42".into(),
+        state: full_state(42),
+    };
     let digest = snapshot.digest64().unwrap();
     let restored = snapshot.restore().unwrap();
-    let replay = CelestialSnapshot { state: restored, ..snapshot.clone() };
+    let replay = CelestialSnapshot {
+        state: restored,
+        ..snapshot.clone()
+    };
     assert_eq!(snapshot, replay);
     assert_eq!(digest, replay.digest64().unwrap());
 }
@@ -305,9 +470,16 @@ fn wp008_acceptance_requires_all_eight_members_predecessors_and_snapshot_evidenc
     let closed = accept_wp(&admission, &passes, &evidence, 99).unwrap();
     assert!(closed.closed);
     assert_eq!(closed.member_ids, MEMBER_IDS);
-    let mut missing = passes; missing[6] = false;
-    assert_eq!(accept_wp(&admission, &missing, &evidence, 99), Err(CelestialError::MissingEvidence("S4.01.07")));
-    assert_eq!(accept_wp(&admission, &passes, &evidence, 0), Err(CelestialError::MissingSnapshotEvidence));
+    let mut missing = passes;
+    missing[6] = false;
+    assert_eq!(
+        accept_wp(&admission, &missing, &evidence, 99),
+        Err(CelestialError::MissingEvidence("S4.01.07"))
+    );
+    assert_eq!(
+        accept_wp(&admission, &passes, &evidence, 0),
+        Err(CelestialError::MissingSnapshotEvidence)
+    );
 }
 
 #[test]
@@ -316,7 +488,12 @@ fn wp008_integration_traces_wp003_wp004_through_s4_01_01_to_s4_01_08_without_sho
     let contract = receipt("earth", 100);
     assert_eq!(contract.disposition, CandidateDisposition::CandidateOnly);
     let state = full_state(100);
-    let snapshot = CelestialSnapshot { schema_version: 1, commit_marker: "committed".into(), causal_cut: "cut:100".into(), state };
+    let snapshot = CelestialSnapshot {
+        schema_version: 1,
+        commit_marker: "committed".into(),
+        causal_cut: "cut:100".into(),
+        state,
+    };
     let digest = snapshot.digest64().unwrap();
     let acceptance = accept_wp(&admission, &[true; 8], &[1, 2, 3, 4, 5, 6, 7, 8], digest).unwrap();
     assert_eq!(acceptance.work_package, "WP-008");
