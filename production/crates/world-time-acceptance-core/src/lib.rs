@@ -379,7 +379,7 @@ fn validate_members(input: &ReviewInput) -> Result<(), ReviewFailure> {
 
     let missing: Vec<String> = TIME_MEMBER_IDS
         .iter()
-        .filter(|work_id| !seen.contains(*work_id))
+        .filter(|work_id| !seen.contains(**work_id))
         .map(|work_id| (*work_id).to_owned())
         .collect();
     if let Some(first) = missing.first() {
