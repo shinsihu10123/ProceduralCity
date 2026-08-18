@@ -1,4 +1,4 @@
-name: WP008 bounded repair cycle 1
+name: WP008 final closure validation
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  repair-and-validate:
+  validate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -20,9 +20,7 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
-      - name: Apply canonical rustfmt
-        run: cargo fmt --manifest-path production/Cargo.toml --all
-      - name: Strict validation
+      - name: Validate closed evidence-bearing WP-008 state
         shell: bash
         run: |
           set +e
@@ -30,26 +28,29 @@ jobs:
           FMT=$?
           cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings > /tmp/clippy.log 2>&1
           CLIPPY=$?
-          cargo test --manifest-path production/Cargo.toml --workspace > /tmp/test.log 2>&1
-          TEST=$?
+          cargo test --manifest-path production/Cargo.toml --workspace > /tmp/workspace.log 2>&1
+          WORKSPACE=$?
           cargo test --manifest-path production/Cargo.toml -p gaonn-celestial-core --test wp008 > /tmp/wp008.log 2>&1
           WP008=$?
           set -e
-          mkdir -p docs/evidence/week1
+          PRESENT=$(test -f docs/evidence/week1/wp008-celestial-state.md && echo 1 || echo 0)
+          CLOSED=$(grep -q '^Status: PASS / CLOSED$' docs/evidence/week1/wp008-celestial-state.md && echo 1 || echo 0)
+          COUNT=$(grep -E '^running [0-9]+ tests$' /tmp/wp008.log | tail -n 1 | awk '{print $2}')
           {
-            echo "WP008_REPAIR1_BASE=$(git rev-parse HEAD)"
+            echo "WP008_FINAL_VALIDATED_HEAD=$(git rev-parse HEAD)"
+            echo "EVIDENCE_PRESENT=$PRESENT"
+            echo "EVIDENCE_CLOSED=$CLOSED"
             echo "FMT_EXIT=$FMT"
             echo "CLIPPY_EXIT=$CLIPPY"
-            echo "WORKSPACE_TEST_EXIT=$TEST"
+            echo "WORKSPACE_TEST_EXIT=$WORKSPACE"
             echo "WP008_TEST_EXIT=$WP008"
-            echo '--- WP008 TEST ---'
-            cat /tmp/wp008.log
-          } > docs/evidence/week1/wp008-ci-probe.txt
+            echo "WP008_TEST_COUNT=${COUNT:-unknown}"
+            echo '--- WP008 TEST SUMMARY ---'
+            tail -n 35 /tmp/wp008.log
+          } > docs/evidence/week1/wp008-final-validation.txt
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add production/crates/celestial-core production/Cargo.lock docs/evidence/week1/wp008-ci-probe.txt || true
-          if ! git diff --cached --quiet; then
-            git commit -m 'style(celestial): apply canonical rustfmt and record repair 1 [skip ci]'
-            git push
-          fi
-          if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$TEST" -ne 0 ] || [ "$WP008" -ne 0 ]; then exit 1; fi
+          git add docs/evidence/week1/wp008-final-validation.txt
+          git commit -m 'ci(celestial): publish final WP-008 closure validation [skip ci]'
+          git push
+          if [ "$PRESENT" -ne 1 ] || [ "$CLOSED" -ne 1 ] || [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$WORKSPACE" -ne 0 ] || [ "$WP008" -ne 0 ]; then exit 1; fi
