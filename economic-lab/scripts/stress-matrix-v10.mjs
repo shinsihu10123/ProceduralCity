@@ -14,12 +14,9 @@ function meanActiveFirmProductivity(country) {
   return firms.reduce((sum, firm) => sum + Number(firm.productivity || 0), 0) / Math.max(1, firms.length);
 }
 
-function meanOptimism(country) {
-  const agents = [
-    ...(country.households || []),
-    ...(country.firms || []).filter(firm => firm.active !== false)
-  ];
-  return agents.reduce((sum, agent) => sum + Number(agent.optimism || 0), 0) / Math.max(1, agents.length);
+function meanFirmDemandBelief(country) {
+  const firms = (country.firms || []).filter(firm => firm.active !== false && firm.cognition?.beliefs?.demandGrowth);
+  return firms.reduce((sum, firm) => sum + Number(firm.cognition.beliefs.demandGrowth.mean || 0), 0) / Math.max(1, firms.length);
 }
 
 function meanBankRiskAversion(country) {
@@ -30,7 +27,7 @@ function meanBankRiskAversion(country) {
 const metrics = {
   ...DEFAULT_ENSEMBLE_METRICS,
   meanProductivity: meanActiveFirmProductivity,
-  meanOptimism,
+  meanFirmDemandBelief,
   bankRiskAversion: meanBankRiskAversion,
   tariffRate: country => Number(country.tradePolicy?.tariffRate || 0)
 };
@@ -43,12 +40,18 @@ const scenarios = [
     schedule: [{ id: 'stress-productivity', month: 3, countryId: 'AST', kind: 'productivity_shock', factor: 0.72 }]
   },
   {
-    id: 'confidence-demand',
-    directMetric: 'meanOptimism',
+    id: 'demand-expectations',
+    directMetric: 'meanFirmDemandBelief',
     directDirection: -1,
     schedule: [{
-      id: 'stress-confidence', month: 3, countryId: 'AST', kind: 'confidence_shock', delta: -0.45,
-      agentKinds: ['household', 'firm']
+      id: 'stress-demand-belief',
+      month: 3,
+      countryId: 'AST',
+      kind: 'belief_shift',
+      key: 'demandGrowth',
+      delta: -0.12,
+      uncertaintyFactor: 1.15,
+      agentKinds: ['firm']
     }]
   },
   {
@@ -109,22 +112,26 @@ for (const scenario of scenarios) {
   }
 
   const directEffect = summaryValue(ensemble, 'AST', scenario.directMetric);
+  const astMacro = macroMetrics.map(metric => summaryValue(ensemble, 'AST', metric));
+  const spillover = ['BRN', 'CYR', 'DRN'].flatMap(countryId => macroMetrics.map(metric => summaryValue(ensemble, countryId, metric)));
+  const astMacroResponseL1 = l1(astMacro);
+  const spilloverResponseL1 = l1(spillover);
+
+  console.log(`STRESS_SCENARIO ${scenario.id} direct=${directEffect} astMacroL1=${astMacroResponseL1} spilloverL1=${spilloverResponseL1}`);
+
   assert.ok(
     scenario.directDirection * directEffect > 1e-12,
     `${scenario.id}: direct intervention metric ${scenario.directMetric} must move in the configured direction`
   );
-
-  const astMacro = macroMetrics.map(metric => summaryValue(ensemble, 'AST', metric));
-  const spillover = ['BRN', 'CYR', 'DRN'].flatMap(countryId => macroMetrics.map(metric => summaryValue(ensemble, countryId, metric)));
-  assert.ok(l1(astMacro) > 1e-10, `${scenario.id}: treatment must produce a non-zero endogenous AST macro response`);
+  assert.ok(astMacroResponseL1 > 1e-10, `${scenario.id}: treatment must produce a non-zero endogenous AST macro response`);
 
   results.push({
     id: scenario.id,
     schedule: scenario.schedule,
     directMetric: scenario.directMetric,
     directEffect,
-    astMacroResponseL1: l1(astMacro),
-    spilloverResponseL1: l1(spillover),
+    astMacroResponseL1,
+    spilloverResponseL1,
     signature: signature(ensemble),
     summary: ensemble.summary,
     pairs: ensemble.pairs.map(pair => ({ seed: pair.seed, effect: pair.effect, health: pair.health }))
@@ -141,7 +148,7 @@ for (let i = 0; i < results.length; i++) {
 }
 
 const report = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   kind: 'economic-lab-v10-stress-matrix',
   generatedAt: new Date().toISOString(),
   node: process.version,
