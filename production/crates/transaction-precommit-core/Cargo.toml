@@ -1,0 +1,9 @@
+[package]
+name = "gaonn-transaction-precommit-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gaonn-world-core = { path = "../world-core" }
+gaonn-world-time-core = { path = "../world-time-core" }
+gaonn-scheduler-core = { path = "../scheduler-core" }
