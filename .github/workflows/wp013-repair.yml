@@ -1,0 +1,39 @@
+name: WP013 bounded repair validation
+
+on:
+  push:
+    branches:
+      - execution/week1-wp013-identity-acceptance
+    paths:
+      - '.github/workflows/wp013-repair.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+      - name: Canonical rustfmt repair
+        run: cargo fmt --manifest-path production/Cargo.toml --all
+      - name: Commit canonical formatting
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add production/crates/identity-acceptance-core production/Cargo.lock
+          if ! git diff --cached --quiet; then
+            git commit -m 'fix(identity-review): canonicalize WP-013 formatting'
+            git push
+          fi
+      - name: Strict Clippy
+        run: cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings
+      - name: Workspace tests
+        run: cargo test --manifest-path production/Cargo.toml --workspace
+      - name: WP-013 dedicated tests
+        run: cargo test --manifest-path production/Cargo.toml -p gaonn-identity-acceptance-core --test wp013
