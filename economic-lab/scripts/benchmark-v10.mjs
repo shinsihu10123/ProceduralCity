@@ -33,6 +33,89 @@ function jsonBytes(value) {
   }
 }
 
+function accountingStateCensus(world, sampleLimit = 128) {
+  const gl = world.accounting?.gl;
+  const generalLedger = {
+    entities: 0,
+    accounts: 0,
+    journals: 0,
+    journalLines: 0,
+    monthlyResults: 0,
+    byKind: {},
+    sampledJournals: 0,
+    averageSerializedJournalBytes: null,
+    estimatedSerializedJournalBytes: null
+  };
+  let sampledJournalBytes = 0;
+
+  if (gl?.entities instanceof Map) {
+    for (const entity of gl.entities.values()) {
+      const kind = entity.kind || 'entity';
+      const journals = entity.journals || [];
+      const monthlyResults = entity.monthlyResults instanceof Map ? entity.monthlyResults.size : 0;
+      generalLedger.entities += 1;
+      generalLedger.accounts += entity.accounts instanceof Map ? entity.accounts.size : 0;
+      generalLedger.journals += journals.length;
+      generalLedger.monthlyResults += monthlyResults;
+      if (!generalLedger.byKind[kind]) {
+        generalLedger.byKind[kind] = { entities: 0, accounts: 0, journals: 0, journalLines: 0, monthlyResults: 0 };
+      }
+      const byKind = generalLedger.byKind[kind];
+      byKind.entities += 1;
+      byKind.accounts += entity.accounts instanceof Map ? entity.accounts.size : 0;
+      byKind.journals += journals.length;
+      byKind.monthlyResults += monthlyResults;
+      for (const journal of journals) {
+        const lineCount = journal.lines?.length || 0;
+        generalLedger.journalLines += lineCount;
+        byKind.journalLines += lineCount;
+        if (generalLedger.sampledJournals < sampleLimit) {
+          const bytes = jsonBytes(journal);
+          if (bytes >= 0) {
+            sampledJournalBytes += bytes;
+            generalLedger.sampledJournals += 1;
+          }
+        }
+      }
+    }
+  }
+  if (generalLedger.sampledJournals > 0) {
+    generalLedger.averageSerializedJournalBytes = sampledJournalBytes / generalLedger.sampledJournals;
+    generalLedger.estimatedSerializedJournalBytes = generalLedger.averageSerializedJournalBytes * generalLedger.journals;
+  }
+
+  const settlement = world.ledger;
+  const settlementLedger = {
+    accounts: settlement?.accounts instanceof Map ? settlement.accounts.size : 0,
+    entryCapacity: Number(settlement?.entryCapacity || 0),
+    retainedEntries: Number(settlement?._entrySize || 0),
+    exactIndexBuckets: settlement?._entriesByExactKey instanceof Map ? settlement._entriesByExactKey.size : 0,
+    monthCountryIndexBuckets: settlement?._entriesByMonthCountry instanceof Map ? settlement._entriesByMonthCountry.size : 0,
+    sampledEntries: 0,
+    averageSerializedEntryBytes: null,
+    estimatedSerializedRetainedEntryBytes: null
+  };
+  let sampledEntryBytes = 0;
+  if (Array.isArray(settlement?._entryBuffer) && settlementLedger.retainedEntries > 0) {
+    const count = Math.min(sampleLimit, settlementLedger.retainedEntries);
+    for (let i = 0; i < count; i++) {
+      const index = (Number(settlement._entryHead || 0) + i) % settlement._entryBuffer.length;
+      const entry = settlement._entryBuffer[index];
+      const bytes = jsonBytes(entry);
+      if (bytes >= 0) {
+        sampledEntryBytes += bytes;
+        settlementLedger.sampledEntries += 1;
+      }
+    }
+  }
+  if (settlementLedger.sampledEntries > 0) {
+    settlementLedger.averageSerializedEntryBytes = sampledEntryBytes / settlementLedger.sampledEntries;
+    settlementLedger.estimatedSerializedRetainedEntryBytes = settlementLedger.averageSerializedEntryBytes * settlementLedger.retainedEntries;
+  }
+
+  return { generalLedger, settlementLedger };
+}
+
 function retainedStateCensus(world, sampleLimitPerKind = 16) {
   const components = [
     'memory',
@@ -127,7 +210,8 @@ function retainedStateCensus(world, sampleLimitPerKind = 16) {
     },
     totals,
     byKind,
-    sampleSummary
+    sampleSummary,
+    accounting: accountingStateCensus(world)
   };
 }
 
@@ -181,6 +265,8 @@ for (const profile of profiles) {
     retainedEpisodes: retainedState.totals.episodes,
     retainedDecisions: retainedState.totals.decisions,
     retainedCausalLinks: retainedState.totals.causalLinks,
+    retainedGeneralJournals: retainedState.accounting.generalLedger.journals,
+    retainedSettlementEntries: retainedState.accounting.settlementLedger.retainedEntries,
     healthOk: health.ok,
     failures: health.failures
   });
@@ -214,7 +300,7 @@ for (const profile of profiles) {
 }
 
 const result = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   kind: 'economic-lab-v10-benchmark',
   generatedAt: new Date().toISOString(),
   node: process.version,
