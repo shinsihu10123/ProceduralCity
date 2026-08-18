@@ -1,53 +1,32 @@
-name: WP004 bounded validation probe
+name: WP004 bounded format repair
 
 on:
   push:
     branches:
       - execution/week1-wp004-closure
     paths:
-      - 'production/crates/world-time-core/**'
-      - 'production/Cargo.toml'
       - '.github/workflows/wp004-probe.yml'
 
 permissions:
   contents: write
 
 jobs:
-  probe:
+  repair:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - name: Install stable Rust
         run: |
-          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup toolchain install stable --profile minimal --component rustfmt
           rustup default stable
-      - name: Run bounded validation and publish probe
-        shell: bash
+      - name: Apply canonical rustfmt once
         run: |
-          set +e
-          cargo fmt --manifest-path production/Cargo.toml --all -- --check > /tmp/fmt.log 2>&1
-          FMT=$?
-          cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings > /tmp/clippy.log 2>&1
-          CLIPPY=$?
-          cargo test --manifest-path production/Cargo.toml --workspace > /tmp/test.log 2>&1
-          TEST=$?
-          set -e
-          mkdir -p docs/evidence/week1
-          {
-            echo "WP004_PROBE_HEAD=$(git rev-parse HEAD)"
-            echo "FMT_EXIT=$FMT"
-            echo "CLIPPY_EXIT=$CLIPPY"
-            echo "TEST_EXIT=$TEST"
-            echo "--- FMT ---"
-            cat /tmp/fmt.log
-            echo "--- CLIPPY ---"
-            cat /tmp/clippy.log
-            echo "--- TEST ---"
-            cat /tmp/test.log
-          } > docs/evidence/week1/wp004-ci-probe.txt
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add docs/evidence/week1/wp004-ci-probe.txt
-          git commit -m 'ci(time): publish WP-004 validation probe [skip ci]'
-          git push
+          cargo fmt --manifest-path production/Cargo.toml --all
+          if ! git diff --quiet; then
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+            git add production/crates/world-time-core
+            git commit -m 'style(time): apply canonical rustfmt [skip ci]'
+            git push
+          fi
