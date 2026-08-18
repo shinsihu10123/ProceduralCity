@@ -86,3 +86,5 @@ jobs:
             git push
           fi
           if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$WORKSPACE" -ne 0 ] || [ "$WP012" -ne 0 ]; then exit 1; fi
+      - name: Continuation trigger marker
+        run: echo WP012_CONTINUATION_TRIGGERED
