@@ -1,4 +1,5 @@
 name: Economic Lab CI
+# WP-RV02 execution: 3-seed 36-month compact reproduction plus baseline compute envelope.
 
 on:
   push:
