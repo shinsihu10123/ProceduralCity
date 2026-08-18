@@ -46,7 +46,13 @@ fn schema_record(
 fn create_schema(registry: &mut ValidationRegistry) -> VersionRef {
     registry
         .create_schema(
-            schema_record("schema-1", "validation.schema.1", 1, None, RecordStatus::Active),
+            schema_record(
+                "schema-1",
+                "validation.schema.1",
+                1,
+                None,
+                RecordStatus::Active,
+            ),
             WriteOrigin::OwningResolver,
         )
         .unwrap()
@@ -323,11 +329,7 @@ fn s3_06_09_validation_outcome_pass_requires_complete_declared_coverage() {
 #[test]
 fn s3_06_10_validation_outcome_fail_requires_explicit_failure_evidence() {
     let required = tiers(&[ValidationTier::VT0Semantic]);
-    let request = decision_request(
-        ValidationOutcome::Fail,
-        required.clone(),
-        required.clone(),
-    );
+    let request = decision_request(ValidationOutcome::Fail, required.clone(), required.clone());
     assert_eq!(decide(request), Err(ValidationError::FailWithoutBasis));
 
     let mut request = decision_request(ValidationOutcome::Fail, required.clone(), required);
@@ -337,10 +339,7 @@ fn s3_06_10_validation_outcome_fail_requires_explicit_failure_evidence() {
 
 #[test]
 fn s3_06_11_coverage_insufficient_is_distinct_and_cannot_be_silent_pass() {
-    let required = tiers(&[
-        ValidationTier::VT0Semantic,
-        ValidationTier::VT4CrossLod,
-    ]);
+    let required = tiers(&[ValidationTier::VT0Semantic, ValidationTier::VT4CrossLod]);
     let covered = tiers(&[ValidationTier::VT0Semantic]);
     let mut request = decision_request(
         ValidationOutcome::CoverageInsufficient,

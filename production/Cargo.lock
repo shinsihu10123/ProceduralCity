@@ -24,6 +24,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "gaonn-identity-continuity-core"
+version = "0.1.0"
+dependencies = [
+ "gaonn-cross-reference-core",
+ "gaonn-identity-core",
+]
+
+[[package]]
 name = "gaonn-identity-core"
 version = "0.1.0"
 dependencies = [
@@ -31,10 +39,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "gaonn-identity-reuse-audit-core"
+version = "0.1.0"
+dependencies = [
+ "gaonn-identity-continuity-core",
+ "gaonn-identity-core",
+]
+
+[[package]]
 name = "gaonn-lifecycle-core"
 version = "0.1.0"
 dependencies = [
  "gaonn-identity-core",
+ "gaonn-world-core",
+]
+
+[[package]]
+name = "gaonn-planetary-space-core"
+version = "0.1.0"
+dependencies = [
  "gaonn-world-core",
 ]
 
@@ -60,5 +83,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "gaonn-validation-core"
+version = "0.1.0"
+dependencies = [
+ "gaonn-world-core",
+]
+
+[[package]]
 name = "gaonn-world-core"
 version = "0.1.0"
+
+[[package]]
+name = "gaonn-world-time-core"
+version = "0.1.0"
+dependencies = [
+ "gaonn-world-core",
+]

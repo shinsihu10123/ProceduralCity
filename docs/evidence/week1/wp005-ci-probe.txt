@@ -1,577 +1,125 @@
-WP005_PROBE_HEAD=32a7e0703eecad9a6a60ab4af6e4f68fa1a7804a
-FMT_EXIT=1
+WP005_REPAIR1_BASE=537d59d93ec4b2dec65e9fee07a638586c990142
+FMT_EXIT=0
 CLIPPY_EXIT=0
-TEST_EXIT=101
---- FMT ---
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/src/lib.rs:12:
- pub const SCHEMA_VERSION: u32 = 1;
- pub const OWNER: &str = "domain27.validation_registry";
- pub const MEMBER_IDS: [&str; 13] = [
--    "S3.06.01",
--    "S3.06.02",
--    "S3.06.03",
--    "S3.06.04",
--    "S3.06.05",
--    "S3.06.06",
--    "S3.06.07",
--    "S3.06.08",
--    "S3.06.09",
--    "S3.06.10",
--    "S3.06.11",
--    "S3.06.12",
--    "S3.06.13",
-+    "S3.06.01", "S3.06.02", "S3.06.03", "S3.06.04", "S3.06.05", "S3.06.06", "S3.06.07", "S3.06.08",
-+    "S3.06.09", "S3.06.10", "S3.06.11", "S3.06.12", "S3.06.13",
- ];
- 
- #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/src/lib.rs:306:
-             Self::MissingField(field) => write!(f, "missing required field {field}"),
-             Self::EmptyField(field) => write!(f, "required field {field} is empty"),
-             Self::WrongOwner => write!(f, "wrong Domain 27 validation owner"),
--            Self::UnauthorizedWrite => write!(f, "read-only or derived origin cannot write validation registry"),
-+            Self::UnauthorizedWrite => write!(
-+                f,
-+                "read-only or derived origin cannot write validation registry"
-+            ),
-             Self::UnsupportedVersion { expected, found } => {
--                write!(f, "unsupported schema version: expected {expected}, found {found}")
-+                write!(
-+                    f,
-+                    "unsupported schema version: expected {expected}, found {found}"
-+                )
-             }
--            Self::InvalidInitialVersion(version) => write!(f, "initial record version must be 1, found {version}"),
-+            Self::InvalidInitialVersion(version) => {
-+                write!(f, "initial record version must be 1, found {version}")
-+            }
-             Self::StaleVersion { expected, found } => {
--                write!(f, "stale/non-sequential record version: expected {expected}, found {found}")
-+                write!(
-+                    f,
-+                    "stale/non-sequential record version: expected {expected}, found {found}"
-+                )
-             }
-             Self::DuplicateStableId(value) => write!(f, "duplicate stable ID {value}"),
-             Self::DuplicateNamespace(value) => write!(f, "duplicate active namespace {value}"),
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/src/lib.rs:319:
-             Self::DanglingReference(value) => write!(f, "dangling reference {value}"),
-             Self::ReferenceMismatch(value) => write!(f, "reference mismatch {value}"),
-             Self::RetiredRecord(value) => write!(f, "record is retired {value}"),
--            Self::WrongTier => write!(f, "registry record is stored under the wrong validation tier"),
--            Self::PassWithCoverageGap => write!(f, "PASS is forbidden when required validation coverage is missing"),
-+            Self::WrongTier => write!(
-+                f,
-+                "registry record is stored under the wrong validation tier"
-+            ),
-+            Self::PassWithCoverageGap => write!(
-+                f,
-+                "PASS is forbidden when required validation coverage is missing"
-+            ),
-             Self::FailWithoutBasis => write!(f, "FAIL requires explicit failure evidence"),
-             Self::CoverageInsufficientWithoutGap => {
-                 write!(f, "COVERAGE_INSUFFICIENT requires an explicit coverage gap")
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/src/lib.rs:327:
-             }
--            Self::SemanticToleranceMustBeExact => write!(f, "VT0 semantic integrity is zero-tolerance"),
--            Self::InvalidToleranceContext(field) => write!(f, "invalid contextual tolerance field {field}"),
-+            Self::SemanticToleranceMustBeExact => {
-+                write!(f, "VT0 semantic integrity is zero-tolerance")
-+            }
-+            Self::InvalidToleranceContext(field) => {
-+                write!(f, "invalid contextual tolerance field {field}")
-+            }
-             Self::MissingEvidence(id) => write!(f, "missing member evidence for {id}"),
-             Self::Serialization(message) => write!(f, "serialization error: {message}"),
-         }
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/src/lib.rs:411:
-         validate_identity(&record.identity)?;
-         validate_schema_payload(&record)?;
-         if record.identity.version != 1 {
--            return Err(ValidationError::InvalidInitialVersion(record.identity.version));
-+            return Err(ValidationError::InvalidInitialVersion(
-+                record.identity.version,
-+            ));
-         }
-         if record.identity.predecessor.is_some() {
-             return Err(ValidationError::ReferenceMismatch(
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/src/lib.rs:422:
-             return Err(ValidationError::RetiredRecord(record.identity.stable_id));
-         }
-         if self.schemas.contains_key(&record.identity.stable_id) {
--            return Err(ValidationError::DuplicateStableId(record.identity.stable_id));
-+            return Err(ValidationError::DuplicateStableId(
-+                record.identity.stable_id,
-+            ));
-         }
--        if self
--            .schemas
--            .values()
--            .any(|existing| existing.identity.status == RecordStatus::Active && existing.identity.namespace == record.identity.namespace)
--        {
--            return Err(ValidationError::DuplicateNamespace(record.identity.namespace));
-+        if self.schemas.values().any(|existing| {
-+            existing.identity.status == RecordStatus::Active
-+                && existing.identity.namespace == record.identity.namespace
-+        }) {
-+            return Err(ValidationError::DuplicateNamespace(
-+                record.identity.namespace,
-+            ));
-         }
-         let reference = record.identity.reference();
--        self.schemas.insert(record.identity.stable_id.clone(), record);
-+        self.schemas
-+            .insert(record.identity.stable_id.clone(), record);
-         Ok(reference)
-     }
- 
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/src/lib.rs:450:
-             .ok_or_else(|| ValidationError::DanglingReference(record.identity.stable_id.clone()))?;
-         validate_revision(&previous.identity, &record.identity)?;
-         let reference = record.identity.reference();
--        self.schemas.insert(record.identity.stable_id.clone(), record);
-+        self.schemas
-+            .insert(record.identity.stable_id.clone(), record);
-         Ok(reference)
-     }
- 
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/src/lib.rs:520:
-         validate_ref(&record.evidence_schema_ref)?;
-         required(&record.target_state_ref, "target_state_ref")?;
-         if record.identity.version != 1 {
--            return Err(ValidationError::InvalidInitialVersion(record.identity.version));
-+            return Err(ValidationError::InvalidInitialVersion(
-+                record.identity.version,
-+            ));
-         }
-         if record.identity.predecessor.is_some() {
-             return Err(ValidationError::ReferenceMismatch(
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/src/lib.rs:538:
-         }
-         let key = (record.tier, record.identity.stable_id.clone());
-         if self.tiers.contains_key(&key) {
--            return Err(ValidationError::DuplicateStableId(record.identity.stable_id));
-+            return Err(ValidationError::DuplicateStableId(
-+                record.identity.stable_id,
-+            ));
-         }
-         if self.tiers.values().any(|existing| {
-             existing.identity.status == RecordStatus::Active
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/src/lib.rs:545:
-                 && existing.tier == record.tier
-                 && existing.identity.namespace == record.identity.namespace
-         }) {
--            return Err(ValidationError::DuplicateNamespace(record.identity.namespace));
-+            return Err(ValidationError::DuplicateNamespace(
-+                record.identity.namespace,
-+            ));
-         }
-         let reference = record.identity.reference();
-         self.tiers.insert(key, record);
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/src/lib.rs:718:
-     Ok(())
- }
- 
--fn validate_revision(previous: &RecordIdentity, next: &RecordIdentity) -> Result<(), ValidationError> {
-+fn validate_revision(
-+    previous: &RecordIdentity,
-+    next: &RecordIdentity,
-+) -> Result<(), ValidationError> {
-     if previous.status != RecordStatus::Active {
-         return Err(ValidationError::RetiredRecord(previous.stable_id.clone()));
-     }
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/src/lib.rs:764:
-         .collect();
-     match request.requested_outcome {
-         ValidationOutcome::Pass => {
--            if !missing.is_empty() || request.coverage_gap.as_deref().is_some_and(|v| !v.trim().is_empty()) {
-+            if !missing.is_empty()
-+                || request
-+                    .coverage_gap
-+                    .as_deref()
-+                    .is_some_and(|v| !v.trim().is_empty())
-+            {
-                 return Err(ValidationError::PassWithCoverageGap);
-             }
-         }
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/src/lib.rs:771:
-         ValidationOutcome::Fail => {
--            if request.failure_basis.as_deref().is_none_or(|value| value.trim().is_empty()) {
-+            if request
-+                .failure_basis
-+                .as_deref()
-+                .is_none_or(|value| value.trim().is_empty())
-+            {
-                 return Err(ValidationError::FailWithoutBasis);
-             }
-         }
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/src/lib.rs:776:
-         ValidationOutcome::CoverageInsufficient => {
--            let explicit_gap = request.coverage_gap.as_deref().is_some_and(|value| !value.trim().is_empty());
-+            let explicit_gap = request
-+                .coverage_gap
-+                .as_deref()
-+                .is_some_and(|value| !value.trim().is_empty());
-             if missing.is_empty() && !explicit_gap {
-                 return Err(ValidationError::CoverageInsufficientWithoutGap);
-             }
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/src/lib.rs:815:
-     required(&provenance.actor_ref, "actor_ref")?;
-     required(&provenance.artifact_ref, "artifact_ref")?;
-     if provenance.transform_steps.is_empty()
--        || provenance.transform_steps.iter().any(|step| step.trim().is_empty())
-+        || provenance
-+            .transform_steps
-+            .iter()
-+            .any(|step| step.trim().is_empty())
-     {
-         return Err(ValidationError::MissingField("transform_steps"));
-     }
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/tests/wp005.rs:46:
- fn create_schema(registry: &mut ValidationRegistry) -> VersionRef {
-     registry
-         .create_schema(
--            schema_record("schema-1", "validation.schema.1", 1, None, RecordStatus::Active),
-+            schema_record(
-+                "schema-1",
-+                "validation.schema.1",
-+                1,
-+                None,
-+                RecordStatus::Active,
-+            ),
-             WriteOrigin::OwningResolver,
-         )
-         .unwrap()
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/tests/wp005.rs:323:
- #[test]
- fn s3_06_10_validation_outcome_fail_requires_explicit_failure_evidence() {
-     let required = tiers(&[ValidationTier::VT0Semantic]);
--    let request = decision_request(
--        ValidationOutcome::Fail,
--        required.clone(),
--        required.clone(),
--    );
-+    let request = decision_request(ValidationOutcome::Fail, required.clone(), required.clone());
-     assert_eq!(decide(request), Err(ValidationError::FailWithoutBasis));
- 
-     let mut request = decision_request(ValidationOutcome::Fail, required.clone(), required);
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core/tests/wp005.rs:337:
- 
- #[test]
- fn s3_06_11_coverage_insufficient_is_distinct_and_cannot_be_silent_pass() {
--    let required = tiers(&[
--        ValidationTier::VT0Semantic,
--        ValidationTier::VT4CrossLod,
--    ]);
-+    let required = tiers(&[ValidationTier::VT0Semantic, ValidationTier::VT4CrossLod]);
-     let covered = tiers(&[ValidationTier::VT0Semantic]);
-     let mut request = decision_request(
-         ValidationOutcome::CoverageInsufficient,
---- CLIPPY ---
-    Checking gaonn-world-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-core)
-    Checking gaonn-identity-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-core)
-    Checking gaonn-validation-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core)
-    Checking gaonn-planetary-space-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/planetary-space-core)
-    Checking gaonn-world-time-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-time-core)
-    Checking gaonn-lifecycle-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/lifecycle-core)
-    Checking gaonn-creation-boundary-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/creation-boundary-core)
-    Checking gaonn-retirement-state-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retirement-state-core)
-    Checking gaonn-retention-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retention-core)
-    Checking gaonn-cross-reference-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/cross-reference-core)
-    Checking gaonn-identity-continuity-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-continuity-core)
-    Checking gaonn-identity-reuse-audit-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-reuse-audit-core)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.12s
---- TEST ---
-   Compiling gaonn-world-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-core)
-   Compiling gaonn-identity-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-core)
-   Compiling gaonn-validation-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core)
-   Compiling gaonn-lifecycle-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/lifecycle-core)
-   Compiling gaonn-world-time-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-time-core)
-   Compiling gaonn-creation-boundary-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/creation-boundary-core)
-   Compiling gaonn-retirement-state-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retirement-state-core)
-   Compiling gaonn-planetary-space-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/planetary-space-core)
-   Compiling gaonn-retention-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retention-core)
-   Compiling gaonn-cross-reference-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/cross-reference-core)
-   Compiling gaonn-identity-continuity-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-continuity-core)
-   Compiling gaonn-identity-reuse-audit-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-reuse-audit-core)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.82s
-     Running unittests src/lib.rs (production/target/debug/deps/gaonn_creation_boundary_core-50f8ea9587af23d6)
+TEST_EXIT=0
+--- TEST TAIL ---
+test contract_preserves_root_id_version_owner_causal_parent_and_frozen_operands ... ok
+test behavior_normal_allows_read_only_noncanonical_use_and_registered_canonical_owner_path ... ok
+test integration_acceptance_detects_three_required_bypasses_with_first_failure_and_reproduction ... ok
+test persistence_evidence_snapshot_restore_preserves_source_version_provenance_lineage_and_hash ... ok
+test replay_same_snapshot_event_schema_source_hash_and_causal_reference_is_deterministic ... ok
 
-running 0 tests
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running tests/s1_02_04_committed_entity_creation.rs (production/target/debug/deps/s1_02_04_committed_entity_creation-ed38fe8db176d41a)
+     Running tests/s1_01_08_acceptance_review.rs (production/target/debug/deps/s1_01_08_acceptance_review-29b50fac78c1e6e2)
 
 running 9 tests
-test behavior_normal_valid_creation_boundary_returns_versioned_candidate_only_validation ... ok
-test authority_only_registered_owner_and_owning_resolver_are_accepted ... ok
-test behavior_failure_missing_stale_and_wrong_owner_inputs_reject_without_success_result ... ok
-test boundary_requested_progress_partial_and_failed_are_not_completion ... ok
-test contract_preserves_root_and_s1_02_03_causal_references ... ok
-test boundary_scope_excludes_projection_and_similar_named_out_of_scope_state ... ok
-test integration_root_to_lifecycle_to_creation_boundary_has_no_shortcut_and_propagates_failure ... ok
-test persistence_and_replay_preserve_id_version_pending_causal_and_digest ... ok
-test reference_integrity_and_transition_must_be_explicitly_valid ... ok
+test authority_only_registered_validation_owner_can_issue_acceptance_record ... ok
+test behavior_normal_complete_same_run_evidence_produces_pass_record ... ok
+test behavior_failure_missing_evidence_blocks_and_failed_test_cannot_be_promoted ... ok
+test contract_preserves_frozen_root_id_version_owner_and_causal_parent ... ok
+test boundary_out_of_scope_pass_cannot_substitute_for_required_member ... ok
+test frozen_baseline_change_request_blocks_closure_without_reclassifying_failure ... ok
+test integration_missing_or_mismatched_predecessor_audit_blocks_closure ... ok
+test persistence_read_only_acceptance_record_snapshot_preserves_evidence_digest ... ok
+test replay_same_snapshot_schema_run_and_source_produces_same_record_order_and_digest ... ok
 
 test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running unittests src/lib.rs (production/target/debug/deps/gaonn_cross_reference_core-9b9a6fc14a43034f)
+     Running unittests src/lib.rs (production/target/debug/deps/gaonn_world_time_core-7a1cde7e5c36434d)
 
 running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running tests/s1_02_07_cross_reference_integrity.rs (production/target/debug/deps/s1_02_07_cross_reference_integrity-55fa592b42f92df5)
+     Running tests/wp004.rs (production/target/debug/deps/wp004-7924b097ef9a2614)
 
-running 9 tests
-test behavior_normal_valid_cross_reference_returns_versioned_candidate_only_validation ... ok
-test behavior_failure_missing_stale_and_wrong_owner_inputs_reject_without_success_result ... ok
-test authority_only_pa003_owner_and_owning_resolver_path_is_accepted ... ok
-test boundary_projection_and_similar_named_state_are_excluded_and_observation_hint_is_read_only ... ok
-test contract_preserves_frozen_root_predecessor_target_and_causal_references ... ok
-test function_specific_failure_dangling_digest_mismatch_and_prohibited_transition_are_rejected ... ok
-test function_specific_normal_requires_exact_target_and_source_authorized_transition ... ok
-test integration_root_through_s1_02_06_to_cross_reference_has_no_shortcut_and_propagates_failure ... ok
-test persistence_and_replay_preserve_id_version_pending_causal_target_and_digest ... ok
+running 13 tests
+test s1_05_01_absolute_worldtime_contract_requires_valid_predecessor_and_owner ... ok
+test s1_05_03_monotonic_time_accepts_forward_and_same_time_order_but_rejects_reversal ... ok
+test s1_05_02_epoch_unit_representation_rejects_stale_missing_and_incompatible_values ... ok
+test s1_05_04_duration_arithmetic_is_checked_exact_and_nonnegative ... ok
+test s1_05_05_same_time_equality_is_absolute_and_separate_from_microstep_order ... ok
+test s1_05_06_calendar_human_date_is_read_only_derived_view ... ok
+test s1_05_07_serialization_fails_closed_on_missing_boundary_or_stale_schema ... ok
+test s1_05_08_long_horizon_precision_reports_overflow_instead_of_wrapping ... ok
+test s1_05_03_wrong_writer_origins_leave_canonical_state_unchanged ... ok
+test s1_05_07_worldtime_serialization_round_trip_preserves_replay_boundary ... ok
+test s1_05_09_reversal_audit_is_read_only_detects_violation_and_avoids_false_positive ... ok
+test wp004_acceptance_requires_all_nine_member_passes_and_evidence ... ok
+test s1_05_08_long_horizon_precision_has_no_accumulation_drift ... ok
 
-test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running unittests src/lib.rs (production/target/debug/deps/gaonn_identity_continuity_core-f4f4d5dcb8e056ca)
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running tests/s1_02_08.rs (production/target/debug/deps/s1_02_08-1fec715ead21c5df)
-
-running 5 tests
-test identity_mismatch_rejected ... ok
-test missing_runtime_bundle_rejected ... ok
-test observer_cannot_write ... ok
-test partial_not_complete ... ok
-test round_trip_preserves_identity ... ok
-
-test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running unittests src/lib.rs (production/target/debug/deps/gaonn_identity_core-0ca586ae10bc75c1)
+   Doc-tests gaonn_creation_boundary_core
 
 running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running tests/s1_02_01_stable_entity_id.rs (production/target/debug/deps/s1_02_01_stable_entity_id-791ecf44226e5960)
-
-running 9 tests
-test authority_only_pa003_registry_owner_resolver_path_is_accepted ... ok
-test behavior_failure_missing_stale_wrong_owner_and_missing_completion_never_produce_success ... ok
-test behavior_normal_valid_identity_input_produces_candidate_only_outcome_with_causal_evidence ... ok
-test contract_requires_closed_wp001_and_preserves_root_and_predecessor_references ... ok
-test boundary_display_name_lod_and_placement_do_not_define_or_change_stable_identity ... ok
-test integration_predecessor_root_mismatch_blocks_without_shortcut ... ok
-test boundary_request_progress_partial_and_failed_phases_are_not_completion ... ok
-test persistence_snapshot_restore_preserves_identity_version_owner_causal_lineage_and_digest ... ok
-test replay_same_snapshot_root_and_predecessor_produces_same_outcome_and_digest ... ok
-
-test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running tests/s1_02_02_namespace_versioning.rs (production/target/debug/deps/s1_02_02_namespace_versioning-3359fc415e11eba2)
-
-running 9 tests
-test authority_only_registered_owner_and_owning_resolver_are_accepted ... ok
-test behavior_failure_missing_evidence_stale_reference_and_unsupported_schema_reject ... ok
-test boundary_stable_id_namespace_and_projection_hints_do_not_cross_authority_boundary ... ok
-test boundary_requested_progress_partial_and_failed_are_not_completion ... ok
-test behavior_normal_valid_namespace_versioning_produces_candidate_only_causal_outcome ... ok
-test contract_preserves_root_and_s1_02_01_predecessor_references ... ok
-test integration_root_to_s1_02_01_to_s1_02_02_has_no_shortcut_and_propagates_failure ... ok
-test persistence_snapshot_restore_preserves_id_version_pending_causal_and_digest ... ok
-test replay_same_snapshot_schema_event_and_predecessor_produces_same_outcome_and_digest ... ok
-
-test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running unittests src/lib.rs (production/target/debug/deps/gaonn_identity_reuse_audit_core-23c86d8fb728edc2)
+   Doc-tests gaonn_cross_reference_core
 
 running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running tests/s1_02_09.rs (production/target/debug/deps/s1_02_09-cf411ba2b19a5ee1)
-
-running 5 tests
-test audit_is_read_only_and_digest_stable ... ok
-test changed_lineage_under_same_id_is_detected ... ok
-test exact_continuation_is_not_reuse ... ok
-test new_issuance_of_existing_id_is_detected ... ok
-test unrelated_stable_id_is_outside_reuse_case ... ok
-
-test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running unittests src/lib.rs (production/target/debug/deps/gaonn_lifecycle_core-2518c1c41d37b33d)
+   Doc-tests gaonn_identity_continuity_core
 
 running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running tests/s1_02_03_persistent_lifecycle.rs (production/target/debug/deps/s1_02_03_persistent_lifecycle-95cdaabe6dc42e95)
-
-running 9 tests
-test authority_only_registered_owner_and_owning_resolver_are_accepted ... ok
-test behavior_failure_missing_cause_stale_reference_and_unsupported_transition_reject_without_result ... ok
-test behavior_normal_valid_cause_state_and_allowed_transition_produce_candidate_only_outcome ... ok
-test boundary_requested_progress_partial_and_failed_are_not_completion ... ok
-test contract_preserves_frozen_root_and_s1_02_02_predecessor_references ... ok
-test boundary_projection_and_unrelated_state_do_not_define_lifecycle_outcome ... ok
-test integration_root_to_namespace_to_lifecycle_has_no_shortcut_and_propagates_predecessor_failure ... ok
-test persistence_snapshot_restore_preserves_id_version_pending_transition_causal_and_digest ... ok
-test replay_same_snapshot_event_outcome_and_schema_produces_same_result_order_and_digest ... ok
-
-test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running unittests src/lib.rs (production/target/debug/deps/gaonn_planetary_space_core-f856dc7e8b04260a)
+   Doc-tests gaonn_identity_core
 
 running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running tests/wp003.rs (production/target/debug/deps/wp003-e8e037eeafab994d)
-
-running 9 tests
-test acceptance_requires_every_member_and_evidence ... ok
-test admission_and_semantic_contract ... ok
-test canonical_index_has_single_writer_and_no_duplicates ... ok
-test continuous_and_vertical_contract ... ok
-test cross_face_is_deterministic ... ok
-test geodesic_query_is_read_only_and_repeatable ... ok
-test hierarchy_and_address_boundaries ... ok
-test serialization_round_trip_preserves_state ... ok
-test tangent_frame_is_orthogonal ... ok
-
-test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running unittests src/lib.rs (production/target/debug/deps/gaonn_retention_core-4eee5c8d9eabdf41)
+   Doc-tests gaonn_identity_reuse_audit_core
 
 running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running tests/s1_02_06_tombstone_historical_retention.rs (production/target/debug/deps/s1_02_06_tombstone_historical_retention-2d863e711e333bb1)
-
-running 9 tests
-test behavior_normal_valid_retention_records_durable_recovery_boundary_candidate_only ... ok
-test behavior_failure_missing_wrong_owner_and_pending_commit_do_not_produce_result ... ok
-test authority_wrong_writer_and_read_only_projection_origins_are_blocked ... ok
-test boundary_distinguishes_durable_identity_retention_from_projection_and_pending_state ... ok
-test contract_preserves_root_namespace_predecessor_id_version_owner_and_causal_references ... ok
-test function_specific_normal_save_restore_and_replay_preserve_id_order_and_digest ... ok
-test function_specific_failure_partial_corrupt_stale_and_outside_cut_are_rejected ... ok
-test integration_has_no_shortcut_and_source_or_predecessor_failure_propagates ... ok
-test persistence_rejects_corrupt_snapshot_and_replay_keeps_recovery_position_and_lineage ... ok
-
-test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running unittests src/lib.rs (production/target/debug/deps/gaonn_retirement_state_core-529b5294546d6b10)
+   Doc-tests gaonn_lifecycle_core
 
 running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running tests/s1_02_05_deactivation_death_retirement.rs (production/target/debug/deps/s1_02_05_deactivation_death_retirement-c2f1c9e56b4e8677)
-
-running 9 tests
-test authority_wrong_writer_and_projection_origins_cannot_write ... ok
-test behavior_failure_missing_stale_and_wrong_owner_inputs_reject_without_result ... ok
-test behavior_normal_record_revision_and_close_preserve_identity_and_lineage ... ok
-test behavior_normal_valid_deactivation_state_produces_versioned_candidate_only_representation ... ok
-test contract_preserves_root_predecessor_id_version_owner_and_causal_reference ... ok
-test boundary_keeps_state_kind_subject_and_worldtime_frame_distinct ... ok
-test failure_duplicate_dangling_and_old_record_version_are_rejected ... ok
-test integration_has_no_shortcut_and_predecessor_or_root_failure_propagates ... ok
-test persistence_and_replay_preserve_id_version_pending_causal_worldtime_and_digest ... ok
-
-test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running unittests src/lib.rs (production/target/debug/deps/gaonn_validation_core-d06d87ff06517cab)
+   Doc-tests gaonn_planetary_space_core
 
 running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running tests/wp005.rs (production/target/debug/deps/wp005-156885f64a9b9ace)
+   Doc-tests gaonn_retention_core
 
-running 17 tests
-test admission_requires_wp001_pass_contract ... ok
-test authority_dangling_and_stale_reference_fail_without_partial_registry_mutation ... ok
-test decision_replay_digest_is_deterministic_and_source_domain_truth_is_only_referenced ... ok
-test s3_06_01_validation_evidence_schema_has_versioned_crud_and_replay ... FAILED
-test s3_06_02_vt0_semantic_integrity_registry ... FAILED
-test s3_06_04_vt2_conservation_integrity_registry ... FAILED
-test s3_06_05_vt3_numerical_integrity_registry ... FAILED
-test s3_06_03_vt1_deterministic_integrity_registry ... FAILED
-test s3_06_06_vt4_cross_lod_integrity_registry ... FAILED
-test s3_06_07_vt5_empirical_statistical_integrity_registry ... FAILED
-test s3_06_09_validation_outcome_pass_requires_complete_declared_coverage ... ok
-test s3_06_08_vt6_observation_integrity_registry_is_not_observer_write_authority ... FAILED
-test s3_06_10_validation_outcome_fail_requires_explicit_failure_evidence ... ok
-test s3_06_11_coverage_insufficient_is_distinct_and_cannot_be_silent_pass ... ok
-test s3_06_12_evidence_provenance_preserves_source_build_run_and_transform_lineage ... ok
-test s3_06_13_tolerance_acceptance_is_context_specific_and_vt0_is_zero_tolerance ... ok
-test wp005_integration_requires_all_13_members_and_keeps_wp017_outside_closure ... ok
+running 0 tests
 
-failures:
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
----- s3_06_01_validation_evidence_schema_has_versioned_crud_and_replay stdout ----
+   Doc-tests gaonn_retirement_state_core
 
-thread 's3_06_01_validation_evidence_schema_has_versioned_crud_and_replay' (4170) panicked at crates/validation-core/tests/wp005.rs:218:64:
-called `Result::unwrap()` on an `Err` value: Serialization("schema field count 12")
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+running 0 tests
 
----- s3_06_02_vt0_semantic_integrity_registry stdout ----
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-thread 's3_06_02_vt0_semantic_integrity_registry' (4171) panicked at crates/validation-core/tests/wp005.rs:89:68:
-called `Result::unwrap()` on an `Err` value: Serialization("schema field count 12")
+   Doc-tests gaonn_validation_core
 
----- s3_06_04_vt2_conservation_integrity_registry stdout ----
+running 0 tests
 
-thread 's3_06_04_vt2_conservation_integrity_registry' (4173) panicked at crates/validation-core/tests/wp005.rs:89:68:
-called `Result::unwrap()` on an `Err` value: Serialization("schema field count 12")
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
----- s3_06_05_vt3_numerical_integrity_registry stdout ----
+   Doc-tests gaonn_world_core
 
-thread 's3_06_05_vt3_numerical_integrity_registry' (4174) panicked at crates/validation-core/tests/wp005.rs:89:68:
-called `Result::unwrap()` on an `Err` value: Serialization("schema field count 12")
+running 0 tests
 
----- s3_06_03_vt1_deterministic_integrity_registry stdout ----
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-thread 's3_06_03_vt1_deterministic_integrity_registry' (4172) panicked at crates/validation-core/tests/wp005.rs:89:68:
-called `Result::unwrap()` on an `Err` value: Serialization("schema field count 12")
+   Doc-tests gaonn_world_time_core
 
----- s3_06_06_vt4_cross_lod_integrity_registry stdout ----
+running 0 tests
 
-thread 's3_06_06_vt4_cross_lod_integrity_registry' (4175) panicked at crates/validation-core/tests/wp005.rs:89:68:
-called `Result::unwrap()` on an `Err` value: Serialization("schema field count 12")
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
----- s3_06_07_vt5_empirical_statistical_integrity_registry stdout ----
-
-thread 's3_06_07_vt5_empirical_statistical_integrity_registry' (4176) panicked at crates/validation-core/tests/wp005.rs:89:68:
-called `Result::unwrap()` on an `Err` value: Serialization("schema field count 12")
-
----- s3_06_08_vt6_observation_integrity_registry_is_not_observer_write_authority stdout ----
-
-thread 's3_06_08_vt6_observation_integrity_registry_is_not_observer_write_authority' (4177) panicked at crates/validation-core/tests/wp005.rs:89:68:
-called `Result::unwrap()` on an `Err` value: Serialization("schema field count 12")
-
-
-failures:
-    s3_06_01_validation_evidence_schema_has_versioned_crud_and_replay
-    s3_06_02_vt0_semantic_integrity_registry
-    s3_06_03_vt1_deterministic_integrity_registry
-    s3_06_04_vt2_conservation_integrity_registry
-    s3_06_05_vt3_numerical_integrity_registry
-    s3_06_06_vt4_cross_lod_integrity_registry
-    s3_06_07_vt5_empirical_statistical_integrity_registry
-    s3_06_08_vt6_observation_integrity_registry_is_not_observer_write_authority
-
-test result: FAILED. 9 passed; 8 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-error: test failed, to rerun pass `-p gaonn-validation-core --test wp005`

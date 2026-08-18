@@ -12,19 +12,8 @@ use std::fmt;
 pub const SCHEMA_VERSION: u32 = 1;
 pub const OWNER: &str = "domain27.validation_registry";
 pub const MEMBER_IDS: [&str; 13] = [
-    "S3.06.01",
-    "S3.06.02",
-    "S3.06.03",
-    "S3.06.04",
-    "S3.06.05",
-    "S3.06.06",
-    "S3.06.07",
-    "S3.06.08",
-    "S3.06.09",
-    "S3.06.10",
-    "S3.06.11",
-    "S3.06.12",
-    "S3.06.13",
+    "S3.06.01", "S3.06.02", "S3.06.03", "S3.06.04", "S3.06.05", "S3.06.06", "S3.06.07", "S3.06.08",
+    "S3.06.09", "S3.06.10", "S3.06.11", "S3.06.12", "S3.06.13",
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -306,27 +295,48 @@ impl fmt::Display for ValidationError {
             Self::MissingField(field) => write!(f, "missing required field {field}"),
             Self::EmptyField(field) => write!(f, "required field {field} is empty"),
             Self::WrongOwner => write!(f, "wrong Domain 27 validation owner"),
-            Self::UnauthorizedWrite => write!(f, "read-only or derived origin cannot write validation registry"),
+            Self::UnauthorizedWrite => write!(
+                f,
+                "read-only or derived origin cannot write validation registry"
+            ),
             Self::UnsupportedVersion { expected, found } => {
-                write!(f, "unsupported schema version: expected {expected}, found {found}")
+                write!(
+                    f,
+                    "unsupported schema version: expected {expected}, found {found}"
+                )
             }
-            Self::InvalidInitialVersion(version) => write!(f, "initial record version must be 1, found {version}"),
+            Self::InvalidInitialVersion(version) => {
+                write!(f, "initial record version must be 1, found {version}")
+            }
             Self::StaleVersion { expected, found } => {
-                write!(f, "stale/non-sequential record version: expected {expected}, found {found}")
+                write!(
+                    f,
+                    "stale/non-sequential record version: expected {expected}, found {found}"
+                )
             }
             Self::DuplicateStableId(value) => write!(f, "duplicate stable ID {value}"),
             Self::DuplicateNamespace(value) => write!(f, "duplicate active namespace {value}"),
             Self::DanglingReference(value) => write!(f, "dangling reference {value}"),
             Self::ReferenceMismatch(value) => write!(f, "reference mismatch {value}"),
             Self::RetiredRecord(value) => write!(f, "record is retired {value}"),
-            Self::WrongTier => write!(f, "registry record is stored under the wrong validation tier"),
-            Self::PassWithCoverageGap => write!(f, "PASS is forbidden when required validation coverage is missing"),
+            Self::WrongTier => write!(
+                f,
+                "registry record is stored under the wrong validation tier"
+            ),
+            Self::PassWithCoverageGap => write!(
+                f,
+                "PASS is forbidden when required validation coverage is missing"
+            ),
             Self::FailWithoutBasis => write!(f, "FAIL requires explicit failure evidence"),
             Self::CoverageInsufficientWithoutGap => {
                 write!(f, "COVERAGE_INSUFFICIENT requires an explicit coverage gap")
             }
-            Self::SemanticToleranceMustBeExact => write!(f, "VT0 semantic integrity is zero-tolerance"),
-            Self::InvalidToleranceContext(field) => write!(f, "invalid contextual tolerance field {field}"),
+            Self::SemanticToleranceMustBeExact => {
+                write!(f, "VT0 semantic integrity is zero-tolerance")
+            }
+            Self::InvalidToleranceContext(field) => {
+                write!(f, "invalid contextual tolerance field {field}")
+            }
             Self::MissingEvidence(id) => write!(f, "missing member evidence for {id}"),
             Self::Serialization(message) => write!(f, "serialization error: {message}"),
         }
@@ -411,7 +421,9 @@ impl ValidationRegistry {
         validate_identity(&record.identity)?;
         validate_schema_payload(&record)?;
         if record.identity.version != 1 {
-            return Err(ValidationError::InvalidInitialVersion(record.identity.version));
+            return Err(ValidationError::InvalidInitialVersion(
+                record.identity.version,
+            ));
         }
         if record.identity.predecessor.is_some() {
             return Err(ValidationError::ReferenceMismatch(
@@ -422,17 +434,21 @@ impl ValidationRegistry {
             return Err(ValidationError::RetiredRecord(record.identity.stable_id));
         }
         if self.schemas.contains_key(&record.identity.stable_id) {
-            return Err(ValidationError::DuplicateStableId(record.identity.stable_id));
+            return Err(ValidationError::DuplicateStableId(
+                record.identity.stable_id,
+            ));
         }
-        if self
-            .schemas
-            .values()
-            .any(|existing| existing.identity.status == RecordStatus::Active && existing.identity.namespace == record.identity.namespace)
-        {
-            return Err(ValidationError::DuplicateNamespace(record.identity.namespace));
+        if self.schemas.values().any(|existing| {
+            existing.identity.status == RecordStatus::Active
+                && existing.identity.namespace == record.identity.namespace
+        }) {
+            return Err(ValidationError::DuplicateNamespace(
+                record.identity.namespace,
+            ));
         }
         let reference = record.identity.reference();
-        self.schemas.insert(record.identity.stable_id.clone(), record);
+        self.schemas
+            .insert(record.identity.stable_id.clone(), record);
         Ok(reference)
     }
 
@@ -450,7 +466,8 @@ impl ValidationRegistry {
             .ok_or_else(|| ValidationError::DanglingReference(record.identity.stable_id.clone()))?;
         validate_revision(&previous.identity, &record.identity)?;
         let reference = record.identity.reference();
-        self.schemas.insert(record.identity.stable_id.clone(), record);
+        self.schemas
+            .insert(record.identity.stable_id.clone(), record);
         Ok(reference)
     }
 
@@ -520,7 +537,9 @@ impl ValidationRegistry {
         validate_ref(&record.evidence_schema_ref)?;
         required(&record.target_state_ref, "target_state_ref")?;
         if record.identity.version != 1 {
-            return Err(ValidationError::InvalidInitialVersion(record.identity.version));
+            return Err(ValidationError::InvalidInitialVersion(
+                record.identity.version,
+            ));
         }
         if record.identity.predecessor.is_some() {
             return Err(ValidationError::ReferenceMismatch(
@@ -538,14 +557,18 @@ impl ValidationRegistry {
         }
         let key = (record.tier, record.identity.stable_id.clone());
         if self.tiers.contains_key(&key) {
-            return Err(ValidationError::DuplicateStableId(record.identity.stable_id));
+            return Err(ValidationError::DuplicateStableId(
+                record.identity.stable_id,
+            ));
         }
         if self.tiers.values().any(|existing| {
             existing.identity.status == RecordStatus::Active
                 && existing.tier == record.tier
                 && existing.identity.namespace == record.identity.namespace
         }) {
-            return Err(ValidationError::DuplicateNamespace(record.identity.namespace));
+            return Err(ValidationError::DuplicateNamespace(
+                record.identity.namespace,
+            ));
         }
         let reference = record.identity.reference();
         self.tiers.insert(key, record);
@@ -718,7 +741,10 @@ fn validate_schema_payload(record: &EvidenceSchemaRecord) -> Result<(), Validati
     Ok(())
 }
 
-fn validate_revision(previous: &RecordIdentity, next: &RecordIdentity) -> Result<(), ValidationError> {
+fn validate_revision(
+    previous: &RecordIdentity,
+    next: &RecordIdentity,
+) -> Result<(), ValidationError> {
     if previous.status != RecordStatus::Active {
         return Err(ValidationError::RetiredRecord(previous.stable_id.clone()));
     }
@@ -764,17 +790,29 @@ pub fn decide(request: OutcomeRequest) -> Result<ValidationDecision, ValidationE
         .collect();
     match request.requested_outcome {
         ValidationOutcome::Pass => {
-            if !missing.is_empty() || request.coverage_gap.as_deref().is_some_and(|v| !v.trim().is_empty()) {
+            if !missing.is_empty()
+                || request
+                    .coverage_gap
+                    .as_deref()
+                    .is_some_and(|v| !v.trim().is_empty())
+            {
                 return Err(ValidationError::PassWithCoverageGap);
             }
         }
         ValidationOutcome::Fail => {
-            if request.failure_basis.as_deref().is_none_or(|value| value.trim().is_empty()) {
+            if request
+                .failure_basis
+                .as_deref()
+                .is_none_or(|value| value.trim().is_empty())
+            {
                 return Err(ValidationError::FailWithoutBasis);
             }
         }
         ValidationOutcome::CoverageInsufficient => {
-            let explicit_gap = request.coverage_gap.as_deref().is_some_and(|value| !value.trim().is_empty());
+            let explicit_gap = request
+                .coverage_gap
+                .as_deref()
+                .is_some_and(|value| !value.trim().is_empty());
             if missing.is_empty() && !explicit_gap {
                 return Err(ValidationError::CoverageInsufficientWithoutGap);
             }
@@ -815,7 +853,10 @@ pub fn validate_provenance(
     required(&provenance.actor_ref, "actor_ref")?;
     required(&provenance.artifact_ref, "artifact_ref")?;
     if provenance.transform_steps.is_empty()
-        || provenance.transform_steps.iter().any(|step| step.trim().is_empty())
+        || provenance
+            .transform_steps
+            .iter()
+            .any(|step| step.trim().is_empty())
     {
         return Err(ValidationError::MissingField("transform_steps"));
     }
@@ -978,7 +1019,7 @@ fn encode_schema(record: &EvidenceSchemaRecord) -> String {
 }
 
 fn decode_schema(fields: &[&str]) -> Result<EvidenceSchemaRecord, ValidationError> {
-    if fields.len() != 13 {
+    if fields.len() != 12 {
         return Err(ValidationError::Serialization(format!(
             "schema field count {}",
             fields.len()
@@ -1005,7 +1046,7 @@ fn encode_tier(record: &TierRegistryRecord) -> String {
 }
 
 fn decode_tier(fields: &[&str]) -> Result<TierRegistryRecord, ValidationError> {
-    if fields.len() != 15 {
+    if fields.len() != 10 {
         return Err(ValidationError::Serialization(format!(
             "tier field count {}",
             fields.len()
@@ -1014,8 +1055,8 @@ fn decode_tier(fields: &[&str]) -> Result<TierRegistryRecord, ValidationError> {
     Ok(TierRegistryRecord {
         identity: decode_identity(&fields[1..7])?,
         tier: ValidationTier::parse(fields[7])?,
-        evidence_schema_ref: decode_ref(&fields[8..13])?,
-        target_state_ref: unescape(fields[13])?,
+        evidence_schema_ref: decode_ref_from_string(fields[8])?,
+        target_state_ref: unescape(fields[9])?,
     })
 }
 
