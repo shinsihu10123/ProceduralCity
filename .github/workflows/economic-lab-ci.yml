@@ -30,6 +30,13 @@ jobs:
           STRESS_SCALE: 'compact'
           OUTPUT_JSON: 'performance-results/stress-matrix.json'
         run: npm run stress:v10
+      - name: Emergence ensemble
+        working-directory: economic-lab
+        env:
+          EMERGENCE_MONTHS: '24'
+          EMERGENCE_SCALE: 'compact'
+          OUTPUT_JSON: 'performance-results/emergence-ensemble.json'
+        run: npm run emergence:v10
       - name: Cold scale benchmark
         working-directory: economic-lab
         env:
