@@ -1,4 +1,4 @@
-name: Economic Lab WP-RV02 Compute Smoke
+name: Economic Lab WP-RV02 Staged Envelope
 
 on:
   push:
@@ -13,11 +13,11 @@ permissions:
   statuses: write
 
 jobs:
-  rv02-smoke:
+  rv02-stage2:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
-      - name: Publish WP-RV02 running beacon
+      - name: Publish WP-RV02 stage-2 running beacon
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
@@ -29,8 +29,8 @@ jobs:
           print(json.dumps({
               "state": "pending",
               "target_url": os.environ["RUN_URL"],
-              "description": "WP-RV02 staged compute smoke is running",
-              "context": "economic-lab/wp-rv02-smoke"
+              "description": "WP-RV02 staged envelope is running",
+              "context": "economic-lab/wp-rv02-stage2"
           }))
           PY
           curl -fsS -X POST \
@@ -43,32 +43,32 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: R0 compact runtime smoke — 1 seed x 12 months
+      - name: R0 compact stage-2 — 1 seed x 24 months
         working-directory: economic-lab
         env:
-          DIAG_LABEL: 'WP-RV02-R0-runtime-smoke'
-          DIAG_MONTHS: '12'
+          DIAG_LABEL: 'WP-RV02-R0-stage2'
+          DIAG_MONTHS: '24'
           DIAG_SCALE: 'compact'
           DIAG_SEEDS: 'ECON-RV02-A'
-          OUTPUT_JSON: 'performance-results/reality-diagnostics-rv02-r0-smoke.json'
+          OUTPUT_JSON: 'performance-results/reality-diagnostics-rv02-r0-stage2.json'
         run: node scripts/baseline-reproduction-v10.mjs
-      - name: R1 baseline runtime smoke — 1 seed x 6 months
+      - name: R1 baseline stage-2 — 1 seed x 12 months
         working-directory: economic-lab
         env:
-          DIAG_LABEL: 'WP-RV02-R1-runtime-smoke'
-          DIAG_MONTHS: '6'
+          DIAG_LABEL: 'WP-RV02-R1-stage2'
+          DIAG_MONTHS: '12'
           DIAG_SCALE: 'baseline'
           DIAG_SEEDS: 'ECON-RV02-A'
-          OUTPUT_JSON: 'performance-results/reality-diagnostics-rv02-r1-smoke.json'
+          OUTPUT_JSON: 'performance-results/reality-diagnostics-rv02-r1-stage2.json'
         run: node scripts/baseline-reproduction-v10.mjs
-      - name: Upload WP-RV02 compute evidence
+      - name: Upload WP-RV02 stage-2 evidence
         uses: actions/upload-artifact@v4
         with:
-          name: economic-lab-rv02-compute-smoke
-          path: economic-lab/performance-results/reality-diagnostics-rv02-*-smoke.json
+          name: economic-lab-rv02-stage2
+          path: economic-lab/performance-results/reality-diagnostics-rv02-*-stage2.json
           if-no-files-found: error
           retention-days: 30
-      - name: Publish WP-RV02 final beacon
+      - name: Publish WP-RV02 stage-2 final beacon
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
@@ -76,7 +76,7 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           API_STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
-          DESCRIPTION: ${{ job.status == 'success' && 'WP-RV02 compute smoke passed' || 'WP-RV02 compute smoke failed' }}
+          DESCRIPTION: ${{ job.status == 'success' && 'WP-RV02 staged envelope passed' || 'WP-RV02 staged envelope failed' }}
         run: |
           python - <<'PY' > /tmp/rv02-status-final.json
           import json, os
@@ -84,7 +84,7 @@ jobs:
               "state": os.environ["API_STATE"],
               "target_url": os.environ["RUN_URL"],
               "description": os.environ["DESCRIPTION"],
-              "context": "economic-lab/wp-rv02-smoke"
+              "context": "economic-lab/wp-rv02-stage2"
           }))
           PY
           curl -fsS -X POST \
