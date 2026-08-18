@@ -2,7 +2,7 @@ use gaonn_identity_reuse_audit_core::AuditEvidence;
 use gaonn_scheduler_core::{Wp002ClosureProof, Wp010Acceptance};
 use gaonn_transaction_precommit_core::*;
 use gaonn_world_core::{CanonicalCandidate, CanonicalStateContract, ValidationReceipt};
-use gaonn_world_time_core::{accept_wp004, EpochDescriptor, WorldTimeState, Wp004Acceptance};
+use gaonn_world_time_core::{EpochDescriptor, WorldTimeState, Wp004Acceptance, accept_wp004};
 
 fn root() -> ValidationReceipt {
     CanonicalStateContract
@@ -134,8 +134,14 @@ fn buffer_for(tx: &CanonicalTransaction, key: &str, owner: &str) -> SpeculativeR
     let reads = read_set(tx, key, 7, owner);
     let writes = write_set(tx, key, 7, owner, &format!("semantic:{key}"));
     let guard = pass_guard(tx, &reads, &writes);
-    build_speculative_buffer(tx, &reads, &writes, &guard, WriteOrigin::TransactionCoordinator)
-        .unwrap()
+    build_speculative_buffer(
+        tx,
+        &reads,
+        &writes,
+        &guard,
+        WriteOrigin::TransactionCoordinator,
+    )
+    .unwrap()
 }
 
 fn admission() -> AdmissionReceipt {
@@ -462,14 +468,17 @@ fn s1_07_07_resolution_order_ignores_input_and_worker_completion_order() {
         causal_parent: tx_b.causal_parent.clone(),
         worker_hint: Some("worker-1".to_owned()),
     };
-    let first = deterministic_resolution_order(&report, vec![input_a.clone(), input_b.clone()])
-        .unwrap();
+    let first =
+        deterministic_resolution_order(&report, vec![input_a.clone(), input_b.clone()]).unwrap();
     let mut second_a = input_a;
     second_a.worker_hint = Some("worker-1".to_owned());
     let mut second_b = input_b;
     second_b.worker_hint = Some("worker-99".to_owned());
     let second = deterministic_resolution_order(&report, vec![second_b, second_a]).unwrap();
-    assert_eq!(first.ordered_transaction_ids, second.ordered_transaction_ids);
+    assert_eq!(
+        first.ordered_transaction_ids,
+        second.ordered_transaction_ids
+    );
     assert_eq!(first.ordering_keys, second.ordering_keys);
     assert_eq!(first.digest64(), second.digest64());
     assert_eq!(first.ordered_transaction_ids, vec!["txn-b", "txn-a"]);
@@ -645,8 +654,7 @@ fn wp014_acceptance_requires_all_eight_members_snapshot_and_precommit_evidence()
         MEMBER_IDS.iter().map(|id| (*id).to_owned()).collect(),
     )
     .unwrap();
-    let accepted = accept_wp014(&admission, &[true; 8], &[81; 8], &snapshot, &handoff)
-        .unwrap();
+    let accepted = accept_wp014(&admission, &[true; 8], &[81; 8], &snapshot, &handoff).unwrap();
     assert!(accepted.closed);
     assert_eq!(accepted.member_ids, MEMBER_IDS);
     assert_ne!(accepted.snapshot_digest64, 0);

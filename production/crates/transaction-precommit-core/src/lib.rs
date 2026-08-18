@@ -13,14 +13,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub const SCHEMA_VERSION: u32 = 1;
 pub const TRANSACTION_OWNER: &str = "domain26.transaction_coordinator";
 pub const MEMBER_IDS: [&str; 8] = [
-    "S1.07.01",
-    "S1.07.02",
-    "S1.07.03",
-    "S1.07.04",
-    "S1.07.05",
-    "S1.07.06",
-    "S1.07.07",
-    "S1.07.08",
+    "S1.07.01", "S1.07.02", "S1.07.03", "S1.07.04", "S1.07.05", "S1.07.06", "S1.07.07", "S1.07.08",
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -159,9 +152,7 @@ impl TransactionRegistry {
         if self.active.contains_key(&transaction.stable_id)
             || self.retired_ids.contains(&transaction.stable_id)
         {
-            return Err(TransactionError::DuplicateOrReusedId(
-                transaction.stable_id,
-            ));
+            return Err(TransactionError::DuplicateOrReusedId(transaction.stable_id));
         }
         self.active
             .insert(transaction.stable_id.clone(), transaction);
@@ -283,7 +274,9 @@ pub fn validate_read_set(
         required(&entry.state_key, "read_set.state_key")?;
         required(&entry.state_owner, "read_set.state_owner")?;
         if entry.version == 0 || entry.state_digest64 == 0 {
-            return Err(TransactionError::InvalidReadVersion(entry.state_key.clone()));
+            return Err(TransactionError::InvalidReadVersion(
+                entry.state_key.clone(),
+            ));
         }
         if !keys.insert(entry.state_key.clone()) {
             return Err(TransactionError::DuplicateReadKey(entry.state_key.clone()));
@@ -338,7 +331,9 @@ pub fn validate_write_intents(
 ) -> Result<WriteIntentReceipt, TransactionError> {
     let fresh_receipt = validate_read_set(transaction, read_set)?;
     if &fresh_receipt != read_receipt {
-        return Err(TransactionError::ReferenceMismatch("S1.07.02 read-set receipt"));
+        return Err(TransactionError::ReferenceMismatch(
+            "S1.07.02 read-set receipt",
+        ));
     }
     validate_transaction_link(
         transaction,
@@ -361,10 +356,14 @@ pub fn validate_write_intents(
         required(&intent.target_owner, "write_intent.target_owner")?;
         required(&intent.semantic_key, "write_intent.semantic_key")?;
         if intent.proposed_state_digest64 == 0 {
-            return Err(TransactionError::MissingEvidence("write_intent.proposed_state"));
+            return Err(TransactionError::MissingEvidence(
+                "write_intent.proposed_state",
+            ));
         }
         if !write_keys.insert(intent.state_key.clone()) {
-            return Err(TransactionError::DuplicateWriteKey(intent.state_key.clone()));
+            return Err(TransactionError::DuplicateWriteKey(
+                intent.state_key.clone(),
+            ));
         }
         let source = read_by_key
             .get(intent.state_key.as_str())
@@ -646,7 +645,10 @@ pub fn deterministic_resolution_order(
         return Err(TransactionError::MissingField("resolution.inputs"));
     }
     let expected: BTreeSet<_> = report.inspected_transactions.iter().cloned().collect();
-    let actual: BTreeSet<_> = inputs.iter().map(|input| input.transaction_id.clone()).collect();
+    let actual: BTreeSet<_> = inputs
+        .iter()
+        .map(|input| input.transaction_id.clone())
+        .collect();
     if expected != actual {
         return Err(TransactionError::ReferenceMismatch(
             "conflict-report/resolution transaction set",
@@ -773,12 +775,13 @@ pub fn precommit_invariant_hook(
             .checked_add(check.proposed_delta)
             .ok_or(TransactionError::ArithmeticOverflow)?;
         if expected_after != check.after {
-            return Err(TransactionError::ConservationFailure(check.quantity.clone()));
+            return Err(TransactionError::ConservationFailure(
+                check.quantity.clone(),
+            ));
         }
     }
-    let invariant_evidence_digest64 = fnv1a64(
-        format!("conditions={conditions:?}|conservation={conservation:?}").as_bytes(),
-    );
+    let invariant_evidence_digest64 =
+        fnv1a64(format!("conditions={conditions:?}|conservation={conservation:?}").as_bytes());
     let source_buffer_digest64 = fnv1a64(format!("{buffers:?}").as_bytes());
     Ok(PreCommitHandoff {
         work_id: "S1.07.08",
@@ -849,8 +852,14 @@ impl TransactionSnapshot {
 
     pub fn restore(
         &self,
-    ) -> Result<(TransactionRegistry, Vec<SpeculativeResultBuffer>, Vec<String>), TransactionError>
-    {
+    ) -> Result<
+        (
+            TransactionRegistry,
+            Vec<SpeculativeResultBuffer>,
+            Vec<String>,
+        ),
+        TransactionError,
+    > {
         self.validate()?;
         Ok((
             self.registry.clone(),
@@ -997,7 +1006,9 @@ fn validate_transaction_link(
         || owner != transaction.owner
         || causal_parent != transaction.causal_parent
     {
-        return Err(TransactionError::ReferenceMismatch("transaction identity/version/owner/causal parent"));
+        return Err(TransactionError::ReferenceMismatch(
+            "transaction identity/version/owner/causal parent",
+        ));
     }
     Ok(())
 }
