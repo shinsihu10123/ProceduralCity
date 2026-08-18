@@ -3,6 +3,13 @@
 version = 4
 
 [[package]]
+name = "gaonn-authority-placement-core"
+version = "0.1.0"
+dependencies = [
+ "gaonn-identity-acceptance-core",
+]
+
+[[package]]
 name = "gaonn-causal-random-core"
 version = "0.1.0"
 dependencies = [
