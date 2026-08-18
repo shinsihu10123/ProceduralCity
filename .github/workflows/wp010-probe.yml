@@ -1,4 +1,4 @@
-name: WP010 bounded validation probe
+name: WP010 bounded repair cycle 1
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  probe:
+  repair-and-validate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -20,7 +20,9 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
-      - name: Strict validation probe
+      - name: Apply canonical rustfmt
+        run: cargo fmt --manifest-path production/Cargo.toml --all
+      - name: Strict validation
         shell: bash
         run: |
           set +e
@@ -35,13 +37,11 @@ jobs:
           set -e
           mkdir -p docs/evidence/week1
           {
-            echo "WP010_PROBE_HEAD=$(git rev-parse HEAD)"
+            echo "WP010_REPAIR1_BASE=$(git rev-parse HEAD)"
             echo "FMT_EXIT=$FMT"
             echo "CLIPPY_EXIT=$CLIPPY"
             echo "WORKSPACE_TEST_EXIT=$WORKSPACE"
             echo "WP010_TEST_EXIT=$WP010"
-            echo '--- FMT ---'
-            tail -n 120 /tmp/fmt.log
             echo '--- CLIPPY ---'
             tail -n 120 /tmp/clippy.log
             echo '--- WP010 TEST ---'
@@ -51,9 +51,9 @@ jobs:
           } > docs/evidence/week1/wp010-ci-probe.txt
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add docs/evidence/week1/wp010-ci-probe.txt production/Cargo.lock || true
+          git add production/crates/scheduler-core production/Cargo.lock docs/evidence/week1/wp010-ci-probe.txt || true
           if ! git diff --cached --quiet; then
-            git commit -m 'ci(scheduler): publish WP-010 validation probe [skip ci]'
+            git commit -m 'fix(scheduler): bounded WP-010 repair cycle 1 [skip ci]'
             git push
           fi
           if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$WORKSPACE" -ne 0 ] || [ "$WP010" -ne 0 ]; then exit 1; fi
