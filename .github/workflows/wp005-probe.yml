@@ -1,4 +1,4 @@
-name: WP005 final closure validation
+name: WP005 closed-state validation
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
-      - name: Validate evidence-bearing WP-005 state
+      - name: Validate closed evidence-bearing WP-005 state
         shell: bash
         run: |
           set +e
@@ -34,10 +34,13 @@ jobs:
           WP005=$?
           set -e
           COUNT=$(grep -E '^running [0-9]+ tests$' /tmp/wp005.log | tail -n 1 | awk '{print $2}')
+          PRESENT=$(test -f docs/evidence/week1/wp005-validation-evidence-registry.md && echo 1 || echo 0)
+          CLOSED=$(grep -q '^Status: PASS / CLOSED$' docs/evidence/week1/wp005-validation-evidence-registry.md && echo 1 || echo 0)
           mkdir -p docs/evidence/week1
           {
             echo "WP005_FINAL_VALIDATED_HEAD=$(git rev-parse HEAD)"
-            echo "EVIDENCE_PRESENT=$(test -f docs/evidence/week1/wp005-validation-evidence-registry.md && echo 1 || echo 0)"
+            echo "EVIDENCE_PRESENT=$PRESENT"
+            echo "EVIDENCE_CLOSED=$CLOSED"
             echo "FMT_EXIT=$FMT"
             echo "CLIPPY_EXIT=$CLIPPY"
             echo "WORKSPACE_TEST_EXIT=$WORKSPACE"
@@ -49,6 +52,6 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add docs/evidence/week1/wp005-final-validation.txt
-          git commit -m 'ci(validation): publish final WP-005 closure validation [skip ci]'
+          git commit -m 'ci(validation): publish closed-state WP-005 validation [skip ci]'
           git push
-          if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$WORKSPACE" -ne 0 ] || [ "$WP005" -ne 0 ]; then exit 1; fi
+          if [ "$PRESENT" -ne 1 ] || [ "$CLOSED" -ne 1 ] || [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$WORKSPACE" -ne 0 ] || [ "$WP005" -ne 0 ]; then exit 1; fi
