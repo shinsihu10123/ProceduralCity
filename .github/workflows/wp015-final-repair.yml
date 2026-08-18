@@ -1,0 +1,98 @@
+name: WP015 bounded correction cycle 2
+on:
+  push:
+    branches:
+      - execution/week1-wp015-multirate-coupling
+permissions:
+  contents: write
+jobs:
+  repair-and-validate:
+    if: ${{ !contains(github.event.head_commit.message, 'WP-015 correction cycle 2') && !contains(github.event.head_commit.message, 'WP-015 cycle2 diagnostic') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+      - name: Apply bounded correction cycle 2
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('production/crates/multi-rate-coupling-core/src/lib.rs')
+          s = p.read_text()
+          s = s.replace(
+              '#[derive(Debug, Clone, Copy, PartialEq, Eq)]\npub enum Disposition {',
+              '#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]\npub enum Disposition {'
+          )
+          marker = '''pub struct BoundaryStateSnapshot {\n    pub work_id: &'static str,\n    pub schema_version: u32,\n    pub snapshot_id: String,\n    pub commit_marker: String,\n    pub causal_cut: String,\n    pub recovery_position: String,\n    pub replay_reference: String,\n    pub committed_pre_state_digest64: u64,\n    pub recompute_refs: Vec<RecomputeReference>,\n    pub event_order: Vec<String>,\n}\n\nimpl BoundaryStateSnapshot {\n    pub fn new(\n        snapshot_id: &str,\n        commit_marker: &str,\n        causal_cut: &str,\n        recovery_position: &str,\n        replay_reference: &str,\n        committed_pre_state_digest64: u64,\n        mut recompute_refs: Vec<RecomputeReference>,\n        event_order: Vec<String>,\n    ) -> Result<Self, CouplingError> {\n'''
+          replacement = '''pub struct BoundaryStateSnapshot {\n    pub work_id: &'static str,\n    pub schema_version: u32,\n    pub snapshot_id: String,\n    pub commit_marker: String,\n    pub causal_cut: String,\n    pub recovery_position: String,\n    pub replay_reference: String,\n    pub committed_pre_state_digest64: u64,\n    pub recompute_refs: Vec<RecomputeReference>,\n    pub event_order: Vec<String>,\n}\n\n#[derive(Debug)]\npub struct BoundarySnapshotInput<'a> {\n    pub snapshot_id: &'a str,\n    pub commit_marker: &'a str,\n    pub causal_cut: &'a str,\n    pub recovery_position: &'a str,\n    pub replay_reference: &'a str,\n    pub committed_pre_state_digest64: u64,\n    pub recompute_refs: Vec<RecomputeReference>,\n    pub event_order: Vec<String>,\n}\n\nimpl BoundaryStateSnapshot {\n    pub fn new(input: BoundarySnapshotInput<'_>) -> Result<Self, CouplingError> {\n        let BoundarySnapshotInput {\n            snapshot_id,\n            commit_marker,\n            causal_cut,\n            recovery_position,\n            replay_reference,\n            committed_pre_state_digest64,\n            mut recompute_refs,\n            event_order,\n        } = input;\n'''
+          if marker not in s:
+              raise SystemExit('BoundaryStateSnapshot patch point missing')
+          s = s.replace(marker, replacement)
+          marker = '''pub fn request_precommit_rollback(\n    window: &CouplingWindow,\n    sync: &SynchronizationPoint,\n    class: RollbackClass,\n    committed_frontier_tick: i128,\n    target_tick: i128,\n    post_commit: bool,\n    causal_parent: &str,\n    origin: WriteOrigin,\n) -> Result<RollbackCandidate, CouplingError> {\n'''
+          replacement = '''#[derive(Debug)]\npub struct RollbackRequest<'a> {\n    pub window: &'a CouplingWindow,\n    pub sync: &'a SynchronizationPoint,\n    pub class: RollbackClass,\n    pub committed_frontier_tick: i128,\n    pub target_tick: i128,\n    pub post_commit: bool,\n    pub causal_parent: &'a str,\n    pub origin: WriteOrigin,\n}\n\npub fn request_precommit_rollback(\n    request: RollbackRequest<'_>,\n) -> Result<RollbackCandidate, CouplingError> {\n    let RollbackRequest {\n        window,\n        sync,\n        class,\n        committed_frontier_tick,\n        target_tick,\n        post_commit,\n        causal_parent,\n        origin,\n    } = request;\n'''
+          if marker not in s:
+              raise SystemExit('RollbackRequest patch point missing')
+          s = s.replace(marker, replacement)
+          p.write_text(s)
+
+          t = Path('production/crates/multi-rate-coupling-core/tests/wp015.rs')
+          x = t.read_text()
+          old = '''    BoundaryStateSnapshot::new(\n        "snapshot:window:1",\n        "committed-cut:99",\n        "cut:99",\n        "recovery:99",\n        "replay:window:1",\n        1001,\n        vec![RecomputeReference {\n            stable_id: "packet:a".to_owned(),\n            version: SCHEMA_VERSION,\n            causal_parent: "S1.09.03".to_owned(),\n            source_digest64: 1002,\n        }],\n        vec!["S1.09.04".to_owned()],\n    )\n'''
+          new = '''    BoundaryStateSnapshot::new(BoundarySnapshotInput {\n        snapshot_id: "snapshot:window:1",\n        commit_marker: "committed-cut:99",\n        causal_cut: "cut:99",\n        recovery_position: "recovery:99",\n        replay_reference: "replay:window:1",\n        committed_pre_state_digest64: 1001,\n        recompute_refs: vec![RecomputeReference {\n            stable_id: "packet:a".to_owned(),\n            version: SCHEMA_VERSION,\n            causal_parent: "S1.09.03".to_owned(),\n            source_digest64: 1002,\n        }],\n        event_order: vec!["S1.09.04".to_owned()],\n    })\n'''
+          if old not in x:
+              raise SystemExit('boundary helper patch point missing')
+          x = x.replace(old, new)
+          marker = '''fn complete_sync() -> SynchronizationPoint {\n'''
+          helper = '''fn rollback_request(\n    window: &CouplingWindow,\n    sync: &SynchronizationPoint,\n    class: RollbackClass,\n    committed_frontier_tick: i128,\n    target_tick: i128,\n    post_commit: bool,\n    origin: WriteOrigin,\n) -> Result<RollbackCandidate, CouplingError> {\n    request_precommit_rollback(RollbackRequest {\n        window,\n        sync,\n        class,\n        committed_frontier_tick,\n        target_tick,\n        post_commit,\n        causal_parent: "S1.09.08",\n        origin,\n    })\n}\n\nfn complete_sync() -> SynchronizationPoint {\n'''
+          if marker not in x:
+              raise SystemExit('test helper insertion point missing')
+          x = x.replace(marker, helper, 1)
+          x = x.replace('''request_precommit_rollback(\n            &w,\n            &sync,\n            class,\n            110,\n            130,\n            false,\n            "S1.09.08",\n            WriteOrigin::CouplingRuntime,\n        )''', '''rollback_request(\n            &w,\n            &sync,\n            class,\n            110,\n            130,\n            false,\n            WriteOrigin::CouplingRuntime,\n        )''')
+          x = x.replace('''request_precommit_rollback(\n            &w,\n            &sync,\n            RollbackClass::Rb1Window,\n            110,\n            130,\n            true,\n            "S1.09.08",\n            WriteOrigin::CouplingRuntime,\n        )''', '''rollback_request(\n            &w,\n            &sync,\n            RollbackClass::Rb1Window,\n            110,\n            130,\n            true,\n            WriteOrigin::CouplingRuntime,\n        )''')
+          x = x.replace('''request_precommit_rollback(\n        &w,\n        &sync,\n        RollbackClass::Rb1Window,\n        110,\n        130,\n        false,\n        "S1.09.08",\n        WriteOrigin::CouplingRuntime,\n    )''', '''rollback_request(\n        &w,\n        &sync,\n        RollbackClass::Rb1Window,\n        110,\n        130,\n        false,\n        WriteOrigin::CouplingRuntime,\n    )''')
+          old = '''    let boundary = BoundaryStateSnapshot::new(\n        "snapshot:integration",\n        "committed-cut:99",\n        "cut:99",\n        "recovery:99",\n        "replay:integration",\n        333,\n        packets\n            .iter()\n            .map(|p| RecomputeReference {\n                stable_id: p.stable_id.clone(),\n                version: p.version,\n                causal_parent: p.causal_parent.clone(),\n                source_digest64: p.digest64(),\n            })\n            .collect(),\n        vec!["S1.09.04".to_owned()],\n    )\n'''
+          new = '''    let boundary = BoundaryStateSnapshot::new(BoundarySnapshotInput {\n        snapshot_id: "snapshot:integration",\n        commit_marker: "committed-cut:99",\n        causal_cut: "cut:99",\n        recovery_position: "recovery:99",\n        replay_reference: "replay:integration",\n        committed_pre_state_digest64: 333,\n        recompute_refs: packets\n            .iter()\n            .map(|p| RecomputeReference {\n                stable_id: p.stable_id.clone(),\n                version: p.version,\n                causal_parent: p.causal_parent.clone(),\n                source_digest64: p.digest64(),\n            })\n            .collect(),\n        event_order: vec!["S1.09.04".to_owned()],\n    })\n'''
+          if old not in x:
+              raise SystemExit('integration boundary patch point missing')
+          x = x.replace(old, new)
+          t.write_text(x)
+          PY
+          cargo fmt --manifest-path production/Cargo.toml --all
+      - name: Validate final corrected candidate
+        run: |
+          set +e
+          cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings > /tmp/wp015-clippy.log 2>&1
+          CLIPPY=$?
+          cargo test --manifest-path production/Cargo.toml --workspace > /tmp/wp015-workspace.log 2>&1
+          TESTS=$?
+          cargo test --manifest-path production/Cargo.toml -p gaonn-multi-rate-coupling-core --test wp015 > /tmp/wp015-dedicated.log 2>&1
+          DEDICATED=$?
+          set -e
+          mkdir -p docs/evidence/week1
+          {
+            echo "WP015_CORRECTION_CYCLE=2"
+            echo "CLIPPY_EXIT=$CLIPPY"
+            echo "WORKSPACE_TEST_EXIT=$TESTS"
+            echo "DEDICATED_TEST_EXIT=$DEDICATED"
+            echo "--- CLIPPY ---"
+            cat /tmp/wp015-clippy.log
+            echo "--- DEDICATED ---"
+            cat /tmp/wp015-dedicated.log
+          } > docs/evidence/week1/wp015-cycle2-run.txt
+          if [ "$CLIPPY" -ne 0 ] || [ "$TESTS" -ne 0 ] || [ "$DEDICATED" -ne 0 ]; then
+            git restore production/crates/multi-rate-coupling-core production/Cargo.lock || true
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+            git add docs/evidence/week1/wp015-cycle2-run.txt
+            git commit -m 'docs(coupling): WP-015 cycle2 diagnostic'
+            git push
+            exit 0
+          fi
+      - name: Commit validated correction cycle 2
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add production/crates/multi-rate-coupling-core production/Cargo.toml production/Cargo.lock docs/evidence/week1/wp015-cycle2-run.txt
+          git commit -m 'fix(coupling): WP-015 correction cycle 2'
+          git push
