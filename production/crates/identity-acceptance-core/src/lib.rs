@@ -16,14 +16,7 @@ pub const WORK_PACKAGE: &str = "WP-013";
 pub const REVIEWER: &str = "validation_qa.s1_02_acceptance_review";
 pub const OPERANDS: [&str; 5] = ["Stable", "Entity", "ID", "체계", "Namespace"];
 pub const MEMBER_IDS: [&str; 9] = [
-    "S1.02.01",
-    "S1.02.02",
-    "S1.02.03",
-    "S1.02.04",
-    "S1.02.05",
-    "S1.02.06",
-    "S1.02.07",
-    "S1.02.08",
+    "S1.02.01", "S1.02.02", "S1.02.03", "S1.02.04", "S1.02.05", "S1.02.06", "S1.02.07", "S1.02.08",
     "S1.02.09",
 ];
 

@@ -1,7 +1,7 @@
 use gaonn_identity_acceptance_core::*;
 use gaonn_identity_continuity_core::ContinuityEvidence;
 use gaonn_identity_core::{IdentityDisposition, S1_02_01_OWNER};
-use gaonn_identity_reuse_audit_core::{audit, IdentityIssuanceAttempt, IssuanceKind};
+use gaonn_identity_reuse_audit_core::{IdentityIssuanceAttempt, IssuanceKind, audit};
 use gaonn_world_core::{StateClass, ValidationReceipt};
 
 fn root() -> ValidationReceipt {
@@ -120,7 +120,10 @@ fn normal_review_preserves_stable_entity_id_namespace_and_causal_refs() {
     let record = review(&input, ReviewOrigin::ValidationQa).unwrap();
     assert_eq!(record.work_id, "S1.02.10");
     assert_eq!(record.work_package, "WP-013");
-    assert_eq!(record.operands, ["Stable", "Entity", "ID", "체계", "Namespace"]);
+    assert_eq!(
+        record.operands,
+        ["Stable", "Entity", "ID", "체계", "Namespace"]
+    );
     assert_eq!(record.verdict, Verdict::Pass);
     assert_eq!(record.event_order, MEMBER_IDS);
     assert_eq!(record.canonical_owner, S1_02_01_OWNER);
@@ -285,7 +288,10 @@ fn missing_identity_source_field_blocks_before_acceptance() {
     let error = review(&input, ReviewOrigin::ValidationQa).unwrap_err();
     assert_eq!(error.verdict, Verdict::Blocked);
     assert_eq!(error.failed_work_id, "S1.02.08");
-    assert!(matches!(error.reason, FailureReason::MissingField("stable_id")));
+    assert!(matches!(
+        error.reason,
+        FailureReason::MissingField("stable_id")
+    ));
 }
 
 #[test]
