@@ -50,7 +50,7 @@ export class EconomicWorld extends CognitiveEconomicWorld {
     this.runtime = this.emptyRuntimeMetrics();
     this.profiler = new RuntimeProfiler({ historyLimit: options.profileHistoryLimit || 60 });
     this.decisionHistory = {
-      mode: 'compact-v1',
+      mode: 'compact-v2',
       currentDetail: 'full',
       historyDetail: 'compact'
     };
@@ -70,7 +70,7 @@ export class EconomicWorld extends CognitiveEconomicWorld {
   }
 
   enableCompactDecisionHistory(agent) {
-    if (agent?.cognition?.enabled) agent.cognition.decisionHistoryMode = 'compact-v1';
+    if (agent?.cognition?.enabled) agent.cognition.decisionHistoryMode = 'compact-v2';
     return agent;
   }
 
