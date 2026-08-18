@@ -23,6 +23,13 @@ jobs:
       - name: Test
         working-directory: economic-lab
         run: npm test
+      - name: Multi-shock stress matrix
+        working-directory: economic-lab
+        env:
+          STRESS_MONTHS: '6'
+          STRESS_SCALE: 'compact'
+          OUTPUT_JSON: 'performance-results/stress-matrix.json'
+        run: npm run stress:v10
       - name: Cold scale benchmark
         working-directory: economic-lab
         env:
