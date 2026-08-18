@@ -23,6 +23,12 @@ const DEFAULT_LINKS = [
   { id: 'current_account_to_external', cause: 'currentAccountWXU', effect: 'externalStress', coefficient: -0.0008, confidence: 0.14, min: -0.05, max: 0.05 }
 ];
 
+const COMPARABLE_KEYS = [
+  'inflation', 'unemployment', 'demandGrowth', 'wageGrowth',
+  'externalStress', 'creditStress', 'policyRate', 'exchangeRateChange',
+  'cashStress', 'inventoryPressure'
+];
+
 function finite(value, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
@@ -54,19 +60,11 @@ export function ensureCausalModel(agent) {
   return cognition.causalModel;
 }
 
-function comparableKeys(a, b) {
-  return [
-    'inflation', 'unemployment', 'demandGrowth', 'wageGrowth',
-    'externalStress', 'creditStress', 'policyRate', 'exchangeRateChange',
-    'cashStress', 'inventoryPressure'
-  ].filter(key => Number.isFinite(Number(a?.[key])) && Number.isFinite(Number(b?.[key])));
-}
-
 function distance(query, observation) {
-  const keys = comparableKeys(query, observation);
-  if (!keys.length) return Infinity;
   let total = 0;
-  for (const key of keys) {
+  let count = 0;
+  for (const key of COMPARABLE_KEYS) {
+    if (!Number.isFinite(Number(query?.[key])) || !Number.isFinite(Number(observation?.[key]))) continue;
     const scale = key === 'unemployment' || key === 'policyRate'
       ? 10
       : key === 'creditStress' || key === 'externalStress'
@@ -75,33 +73,41 @@ function distance(query, observation) {
           ? 8
           : 6;
     total += Math.min(2.5, Math.abs(finite(query[key]) - finite(observation[key])) * scale);
+    count += 1;
   }
-  return total / keys.length;
+  return count ? total / count : Infinity;
 }
 
 export function retrieveAnalogies(agent, query, limit = 3) {
   const episodes = agent?.cognition?.memory?.episodes || [];
   const currentMonth = Number(query?.month ?? Infinity);
-  return episodes
-    .filter(ep => Number(ep.month) < currentMonth && ep.outcome && typeof ep.outcome === 'object')
-    .map(ep => {
-      const d = distance(query, ep.observation || {});
-      const salience = clamp(finite(ep.attention?.salience), 0, 1.5);
-      const recency = Number.isFinite(currentMonth) ? 1 / (1 + Math.max(0, currentMonth - Number(ep.month || 0)) * 0.035) : 1;
-      const similarity = Number.isFinite(d) ? (1 / (1 + d)) * (1 + salience * 0.12) * recency : 0;
-      return {
-        month: ep.month,
-        similarity,
-        topHypothesis: ep.topHypothesis?.name || null,
-        observation: { ...(ep.observation || {}) },
-        outcome: { ...(ep.outcome || {}) },
-        decision: ep.decision || null,
-        reward: finite(ep.reward, 0)
-      };
-    })
-    .filter(x => x.similarity > 0)
-    .sort((a, b) => b.similarity - a.similarity)
-    .slice(0, Math.max(1, limit));
+  const ranked = [];
+
+  for (const ep of episodes) {
+    if (!(Number(ep.month) < currentMonth) || !ep.outcome || typeof ep.outcome !== 'object') continue;
+    const d = distance(query, ep.observation || {});
+    const salience = clamp(finite(ep.attention?.salience), 0, 1.5);
+    const recency = Number.isFinite(currentMonth) ? 1 / (1 + Math.max(0, currentMonth - Number(ep.month || 0)) * 0.035) : 1;
+    const similarity = Number.isFinite(d) ? (1 / (1 + d)) * (1 + salience * 0.12) * recency : 0;
+    if (similarity > 0) ranked.push({ ep, similarity });
+  }
+
+  ranked.sort((a, b) => b.similarity - a.similarity);
+  const count = Math.min(ranked.length, Math.max(1, limit));
+  const result = new Array(count);
+  for (let i = 0; i < count; i++) {
+    const { ep, similarity } = ranked[i];
+    result[i] = {
+      month: ep.month,
+      similarity,
+      topHypothesis: ep.topHypothesis?.name || null,
+      observation: { ...(ep.observation || {}) },
+      outcome: { ...(ep.outcome || {}) },
+      decision: ep.decision || null,
+      reward: finite(ep.reward, 0)
+    };
+  }
+  return result;
 }
 
 export function analogicalForecast(agent, target, query, fallback = 0, limit = 4) {
