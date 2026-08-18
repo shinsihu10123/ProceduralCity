@@ -13,4 +13,5 @@ members = [
     "crates/planetary-space-core",
     "crates/world-time-core",
     "crates/validation-core",
+    "crates/celestial-core",
 ]
