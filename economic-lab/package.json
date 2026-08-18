@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "test": "node scripts/smoke-v09.mjs && node scripts/smoke-v09-social.mjs && node scripts/smoke-v10-ledger.mjs && node scripts/smoke-v10-decision-history.mjs && node scripts/smoke-v10.mjs && node scripts/smoke-v10-ensemble.mjs",
-    "test:v10": "node scripts/smoke-v10-ledger.mjs && node scripts/smoke-v10-decision-history.mjs && node scripts/smoke-v10.mjs && node scripts/smoke-v10-ensemble.mjs",
+    "test": "node scripts/smoke-v09.mjs && node scripts/smoke-v09-social.mjs && node scripts/smoke-v10-ledger.mjs && node scripts/smoke-v10-decision-history.mjs && node scripts/smoke-v10-episodic-allocation.mjs && node scripts/smoke-v10.mjs && node scripts/smoke-v10-ensemble.mjs",
+    "test:v10": "node scripts/smoke-v10-ledger.mjs && node scripts/smoke-v10-decision-history.mjs && node scripts/smoke-v10-episodic-allocation.mjs && node scripts/smoke-v10.mjs && node scripts/smoke-v10-ensemble.mjs",
     "bench:v10": "node scripts/benchmark-v10.mjs",
     "profile:v10": "node scripts/cpu-profile-v10.mjs",
     "test:v09": "node scripts/smoke-v09.mjs",
