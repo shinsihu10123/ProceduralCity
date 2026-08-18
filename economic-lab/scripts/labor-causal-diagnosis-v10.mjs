@@ -30,9 +30,50 @@ function firmSnapshot(world) {
   return result;
 }
 
+function installExitBoundaryObserver(world) {
+  const events = [];
+  const original = world.supply.evaluateExits.bind(world.supply);
+  world.supply.evaluateExits = country => {
+    const before = new Map();
+    for (const firm of country.firms || []) {
+      if (firm.active === false) continue;
+      before.set(firm.id, {
+        industryId: firm.industryId,
+        workers: finite(firm.workers),
+        employedHouseholds: (country.households || []).filter(h => h.employed && h.employerId === firm.id).length,
+        distressMonths: finite(firm.distressMonths),
+        cash: finite(world.ledger?.balance?.(firm.accountId), finite(firm.cash)),
+        safeCash: finite(firm.safeCash),
+        wageArrears: finite(firm.wageArrears),
+        creditMisses: finite(firm.creditMisses)
+      });
+    }
+    const exitedIndustries = original(country);
+    const current = new Map((country.firms || []).map(firm => [firm.id, firm]));
+    for (const [firmId, preExit] of before) {
+      const firm = current.get(firmId);
+      if (!firm || firm.active !== false) continue;
+      events.push({
+        month: world.month,
+        countryId: country.id,
+        firmId,
+        industryId: preExit.industryId,
+        displacedWorkers: preExit.employedHouseholds,
+        workersAtExitBoundary: preExit.workers,
+        distressMonthsBeforeEvaluation: preExit.distressMonths,
+        cashAtExitBoundary: preExit.cash,
+        safeCash: preExit.safeCash,
+        wageArrears: preExit.wageArrears,
+        creditMisses: preExit.creditMisses
+      });
+    }
+    return exitedIndustries;
+  };
+  return events;
+}
+
 function plannedTargetWorkers(preWorkers, plan) {
-  const hiringChange = clamp(plan?.hiringChange, -0.10, 0.12);
-  return Math.max(0, Math.round(Math.max(1, finite(preWorkers)) * (1 + hiringChange)));
+  return Math.max(0, Math.round(Math.max(1, finite(preWorkers)) * (1 + clamp(plan?.hiringChange, -0.10, 0.12))));
 }
 
 function planDiagnostics(country, preFirms) {
@@ -43,6 +84,8 @@ function planDiagnostics(country, preFirms) {
     desiredWorkersBeforeLabor: 0,
     plannedVacancies: 0,
     plannedLayoffSlots: 0,
+    plannedLayoffsAtContinuingFirms: 0,
+    plannedLayoffsAtExitingFirms: 0,
     positiveHiringPlans: 0,
     negativeHiringPlans: 0,
     zeroHiringPlans: 0,
@@ -50,7 +93,8 @@ function planDiagnostics(country, preFirms) {
     defensivePlans: 0,
     cashPreservationPlans: 0,
     priceCompetitionPlans: 0,
-    maintainPlans: 0
+    maintainPlans: 0,
+    firmsExitingThisMonth: 0
   };
   const hiringChanges = [];
   const expectedDemandGrowth = [];
@@ -66,12 +110,20 @@ function planDiagnostics(country, preFirms) {
     const plan = firm.currentPlan || {};
     const target = plannedTargetWorkers(pre.workers, plan);
     const change = clamp(plan.hiringChange, -0.10, 0.12);
+    const plannedLayoffs = Math.max(0, pre.workers - target);
+    const exited = firm.active === false;
 
     values.activeAtStart += 1;
     values.priorWorkers += pre.workers;
     values.desiredWorkersBeforeLabor += target;
     values.plannedVacancies += Math.max(0, target - pre.workers);
-    values.plannedLayoffSlots += Math.max(0, pre.workers - target);
+    values.plannedLayoffSlots += plannedLayoffs;
+    if (exited) {
+      values.firmsExitingThisMonth += 1;
+      values.plannedLayoffsAtExitingFirms += plannedLayoffs;
+    } else {
+      values.plannedLayoffsAtContinuingFirms += plannedLayoffs;
+    }
     if (change > 1e-12) values.positiveHiringPlans += 1;
     else if (change < -1e-12) values.negativeHiringPlans += 1;
     else values.zeroHiringPlans += 1;
@@ -140,33 +192,15 @@ function goodsDiagnostics(country, preFirms) {
   };
 }
 
-function separationAttribution(diagnostic) {
-  const total = finite(diagnostic.labor.separations);
-  const marketLayoffs = finite(diagnostic.labor.layoffs);
-  const exitAssociatedSeparations = finite(diagnostic.labor.exitSeparations);
-  const exitResidualSeparations = Math.max(0, total - marketLayoffs);
-  return {
-    marketLayoffs,
-    exitAssociatedSeparations,
-    exitResidualSeparations,
-    exitAssociatedMarketLayoffOverlap: Math.max(0, exitAssociatedSeparations - exitResidualSeparations),
-    exitResidualShare: ratio(exitResidualSeparations, total),
-    layoffsExceedSeparationsError: Math.max(0, marketLayoffs - total),
-    exitResidualExceedsAssociatedError: Math.max(0, exitResidualSeparations - exitAssociatedSeparations),
-    residualWithoutExitError: finite(diagnostic.firms.newExits) === 0 ? exitResidualSeparations : 0
-  };
-}
-
 function aggregateMonthly(rows) {
   return [...new Set(rows.map(row => row.month))].sort((a, b) => a - b).map(month => {
     const group = rows.filter(row => row.month === month);
     const plannedVacancies = sum(group.map(row => row.firmPlans.plannedVacancies));
     const hires = sum(group.map(row => row.labor.hires));
-    const totalSeparations = sum(group.map(row => row.labor.separations));
-    const exitResidualSeparations = sum(group.map(row => row.attribution.exitResidualSeparations));
+    const grossMarketLayoffs = sum(group.map(row => row.labor.layoffs));
+    const exitDisplacements = sum(group.map(row => row.exitBoundary.displacedWorkers));
     const desiredBudget = sum(group.map(row => row.goods.goodsDesiredBudget));
     const actualConsumption = sum(group.map(row => row.goods.actualConsumption));
-    const unmetBudget = sum(group.map(row => row.goods.unmetBudget));
     return {
       month,
       countryPaths: group.length,
@@ -176,12 +210,15 @@ function aggregateMonthly(rows) {
       totalNetDesiredWorkerChange: sum(group.map(row => row.firmPlans.netDesiredWorkerChange)),
       plannedVacancies,
       plannedLayoffSlots: sum(group.map(row => row.firmPlans.plannedLayoffSlots)),
+      plannedLayoffsAtContinuingFirms: sum(group.map(row => row.firmPlans.plannedLayoffsAtContinuingFirms)),
+      plannedLayoffsAtExitingFirms: sum(group.map(row => row.firmPlans.plannedLayoffsAtExitingFirms)),
       hires,
       vacancyFillRate: ratio(hires, plannedVacancies),
-      marketLayoffs: sum(group.map(row => row.attribution.marketLayoffs)),
-      exitResidualSeparations,
-      totalSeparations,
-      exitResidualShare: ratio(exitResidualSeparations, totalSeparations),
+      grossMarketLayoffs,
+      exitDisplacements,
+      grossJobDestructionEvents: grossMarketLayoffs + exitDisplacements,
+      netObservedSeparations: sum(group.map(row => row.labor.separations)),
+      jobFindingsFromPriorUnemployment: sum(group.map(row => row.labor.jobFindings)),
       meanPositiveHiringPlanShare: mean(group.map(row => row.firmPlans.positiveHiringPlanShare)),
       meanNegativeHiringPlanShare: mean(group.map(row => row.firmPlans.negativeHiringPlanShare)),
       meanExpectedDemandGrowth: mean(group.map(row => row.firmPlans.meanExpectedDemandGrowth)),
@@ -196,7 +233,7 @@ function aggregateMonthly(rows) {
       noApplicantVacancies: sum(group.map(row => row.labor.noApplicantVacancies)),
       desiredBudget,
       actualConsumption,
-      unmetBudget,
+      unmetBudget: sum(group.map(row => row.goods.unmetBudget)),
       budgetFulfillmentRate: ratio(actualConsumption, desiredBudget),
       desiredBudgetToDisposableIncome: ratio(desiredBudget, sum(group.map(row => row.goods.disposableIncome))),
       postConsumerInventory: sum(group.map(row => row.goods.postConsumerInventory)),
@@ -210,16 +247,9 @@ function aggregateMonthly(rows) {
 function runSeed(seed) {
   const world = new EconomicWorld(seed, { scaleProfile, healthCheckInterval: 0 });
   const recorder = new RealityDiagnosticRecorder(world);
+  const exitEvents = installExitBoundaryObserver(world);
   const causalRows = [];
-  const maxima = {
-    vacancy: 0,
-    layoff: 0,
-    layoffsExceedSeparations: 0,
-    exitResidualExceedsAssociated: 0,
-    residualWithoutExit: 0,
-    desiredBudget: 0,
-    goodsBudgetIdentity: 0
-  };
+  const maxima = { vacancy: 0, layoff: 0, exitCount: 0, exitWorkerCount: 0, desiredBudget: 0, goodsBudgetIdentity: 0 };
 
   setLaborMarketDiagnosticObserver(event => recorder.recordLaborMarket(event));
   try {
@@ -234,15 +264,22 @@ function runSeed(seed) {
         assert.ok(diagnostic, `${seed}:${world.month}:${country.id}: diagnostic row required`);
         const firmPlans = planDiagnostics(country, pre.get(country.id));
         const goods = goodsDiagnostics(country, pre.get(country.id));
-        const attribution = separationAttribution(diagnostic);
+        const exits = exitEvents.filter(event => event.month === world.month && event.countryId === country.id);
+        const exitBoundary = {
+          exits: exits.length,
+          displacedWorkers: sum(exits.map(event => event.displacedWorkers)),
+          workersAtExitBoundary: sum(exits.map(event => event.workersAtExitBoundary)),
+          events: structuredClone(exits)
+        };
         const vacancyError = firmPlans.plannedVacancies - diagnostic.labor.vacancies;
         const layoffError = firmPlans.plannedLayoffSlots - diagnostic.labor.layoffs;
+        const exitCountError = exitBoundary.exits - diagnostic.firms.newExits;
+        const exitWorkerCountError = exitBoundary.displacedWorkers - exitBoundary.workersAtExitBoundary;
 
         maxima.vacancy = Math.max(maxima.vacancy, Math.abs(vacancyError));
         maxima.layoff = Math.max(maxima.layoff, Math.abs(layoffError));
-        maxima.layoffsExceedSeparations = Math.max(maxima.layoffsExceedSeparations, attribution.layoffsExceedSeparationsError);
-        maxima.exitResidualExceedsAssociated = Math.max(maxima.exitResidualExceedsAssociated, attribution.exitResidualExceedsAssociatedError);
-        maxima.residualWithoutExit = Math.max(maxima.residualWithoutExit, attribution.residualWithoutExitError);
+        maxima.exitCount = Math.max(maxima.exitCount, Math.abs(exitCountError));
+        maxima.exitWorkerCount = Math.max(maxima.exitWorkerCount, Math.abs(exitWorkerCountError));
         maxima.desiredBudget = Math.max(maxima.desiredBudget, Math.abs(goods.desiredBudgetReconciliationError));
         maxima.goodsBudgetIdentity = Math.max(maxima.goodsBudgetIdentity, Math.abs(goods.goodsBudgetIdentityError));
 
@@ -256,8 +293,8 @@ function runSeed(seed) {
           banking: structuredClone(diagnostic.banking),
           firmPlans,
           goods,
-          attribution,
-          reconciliation: { vacancyError, layoffError }
+          exitBoundary,
+          reconciliation: { vacancyError, layoffError, exitCountError, exitWorkerCountError }
         });
       }
     }
@@ -272,12 +309,10 @@ function runSeed(seed) {
   assert.equal(causalRows.length, months * world.countries.length, `${seed}: complete causal country-month coverage`);
   assert.ok(maxima.vacancy <= 1e-9, `${seed}: planned vacancies must reconcile`);
   assert.ok(maxima.layoff <= 1e-9, `${seed}: planned layoff slots must reconcile`);
-  assert.ok(maxima.layoffsExceedSeparations <= 1e-9, `${seed}: market layoffs cannot exceed observed separations`);
-  assert.ok(maxima.exitResidualExceedsAssociated <= 1e-9, `${seed}: residual exit separations must be associated with an exiting employer`);
-  assert.ok(maxima.residualWithoutExit <= 1e-9, `${seed}: residual separation requires at least one firm exit`);
+  assert.ok(maxima.exitCount <= 1e-9, `${seed}: exit-boundary events must reconcile to firm exits`);
+  assert.ok(maxima.exitWorkerCount <= 1e-9, `${seed}: exit-boundary worker count must equal displaced employed households`);
   assert.ok(maxima.desiredBudget <= 1e-6, `${seed}: household desired budgets must reconcile`);
   assert.ok(maxima.goodsBudgetIdentity <= 1e-6, `${seed}: goods budget identity must reconcile`);
-
   return { seed, health, diagnosticGates: diagnostics.gates, causalRows, reconciliation: maxima, scale: world.scaleReport() };
 }
 
@@ -290,17 +325,19 @@ const collapseWindow = allRows.filter(row => row.month >= 7 && row.month <= Math
 function windowEvidence(rows) {
   const desired = sum(rows.map(row => row.goods.goodsDesiredBudget));
   const consumption = sum(rows.map(row => row.goods.actualConsumption));
-  const separations = sum(rows.map(row => row.labor.separations));
-  const exitResidual = sum(rows.map(row => row.attribution.exitResidualSeparations));
+  const marketLayoffs = sum(rows.map(row => row.labor.layoffs));
+  const exitDisplacements = sum(rows.map(row => row.exitBoundary.displacedWorkers));
   return {
     countryMonths: rows.length,
     meanUnemployment: mean(rows.map(row => row.macro.unemployment)),
     plannedVacancies: sum(rows.map(row => row.firmPlans.plannedVacancies)),
     plannedLayoffSlots: sum(rows.map(row => row.firmPlans.plannedLayoffSlots)),
-    marketLayoffs: sum(rows.map(row => row.attribution.marketLayoffs)),
-    exitResidualSeparations: exitResidual,
-    totalSeparations: separations,
-    exitResidualShare: ratio(exitResidual, separations),
+    plannedLayoffsAtContinuingFirms: sum(rows.map(row => row.firmPlans.plannedLayoffsAtContinuingFirms)),
+    plannedLayoffsAtExitingFirms: sum(rows.map(row => row.firmPlans.plannedLayoffsAtExitingFirms)),
+    marketLayoffs,
+    exitDisplacements,
+    grossJobDestructionEvents: marketLayoffs + exitDisplacements,
+    netObservedSeparations: sum(rows.map(row => row.labor.separations)),
     firmExits: sum(rows.map(row => row.firms.newExits)),
     meanNegativeHiringPlanShare: mean(rows.map(row => row.firmPlans.negativeHiringPlanShare)),
     meanExpectedDemandGrowth: mean(rows.map(row => row.firmPlans.meanExpectedDemandGrowth)),
@@ -317,7 +354,7 @@ function windowEvidence(rows) {
 }
 
 const report = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   kind: 'economic-lab-wp-rv03-extreme-unemployment-causal-decomposition',
   frozenEconomicBaseline: '698d10749e2897d711e5bcee61913ac34e0650a0',
   scaleProfile,
@@ -325,17 +362,20 @@ const report = {
   seeds,
   runs,
   monthly,
-  hypothesisEvidence: {
-    preExitWindow: windowEvidence(preExitWindow),
-    collapseWindow: windowEvidence(collapseWindow)
+  hypothesisEvidence: { preExitWindow: windowEvidence(preExitWindow), collapseWindow: windowEvidence(collapseWindow) },
+  flowSemantics: {
+    grossMarketLayoffs: 'labor-market layoff events; a worker may be rehired in the same month',
+    netObservedSeparations: 'households employed before the month and unemployed after the full month',
+    jobFindingsFromPriorUnemployment: 'households unemployed before the month and employed after the full month',
+    exitDisplacements: 'workers still employed at a firm immediately before evaluateExits and displaced by that exit',
+    note: 'Gross labor-market hires/layoffs are event flows and therefore are not forced to equal the pre/post household stock-transition flows.'
   },
-  attributionNote: 'RealityDiagnosticRecorder.exitSeparations is exit-associated and can overlap with labor-market layoffs when the same employer exits later that month. WP-RV03 therefore attributes post-labor exit separations as total separations minus labor-market layoffs, and separately retains the broader exit-associated count.',
   gates: {
     allHealthy: runs.every(run => run.health.ok),
     allWpRv01DiagnosticsReconciled: runs.every(run => run.diagnosticGates.ok),
     completeCountryMonthCoverage: allRows.length === seeds.length * months * 4,
     laborDemandReconciled: runs.every(run => run.reconciliation.vacancy <= 1e-9 && run.reconciliation.layoff <= 1e-9),
-    separationAttributionConsistent: runs.every(run => run.reconciliation.layoffsExceedSeparations <= 1e-9 && run.reconciliation.exitResidualExceedsAssociated <= 1e-9 && run.reconciliation.residualWithoutExit <= 1e-9),
+    firmExitBoundaryReconciled: runs.every(run => run.reconciliation.exitCount <= 1e-9 && run.reconciliation.exitWorkerCount <= 1e-9),
     householdGoodsBudgetReconciled: runs.every(run => run.reconciliation.desiredBudget <= 1e-6 && run.reconciliation.goodsBudgetIdentity <= 1e-6)
   }
 };
@@ -348,7 +388,7 @@ console.table(monthly.map(row => ({
   desiredWorkerChange: row.totalNetDesiredWorkerChange,
   vacancies: row.plannedVacancies,
   plannedLayoffs: row.plannedLayoffSlots,
-  exitSeparations: row.exitResidualSeparations,
+  exitDisplacements: row.exitDisplacements,
   firmExits: row.firmExits,
   negativePlanShare: row.meanNegativeHiringPlanShare,
   desiredBudget: row.desiredBudget,
@@ -356,11 +396,9 @@ console.table(monthly.map(row => ({
   fulfillment: row.budgetFulfillmentRate
 })));
 console.log(JSON.stringify(report, null, 2));
-
 if (outputJson) {
   mkdirSync(dirname(outputJson), { recursive: true });
   writeFileSync(outputJson, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   console.log(`WP_RV03_JSON ${outputJson}`);
 }
-
 console.log('Economic Lab WP-RV03 extreme-unemployment causal decomposition evidence PASS');
