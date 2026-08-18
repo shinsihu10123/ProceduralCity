@@ -1,4 +1,4 @@
-name: WP005 bounded validation probe
+name: WP005 bounded repair cycle 1
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  probe:
+  repair-and-validate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -20,7 +20,24 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
-      - name: Validate and publish report
+      - name: Repair snapshot decoder and apply canonical formatting
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('production/crates/validation-core/src/lib.rs')
+          s = p.read_text()
+          old = s
+          s = s.replace('if fields.len() != 13 {', 'if fields.len() != 12 {', 1)
+          s = s.replace('if fields.len() != 15 {', 'if fields.len() != 10 {', 1)
+          s = s.replace('evidence_schema_ref: decode_ref(&fields[8..13])?,', 'evidence_schema_ref: decode_ref_from_string(fields[8])?,', 1)
+          s = s.replace('target_state_ref: unescape(fields[13])?,', 'target_state_ref: unescape(fields[9])?,', 1)
+          if s == old:
+              raise SystemExit('expected decoder patch did not apply')
+          p.write_text(s)
+          PY
+          cargo fmt --manifest-path production/Cargo.toml --all
+      - name: Strict validation
         shell: bash
         run: |
           set +e
@@ -33,20 +50,18 @@ jobs:
           set -e
           mkdir -p docs/evidence/week1
           {
-            echo "WP005_PROBE_HEAD=$(git rev-parse HEAD)"
+            echo "WP005_REPAIR1_BASE=$(git rev-parse HEAD)"
             echo "FMT_EXIT=$FMT"
             echo "CLIPPY_EXIT=$CLIPPY"
             echo "TEST_EXIT=$TEST"
-            echo "--- FMT ---"
-            cat /tmp/fmt.log
-            echo "--- CLIPPY ---"
-            cat /tmp/clippy.log
-            echo "--- TEST ---"
-            cat /tmp/test.log
+            echo "--- TEST TAIL ---"
+            tail -n 120 /tmp/test.log
           } > docs/evidence/week1/wp005-ci-probe.txt
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add docs/evidence/week1/wp005-ci-probe.txt
-          git commit -m 'ci(validation): publish WP-005 probe [skip ci]'
-          git push
+          git add production/crates/validation-core production/Cargo.lock docs/evidence/week1/wp005-ci-probe.txt || true
+          if ! git diff --cached --quiet; then
+            git commit -m 'fix(validation): bounded WP-005 repair cycle 1 [skip ci]'
+            git push
+          fi
           if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$TEST" -ne 0 ]; then exit 1; fi
