@@ -77,10 +77,11 @@ pub fn admit(
     if time.work_package != "WP-004"
         || !time.closed
         || time.evidence_digest64 == 0
-        || time.member_ids != [
-            "S1.05.01", "S1.05.02", "S1.05.03", "S1.05.04", "S1.05.05", "S1.05.06", "S1.05.07", "S1.05.08",
-            "S1.05.09",
-        ]
+        || time.member_ids
+            != [
+                "S1.05.01", "S1.05.02", "S1.05.03", "S1.05.04", "S1.05.05", "S1.05.06", "S1.05.07",
+                "S1.05.08", "S1.05.09",
+            ]
     {
         return Err(RandomError::InvalidPredecessor("WP-004"));
     }
@@ -90,7 +91,10 @@ pub fn admit(
         time_predecessor: "WP-004",
         identity_digest64: identity.digest64(),
         time_digest64: time.evidence_digest64,
-        causal_parent: format!("{}|WP-004:{}", identity.causal_parent, time.evidence_digest64),
+        causal_parent: format!(
+            "{}|WP-004:{}",
+            identity.causal_parent, time.evidence_digest64
+        ),
     })
 }
 
@@ -237,12 +241,21 @@ impl CausalRandomAddress {
     pub fn validate(&self) -> Result<(), RandomError> {
         required(&self.random_lineage_id, "address.random_lineage_id")?;
         required(&self.purpose_id, "address.purpose_id")?;
-        required(&self.subject_key.stable_entity_id, "address.stable_entity_id")?;
-        required(&self.subject_key.identity_namespace, "address.identity_namespace")?;
+        required(
+            &self.subject_key.stable_entity_id,
+            "address.stable_entity_id",
+        )?;
+        required(
+            &self.subject_key.identity_namespace,
+            "address.identity_namespace",
+        )?;
         if self.subject_key.identity_version == 0 {
             return Err(RandomError::StaleVersion);
         }
-        required(&self.subject_key.lifecycle_lineage, "address.lifecycle_lineage")?;
+        required(
+            &self.subject_key.lifecycle_lineage,
+            "address.lifecycle_lineage",
+        )?;
         required(&self.episode.process_key, "address.process_key")?;
         required(&self.episode.episode_key, "address.episode_key")?;
         required(&self.time_counter.world_epoch_id, "address.world_epoch_id")?;
@@ -512,7 +525,9 @@ pub fn stateless_sample_u64(
         let lane = index & 3;
         state[lane] = mix64(state[lane] ^ word ^ (index as u64).wrapping_mul(0x9e3779b97f4a7c15));
     }
-    Ok(mix64(state[0] ^ state[1].rotate_left(13) ^ state[2].rotate_left(29) ^ state[3].rotate_left(47)))
+    Ok(mix64(
+        state[0] ^ state[1].rotate_left(13) ^ state[2].rotate_left(29) ^ state[3].rotate_left(47),
+    ))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -535,9 +550,9 @@ pub fn deterministic_distribution(
 ) -> Result<DistributionValue, RandomError> {
     match primitive {
         DistributionPrimitive::RawU64 => Ok(DistributionValue::U64(sample)),
-        DistributionPrimitive::BernoulliThreshold { inclusive_threshold } => {
-            Ok(DistributionValue::Bool(sample <= inclusive_threshold))
-        }
+        DistributionPrimitive::BernoulliThreshold {
+            inclusive_threshold,
+        } => Ok(DistributionValue::Bool(sample <= inclusive_threshold)),
         DistributionPrimitive::UniformBounded { upper_exclusive } => {
             if upper_exclusive == 0 {
                 return Err(RandomError::InvalidDistribution("upper_exclusive=0"));
@@ -660,7 +675,9 @@ impl fmt::Display for RandomError {
             Self::MissingField(value) => write!(f, "missing required field: {value}"),
             Self::StaleVersion => write!(f, "stale or invalid version"),
             Self::WrongOwner => write!(f, "wrong PA-056 canonical owner"),
-            Self::UnauthorizedWrite(origin) => write!(f, "unauthorized registry write from {origin:?}"),
+            Self::UnauthorizedWrite(origin) => {
+                write!(f, "unauthorized registry write from {origin:?}")
+            }
             Self::InvalidSeed => write!(f, "invalid WorldRandomRoot256"),
             Self::InvalidWorldTime => write!(f, "invalid WP-004 WorldTime"),
             Self::DuplicateStableId(value) => write!(f, "duplicate stable ID: {value}"),
@@ -717,7 +734,12 @@ fn validate_namespace(namespace: &DomainRandomNamespace) -> Result<(), RandomErr
         return Err(RandomError::StaleVersion);
     }
     validate_owner(&namespace.owner)?;
-    if namespace.purpose_ids.is_empty() || namespace.purpose_ids.iter().any(|value| value.trim().is_empty()) {
+    if namespace.purpose_ids.is_empty()
+        || namespace
+            .purpose_ids
+            .iter()
+            .any(|value| value.trim().is_empty())
+    {
         return Err(RandomError::MissingField("namespace.purpose_ids"));
     }
     Ok(())

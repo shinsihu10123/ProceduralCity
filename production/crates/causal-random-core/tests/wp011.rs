@@ -26,8 +26,8 @@ fn time_acceptance() -> Wp004Acceptance {
     Wp004Acceptance {
         work_package: "WP-004",
         member_ids: [
-            "S1.05.01", "S1.05.02", "S1.05.03", "S1.05.04", "S1.05.05", "S1.05.06", "S1.05.07", "S1.05.08",
-            "S1.05.09",
+            "S1.05.01", "S1.05.02", "S1.05.03", "S1.05.04", "S1.05.05", "S1.05.06", "S1.05.07",
+            "S1.05.08", "S1.05.09",
         ],
         predecessor_digest64: 11,
         evidence_digest64: 22,
@@ -226,19 +226,21 @@ fn s1_10_06_domain_namespace_is_versioned_owner_only_and_purpose_checked() {
     bad_address.purpose_id = "unregistered-purpose".to_owned();
     assert_eq!(
         validate_address_against_registry(&registry, &bad_address),
-        Err(RandomError::UnknownPurpose("unregistered-purpose".to_owned()))
+        Err(RandomError::UnknownPurpose(
+            "unregistered-purpose".to_owned()
+        ))
     );
 }
 
 #[test]
 fn s1_10_07_stateless_generation_retries_same_address_without_stream_consumption() {
-    let registry = registry();
+    let reg = registry();
     let a = address(12);
-    let first = stateless_sample_u64(&registry, &a).unwrap();
-    let second = stateless_sample_u64(&registry, &a).unwrap();
+    let first = stateless_sample_u64(&reg, &a).unwrap();
+    let second = stateless_sample_u64(&reg, &a).unwrap();
     assert_eq!(first, second);
-    assert_eq!(registry.digest64(), registry().digest64());
-    let other = stateless_sample_u64(&registry, &address(13)).unwrap();
+    assert_eq!(reg.digest64(), registry().digest64());
+    let other = stateless_sample_u64(&reg, &address(13)).unwrap();
     assert_ne!(first, other);
 }
 
@@ -261,7 +263,9 @@ fn s1_10_08_distribution_primitives_are_deterministic_and_fail_closed() {
     );
     let bounded = deterministic_distribution(
         sample,
-        DistributionPrimitive::UniformBounded { upper_exclusive: 10 },
+        DistributionPrimitive::UniformBounded {
+            upper_exclusive: 10,
+        },
     )
     .unwrap();
     assert_eq!(bounded, DistributionValue::U64(5));
@@ -311,7 +315,10 @@ fn persistence_restore_and_replay_preserve_registry_and_same_address_sample() {
     let digest = snapshot.digest64().unwrap();
     let restored = snapshot.restore().unwrap();
     assert_eq!(restored.digest64(), snapshot.registry.digest64());
-    assert_eq!(before, stateless_sample_u64(&restored, &address(9)).unwrap());
+    assert_eq!(
+        before,
+        stateless_sample_u64(&restored, &address(9)).unwrap()
+    );
     assert_eq!(digest, snapshot.digest64().unwrap());
 }
 
@@ -347,7 +354,13 @@ fn wp011_integration_and_acceptance_require_all_eight_members_and_snapshot_evide
     )
     .unwrap();
     let sample = stateless_sample_u64(&registry, &address(5)).unwrap();
-    let transformed = deterministic_distribution(sample, DistributionPrimitive::UniformBounded { upper_exclusive: 17 }).unwrap();
+    let transformed = deterministic_distribution(
+        sample,
+        DistributionPrimitive::UniformBounded {
+            upper_exclusive: 17,
+        },
+    )
+    .unwrap();
     assert!(matches!(transformed, DistributionValue::U64(value) if value < 17));
     assert_ne!(contract.address_digest64, 0);
     let snapshot = RandomSnapshot {
@@ -356,7 +369,13 @@ fn wp011_integration_and_acceptance_require_all_eight_members_and_snapshot_evide
         causal_cut: "cut:integration".to_owned(),
         registry,
     };
-    let acceptance = accept_wp(&admission, &[true; 8], &[1, 2, 3, 4, 5, 6, 7, 8], snapshot.digest64().unwrap()).unwrap();
+    let acceptance = accept_wp(
+        &admission,
+        &[true; 8],
+        &[1, 2, 3, 4, 5, 6, 7, 8],
+        snapshot.digest64().unwrap(),
+    )
+    .unwrap();
     assert!(acceptance.closed);
     assert_eq!(acceptance.member_ids, MEMBER_IDS);
     let mut missing = [true; 8];

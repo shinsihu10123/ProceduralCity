@@ -1,137 +1,16 @@
-WP011_PROBE_HEAD=bffc104e0e97e1d78079cd3aa487bb3a20104410
-FMT_EXIT=1
-CLIPPY_EXIT=101
-WORKSPACE_TEST_EXIT=101
-WP011_TEST_EXIT=101
---- FMT ---
--    Ok(mix64(state[0] ^ state[1].rotate_left(13) ^ state[2].rotate_left(29) ^ state[3].rotate_left(47)))
-+    Ok(mix64(
-+        state[0] ^ state[1].rotate_left(13) ^ state[2].rotate_left(29) ^ state[3].rotate_left(47),
-+    ))
- }
- 
- #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/causal-random-core/src/lib.rs:535:
- ) -> Result<DistributionValue, RandomError> {
-     match primitive {
-         DistributionPrimitive::RawU64 => Ok(DistributionValue::U64(sample)),
--        DistributionPrimitive::BernoulliThreshold { inclusive_threshold } => {
--            Ok(DistributionValue::Bool(sample <= inclusive_threshold))
--        }
-+        DistributionPrimitive::BernoulliThreshold {
-+            inclusive_threshold,
-+        } => Ok(DistributionValue::Bool(sample <= inclusive_threshold)),
-         DistributionPrimitive::UniformBounded { upper_exclusive } => {
-             if upper_exclusive == 0 {
-                 return Err(RandomError::InvalidDistribution("upper_exclusive=0"));
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/causal-random-core/src/lib.rs:660:
-             Self::MissingField(value) => write!(f, "missing required field: {value}"),
-             Self::StaleVersion => write!(f, "stale or invalid version"),
-             Self::WrongOwner => write!(f, "wrong PA-056 canonical owner"),
--            Self::UnauthorizedWrite(origin) => write!(f, "unauthorized registry write from {origin:?}"),
-+            Self::UnauthorizedWrite(origin) => {
-+                write!(f, "unauthorized registry write from {origin:?}")
-+            }
-             Self::InvalidSeed => write!(f, "invalid WorldRandomRoot256"),
-             Self::InvalidWorldTime => write!(f, "invalid WP-004 WorldTime"),
-             Self::DuplicateStableId(value) => write!(f, "duplicate stable ID: {value}"),
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/causal-random-core/src/lib.rs:717:
-         return Err(RandomError::StaleVersion);
-     }
-     validate_owner(&namespace.owner)?;
--    if namespace.purpose_ids.is_empty() || namespace.purpose_ids.iter().any(|value| value.trim().is_empty()) {
-+    if namespace.purpose_ids.is_empty()
-+        || namespace
-+            .purpose_ids
-+            .iter()
-+            .any(|value| value.trim().is_empty())
-+    {
-         return Err(RandomError::MissingField("namespace.purpose_ids"));
-     }
-     Ok(())
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/causal-random-core/tests/wp011.rs:26:
-     Wp004Acceptance {
-         work_package: "WP-004",
-         member_ids: [
--            "S1.05.01", "S1.05.02", "S1.05.03", "S1.05.04", "S1.05.05", "S1.05.06", "S1.05.07", "S1.05.08",
--            "S1.05.09",
-+            "S1.05.01", "S1.05.02", "S1.05.03", "S1.05.04", "S1.05.05", "S1.05.06", "S1.05.07",
-+            "S1.05.08", "S1.05.09",
-         ],
-         predecessor_digest64: 11,
-         evidence_digest64: 22,
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/causal-random-core/tests/wp011.rs:226:
-     bad_address.purpose_id = "unregistered-purpose".to_owned();
-     assert_eq!(
-         validate_address_against_registry(&registry, &bad_address),
--        Err(RandomError::UnknownPurpose("unregistered-purpose".to_owned()))
-+        Err(RandomError::UnknownPurpose(
-+            "unregistered-purpose".to_owned()
-+        ))
-     );
- }
- 
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/causal-random-core/tests/wp011.rs:261:
-     );
-     let bounded = deterministic_distribution(
-         sample,
--        DistributionPrimitive::UniformBounded { upper_exclusive: 10 },
-+        DistributionPrimitive::UniformBounded {
-+            upper_exclusive: 10,
-+        },
-     )
-     .unwrap();
-     assert_eq!(bounded, DistributionValue::U64(5));
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/causal-random-core/tests/wp011.rs:311:
-     let digest = snapshot.digest64().unwrap();
-     let restored = snapshot.restore().unwrap();
-     assert_eq!(restored.digest64(), snapshot.registry.digest64());
--    assert_eq!(before, stateless_sample_u64(&restored, &address(9)).unwrap());
-+    assert_eq!(
-+        before,
-+        stateless_sample_u64(&restored, &address(9)).unwrap()
-+    );
-     assert_eq!(digest, snapshot.digest64().unwrap());
- }
- 
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/causal-random-core/tests/wp011.rs:347:
-     )
-     .unwrap();
-     let sample = stateless_sample_u64(&registry, &address(5)).unwrap();
--    let transformed = deterministic_distribution(sample, DistributionPrimitive::UniformBounded { upper_exclusive: 17 }).unwrap();
-+    let transformed = deterministic_distribution(
-+        sample,
-+        DistributionPrimitive::UniformBounded {
-+            upper_exclusive: 17,
-+        },
-+    )
-+    .unwrap();
-     assert!(matches!(transformed, DistributionValue::U64(value) if value < 17));
-     assert_ne!(contract.address_digest64, 0);
-     let snapshot = RandomSnapshot {
-Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/causal-random-core/tests/wp011.rs:356:
-         causal_cut: "cut:integration".to_owned(),
-         registry,
-     };
--    let acceptance = accept_wp(&admission, &[true; 8], &[1, 2, 3, 4, 5, 6, 7, 8], snapshot.digest64().unwrap()).unwrap();
-+    let acceptance = accept_wp(
-+        &admission,
-+        &[true; 8],
-+        &[1, 2, 3, 4, 5, 6, 7, 8],
-+        snapshot.digest64().unwrap(),
-+    )
-+    .unwrap();
-     assert!(acceptance.closed);
-     assert_eq!(acceptance.member_ids, MEMBER_IDS);
-     let mut missing = [true; 8];
+WP011_REPAIR1_BASE=eb4aa366c643fb9df4102587819c5fe73a0f8091
+FMT_EXIT=0
+CLIPPY_EXIT=0
+WORKSPACE_TEST_EXIT=0
+WP011_TEST_EXIT=0
 --- CLIPPY ---
     Checking gaonn-world-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-core)
     Checking gaonn-identity-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-core)
     Checking gaonn-world-time-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-time-core)
     Checking gaonn-planetary-space-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/planetary-space-core)
     Checking gaonn-validation-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core)
-    Checking gaonn-celestial-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/celestial-core)
     Checking gaonn-lifecycle-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/lifecycle-core)
+    Checking gaonn-celestial-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/celestial-core)
     Checking gaonn-creation-boundary-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/creation-boundary-core)
     Checking gaonn-retirement-state-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retirement-state-core)
     Checking gaonn-retention-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retention-core)
@@ -140,71 +19,147 @@ Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/causal
     Checking gaonn-identity-reuse-audit-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-reuse-audit-core)
     Checking gaonn-causal-random-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/causal-random-core)
     Checking gaonn-scheduler-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/scheduler-core)
-error[E0618]: expected function, found `gaonn_causal_random_core::RandomRegistry`
-   --> crates/causal-random-core/tests/wp011.rs:240:37
-    |
- 73 | fn registry() -> RandomRegistry {
-    | ------------------------------- this function of the same name is available here, but it's shadowed by the local binding
-...
-235 |     let registry = registry();
-    |         -------- `registry` has type `gaonn_causal_random_core::RandomRegistry`
-...
-240 |     assert_eq!(registry.digest64(), registry().digest64());
-    |                                     ^^^^^^^^--
-    |                                     |
-    |                                     call expression requires function
-
-For more information about this error, try `rustc --explain E0618`.
-error: could not compile `gaonn-causal-random-core` (test "wp011") due to 1 previous error
-warning: build failed, waiting for other jobs to finish...
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 9.02s
 --- WP011 TEST ---
-   Compiling gaonn-causal-random-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/causal-random-core)
-error[E0618]: expected function, found `gaonn_causal_random_core::RandomRegistry`
-   --> crates/causal-random-core/tests/wp011.rs:240:37
-    |
- 73 | fn registry() -> RandomRegistry {
-    | ------------------------------- this function of the same name is available here, but it's shadowed by the local binding
-...
-235 |     let registry = registry();
-    |         -------- `registry` has type `gaonn_causal_random_core::RandomRegistry`
-...
-240 |     assert_eq!(registry.digest64(), registry().digest64());
-    |                                     ^^^^^^^^--
-    |                                     |
-    |                                     call expression requires function
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.01s
+     Running tests/wp011.rs (production/target/debug/deps/wp011-ac006d99498036a7)
 
-For more information about this error, try `rustc --explain E0618`.
-error: could not compile `gaonn-causal-random-core` (test "wp011") due to 1 previous error
+running 14 tests
+test admission_requires_wp002_and_wp004_pass_evidence ... ok
+test address_excludes_worker_partition_retry_camera_and_insertion_order ... ok
+test authority_observer_worker_retry_and_camera_cannot_mutate_random_registry ... ok
+test identity_audit_fixture_does_not_create_random_identity_shortcut ... ok
+test s1_10_02_versioned_world_seed_is_owner_version_and_lineage_checked ... ok
+test s1_10_01_contract_preserves_operands_owner_seed_address_and_candidate_only ... ok
+test s1_10_03_entity_component_is_stable_identity_not_display_name ... ok
+test s1_10_04_process_episode_component_requires_semantic_process_and_episode ... ok
+test persistence_restore_and_replay_preserve_registry_and_same_address_sample ... ok
+test s1_10_05_worldtime_counter_uses_absolute_worldtime_not_wall_clock ... ok
+test s1_10_06_domain_namespace_is_versioned_owner_only_and_purpose_checked ... ok
+test s1_10_08_distribution_primitives_are_deterministic_and_fail_closed ... ok
+test s1_10_07_stateless_generation_retries_same_address_without_stream_consumption ... ok
+test wp011_integration_and_acceptance_require_all_eight_members_and_snapshot_evidence ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
 --- WORKSPACE TEST TAIL ---
-   Compiling gaonn-world-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-core)
-   Compiling gaonn-identity-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-core)
-   Compiling gaonn-world-time-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-time-core)
-   Compiling gaonn-lifecycle-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/lifecycle-core)
-   Compiling gaonn-planetary-space-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/planetary-space-core)
-   Compiling gaonn-creation-boundary-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/creation-boundary-core)
-   Compiling gaonn-retirement-state-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retirement-state-core)
-   Compiling gaonn-celestial-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/celestial-core)
-   Compiling gaonn-retention-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retention-core)
-   Compiling gaonn-cross-reference-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/cross-reference-core)
-   Compiling gaonn-validation-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core)
-   Compiling gaonn-identity-continuity-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-continuity-core)
-   Compiling gaonn-identity-reuse-audit-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-reuse-audit-core)
-   Compiling gaonn-scheduler-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/scheduler-core)
-   Compiling gaonn-causal-random-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/causal-random-core)
-error[E0618]: expected function, found `gaonn_causal_random_core::RandomRegistry`
-   --> crates/causal-random-core/tests/wp011.rs:240:37
-    |
- 73 | fn registry() -> RandomRegistry {
-    | ------------------------------- this function of the same name is available here, but it's shadowed by the local binding
-...
-235 |     let registry = registry();
-    |         -------- `registry` has type `gaonn_causal_random_core::RandomRegistry`
-...
-240 |     assert_eq!(registry.digest64(), registry().digest64());
-    |                                     ^^^^^^^^--
-    |                                     |
-    |                                     call expression requires function
+test persistence_read_only_acceptance_record_snapshot_preserves_evidence_digest ... ok
+test replay_same_snapshot_schema_run_and_source_produces_same_record_order_and_digest ... ok
 
-For more information about this error, try `rustc --explain E0618`.
-error: could not compile `gaonn-causal-random-core` (test "wp011") due to 1 previous error
-warning: build failed, waiting for other jobs to finish...
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (production/target/debug/deps/gaonn_world_time_core-7a1cde7e5c36434d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/wp004.rs (production/target/debug/deps/wp004-7924b097ef9a2614)
+
+running 13 tests
+test s1_05_01_absolute_worldtime_contract_requires_valid_predecessor_and_owner ... ok
+test s1_05_02_epoch_unit_representation_rejects_stale_missing_and_incompatible_values ... ok
+test s1_05_03_monotonic_time_accepts_forward_and_same_time_order_but_rejects_reversal ... ok
+test s1_05_04_duration_arithmetic_is_checked_exact_and_nonnegative ... ok
+test s1_05_05_same_time_equality_is_absolute_and_separate_from_microstep_order ... ok
+test s1_05_06_calendar_human_date_is_read_only_derived_view ... ok
+test s1_05_03_wrong_writer_origins_leave_canonical_state_unchanged ... ok
+test s1_05_07_serialization_fails_closed_on_missing_boundary_or_stale_schema ... ok
+test s1_05_08_long_horizon_precision_reports_overflow_instead_of_wrapping ... ok
+test s1_05_07_worldtime_serialization_round_trip_preserves_replay_boundary ... ok
+test wp004_acceptance_requires_all_nine_member_passes_and_evidence ... ok
+test s1_05_09_reversal_audit_is_read_only_detects_violation_and_avoids_false_positive ... ok
+test s1_05_08_long_horizon_precision_has_no_accumulation_drift ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_causal_random_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_celestial_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_creation_boundary_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_cross_reference_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_identity_continuity_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_identity_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_identity_reuse_audit_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_lifecycle_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_planetary_space_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_retention_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_retirement_state_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_scheduler_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_validation_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_world_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_world_time_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
