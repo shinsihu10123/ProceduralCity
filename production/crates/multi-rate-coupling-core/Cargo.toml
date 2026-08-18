@@ -1,0 +1,8 @@
+[package]
+name = "gaonn-multi-rate-coupling-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gaonn-world-time-core = { path = "../world-time-core" }
+gaonn-scheduler-core = { path = "../scheduler-core" }
