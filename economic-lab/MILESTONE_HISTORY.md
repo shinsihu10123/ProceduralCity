@@ -15,41 +15,48 @@ This file reconstructs the implemented Economic Lab sequence from repository his
 | 7 | v0.7 — Monetary and financial markets | `f24828b` — `Document Economic Lab v0.7 monetary and financial markets` |
 | 8 | v0.8 — International economy | `f00dd84` — `Document Economic Lab v0.8 international economy` |
 | 9 | v0.9 — Deep cognitive economy | `c13795b` — `Document Economic Lab v0.9 deep cognitive economy` |
-| 10 | v0.10 — Scale / experiment / long-run / performance hardening | implementation begins at `4d44b54`; audited implementation head `27b95aa`; README synchronization `0a650b3` |
+| 10 | v0.10 — Scale / experiment / long-run / performance hardening | re-audited implementation head `698d107`; CI run `32116473524` |
 
 ## What step 10 contains
 
-v0.10 is not a new disconnected economic model. It extends the v0.9 four-country cognitive economy with research/operations infrastructure while retaining the underlying transaction, accounting, banking, industry, fiscal, monetary/financial, international, and cognitive layers.
+v0.10 extends the v0.9 four-country cognitive economy without replacing its economic model. The implemented step includes:
 
-Recovered v0.10 scope:
-
-- explicit scaling profiles and runtime profiling
-- paired counterfactual intervention experiments
+- baseline/x2/x5/x10 scale profiles
+- x10 population of 21,100 households + 1,700 firms; 22,812 total cognitive agents including institutions
+- deterministic same-seed control/treatment experiments
 - deterministic paired multi-seed ensemble experiments
-- long-run health monitoring
-- emergence metrics
+- 48-month long-run health monitoring
+- multi-shock stress matrix
+- 24-month multi-seed emergence ensemble
 - settlement-ledger ring-buffer/index hardening
-- compact decision-history policy and entrant inheritance
+- compact-v2 decision-history storage with full current reasoning retained
+- episodic analogy retrieval semantic oracle and per-agent ranking cache
 - cold-start and steady-state scale benchmarks
-- CPU-hotspot profiling
+- phase profiling and CPU-hotspot profiling
+- cognition/accounting retained-state census
 - structured GitHub Actions performance evidence
+- exact-run CI status beacon
 
 ## Current validated state
 
-At audited implementation head `27b95aa84c2767fef584752479dcd9c2f3e2a212`, Economic Lab CI run `31667954288` completed successfully.
+The current implementation audit anchor is:
 
-The closeout record commit was then validated by Economic Lab CI run `31677966275` — SUCCESS.
+- commit: `698d10749e2897d711e5bcee61913ac34e0650a0`
+- GitHub Actions run: `32116473524`
+- result: `SUCCESS`
+- evidence artifact: `economic-lab-v10-performance`
+- artifact ID: `9317033398`
 
-The milestone-history recovery commit `88222ee00745eb8fe74a1525cac05ce41e269aa2` was validated by Economic Lab CI run `31678308789` — SUCCESS.
+That run completed aggregate regression tests, the multi-shock stress matrix, emergence ensemble, cold and steady x10 benchmarks, CPU profiles, production build, evidence upload, and the CI status beacon successfully.
 
-The README was synchronized to v0.10 in commit `0a650b3f499dcdd2a5dfdb7be9068078b6b910ce`. Economic Lab CI run `31678863775` completed successfully, including aggregate tests, benchmarks, CPU profiles, build, and performance-evidence upload.
+The re-audit supersedes the old step-10 anchor (`27b95aa` / run `31667954288`) for current v0.10 implementation evidence. The older run remains part of repository history but must not be used as the current scale benchmark because it described an obsolete x10 population.
 
 ## Closeout interpretation
 
-Functional v0.10 implementation, regression gates, experiment gates, long-run health gates, build, performance-evidence workflow, README synchronization, and recovery documentation are now present.
+Step 10 is considered complete because the repository now has executable gates for correctness, deterministic replay, multi-seed experiments, long-run health, shock differentiation, emergent macro dynamics, accounting integrity, scale measurement, CPU profiling, retained-state diagnosis, and production build validation.
 
-`economic-lab/README.md` and `V0.10_CLOSEOUT.md` now agree that v0.10 is the current closed milestone. The earlier repository-documentation mismatch has been eliminated.
+The closeout does not claim a performance SLA or unlimited scale. Current x10 evidence still shows substantial heap/GC pressure, which is retained as explicit technical debt rather than hidden by reducing the model or weakening gates.
 
-**Recovered steps 1–10: COMPLETE. v0.10 repository-level closeout: CLOSED.**
+**Recovered steps 1–10: COMPLETE. Economic Lab v0.10 repository-level closeout: CLOSED.**
 
-No v0.11 feature scope is invented here. The next implementation scope must be recovered from the project's frozen execution order or another authoritative project record before coding begins.
+No v0.11 feature scope is invented here. The next implementation scope must be recovered from the project's authoritative/frozen implementation order or another authoritative project record before coding begins.
