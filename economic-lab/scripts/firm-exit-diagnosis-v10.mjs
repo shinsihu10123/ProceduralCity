@@ -15,21 +15,52 @@ const sum = values => values.reduce((total, value) => total + finite(value), 0);
 const mean = values => values.length ? sum(values) / values.length : 0;
 const ratio = (a, b) => Math.abs(finite(b)) > EPS ? finite(a) / finite(b) : 0;
 
-function key(month, countryId, firmId) {
-  return `${month}:${countryId}:${firmId}`;
+function economicFingerprint(world) {
+  return {
+    month: world.month,
+    rng: structuredClone(world.rng),
+    countries: structuredClone(world.countries),
+    experiments: world.experimentReport(),
+    emergence: world.emergenceReport(),
+    accounting: Object.fromEntries(world.countries.map(country => [country.id, world.accountingReport(country.id)]))
+  };
 }
 
 function installCreditObserver(world, creditEvents) {
-  const original = world.banking.originateCredit.bind(world.banking);
+  const originalBuild = world.banking.buildApplications.bind(world.banking);
+  const originalOriginate = world.banking.originateCredit.bind(world.banking);
+  let capture = null;
+
+  world.banking.buildApplications = country => {
+    const applications = originalBuild(country);
+    if (capture && capture.countryId === country.id) {
+      capture.applications = applications
+        .filter(app => app.kind === 'firm')
+        .map(app => ({
+          firmId: app.borrower.id,
+          requestedAmount: finite(app.amount),
+          termMonths: finite(app.termMonths)
+        }));
+    }
+    return applications;
+  };
+
   world.banking.originateCredit = (country, month, signals) => {
-    const applications = world.banking.buildApplications(country)
-      .filter(app => app.kind === 'firm')
-      .map(app => ({ firmId: app.borrower.id, requestedAmount: finite(app.amount), termMonths: finite(app.termMonths) }));
     const priorLoanIds = new Set((country.loans || []).map(loan => loan.id));
-    const result = original(country, month, signals);
+    capture = { countryId: country.id, month, applications: [] };
+    let result;
+    try {
+      result = originalOriginate(country, month, signals);
+    } finally {
+      // The original call consumes RNG and creates applications exactly once. The wrapper only copies its returned list.
+    }
+    const applications = capture.applications;
+    capture = null;
+
     const newLoans = (country.loans || []).filter(loan => !priorLoanIds.has(loan.id) && loan.borrowerKind === 'firm');
     const approved = new Map();
     for (const loan of newLoans) approved.set(loan.borrowerId, (approved.get(loan.borrowerId) || 0) + finite(loan.originalPrincipal));
+
     for (const app of applications) {
       const approvedAmount = approved.get(app.firmId) || 0;
       creditEvents.push({
@@ -63,14 +94,16 @@ function installDebtObserver(world, debtEvents) {
         missedPayments: finite(loan.missedPayments),
         borrowerCreditMisses: finite(firmById.get(loan.borrowerId)?.creditMisses)
       }));
+
     const result = original(country, month);
-    const paymentEntries = world.ledger.entriesFor({ month, countryId: country.id, kind: 'bank_loan_payment' });
+    const payments = world.ledger.entriesFor({ month, countryId: country.id, kind: 'bank_loan_payment' });
     const paymentByLoan = new Map();
-    for (const entry of paymentEntries) {
+    for (const entry of payments) {
       const loanId = entry.meta?.loanId;
       if (loanId) paymentByLoan.set(loanId, (paymentByLoan.get(loanId) || 0) + finite(entry.amount));
     }
     const loanById = new Map((country.loans || []).map(loan => [loan.id, loan]));
+
     for (const pre of due) {
       const post = loanById.get(pre.loanId);
       const firm = firmById.get(pre.firmId);
@@ -104,7 +137,17 @@ function installDebtObserver(world, debtEvents) {
   };
 }
 
-function aggregateDebtForFirm(debtEvents, month, countryId, firmId) {
+function creditFor(creditEvents, month, countryId, firmId) {
+  const rows = creditEvents.filter(event => event.month === month && event.countryId === countryId && event.firmId === firmId);
+  return {
+    applications: rows.length,
+    requestedAmount: sum(rows.map(row => row.requestedAmount)),
+    approvedAmount: sum(rows.map(row => row.approvedAmount)),
+    rejections: rows.filter(row => row.rejected).length
+  };
+}
+
+function debtFor(debtEvents, month, countryId, firmId) {
   const rows = debtEvents.filter(event => event.month === month && event.countryId === countryId && event.firmId === firmId);
   return {
     dueLoans: rows.length,
@@ -115,16 +158,6 @@ function aggregateDebtForFirm(debtEvents, month, countryId, firmId) {
     defaults: rows.filter(row => row.defaultedThisMonth).length,
     arrearsAfter: sum(rows.map(row => row.postArrears)),
     maxLoanMissedPayments: rows.length ? Math.max(...rows.map(row => row.postMissedPayments)) : 0
-  };
-}
-
-function aggregateCreditForFirm(creditEvents, month, countryId, firmId) {
-  const rows = creditEvents.filter(event => event.month === month && event.countryId === countryId && event.firmId === firmId);
-  return {
-    applications: rows.length,
-    requestedAmount: sum(rows.map(row => row.requestedAmount)),
-    approvedAmount: sum(rows.map(row => row.approvedAmount)),
-    rejections: rows.filter(row => row.rejected).length
   };
 }
 
@@ -144,10 +177,8 @@ function installExitObserver(world, creditEvents, debtEvents, evaluations) {
       const directFailure = liquidityFailure || severeCreditStress;
       const distressBefore = finite(firm.distressMonths);
       const expectedDistressAfter = directFailure ? distressBefore + 1 : Math.max(0, distressBefore - 1);
-      const planPerception = firm.currentPlan?.trace?.perception || {};
-      const loanRows = (country.loans || []).filter(loan => loan.borrowerKind === 'firm' && loan.borrowerId === firm.id && loan.status === 'active');
-      const debt = aggregateDebtForFirm(debtEvents, world.month, country.id, firm.id);
-      const credit = aggregateCreditForFirm(creditEvents, world.month, country.id, firm.id);
+      const perception = firm.currentPlan?.trace?.perception || {};
+      const activeLoans = (country.loans || []).filter(loan => loan.borrowerKind === 'firm' && loan.borrowerId === firm.id && loan.status === 'active');
       before.push({
         month: world.month,
         countryId: country.id,
@@ -173,15 +204,15 @@ function installExitObserver(world, creditEvents, debtEvents, evaluations) {
         desiredProduction: finite(firm.desiredProduction),
         inputShortageToDesiredProduction: ratio(firm.supplyShortage, firm.desiredProduction),
         loanBalance: finite(firm.loanBalance),
-        activeLoanOutstanding: sum(loanRows.map(loan => loan.outstanding)),
-        activeLoanArrears: sum(loanRows.map(loan => loan.arrears)),
-        activeLoanCount: loanRows.length,
+        activeLoanOutstanding: sum(activeLoans.map(loan => loan.outstanding)),
+        activeLoanArrears: sum(activeLoans.map(loan => loan.arrears)),
+        activeLoanCount: activeLoans.length,
         creditMisses: finite(firm.creditMisses),
-        expectedDemandGrowth: finite(planPerception.expectedDemandGrowth),
-        cashStress: finite(planPerception.cashStress),
-        inventoryPressure: finite(planPerception.inventoryPressure),
-        supplyStress: finite(planPerception.supplyStress),
-        debtBurden: finite(planPerception.debtBurden),
+        expectedDemandGrowth: finite(perception.expectedDemandGrowth),
+        cashStress: finite(perception.cashStress),
+        inventoryPressure: finite(perception.inventoryPressure),
+        supplyStress: finite(perception.supplyStress),
+        debtBurden: finite(perception.debtBurden),
         plan: String(firm.currentPlan?.selected || firm.currentPlan?.name || 'unknown'),
         hiringChange: finite(firm.currentPlan?.hiringChange),
         productionChange: finite(firm.currentPlan?.productionChange),
@@ -191,8 +222,8 @@ function installExitObserver(world, creditEvents, debtEvents, evaluations) {
         severePayrollStress,
         severeCreditStress,
         expectedDistressAfter,
-        credit,
-        debt
+        credit: creditFor(creditEvents, world.month, country.id, firm.id),
+        debt: debtFor(debtEvents, world.month, country.id, firm.id)
       });
     }
 
@@ -220,9 +251,16 @@ function installExitObserver(world, creditEvents, debtEvents, evaluations) {
   };
 }
 
+function installObservers(world, creditEvents, debtEvents, evaluations) {
+  installCreditObserver(world, creditEvents);
+  installDebtObserver(world, debtEvents);
+  installExitObserver(world, creditEvents, debtEvents, evaluations);
+}
+
 function enrichRevenueChanges(evaluations) {
   const lastByFirm = new Map();
-  for (const row of evaluations.sort((a, b) => a.month - b.month || a.countryId.localeCompare(b.countryId) || a.firmId.localeCompare(b.firmId))) {
+  evaluations.sort((a, b) => a.month - b.month || a.countryId.localeCompare(b.countryId) || a.firmId.localeCompare(b.firmId));
+  for (const row of evaluations) {
     const k = `${row.countryId}:${row.firmId}`;
     const previous = lastByFirm.get(k);
     row.previousRevenue = previous ? previous.revenue : null;
@@ -230,7 +268,6 @@ function enrichRevenueChanges(evaluations) {
     row.revenueDeclined = previous ? row.revenue < previous.revenue - EPS : false;
     lastByFirm.set(k, row);
   }
-  return evaluations;
 }
 
 function buildExitWindows(evaluations) {
@@ -240,12 +277,12 @@ function buildExitWindows(evaluations) {
     if (!byFirm.has(k)) byFirm.set(k, []);
     byFirm.get(k).push(row);
   }
-  const windows = [];
-  for (const row of evaluations.filter(row => row.exited)) {
+
+  return evaluations.filter(row => row.exited).map(row => {
     const history = (byFirm.get(`${row.countryId}:${row.firmId}`) || [])
       .filter(x => x.month <= row.month && x.month >= row.month - 3)
       .sort((a, b) => a.month - b.month);
-    windows.push({
+    return {
       seed: row.seed,
       month: row.month,
       countryId: row.countryId,
@@ -282,9 +319,8 @@ function buildExitWindows(evaluations) {
         meanInventoryToTarget: mean(history.map(x => x.inventoryToTarget)),
         meanInputShortageToDesiredProduction: mean(history.map(x => x.inputShortageToDesiredProduction))
       }
-    });
-  }
-  return windows;
+    };
+  });
 }
 
 function summarizeWindows(windows) {
@@ -332,26 +368,24 @@ function summarizeWindows(windows) {
   };
 }
 
-function runSeed(seed) {
+function runObserved(seed, horizon, collect = true) {
   const world = new EconomicWorld(seed, { scaleProfile, healthCheckInterval: 0 });
   const creditEvents = [];
   const debtEvents = [];
   const evaluations = [];
-  installCreditObserver(world, creditEvents);
-  installDebtObserver(world, debtEvents);
-  installExitObserver(world, creditEvents, debtEvents, evaluations);
-
-  for (let i = 0; i < months; i++) world.stepMonth();
+  installObservers(world, creditEvents, debtEvents, evaluations);
+  for (let i = 0; i < horizon; i++) world.stepMonth();
   const health = world.forceHealthCheck();
   assert.ok(health.ok, `${seed}: v0.10 health gate must pass`);
+  if (!collect) return { world, fingerprint: economicFingerprint(world) };
 
   for (const row of evaluations) row.seed = seed;
   enrichRevenueChanges(evaluations);
   const exitRows = evaluations.filter(row => row.exited);
-  assert.equal(exitRows.length, sum(world.countries.map(country => country.history.slice(1).reduce((s, row) => s + finite(row.firmExits), 0))), `${seed}: attributed exits must reconcile to macro history`);
+  const macroExits = sum(world.countries.map(country => country.history.slice(1).reduce((s, row) => s + finite(row.firmExits), 0)));
+  assert.equal(exitRows.length, macroExits, `${seed}: attributed exits must reconcile to macro history`);
   assert.ok(exitRows.every(row => row.exitCause !== 'UNEXPLAINED'), `${seed}: every exit must match a coded direct trigger`);
-  assert.ok(exitRows.every(row => row.distressBefore === 3 && row.distressAfter >= 4), `${seed}: exits must occur on the fourth consecutive/retained distress step`);
-
+  assert.ok(exitRows.every(row => row.distressBefore === 3 && row.distressAfter >= 4), `${seed}: exits must cross distress month 3 -> 4+`);
   const windows = buildExitWindows(evaluations);
   return {
     seed,
@@ -361,22 +395,37 @@ function runSeed(seed) {
     debtEvents,
     exitWindows: windows,
     summary: summarizeWindows(windows),
-    scale: world.scaleReport()
+    scale: world.scaleReport(),
+    fingerprint: economicFingerprint(world)
   };
 }
 
-const runs = seeds.map(runSeed);
+function runPlain(seed, horizon) {
+  const world = new EconomicWorld(seed, { scaleProfile, healthCheckInterval: 0 });
+  for (let i = 0; i < horizon; i++) world.stepMonth();
+  return economicFingerprint(world);
+}
+
+const nonInterferenceSeed = 'ECON-RV04-NONINTERFERENCE';
+const nonInterferenceMonths = Math.min(6, months);
+const controlFingerprint = runPlain(nonInterferenceSeed, nonInterferenceMonths);
+const observedFingerprint = runObserved(nonInterferenceSeed, nonInterferenceMonths, false).fingerprint;
+assert.deepStrictEqual(observedFingerprint, controlFingerprint, 'WP-RV04 observers must not change RNG, state, accounting, cognition, or emergence');
+
+const runs = seeds.map(seed => runObserved(seed, months, true));
 const windows = runs.flatMap(run => run.exitWindows);
 const report = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   kind: 'economic-lab-wp-rv04-firm-distress-exit-attribution',
   frozenEconomicBaseline: '698d10749e2897d711e5bcee61913ac34e0650a0',
   scaleProfile,
   months,
   seeds,
+  nonInterference: { seed: nonInterferenceSeed, months: nonInterferenceMonths, exact: true },
   runs,
   combined: summarizeWindows(windows),
   gates: {
+    observerNonInterferenceExact: true,
     allHealthy: runs.every(run => run.health.ok),
     exitsPresent: windows.length > 0,
     allExitsDirectlyAttributed: windows.every(window => window.exitCause !== 'UNEXPLAINED'),
