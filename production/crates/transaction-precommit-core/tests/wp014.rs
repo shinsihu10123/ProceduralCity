@@ -521,7 +521,7 @@ fn s1_07_08_precommit_hook_preserves_source_defined_invariants_and_conservation(
     assert!(handoff.eligible_for_future_atomic_commit);
     assert!(!handoff.canonical_commit_performed);
     assert_eq!(handoff.disposition, Disposition::CandidateOnly);
-    assert_eq!(buffer.canonical_commit_performed, false);
+    assert!(!buffer.canonical_commit_performed);
 }
 
 #[test]
@@ -594,7 +594,13 @@ fn persistence_restore_and_replay_preserve_pending_candidate_state_and_event_ord
     let (restored_registry, restored_buffers, restored_order) = snapshot.restore().unwrap();
     assert_eq!(restored_registry, registry);
     assert_eq!(restored_buffers, vec![buffer]);
-    assert_eq!(restored_order, MEMBER_IDS);
+    assert_eq!(
+        restored_order,
+        MEMBER_IDS
+            .iter()
+            .map(|id| (*id).to_owned())
+            .collect::<Vec<_>>()
+    );
     assert_eq!(snapshot.digest64().unwrap(), digest);
 }
 

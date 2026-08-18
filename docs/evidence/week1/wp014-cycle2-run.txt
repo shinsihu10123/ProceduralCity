@@ -1,0 +1,211 @@
+WP014_CORRECTION_CYCLE=2
+CLIPPY_EXIT=0
+WORKSPACE_TEST_EXIT=0
+DEDICATED_TEST_EXIT=0
+--- CLIPPY TAIL ---
+    Checking gaonn-world-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-core)
+    Checking gaonn-identity-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-core)
+    Checking gaonn-world-time-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-time-core)
+    Checking gaonn-planetary-space-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/planetary-space-core)
+    Checking gaonn-validation-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core)
+    Checking gaonn-lifecycle-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/lifecycle-core)
+    Checking gaonn-celestial-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/celestial-core)
+    Checking gaonn-world-time-acceptance-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-time-acceptance-core)
+    Checking gaonn-creation-boundary-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/creation-boundary-core)
+    Checking gaonn-retirement-state-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retirement-state-core)
+    Checking gaonn-retention-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retention-core)
+    Checking gaonn-cross-reference-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/cross-reference-core)
+    Checking gaonn-identity-continuity-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-continuity-core)
+    Checking gaonn-identity-reuse-audit-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-reuse-audit-core)
+    Checking gaonn-scheduler-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/scheduler-core)
+    Checking gaonn-identity-acceptance-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-acceptance-core)
+    Checking gaonn-causal-random-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/causal-random-core)
+    Checking gaonn-authority-placement-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/authority-placement-core)
+    Checking gaonn-transaction-precommit-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/transaction-precommit-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.82s
+--- WORKSPACE TEST TAIL ---
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/wp012.rs (production/target/debug/deps/wp012-65e56c22962545e6)
+
+running 13 tests
+test corrupted_review_snapshot_is_blocked_before_replay ... ok
+test admission_and_normal_review_preserve_absolute_worldtime_epoch_and_causal_refs ... ok
+test explicit_member_failure_propagates_fail_and_blocks_downstream ... ok
+test behavior_contract_or_integration_failure_is_fail_not_pass ... ok
+test hard_predecessor_wp001_mismatch_blocks_without_partial_result ... ok
+test derived_observer_renderer_and_analytics_cannot_issue_acceptance ... ok
+test hard_predecessor_wp004_reference_mismatch_blocks ... ok
+test member_order_is_part_of_the_review_contract_and_replay_event_order ... ok
+test evidence_snapshot_restore_and_replay_are_deterministic ... ok
+test missing_member_is_blocked_and_out_of_scope_pass_cannot_substitute ... ok
+test wp012_closure_requires_the_single_s1_05_10_pass_and_evidence ... ok
+test same_run_and_source_version_are_mandatory ... ok
+test wrong_owner_and_missing_evidence_fail_closed ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (production/target/debug/deps/gaonn_world_time_core-7a1cde7e5c36434d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/wp004.rs (production/target/debug/deps/wp004-7924b097ef9a2614)
+
+running 13 tests
+test s1_05_01_absolute_worldtime_contract_requires_valid_predecessor_and_owner ... ok
+test s1_05_02_epoch_unit_representation_rejects_stale_missing_and_incompatible_values ... ok
+test s1_05_03_monotonic_time_accepts_forward_and_same_time_order_but_rejects_reversal ... ok
+test s1_05_04_duration_arithmetic_is_checked_exact_and_nonnegative ... ok
+test s1_05_03_wrong_writer_origins_leave_canonical_state_unchanged ... ok
+test s1_05_05_same_time_equality_is_absolute_and_separate_from_microstep_order ... ok
+test s1_05_07_serialization_fails_closed_on_missing_boundary_or_stale_schema ... ok
+test s1_05_08_long_horizon_precision_reports_overflow_instead_of_wrapping ... ok
+test s1_05_06_calendar_human_date_is_read_only_derived_view ... ok
+test s1_05_07_worldtime_serialization_round_trip_preserves_replay_boundary ... ok
+test wp004_acceptance_requires_all_nine_member_passes_and_evidence ... ok
+test s1_05_09_reversal_audit_is_read_only_detects_violation_and_avoids_false_positive ... ok
+test s1_05_08_long_horizon_precision_has_no_accumulation_drift ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_authority_placement_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_causal_random_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_celestial_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_creation_boundary_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_cross_reference_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_identity_acceptance_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_identity_continuity_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_identity_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_identity_reuse_audit_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_lifecycle_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_planetary_space_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_retention_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_retirement_state_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_scheduler_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_transaction_precommit_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_validation_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_world_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_world_time_acceptance_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_world_time_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+--- DEDICATED TEST ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.01s
+     Running tests/wp014.rs (production/target/debug/deps/wp014-1277b0e02c158af0)
+
+running 17 tests
+test corrupt_snapshot_is_rejected_before_restore ... ok
+test admission_requires_all_four_frozen_predecessors ... ok
+test integration_s1_07_01_through_s1_07_08_has_no_commit_shortcut ... ok
+test s1_07_01_identity_create_update_retire_and_reuse_prohibition ... ok
+test persistence_restore_and_replay_preserve_pending_candidate_state_and_event_order ... ok
+test s1_07_02_read_set_contract_is_versioned_complete_and_unique ... ok
+test s1_07_01_wrong_owner_and_observation_paths_leave_registry_unchanged ... ok
+test s1_07_03_write_intent_requires_exact_immutable_read_basis ... ok
+test s1_07_04_complete_failed_condition_is_explicit_fail ... ok
+test s1_07_04_guard_phases_do_not_treat_start_as_completion ... ok
+test s1_07_05_speculative_buffer_is_candidate_only_and_never_commits ... ok
+test s1_07_05_observer_renderer_worker_cannot_create_speculative_write_path ... ok
+test s1_07_06_write_conflict_detection_is_read_only_and_precise ... ok
+test s1_07_08_failed_invariant_or_conservation_produces_no_commit_handoff ... ok
+test s1_07_08_precommit_hook_preserves_source_defined_invariants_and_conservation ... ok
+test s1_07_07_resolution_order_ignores_input_and_worker_completion_order ... ok
+test wp014_acceptance_requires_all_eight_members_snapshot_and_precommit_evidence ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
