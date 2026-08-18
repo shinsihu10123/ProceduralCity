@@ -343,7 +343,7 @@ pub fn validate_contract(
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RandomRegistry {
-    seeds: BTreeMap<String, VersionedWorldSeed>,
+    seeds: BTreeMap<(String, u32), VersionedWorldSeed>,
     lineages: BTreeMap<String, RandomLineage>,
     namespaces: BTreeMap<String, DomainRandomNamespace>,
 }
@@ -356,11 +356,16 @@ impl RandomRegistry {
     ) -> Result<VersionRef, RandomError> {
         validate_registry_write(origin)?;
         seed.validate()?;
-        if self.seeds.contains_key(&seed.stable_id) {
+        if self
+            .seeds
+            .keys()
+            .any(|(stable_id, _)| stable_id == &seed.stable_id)
+        {
             return Err(RandomError::DuplicateStableId(seed.stable_id));
         }
         let reference = seed.reference();
-        self.seeds.insert(seed.stable_id.clone(), seed);
+        self.seeds
+            .insert((seed.stable_id.clone(), seed.version), seed);
         Ok(reference)
     }
 
@@ -371,22 +376,39 @@ impl RandomRegistry {
     ) -> Result<VersionRef, RandomError> {
         validate_registry_write(origin)?;
         seed.validate()?;
-        let previous = self
-            .seeds
-            .get(&seed.stable_id)
-            .ok_or_else(|| RandomError::DanglingReference(seed.stable_id.clone()))?;
+        let previous = self.seed(&seed.stable_id)?;
         if seed.predecessor.as_ref() != Some(&previous.reference()) {
             return Err(RandomError::ReferenceMismatch("seed.predecessor"));
         }
+        let key = (seed.stable_id.clone(), seed.version);
+        if self.seeds.contains_key(&key) {
+            return Err(RandomError::DuplicateStableId(format!(
+                "{}@{}",
+                seed.stable_id, seed.version
+            )));
+        }
         let reference = seed.reference();
-        self.seeds.insert(seed.stable_id.clone(), seed);
+        self.seeds.insert(key, seed);
         Ok(reference)
     }
 
     pub fn seed(&self, stable_id: &str) -> Result<&VersionedWorldSeed, RandomError> {
         self.seeds
-            .get(stable_id)
+            .values()
+            .filter(|seed| seed.stable_id == stable_id)
+            .max_by_key(|seed| seed.version)
             .ok_or_else(|| RandomError::DanglingReference(stable_id.to_owned()))
+    }
+
+    pub fn seed_by_ref(&self, reference: &VersionRef) -> Result<&VersionedWorldSeed, RandomError> {
+        let key = (reference.stable_id.clone(), reference.version);
+        let seed = self.seeds.get(&key).ok_or_else(|| {
+            RandomError::DanglingReference(format!("{}@{}", reference.stable_id, reference.version))
+        })?;
+        if seed.reference() != *reference {
+            return Err(RandomError::ReferenceMismatch("seed.reference"));
+        }
+        Ok(seed)
     }
 
     pub fn create_lineage(
@@ -511,10 +533,7 @@ pub fn stateless_sample_u64(
 ) -> Result<u64, RandomError> {
     validate_address_against_registry(registry, address)?;
     let lineage = registry.lineage(&address.random_lineage_id)?;
-    let seed = registry.seed(&lineage.seed_ref.stable_id)?;
-    if seed.reference() != lineage.seed_ref {
-        return Err(RandomError::ReferenceMismatch("lineage.seed_ref"));
-    }
+    let seed = registry.seed_by_ref(&lineage.seed_ref)?;
     let encoded = address.stable_encoding()?;
     let mut state = seed.root256;
     for (index, chunk) in encoded.as_bytes().chunks(8).enumerate() {
@@ -717,10 +736,7 @@ fn validate_lineage(lineage: &RandomLineage, registry: &RandomRegistry) -> Resul
         return Err(RandomError::StaleVersion);
     }
     validate_owner(&lineage.owner)?;
-    let seed = registry.seed(&lineage.seed_ref.stable_id)?;
-    if seed.reference() != lineage.seed_ref {
-        return Err(RandomError::ReferenceMismatch("lineage.seed_ref"));
-    }
+    registry.seed_by_ref(&lineage.seed_ref)?;
     Ok(())
 }
 

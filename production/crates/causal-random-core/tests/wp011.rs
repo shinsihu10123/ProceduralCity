@@ -387,6 +387,40 @@ fn wp011_integration_and_acceptance_require_all_eight_members_and_snapshot_evide
 }
 
 #[test]
+fn versioned_seed_history_remains_replayable_after_new_seed_version() {
+    let mut reg = registry();
+    let old_address = address(21);
+    let old_sample = stateless_sample_u64(&reg, &old_address).unwrap();
+    let old_ref = reg.seed("world-seed").unwrap().reference();
+    let mut revised = seed();
+    revised.version = 2;
+    revised.predecessor = Some(old_ref.clone());
+    revised.causal_parent = "seed:revision-2".to_owned();
+    revised.root256 = [0x91, 0x92, 0x93, 0x94];
+    reg.update_seed(revised, WriteOrigin::RegistryAuthority)
+        .unwrap();
+    assert_eq!(reg.seed("world-seed").unwrap().version, 2);
+    assert_eq!(reg.seed_by_ref(&old_ref).unwrap().version, 1);
+    assert_eq!(
+        old_sample,
+        stateless_sample_u64(&reg, &old_address).unwrap()
+    );
+    let snapshot = RandomSnapshot {
+        schema_version: 1,
+        commit_marker: "commit:seed-history".to_owned(),
+        causal_cut: "cut:seed-history".to_owned(),
+        registry: reg,
+    };
+    let restored = snapshot.restore().unwrap();
+    assert_eq!(restored.seed("world-seed").unwrap().version, 2);
+    assert_eq!(restored.seed_by_ref(&old_ref).unwrap().version, 1);
+    assert_eq!(
+        old_sample,
+        stateless_sample_u64(&restored, &old_address).unwrap()
+    );
+}
+
+#[test]
 fn identity_audit_fixture_does_not_create_random_identity_shortcut() {
     let attempt = IdentityIssuanceAttempt {
         work_id: "fixture".to_owned(),
