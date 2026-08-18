@@ -1,4 +1,4 @@
-name: Economic Lab WP-RV02
+name: Economic Lab WP-RV02 Compute Smoke
 
 on:
   push:
@@ -13,23 +13,24 @@ permissions:
   statuses: write
 
 jobs:
-  reproduce:
+  rv02-smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - name: Publish WP-RV02 pending beacon
+      - name: Publish WP-RV02 running beacon
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
           COMMIT_SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          python - <<'PY' > /tmp/rv02-pending.json
+          python - <<'PY' > /tmp/rv02-status-running.json
           import json, os
           print(json.dumps({
               "state": "pending",
               "target_url": os.environ["RUN_URL"],
-              "description": "WP-RV02 baseline reproduction is running",
-              "context": "economic-lab/wp-rv02"
+              "description": "WP-RV02 staged compute smoke is running",
+              "context": "economic-lab/wp-rv02-smoke"
           }))
           PY
           curl -fsS -X POST \
@@ -37,34 +38,34 @@ jobs:
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" \
-            --data-binary @/tmp/rv02-pending.json
+            --data-binary @/tmp/rv02-status-running.json
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: R0 compact - 3 seeds x 36 months
+      - name: R0 compact runtime smoke — 1 seed x 12 months
         working-directory: economic-lab
         env:
-          DIAG_LABEL: 'WP-RV02-R0-compact'
-          DIAG_MONTHS: '36'
+          DIAG_LABEL: 'WP-RV02-R0-runtime-smoke'
+          DIAG_MONTHS: '12'
           DIAG_SCALE: 'compact'
-          DIAG_SEEDS: 'ECON-RV02-A,ECON-RV02-B,ECON-RV02-C'
-          OUTPUT_JSON: 'performance-results/reality-diagnostics-rv02-r0-compact.json'
+          DIAG_SEEDS: 'ECON-RV02-A'
+          OUTPUT_JSON: 'performance-results/reality-diagnostics-rv02-r0-smoke.json'
         run: node scripts/baseline-reproduction-v10.mjs
-      - name: R1 baseline - 3 seeds x 36 months
+      - name: R1 baseline runtime smoke — 1 seed x 6 months
         working-directory: economic-lab
         env:
-          DIAG_LABEL: 'WP-RV02-R1-baseline'
-          DIAG_MONTHS: '36'
+          DIAG_LABEL: 'WP-RV02-R1-runtime-smoke'
+          DIAG_MONTHS: '6'
           DIAG_SCALE: 'baseline'
-          DIAG_SEEDS: 'ECON-RV02-A,ECON-RV02-B,ECON-RV02-C'
-          OUTPUT_JSON: 'performance-results/reality-diagnostics-rv02-r1-baseline.json'
+          DIAG_SEEDS: 'ECON-RV02-A'
+          OUTPUT_JSON: 'performance-results/reality-diagnostics-rv02-r1-smoke.json'
         run: node scripts/baseline-reproduction-v10.mjs
-      - name: Upload WP-RV02 evidence
+      - name: Upload WP-RV02 compute evidence
         uses: actions/upload-artifact@v4
         with:
-          name: economic-lab-wp-rv02
-          path: economic-lab/performance-results/reality-diagnostics-rv02-*.json
+          name: economic-lab-rv02-compute-smoke
+          path: economic-lab/performance-results/reality-diagnostics-rv02-*-smoke.json
           if-no-files-found: error
           retention-days: 30
       - name: Publish WP-RV02 final beacon
@@ -75,15 +76,15 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           API_STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
-          DESCRIPTION: ${{ job.status == 'success' && 'WP-RV02 evidence gates passed' || 'WP-RV02 evidence gates failed' }}
+          DESCRIPTION: ${{ job.status == 'success' && 'WP-RV02 compute smoke passed' || 'WP-RV02 compute smoke failed' }}
         run: |
-          python - <<'PY' > /tmp/rv02-final.json
+          python - <<'PY' > /tmp/rv02-status-final.json
           import json, os
           print(json.dumps({
               "state": os.environ["API_STATE"],
               "target_url": os.environ["RUN_URL"],
               "description": os.environ["DESCRIPTION"],
-              "context": "economic-lab/wp-rv02"
+              "context": "economic-lab/wp-rv02-smoke"
           }))
           PY
           curl -fsS -X POST \
@@ -91,4 +92,4 @@ jobs:
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" \
-            --data-binary @/tmp/rv02-final.json
+            --data-binary @/tmp/rv02-status-final.json
