@@ -95,6 +95,8 @@ pub struct ReviewFailure {
     pub causal_parent: String,
 }
 
+pub type ReviewResult<T> = Result<T, Box<ReviewFailure>>;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AcceptanceRecord {
     pub work_id: &'static str,
@@ -157,7 +159,7 @@ impl ReviewSnapshot {
         Ok(self.input.clone())
     }
 
-    pub fn replay(&self, origin: ReviewOrigin) -> Result<AcceptanceRecord, ReviewFailure> {
+    pub fn replay(&self, origin: ReviewOrigin) -> ReviewResult<AcceptanceRecord> {
         match self.restore() {
             Ok(input) => review(&input, origin),
             Err(reason) => Err(failure(
@@ -184,10 +186,7 @@ pub struct Wp012Closure {
     pub closed: bool,
 }
 
-pub fn review(
-    input: &ReviewInput,
-    origin: ReviewOrigin,
-) -> Result<AcceptanceRecord, ReviewFailure> {
+pub fn review(input: &ReviewInput, origin: ReviewOrigin) -> ReviewResult<AcceptanceRecord> {
     if origin != ReviewOrigin::ValidationQa || input.reviewer != REVIEWER {
         return Err(failure(
             input,
@@ -258,10 +257,7 @@ pub fn review(
     })
 }
 
-pub fn close_wp012(
-    record: &AcceptanceRecord,
-    evidence_digest64: u64,
-) -> Result<Wp012Closure, ReviewFailure> {
+pub fn close_wp012(record: &AcceptanceRecord, evidence_digest64: u64) -> ReviewResult<Wp012Closure> {
     if record.work_id != WORK_ID
         || record.work_package != WORK_PACKAGE
         || record.verdict != Verdict::Pass
@@ -312,7 +308,7 @@ pub fn close_wp012(
     })
 }
 
-fn validate_predecessors(input: &ReviewInput) -> Result<(), ReviewFailure> {
+fn validate_predecessors(input: &ReviewInput) -> ReviewResult<()> {
     if input.root.work_id != "S1.01.01"
         || input.root.contract_version != 1
         || input.root.operands != ["Canonical", "Authority", "Registry"]
@@ -353,7 +349,7 @@ fn validate_predecessors(input: &ReviewInput) -> Result<(), ReviewFailure> {
     Ok(())
 }
 
-fn validate_members(input: &ReviewInput) -> Result<(), ReviewFailure> {
+fn validate_members(input: &ReviewInput) -> ReviewResult<()> {
     let required: BTreeSet<&str> = TIME_MEMBER_IDS.into_iter().collect();
     let mut seen = BTreeSet::new();
     for member in &input.members {
@@ -501,9 +497,9 @@ fn failure(
     failed_work_id: &str,
     reason: FailureReason,
     missing_evidence: Vec<String>,
-) -> ReviewFailure {
+) -> Box<ReviewFailure> {
     let digest = input.digest64();
-    ReviewFailure {
+    Box::new(ReviewFailure {
         work_id: WORK_ID,
         verdict,
         failed_work_id: failed_work_id.to_owned(),
@@ -513,7 +509,7 @@ fn failure(
         downstream_blocked: true,
         missing_evidence,
         causal_parent: input.root.causal_parent.clone(),
-    }
+    })
 }
 
 fn fnv1a64(bytes: &[u8]) -> u64 {
