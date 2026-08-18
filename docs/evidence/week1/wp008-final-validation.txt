@@ -1,0 +1,29 @@
+WP008_FINAL_VALIDATED_HEAD=3ff4859a803a20d1fa47ca38bd0d6bd547a768eb
+EVIDENCE_PRESENT=1
+EVIDENCE_CLOSED=1
+FMT_EXIT=0
+CLIPPY_EXIT=0
+WORKSPACE_TEST_EXIT=0
+WP008_TEST_EXIT=0
+WP008_TEST_COUNT=13
+--- WP008 TEST SUMMARY ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.00s
+     Running tests/wp008.rs (production/target/debug/deps/wp008-f98d0c1c942b0df0)
+
+running 13 tests
+test admission_requires_both_hard_predecessors_closed_with_evidence ... ok
+test authority_boundary_blocks_observer_renderer_and_analytics_without_frame_mutation ... ok
+test s4_01_02_reference_frame_has_versioned_create_read_update_retire_boundary ... ok
+test s4_01_01_contract_is_candidate_only_and_rejects_missing_wrong_owner_and_transition ... ok
+test persistence_restore_and_replay_preserve_identity_cut_digest_and_event_order_material ... ok
+test s4_01_03_rotation_state_preserves_frame_time_owner_and_rejects_invalid_axis ... ok
+test s4_01_04_orbital_state_is_versioned_unit_explicit_and_same_cut ... ok
+test s4_01_06_lunar_state_keeps_reference_frame_and_time_cut ... ok
+test s4_01_05_solar_forcing_emits_domain1_port_without_downstream_response ... ok
+test s4_01_07_tidal_interface_preserves_source_version_owner_cut_and_rejects_partial_handoff ... ok
+test s4_01_08_continuous_astronomical_time_mapping_is_exact_and_calendar_free ... ok
+test wp008_acceptance_requires_all_eight_members_predecessors_and_snapshot_evidence ... ok
+test wp008_integration_traces_wp003_wp004_through_s4_01_01_to_s4_01_08_without_shortcut ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
