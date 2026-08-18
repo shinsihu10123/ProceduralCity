@@ -257,7 +257,10 @@ pub fn review(input: &ReviewInput, origin: ReviewOrigin) -> ReviewResult<Accepta
     })
 }
 
-pub fn close_wp012(record: &AcceptanceRecord, evidence_digest64: u64) -> ReviewResult<Wp012Closure> {
+pub fn close_wp012(
+    record: &AcceptanceRecord,
+    evidence_digest64: u64,
+) -> ReviewResult<Wp012Closure> {
     if record.work_id != WORK_ID
         || record.work_package != WORK_PACKAGE
         || record.verdict != Verdict::Pass
