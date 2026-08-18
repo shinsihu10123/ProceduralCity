@@ -27,6 +27,14 @@ jobs:
       - name: Test
         working-directory: economic-lab
         run: npm test
+      - name: WP-RV01 reality diagnostics evidence
+        working-directory: economic-lab
+        env:
+          DIAG_MONTHS: '12'
+          DIAG_SCALE: 'compact'
+          DIAG_SEEDS: 'ECON-RV01-DIAG-A'
+          OUTPUT_JSON: 'performance-results/reality-diagnostics-rv01.json'
+        run: npm run diagnose:reality:v10
       - name: Multi-shock stress matrix
         working-directory: economic-lab
         env:
