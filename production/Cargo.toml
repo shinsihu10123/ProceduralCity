@@ -12,4 +12,5 @@ members = [
     "crates/identity-reuse-audit-core",
     "crates/planetary-space-core",
     "crates/world-time-core",
+    "crates/validation-core",
 ]
