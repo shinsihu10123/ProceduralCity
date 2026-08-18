@@ -1,4 +1,4 @@
-name: WP011 bounded validation probe
+name: WP011 bounded repair cycle 1
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  probe:
+  repair-and-validate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -20,7 +20,21 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
-      - name: Strict validation probe
+      - name: Repair test shadow and apply canonical rustfmt
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('production/crates/causal-random-core/tests/wp011.rs')
+          s = p.read_text()
+          old = '''fn s1_10_07_stateless_generation_retries_same_address_without_stream_consumption() {\n    let registry = registry();\n    let a = address(12);\n    let first = stateless_sample_u64(&registry, &a).unwrap();\n    let second = stateless_sample_u64(&registry, &a).unwrap();\n    assert_eq!(first, second);\n    assert_eq!(registry.digest64(), registry().digest64());\n    let other = stateless_sample_u64(&registry, &address(13)).unwrap();'''
+          new = '''fn s1_10_07_stateless_generation_retries_same_address_without_stream_consumption() {\n    let reg = registry();\n    let a = address(12);\n    let first = stateless_sample_u64(&reg, &a).unwrap();\n    let second = stateless_sample_u64(&reg, &a).unwrap();\n    assert_eq!(first, second);\n    assert_eq!(reg.digest64(), registry().digest64());\n    let other = stateless_sample_u64(&reg, &address(13)).unwrap();'''
+          if old not in s:
+              raise SystemExit('expected S1.10.07 shadow block not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+          cargo fmt --manifest-path production/Cargo.toml --all
+      - name: Strict validation
         shell: bash
         run: |
           set +e
@@ -35,13 +49,11 @@ jobs:
           set -e
           mkdir -p docs/evidence/week1
           {
-            echo "WP011_PROBE_HEAD=$(git rev-parse HEAD)"
+            echo "WP011_REPAIR1_BASE=$(git rev-parse HEAD)"
             echo "FMT_EXIT=$FMT"
             echo "CLIPPY_EXIT=$CLIPPY"
             echo "WORKSPACE_TEST_EXIT=$WORKSPACE"
             echo "WP011_TEST_EXIT=$WP011"
-            echo '--- FMT ---'
-            tail -n 120 /tmp/fmt.log
             echo '--- CLIPPY ---'
             tail -n 120 /tmp/clippy.log
             echo '--- WP011 TEST ---'
@@ -51,9 +63,9 @@ jobs:
           } > docs/evidence/week1/wp011-ci-probe.txt
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add docs/evidence/week1/wp011-ci-probe.txt production/Cargo.lock || true
+          git add production/crates/causal-random-core production/Cargo.lock docs/evidence/week1/wp011-ci-probe.txt || true
           if ! git diff --cached --quiet; then
-            git commit -m 'ci(random): publish WP-011 validation probe [skip ci]'
+            git commit -m 'fix(random): bounded WP-011 repair cycle 1 [skip ci]'
             git push
           fi
           if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$WORKSPACE" -ne 0 ] || [ "$WP011" -ne 0 ]; then exit 1; fi
