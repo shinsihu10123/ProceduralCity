@@ -1,6 +1,6 @@
 # WP-005 — Validation Evidence / VT0–VT6 Registry — Closure Evidence
 
-Status: PASS CANDIDATE — final evidence-bearing validation required before CLOSED
+Status: PASS / CLOSED
 Frozen parent: Stage 3 / S3.06
 Hard predecessor: WP-001
 Architecture authority: PA-045 / Domain 27 Validation Registry and Certificate authority
@@ -21,14 +21,14 @@ Frozen scope: S3.06.01…S3.06.13 only. S3.06.14…S3.06.16 remain outside this 
 6. **S3.06.06 VT4 Cross-LOD Integrity Registry** — cross-LOD integrity tier with versioned source/evidence linkage.
 7. **S3.06.07 VT5 Empirical / Statistical Integrity Registry** — empirical/statistical integrity tier without converting statistical appearance into canonical truth.
 8. **S3.06.08 VT6 Observation Integrity Registry** — observation/projection integrity tier; Observer/Renderer/Derived/Analytics origins remain read-only and cannot mutate the registry.
-9. **S3.06.09 Validation Outcome — PASS** — PASS requires all *declared required* tiers to be covered and rejects any explicit coverage gap.
+9. **S3.06.09 Validation Outcome — PASS** — PASS requires all declared required tiers to be covered and rejects any explicit coverage gap.
 10. **S3.06.10 Validation Outcome — FAIL** — FAIL is an explicit outcome and requires failure evidence/basis; it is not inferred from missing data.
 11. **S3.06.11 Validation Outcome — COVERAGE_INSUFFICIENT** — separate outcome requiring an actual missing required tier or explicit coverage gap; it is never silently promoted to PASS.
 12. **S3.06.12 Evidence Provenance** — records source hash, build/run identity, test/adjudication references, source event, actor, artifact and ordered transform steps; deterministic evidence digest is replay-stable.
 13. **S3.06.13 Tolerance / Acceptance Record** — binds target reference, validation tier, context-specific tolerance policy, decision reference and provenance reference without changing source-domain truth.
 
 Dedicated test module: `production/crates/validation-core/tests/wp005.rs`.
-It contains explicit named tests for Admission, every S3.06.01…S3.06.13 member, authority/reference failure propagation, WP integration/closure membership, and deterministic decision replay.
+It contains 17 explicit tests covering Admission, every S3.06.01…S3.06.13 member, authority/reference failure propagation, WP integration/closure membership, persistence/replay, and deterministic decision replay.
 
 ## Authority and boundary evidence
 - Canonical validation owner is `domain27.validation_registry`.
@@ -65,7 +65,18 @@ Repair cycle 1 corrected the schema/tier snapshot decoder to match its stable en
 - `CLIPPY_EXIT=0`
 - `TEST_EXIT=0`
 
-No Architecture/WBS/DG/Frozen Week semantic change was required.
+No second production correction was required.
+
+## Final validation
+Evidence-bearing validation report: `docs/evidence/week1/wp005-final-validation.txt`.
+The validation performed the repository-standard strict gates plus the dedicated WP-005 test target:
+- `cargo fmt --manifest-path production/Cargo.toml --all -- --check`: PASS
+- `cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings`: PASS
+- `cargo test --manifest-path production/Cargo.toml --workspace`: PASS
+- `cargo test --manifest-path production/Cargo.toml -p gaonn-validation-core --test wp005`: PASS, 17/17
+- Evidence presence: PASS
+
+The final closure-state validation is repeated after this CLOSED evidence record is written; the temporary WP-specific validation workflow is removed afterward without changing production code or this evidence record.
 
 ## Closure deltas
 - Architecture Change: 0
@@ -73,5 +84,3 @@ No Architecture/WBS/DG/Frozen Week semantic change was required.
 - Dependency Semantic Change: 0
 - Frozen Week Change: 0
 - BCR Trigger: none
-
-Final CLOSED status is issued only after the evidence-bearing branch state itself passes the same strict format, Clippy and full-workspace test commands and the temporary probe workflow is removed.
