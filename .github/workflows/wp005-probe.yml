@@ -1,4 +1,4 @@
-name: WP005 bounded repair cycle 1
+name: WP005 final closure validation
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  repair-and-validate:
+  validate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -20,24 +20,7 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
-      - name: Repair snapshot decoder and apply canonical formatting
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('production/crates/validation-core/src/lib.rs')
-          s = p.read_text()
-          old = s
-          s = s.replace('if fields.len() != 13 {', 'if fields.len() != 12 {', 1)
-          s = s.replace('if fields.len() != 15 {', 'if fields.len() != 10 {', 1)
-          s = s.replace('evidence_schema_ref: decode_ref(&fields[8..13])?,', 'evidence_schema_ref: decode_ref_from_string(fields[8])?,', 1)
-          s = s.replace('target_state_ref: unescape(fields[13])?,', 'target_state_ref: unescape(fields[9])?,', 1)
-          if s == old:
-              raise SystemExit('expected decoder patch did not apply')
-          p.write_text(s)
-          PY
-          cargo fmt --manifest-path production/Cargo.toml --all
-      - name: Strict validation
+      - name: Validate evidence-bearing WP-005 state
         shell: bash
         run: |
           set +e
@@ -45,23 +28,27 @@ jobs:
           FMT=$?
           cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings > /tmp/clippy.log 2>&1
           CLIPPY=$?
-          cargo test --manifest-path production/Cargo.toml --workspace > /tmp/test.log 2>&1
-          TEST=$?
+          cargo test --manifest-path production/Cargo.toml --workspace > /tmp/workspace.log 2>&1
+          WORKSPACE=$?
+          cargo test --manifest-path production/Cargo.toml -p gaonn-validation-core --test wp005 > /tmp/wp005.log 2>&1
+          WP005=$?
           set -e
+          COUNT=$(grep -E '^running [0-9]+ tests$' /tmp/wp005.log | tail -n 1 | awk '{print $2}')
           mkdir -p docs/evidence/week1
           {
-            echo "WP005_REPAIR1_BASE=$(git rev-parse HEAD)"
+            echo "WP005_FINAL_VALIDATED_HEAD=$(git rev-parse HEAD)"
+            echo "EVIDENCE_PRESENT=$(test -f docs/evidence/week1/wp005-validation-evidence-registry.md && echo 1 || echo 0)"
             echo "FMT_EXIT=$FMT"
             echo "CLIPPY_EXIT=$CLIPPY"
-            echo "TEST_EXIT=$TEST"
-            echo "--- TEST TAIL ---"
-            tail -n 120 /tmp/test.log
-          } > docs/evidence/week1/wp005-ci-probe.txt
+            echo "WORKSPACE_TEST_EXIT=$WORKSPACE"
+            echo "WP005_TEST_EXIT=$WP005"
+            echo "WP005_TEST_COUNT=${COUNT:-unknown}"
+            echo "--- WP005 TEST SUMMARY ---"
+            tail -n 30 /tmp/wp005.log
+          } > docs/evidence/week1/wp005-final-validation.txt
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add production/crates/validation-core production/Cargo.lock docs/evidence/week1/wp005-ci-probe.txt || true
-          if ! git diff --cached --quiet; then
-            git commit -m 'fix(validation): bounded WP-005 repair cycle 1 [skip ci]'
-            git push
-          fi
-          if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$TEST" -ne 0 ]; then exit 1; fi
+          git add docs/evidence/week1/wp005-final-validation.txt
+          git commit -m 'ci(validation): publish final WP-005 closure validation [skip ci]'
+          git push
+          if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$WORKSPACE" -ne 0 ] || [ "$WP005" -ne 0 ]; then exit 1; fi
