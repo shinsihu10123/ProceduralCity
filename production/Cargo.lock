@@ -118,6 +118,14 @@ name = "gaonn-world-core"
 version = "0.1.0"
 
 [[package]]
+name = "gaonn-world-time-acceptance-core"
+version = "0.1.0"
+dependencies = [
+ "gaonn-world-core",
+ "gaonn-world-time-core",
+]
+
+[[package]]
 name = "gaonn-world-time-core"
 version = "0.1.0"
 dependencies = [

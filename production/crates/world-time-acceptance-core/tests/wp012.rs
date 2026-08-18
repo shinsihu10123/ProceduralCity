@@ -53,7 +53,10 @@ fn admission_and_normal_review_preserve_absolute_worldtime_epoch_and_causal_refs
     assert_eq!(record.event_order, TIME_MEMBER_IDS);
     assert_eq!(record.canonical_owner, TIME_OWNER);
     assert_eq!(record.root_digest64, input.root.evidence_digest64());
-    assert_eq!(record.wp004_evidence_digest64, input.wp004.evidence_digest64);
+    assert_eq!(
+        record.wp004_evidence_digest64,
+        input.wp004.evidence_digest64
+    );
     assert_eq!(record.causal_references.len(), 9);
     assert!(record.read_only);
     assert!(!record.downstream_blocked);
@@ -120,7 +123,10 @@ fn same_run_and_source_version_are_mandatory() {
     let mut version_mismatch = input();
     version_mismatch.members[6].source_version = 2;
     let error = review(&version_mismatch, ReviewOrigin::ValidationQa).unwrap_err();
-    assert!(matches!(error.reason, FailureReason::SourceVersionMismatch(_)));
+    assert!(matches!(
+        error.reason,
+        FailureReason::SourceVersionMismatch(_)
+    ));
 }
 
 #[test]
