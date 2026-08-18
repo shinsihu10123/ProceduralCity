@@ -15,4 +15,5 @@ members = [
     "crates/validation-core",
     "crates/celestial-core",
     "crates/scheduler-core",
+    "crates/causal-random-core",
 ]
