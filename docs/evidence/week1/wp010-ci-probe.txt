@@ -1,0 +1,297 @@
+WP010_PROBE_HEAD=dc76b4cc483b2ce4ec950899fbf21fe28cc47ec7
+FMT_EXIT=1
+CLIPPY_EXIT=101
+WORKSPACE_TEST_EXIT=0
+WP010_TEST_EXIT=0
+--- FMT ---
+-    )
+-    .unwrap();
++    let result =
++        validate_contract(&item, "schedule", &allowed, WriteOrigin::RuntimeAuthority).unwrap();
+     assert_eq!(result.work_id, "S1.06.01");
+     assert_eq!(result.disposition, Disposition::CandidateOnly);
+ 
+Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/scheduler-core/tests/wp010.rs:138:
+     assert_eq!(deterministic_key(&receipt(&a), &a).unwrap(), a.key);
+     let bucket1 = SameTimeBucket::collect(vec![b.clone(), a.clone()]).unwrap();
+     let bucket2 = SameTimeBucket::collect(vec![a, b]).unwrap();
+-    let ids1: Vec<_> = bucket1.ordered.iter().map(|item| item.stable_id.clone()).collect();
+-    let ids2: Vec<_> = bucket2.ordered.iter().map(|item| item.stable_id.clone()).collect();
++    let ids1: Vec<_> = bucket1
++        .ordered
++        .iter()
++        .map(|item| item.stable_id.clone())
++        .collect();
++    let ids2: Vec<_> = bucket2
++        .ordered
++        .iter()
++        .map(|item| item.stable_id.clone())
++        .collect();
+     assert_eq!(ids1, ids2);
+ }
+ 
+Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/scheduler-core/tests/wp010.rs:160:
+     let duplicate = bucket.ordered[0].clone();
+     assert!(matches!(
+         SameTimeBucket::collect(vec![bucket.ordered[0].clone(), duplicate]),
+-        Err(SchedulerError::DuplicateSchedulingKey)
+-            | Err(SchedulerError::DuplicateStableId(_))
++        Err(SchedulerError::DuplicateSchedulingKey) | Err(SchedulerError::DuplicateStableId(_))
+     ));
+ }
+ 
+Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/scheduler-core/tests/wp010.rs:185:
+             required_resources: BTreeSet::from(["shared".to_owned()]),
+         },
+     ];
+-    let result = resolve_same_time(
+-        &bucket,
+-        candidates,
+-        &BTreeSet::from(["dep-ok".to_owned()]),
+-    )
+-    .unwrap();
++    let result =
++        resolve_same_time(&bucket, candidates, &BTreeSet::from(["dep-ok".to_owned()])).unwrap();
+     assert_eq!(result.selected, vec!["a"]);
+     assert_eq!(result.rejected.len(), 2);
+     assert_eq!(result.rejected[0].reason, "resource-conflict");
+Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/scheduler-core/tests/wp010.rs:209:
+     queue
+         .insert(blocked, WriteOrigin::RuntimeAuthority)
+         .unwrap();
+-    queue
+-        .insert(future, WriteOrigin::RuntimeAuthority)
+-        .unwrap();
++    queue.insert(future, WriteOrigin::RuntimeAuthority).unwrap();
+     let pre = queue.digest64();
+     assert!(matches!(
+         queue.insert(ready, WriteOrigin::RuntimeAuthority),
+Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/scheduler-core/tests/wp010.rs:334:
+     .unwrap();
+     assert!(!violation.pass());
+     assert_eq!(violation.pre_digest64, violation.post_digest64);
+-    assert_eq!(violation.violations[0].first_failure, "render-frame-time-controls-deadline");
++    assert_eq!(
++        violation.violations[0].first_failure,
++        "render-frame-time-controls-deadline"
++    );
+ }
+ 
+ #[test]
+Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/scheduler-core/tests/wp010.rs:377:
+     assert_eq!(restored, queue);
+     assert_eq!(restored.digest64(), queue.digest64());
+     assert_eq!(snapshot.digest64().unwrap(), digest);
+-    assert_eq!(restored.get("persist-b").unwrap().status, ScheduleStatus::Sleeping);
++    assert_eq!(
++        restored.get("persist-b").unwrap().status,
++        ScheduleStatus::Sleeping
++    );
+ }
+ 
+ #[test]
+Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/scheduler-core/tests/wp010.rs:402:
+     assert_eq!(resolution.selected, vec!["integration"]);
+ 
+     let mut queue = FutureEventQueue::default();
+-    queue.insert(item.clone(), WriteOrigin::RuntimeAuthority).unwrap();
+-    let plan = queue.plan(&world_time(160, 0), &BTreeSet::new(), 1).unwrap();
+-    queue.apply_plan(&plan, WriteOrigin::RuntimeAuthority).unwrap();
+-    assert_eq!(queue.get("integration").unwrap().status, ScheduleStatus::Ready);
++    queue
++        .insert(item.clone(), WriteOrigin::RuntimeAuthority)
++        .unwrap();
++    let plan = queue
++        .plan(&world_time(160, 0), &BTreeSet::new(), 1)
++        .unwrap();
++    queue
++        .apply_plan(&plan, WriteOrigin::RuntimeAuthority)
++        .unwrap();
++    assert_eq!(
++        queue.get("integration").unwrap().status,
++        ScheduleStatus::Ready
++    );
+     let admission = scheduler_admission(&contract, &item, true, 1, None).unwrap();
+     let handoff = budget_handoff(
+         &admission,
+Diff in /home/runner/work/ProceduralCity/ProceduralCity/production/crates/scheduler-core/tests/wp010.rs:429:
+         causal_cut: "cut:integration".to_owned(),
+         queue,
+     };
+-    let acceptance = accept_wp(&proof, &[true; 10], &[1; 10], snapshot.digest64().unwrap()).unwrap();
++    let acceptance =
++        accept_wp(&proof, &[true; 10], &[1; 10], snapshot.digest64().unwrap()).unwrap();
+     assert!(acceptance.closed);
+     assert_eq!(acceptance.member_ids, MEMBER_IDS);
+ 
+--- CLIPPY ---
+    Checking gaonn-world-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-core)
+    Checking gaonn-identity-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-core)
+    Checking gaonn-world-time-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-time-core)
+    Checking gaonn-planetary-space-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/planetary-space-core)
+    Checking gaonn-validation-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core)
+    Checking gaonn-lifecycle-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/lifecycle-core)
+    Checking gaonn-celestial-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/celestial-core)
+    Checking gaonn-creation-boundary-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/creation-boundary-core)
+    Checking gaonn-retirement-state-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retirement-state-core)
+    Checking gaonn-retention-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retention-core)
+    Checking gaonn-cross-reference-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/cross-reference-core)
+    Checking gaonn-identity-continuity-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-continuity-core)
+    Checking gaonn-identity-reuse-audit-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-reuse-audit-core)
+    Checking gaonn-scheduler-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/scheduler-core)
+error: using `contains()` instead of `iter().any()` is more efficient
+  --> crates/scheduler-core/src/lib.rs:85:12
+   |
+85 |         || proof.member_evidence.iter().any(|digest| *digest == 0)
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `proof.member_evidence.contains(&0)`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#manual_contains
+   = note: `-D clippy::manual-contains` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_contains)]`
+
+error: could not compile `gaonn-scheduler-core` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `gaonn-scheduler-core` (lib test) due to 1 previous error
+--- WP010 TEST ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.01s
+     Running tests/wp010.rs (production/target/debug/deps/wp010-48ca0c5b37b3f32f)
+
+running 14 tests
+test admission_requires_complete_wp002_pass_evidence ... ok
+test authority_wrong_origin_never_mutates_future_queue ... ok
+test s1_06_01_contract_validates_owner_version_transition_and_read_only_origins ... ok
+test s1_06_02_deadline_representation_preserves_identity_owner_and_causal_parent ... ok
+test persistence_restore_and_replay_preserve_pending_state_identity_and_digest ... ok
+test s1_06_03_deterministic_key_is_semantic_and_input_order_independent ... ok
+test s1_06_04_same_time_bucket_rejects_mixed_time_and_duplicate_keys ... ok
+test s1_06_05_same_time_resolution_tracks_dependency_and_resource_rejections ... ok
+test s1_06_07_inactive_process_wake_sleep_distinguishes_ready_sleep_blocked_and_expired ... ok
+test s1_06_08_scheduler_admission_preserves_pass_version_and_block_reason ... ok
+test s1_06_06_future_event_queue_orders_and_blocks_without_partial_write ... ok
+test s1_06_09_budget_handoff_transfers_source_reference_without_inventing_policy ... ok
+test s1_06_10_render_frame_time_coupling_audit_is_read_only_and_precise ... ok
+test wp010_integration_and_acceptance_require_all_ten_members_and_snapshot_evidence ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+--- WORKSPACE TEST TAIL ---
+test behavior_normal_complete_same_run_evidence_produces_pass_record ... ok
+test behavior_failure_missing_evidence_blocks_and_failed_test_cannot_be_promoted ... ok
+test contract_preserves_frozen_root_id_version_owner_and_causal_parent ... ok
+test boundary_out_of_scope_pass_cannot_substitute_for_required_member ... ok
+test frozen_baseline_change_request_blocks_closure_without_reclassifying_failure ... ok
+test integration_missing_or_mismatched_predecessor_audit_blocks_closure ... ok
+test persistence_read_only_acceptance_record_snapshot_preserves_evidence_digest ... ok
+test replay_same_snapshot_schema_run_and_source_produces_same_record_order_and_digest ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (production/target/debug/deps/gaonn_world_time_core-7a1cde7e5c36434d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/wp004.rs (production/target/debug/deps/wp004-7924b097ef9a2614)
+
+running 13 tests
+test s1_05_01_absolute_worldtime_contract_requires_valid_predecessor_and_owner ... ok
+test s1_05_02_epoch_unit_representation_rejects_stale_missing_and_incompatible_values ... ok
+test s1_05_03_monotonic_time_accepts_forward_and_same_time_order_but_rejects_reversal ... ok
+test s1_05_05_same_time_equality_is_absolute_and_separate_from_microstep_order ... ok
+test s1_05_03_wrong_writer_origins_leave_canonical_state_unchanged ... ok
+test s1_05_06_calendar_human_date_is_read_only_derived_view ... ok
+test s1_05_04_duration_arithmetic_is_checked_exact_and_nonnegative ... ok
+test s1_05_07_serialization_fails_closed_on_missing_boundary_or_stale_schema ... ok
+test s1_05_08_long_horizon_precision_reports_overflow_instead_of_wrapping ... ok
+test s1_05_07_worldtime_serialization_round_trip_preserves_replay_boundary ... ok
+test wp004_acceptance_requires_all_nine_member_passes_and_evidence ... ok
+test s1_05_09_reversal_audit_is_read_only_detects_violation_and_avoids_false_positive ... ok
+test s1_05_08_long_horizon_precision_has_no_accumulation_drift ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_celestial_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_creation_boundary_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_cross_reference_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_identity_continuity_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_identity_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_identity_reuse_audit_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_lifecycle_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_planetary_space_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_retention_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_retirement_state_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_scheduler_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_validation_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_world_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gaonn_world_time_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

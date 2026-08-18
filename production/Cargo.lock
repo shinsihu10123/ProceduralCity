@@ -91,6 +91,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "gaonn-scheduler-core"
+version = "0.1.0"
+dependencies = [
+ "gaonn-identity-reuse-audit-core",
+ "gaonn-world-time-core",
+]
+
+[[package]]
 name = "gaonn-validation-core"
 version = "0.1.0"
 dependencies = [
