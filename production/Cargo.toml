@@ -19,4 +19,5 @@ members = [
     "crates/scheduler-core",
     "crates/causal-random-core",
     "crates/authority-placement-core",
+    "crates/transaction-precommit-core",
 ]
