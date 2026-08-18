@@ -1,0 +1,59 @@
+name: WP010 bounded validation probe
+
+on:
+  push:
+    branches:
+      - execution/week1-wp010-closure
+    paths:
+      - '.github/workflows/wp010-probe.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+      - name: Strict validation probe
+        shell: bash
+        run: |
+          set +e
+          cargo fmt --manifest-path production/Cargo.toml --all -- --check > /tmp/fmt.log 2>&1
+          FMT=$?
+          cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings > /tmp/clippy.log 2>&1
+          CLIPPY=$?
+          cargo test --manifest-path production/Cargo.toml --workspace > /tmp/workspace.log 2>&1
+          WORKSPACE=$?
+          cargo test --manifest-path production/Cargo.toml -p gaonn-scheduler-core --test wp010 > /tmp/wp010.log 2>&1
+          WP010=$?
+          set -e
+          mkdir -p docs/evidence/week1
+          {
+            echo "WP010_PROBE_HEAD=$(git rev-parse HEAD)"
+            echo "FMT_EXIT=$FMT"
+            echo "CLIPPY_EXIT=$CLIPPY"
+            echo "WORKSPACE_TEST_EXIT=$WORKSPACE"
+            echo "WP010_TEST_EXIT=$WP010"
+            echo '--- FMT ---'
+            tail -n 120 /tmp/fmt.log
+            echo '--- CLIPPY ---'
+            tail -n 120 /tmp/clippy.log
+            echo '--- WP010 TEST ---'
+            cat /tmp/wp010.log
+            echo '--- WORKSPACE TEST TAIL ---'
+            tail -n 120 /tmp/workspace.log
+          } > docs/evidence/week1/wp010-ci-probe.txt
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add docs/evidence/week1/wp010-ci-probe.txt production/Cargo.lock || true
+          if ! git diff --cached --quiet; then
+            git commit -m 'ci(scheduler): publish WP-010 validation probe [skip ci]'
+            git push
+          fi
+          if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$WORKSPACE" -ne 0 ] || [ "$WP010" -ne 0 ]; then exit 1; fi
