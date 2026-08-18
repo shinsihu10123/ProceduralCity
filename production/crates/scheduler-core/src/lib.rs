@@ -12,16 +12,8 @@ use std::collections::{BTreeMap, BTreeSet};
 pub const SCHEMA_VERSION: u32 = 1;
 pub const OWNER: &str = "domain26.causal_scheduler";
 pub const MEMBER_IDS: [&str; 10] = [
-    "S1.06.01",
-    "S1.06.02",
-    "S1.06.03",
-    "S1.06.04",
-    "S1.06.05",
-    "S1.06.06",
-    "S1.06.07",
-    "S1.06.08",
-    "S1.06.09",
-    "S1.06.10",
+    "S1.06.01", "S1.06.02", "S1.06.03", "S1.06.04", "S1.06.05", "S1.06.06", "S1.06.07", "S1.06.08",
+    "S1.06.09", "S1.06.10",
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -372,7 +364,8 @@ impl FutureEventQueue {
         available_dependencies: &BTreeSet<String>,
         max_ready: usize,
     ) -> Result<Vec<ScheduleRecord>, SchedulerError> {
-        now.validate().map_err(|_| SchedulerError::InvalidWorldTime)?;
+        now.validate()
+            .map_err(|_| SchedulerError::InvalidWorldTime)?;
         let mut ready_used = 0usize;
         let mut output = Vec::with_capacity(self.records.len());
         for record in self.records.values() {
@@ -380,10 +373,7 @@ impl FutureEventQueue {
             ensure_same_epoch(&record.deadline, now)?;
             let (status, next_execution_tick, reason) = if record.deadline.tick < now.tick {
                 (ScheduleStatus::Blocked, None, Some("deadline-expired"))
-            } else if !record
-                .dependency_tokens
-                .is_subset(available_dependencies)
-            {
+            } else if !record.dependency_tokens.is_subset(available_dependencies) {
                 (
                     ScheduleStatus::Blocked,
                     Some(record.deadline.tick),
@@ -459,10 +449,7 @@ pub fn schedule_inactive(
     ensure_same_epoch(&record.deadline, now)?;
     let (status, next_execution_tick, reason) = if record.deadline.tick < now.tick {
         (ScheduleStatus::Blocked, None, Some("deadline-expired"))
-    } else if !record
-        .dependency_tokens
-        .is_subset(available_dependencies)
-    {
+    } else if !record.dependency_tokens.is_subset(available_dependencies) {
         (
             ScheduleStatus::Blocked,
             Some(record.deadline.tick),
@@ -651,7 +638,9 @@ pub fn audit_frame_time_coupling(
         violations,
         pre_digest64: pre,
         post_digest64: queue.digest64(),
-        reproduction: "replay identical queue; toggle only render/frame-time/observer coupling attempt".to_owned(),
+        reproduction:
+            "replay identical queue; toggle only render/frame-time/observer coupling attempt"
+                .to_owned(),
         causal_parent: causal_parent.to_owned(),
     })
 }
@@ -772,7 +761,9 @@ fn validate_record(record: &SchedulableRecord) -> Result<(), SchedulerError> {
         || record.key.deadline_tick != record.deadline.tick
         || record.key.microstep != record.deadline.microstep
     {
-        return Err(SchedulerError::ReferenceMismatch("deterministic scheduling key"));
+        return Err(SchedulerError::ReferenceMismatch(
+            "deterministic scheduling key",
+        ));
     }
     Ok(())
 }
@@ -787,7 +778,9 @@ fn validate_receipt(
         || receipt.owner != record.owner
         || receipt.causal_parent != record.causal_parent
     {
-        return Err(SchedulerError::ReferenceMismatch("S1.06.01 contract receipt"));
+        return Err(SchedulerError::ReferenceMismatch(
+            "S1.06.01 contract receipt",
+        ));
     }
     Ok(())
 }
@@ -799,11 +792,9 @@ fn validate_write(origin: WriteOrigin) -> Result<(), SchedulerError> {
     Ok(())
 }
 
-fn ensure_same_epoch(
-    left: &WorldTimeState,
-    right: &WorldTimeState,
-) -> Result<(), SchedulerError> {
-    left.validate().map_err(|_| SchedulerError::InvalidWorldTime)?;
+fn ensure_same_epoch(left: &WorldTimeState, right: &WorldTimeState) -> Result<(), SchedulerError> {
+    left.validate()
+        .map_err(|_| SchedulerError::InvalidWorldTime)?;
     right
         .validate()
         .map_err(|_| SchedulerError::InvalidWorldTime)?;

@@ -1,6 +1,6 @@
 use gaonn_identity_reuse_audit_core::AuditEvidence;
 use gaonn_scheduler_core::*;
-use gaonn_world_time_core::{EpochDescriptor, WorldTimeState, OWNER as TIME_OWNER};
+use gaonn_world_time_core::{EpochDescriptor, OWNER as TIME_OWNER, WorldTimeState};
 use std::collections::BTreeSet;
 
 fn predecessor() -> Wp002ClosureProof {
@@ -59,7 +59,10 @@ fn record(
             stable_id: id.to_owned(),
             version: 1,
         },
-        dependency_tokens: dependencies.iter().map(|value| (*value).to_owned()).collect(),
+        dependency_tokens: dependencies
+            .iter()
+            .map(|value| (*value).to_owned())
+            .collect(),
         status,
     }
 }
@@ -87,20 +90,18 @@ fn admission_requires_complete_wp002_pass_evidence() {
 
     let mut failed_audit = proof;
     failed_audit.reuse_audit.canonical_mutation = true;
-    assert_eq!(admit(&failed_audit), Err(SchedulerError::InvalidPredecessor));
+    assert_eq!(
+        admit(&failed_audit),
+        Err(SchedulerError::InvalidPredecessor)
+    );
 }
 
 #[test]
 fn s1_06_01_contract_validates_owner_version_transition_and_read_only_origins() {
     let item = record("event-a", 10, 0, 2, &[], ScheduleStatus::Pending);
     let allowed = BTreeSet::from(["schedule".to_owned()]);
-    let result = validate_contract(
-        &item,
-        "schedule",
-        &allowed,
-        WriteOrigin::RuntimeAuthority,
-    )
-    .unwrap();
+    let result =
+        validate_contract(&item, "schedule", &allowed, WriteOrigin::RuntimeAuthority).unwrap();
     assert_eq!(result.work_id, "S1.06.01");
     assert_eq!(result.disposition, Disposition::CandidateOnly);
 
@@ -138,8 +139,16 @@ fn s1_06_03_deterministic_key_is_semantic_and_input_order_independent() {
     assert_eq!(deterministic_key(&receipt(&a), &a).unwrap(), a.key);
     let bucket1 = SameTimeBucket::collect(vec![b.clone(), a.clone()]).unwrap();
     let bucket2 = SameTimeBucket::collect(vec![a, b]).unwrap();
-    let ids1: Vec<_> = bucket1.ordered.iter().map(|item| item.stable_id.clone()).collect();
-    let ids2: Vec<_> = bucket2.ordered.iter().map(|item| item.stable_id.clone()).collect();
+    let ids1: Vec<_> = bucket1
+        .ordered
+        .iter()
+        .map(|item| item.stable_id.clone())
+        .collect();
+    let ids2: Vec<_> = bucket2
+        .ordered
+        .iter()
+        .map(|item| item.stable_id.clone())
+        .collect();
     assert_eq!(ids1, ids2);
 }
 
@@ -160,8 +169,7 @@ fn s1_06_04_same_time_bucket_rejects_mixed_time_and_duplicate_keys() {
     let duplicate = bucket.ordered[0].clone();
     assert!(matches!(
         SameTimeBucket::collect(vec![bucket.ordered[0].clone(), duplicate]),
-        Err(SchedulerError::DuplicateSchedulingKey)
-            | Err(SchedulerError::DuplicateStableId(_))
+        Err(SchedulerError::DuplicateSchedulingKey) | Err(SchedulerError::DuplicateStableId(_))
     ));
 }
 
@@ -185,12 +193,8 @@ fn s1_06_05_same_time_resolution_tracks_dependency_and_resource_rejections() {
             required_resources: BTreeSet::from(["shared".to_owned()]),
         },
     ];
-    let result = resolve_same_time(
-        &bucket,
-        candidates,
-        &BTreeSet::from(["dep-ok".to_owned()]),
-    )
-    .unwrap();
+    let result =
+        resolve_same_time(&bucket, candidates, &BTreeSet::from(["dep-ok".to_owned()])).unwrap();
     assert_eq!(result.selected, vec!["a"]);
     assert_eq!(result.rejected.len(), 2);
     assert_eq!(result.rejected[0].reason, "resource-conflict");
@@ -209,9 +213,7 @@ fn s1_06_06_future_event_queue_orders_and_blocks_without_partial_write() {
     queue
         .insert(blocked, WriteOrigin::RuntimeAuthority)
         .unwrap();
-    queue
-        .insert(future, WriteOrigin::RuntimeAuthority)
-        .unwrap();
+    queue.insert(future, WriteOrigin::RuntimeAuthority).unwrap();
     let pre = queue.digest64();
     assert!(matches!(
         queue.insert(ready, WriteOrigin::RuntimeAuthority),
@@ -334,7 +336,10 @@ fn s1_06_10_render_frame_time_coupling_audit_is_read_only_and_precise() {
     .unwrap();
     assert!(!violation.pass());
     assert_eq!(violation.pre_digest64, violation.post_digest64);
-    assert_eq!(violation.violations[0].first_failure, "render-frame-time-controls-deadline");
+    assert_eq!(
+        violation.violations[0].first_failure,
+        "render-frame-time-controls-deadline"
+    );
 }
 
 #[test]
@@ -377,7 +382,10 @@ fn persistence_restore_and_replay_preserve_pending_state_identity_and_digest() {
     assert_eq!(restored, queue);
     assert_eq!(restored.digest64(), queue.digest64());
     assert_eq!(snapshot.digest64().unwrap(), digest);
-    assert_eq!(restored.get("persist-b").unwrap().status, ScheduleStatus::Sleeping);
+    assert_eq!(
+        restored.get("persist-b").unwrap().status,
+        ScheduleStatus::Sleeping
+    );
 }
 
 #[test]
@@ -402,10 +410,19 @@ fn wp010_integration_and_acceptance_require_all_ten_members_and_snapshot_evidenc
     assert_eq!(resolution.selected, vec!["integration"]);
 
     let mut queue = FutureEventQueue::default();
-    queue.insert(item.clone(), WriteOrigin::RuntimeAuthority).unwrap();
-    let plan = queue.plan(&world_time(160, 0), &BTreeSet::new(), 1).unwrap();
-    queue.apply_plan(&plan, WriteOrigin::RuntimeAuthority).unwrap();
-    assert_eq!(queue.get("integration").unwrap().status, ScheduleStatus::Ready);
+    queue
+        .insert(item.clone(), WriteOrigin::RuntimeAuthority)
+        .unwrap();
+    let plan = queue
+        .plan(&world_time(160, 0), &BTreeSet::new(), 1)
+        .unwrap();
+    queue
+        .apply_plan(&plan, WriteOrigin::RuntimeAuthority)
+        .unwrap();
+    assert_eq!(
+        queue.get("integration").unwrap().status,
+        ScheduleStatus::Ready
+    );
     let admission = scheduler_admission(&contract, &item, true, 1, None).unwrap();
     let handoff = budget_handoff(
         &admission,
@@ -429,7 +446,8 @@ fn wp010_integration_and_acceptance_require_all_ten_members_and_snapshot_evidenc
         causal_cut: "cut:integration".to_owned(),
         queue,
     };
-    let acceptance = accept_wp(&proof, &[true; 10], &[1; 10], snapshot.digest64().unwrap()).unwrap();
+    let acceptance =
+        accept_wp(&proof, &[true; 10], &[1; 10], snapshot.digest64().unwrap()).unwrap();
     assert!(acceptance.closed);
     assert_eq!(acceptance.member_ids, MEMBER_IDS);
 
