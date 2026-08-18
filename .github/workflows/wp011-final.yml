@@ -1,0 +1,45 @@
+name: WP011 final evidence-bearing validation
+on:
+  push:
+    branches: [execution/week1-wp011-go]
+    paths: ['.github/workflows/wp011-final.yml']
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+      - name: Validate closed WP-011 state
+        shell: bash
+        run: |
+          set +e
+          cargo fmt --manifest-path production/Cargo.toml --all -- --check >/tmp/fmt 2>&1; FMT=$?
+          cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings >/tmp/clippy 2>&1; CLIPPY=$?
+          cargo test --manifest-path production/Cargo.toml --workspace >/tmp/ws 2>&1; WS=$?
+          cargo test --manifest-path production/Cargo.toml -p gaonn-causal-random-core --test wp011 >/tmp/wp 2>&1; WP=$?
+          set -e
+          PRESENT=$(test -f docs/evidence/week1/wp011-causal-random-addressing.md && echo 1 || echo 0)
+          CLOSED=$(grep -q '^Status: PASS / CLOSED$' docs/evidence/week1/wp011-causal-random-addressing.md && echo 1 || echo 0)
+          COUNT=$(grep -E '^running [0-9]+ tests$' /tmp/wp | tail -n 1 | awk '{print $2}')
+          {
+            echo "WP011_FINAL_VALIDATED_HEAD=$(git rev-parse HEAD)"
+            echo "EVIDENCE_PRESENT=$PRESENT"
+            echo "EVIDENCE_CLOSED=$CLOSED"
+            echo "FMT_EXIT=$FMT"
+            echo "CLIPPY_EXIT=$CLIPPY"
+            echo "WORKSPACE_TEST_EXIT=$WS"
+            echo "WP011_TEST_EXIT=$WP"
+            echo "WP011_TEST_COUNT=${COUNT:-unknown}"
+            echo '--- WP011 TEST SUMMARY ---'
+            tail -n 40 /tmp/wp
+          } > docs/evidence/week1/wp011-final-validation.txt
+          git config user.name github-actions; git config user.email github-actions@github.com
+          git add docs/evidence/week1/wp011-final-validation.txt
+          git commit -m 'ci(random): publish final WP-011 closure validation [skip ci]'
+          git push
+          test "$PRESENT" -eq 1 -a "$CLOSED" -eq 1 -a "$FMT" -eq 0 -a "$CLIPPY" -eq 0 -a "$WS" -eq 0 -a "$WP" -eq 0
