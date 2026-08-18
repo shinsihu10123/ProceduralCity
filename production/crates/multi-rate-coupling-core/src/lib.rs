@@ -12,16 +12,8 @@ use std::collections::{BTreeMap, BTreeSet};
 pub const SCHEMA_VERSION: u32 = 1;
 pub const OWNER: &str = "domain26.multi_rate_coupling";
 pub const MEMBER_IDS: [&str; 10] = [
-    "S1.09.01",
-    "S1.09.02",
-    "S1.09.03",
-    "S1.09.04",
-    "S1.09.05",
-    "S1.09.06",
-    "S1.09.07",
-    "S1.09.08",
-    "S1.09.09",
-    "S1.09.10",
+    "S1.09.01", "S1.09.02", "S1.09.03", "S1.09.04", "S1.09.05", "S1.09.06", "S1.09.07", "S1.09.08",
+    "S1.09.09", "S1.09.10",
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -37,7 +29,7 @@ pub enum WriteOrigin {
     Worker,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Disposition {
     CandidateOnly,
 }
@@ -198,7 +190,10 @@ pub fn classify_process(
     window.validate()?;
     required(process_id, "classification.process_id")?;
     required(source_domain_owner, "classification.source_domain_owner")?;
-    required(receiver_domain_owner, "classification.receiver_domain_owner")?;
+    required(
+        receiver_domain_owner,
+        "classification.receiver_domain_owner",
+    )?;
     required(causal_parent, "classification.causal_parent")?;
     check_version(process_version)?;
     if source_domain_owner == receiver_domain_owner {
@@ -264,9 +259,7 @@ impl TypedFluxPacket {
             || classification.receiver_domain_owner != self.target_domain_owner
             || classification.interface_writes_domain_state
         {
-            return Err(CouplingError::ReferenceMismatch(
-                "S1.09.02 classification",
-            ));
+            return Err(CouplingError::ReferenceMismatch("S1.09.02 classification"));
         }
         if self.source_domain_owner == self.target_domain_owner {
             return Err(CouplingError::InvalidInterfaceBoundary);
@@ -301,17 +294,30 @@ pub struct BoundaryStateSnapshot {
     pub event_order: Vec<String>,
 }
 
+#[derive(Debug)]
+pub struct BoundarySnapshotInput<'a> {
+    pub snapshot_id: &'a str,
+    pub commit_marker: &'a str,
+    pub causal_cut: &'a str,
+    pub recovery_position: &'a str,
+    pub replay_reference: &'a str,
+    pub committed_pre_state_digest64: u64,
+    pub recompute_refs: Vec<RecomputeReference>,
+    pub event_order: Vec<String>,
+}
+
 impl BoundaryStateSnapshot {
-    pub fn new(
-        snapshot_id: &str,
-        commit_marker: &str,
-        causal_cut: &str,
-        recovery_position: &str,
-        replay_reference: &str,
-        committed_pre_state_digest64: u64,
-        mut recompute_refs: Vec<RecomputeReference>,
-        event_order: Vec<String>,
-    ) -> Result<Self, CouplingError> {
+    pub fn new(input: BoundarySnapshotInput<'_>) -> Result<Self, CouplingError> {
+        let BoundarySnapshotInput {
+            snapshot_id,
+            commit_marker,
+            causal_cut,
+            recovery_position,
+            replay_reference,
+            committed_pre_state_digest64,
+            mut recompute_refs,
+            event_order,
+        } = input;
         required(snapshot_id, "snapshot.id")?;
         required(commit_marker, "snapshot.commit_marker")?;
         required(causal_cut, "snapshot.causal_cut")?;
@@ -418,7 +424,10 @@ pub fn accumulate_flux(
         {
             return Err(CouplingError::TypedFluxMismatch);
         }
-        if by_id.insert(packet.stable_id.clone(), packet.digest64()).is_some() {
+        if by_id
+            .insert(packet.stable_id.clone(), packet.digest64())
+            .is_some()
+        {
             return Err(CouplingError::DuplicateStableId(packet.stable_id.clone()));
         }
         amount = amount
@@ -656,16 +665,31 @@ pub struct RollbackCandidate {
     pub disposition: Disposition,
 }
 
+#[derive(Debug)]
+pub struct RollbackRequest<'a> {
+    pub window: &'a CouplingWindow,
+    pub sync: &'a SynchronizationPoint,
+    pub class: RollbackClass,
+    pub committed_frontier_tick: i128,
+    pub target_tick: i128,
+    pub post_commit: bool,
+    pub causal_parent: &'a str,
+    pub origin: WriteOrigin,
+}
+
 pub fn request_precommit_rollback(
-    window: &CouplingWindow,
-    sync: &SynchronizationPoint,
-    class: RollbackClass,
-    committed_frontier_tick: i128,
-    target_tick: i128,
-    post_commit: bool,
-    causal_parent: &str,
-    origin: WriteOrigin,
+    request: RollbackRequest<'_>,
 ) -> Result<RollbackCandidate, CouplingError> {
+    let RollbackRequest {
+        window,
+        sync,
+        class,
+        committed_frontier_tick,
+        target_tick,
+        post_commit,
+        causal_parent,
+        origin,
+    } = request;
     validate_coupling_writer(origin)?;
     window.validate()?;
     required(causal_parent, "rollback.causal_parent")?;

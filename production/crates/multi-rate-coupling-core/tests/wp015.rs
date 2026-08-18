@@ -87,22 +87,43 @@ fn packet(id: &str, amount: i128) -> TypedFluxPacket {
 }
 
 fn boundary() -> BoundaryStateSnapshot {
-    BoundaryStateSnapshot::new(
-        "snapshot:window:1",
-        "committed-cut:99",
-        "cut:99",
-        "recovery:99",
-        "replay:window:1",
-        1001,
-        vec![RecomputeReference {
+    BoundaryStateSnapshot::new(BoundarySnapshotInput {
+        snapshot_id: "snapshot:window:1",
+        commit_marker: "committed-cut:99",
+        causal_cut: "cut:99",
+        recovery_position: "recovery:99",
+        replay_reference: "replay:window:1",
+        committed_pre_state_digest64: 1001,
+        recompute_refs: vec![RecomputeReference {
             stable_id: "packet:a".to_owned(),
             version: SCHEMA_VERSION,
             causal_parent: "S1.09.03".to_owned(),
             source_digest64: 1002,
         }],
-        vec!["S1.09.04".to_owned()],
-    )
+        event_order: vec!["S1.09.04".to_owned()],
+    })
     .unwrap()
+}
+
+fn rollback_request(
+    window: &CouplingWindow,
+    sync: &SynchronizationPoint,
+    class: RollbackClass,
+    committed_frontier_tick: i128,
+    target_tick: i128,
+    post_commit: bool,
+    origin: WriteOrigin,
+) -> Result<RollbackCandidate, CouplingError> {
+    request_precommit_rollback(RollbackRequest {
+        window,
+        sync,
+        class,
+        committed_frontier_tick,
+        target_tick,
+        post_commit,
+        causal_parent: "S1.09.08",
+        origin,
+    })
 }
 
 fn complete_sync() -> SynchronizationPoint {
@@ -120,7 +141,10 @@ fn complete_sync() -> SynchronizationPoint {
     synchronize(
         &w,
         ProcessPhase::Complete,
-        &[("fast".to_owned(), time(160, 0)), ("slow".to_owned(), time(160, 0))],
+        &[
+            ("fast".to_owned(), time(160, 0)),
+            ("slow".to_owned(), time(160, 0)),
+        ],
         &[localized],
         "S1.09.07:event:crossing",
     )
@@ -245,7 +269,11 @@ fn s1_09_05_accumulation_overflow_fails_closed() {
     let w = window();
     let c = classification();
     assert_eq!(
-        accumulate_flux(&w, &c, &[packet("packet:a", i128::MAX), packet("packet:b", 1)]),
+        accumulate_flux(
+            &w,
+            &c,
+            &[packet("packet:a", i128::MAX), packet("packet:b", 1)]
+        ),
         Err(CouplingError::ArithmeticOverflow)
     );
 }
@@ -254,7 +282,8 @@ fn s1_09_05_accumulation_overflow_fails_closed() {
 fn s1_09_06_exchange_is_conservative_candidate_only_and_never_domain_commit() {
     let w = window();
     let c = classification();
-    let accumulator = accumulate_flux(&w, &c, &[packet("packet:a", 25), packet("packet:b", 75)]).unwrap();
+    let accumulator =
+        accumulate_flux(&w, &c, &[packet("packet:a", 25), packet("packet:b", 75)]).unwrap();
     let exchange = build_conservative_exchange(
         &accumulator,
         "S1.09.05:accumulator",
@@ -312,7 +341,10 @@ fn s1_09_08_synchronization_requires_exact_causal_frontier_and_completed_events(
     let sync = synchronize(
         &w,
         ProcessPhase::Complete,
-        &[("fast".to_owned(), time(160, 0)), ("slow".to_owned(), time(160, 0))],
+        &[
+            ("fast".to_owned(), time(160, 0)),
+            ("slow".to_owned(), time(160, 0)),
+        ],
         std::slice::from_ref(&localized),
         "S1.09.07",
     )
@@ -323,7 +355,10 @@ fn s1_09_08_synchronization_requires_exact_causal_frontier_and_completed_events(
         synchronize(
             &w,
             ProcessPhase::Complete,
-            &[("fast".to_owned(), time(160, 0)), ("slow".to_owned(), time(161, 0))],
+            &[
+                ("fast".to_owned(), time(160, 0)),
+                ("slow".to_owned(), time(161, 0))
+            ],
             &[localized],
             "S1.09.07"
         ),
@@ -341,28 +376,26 @@ fn s1_09_09_rollback_is_bounded_precommit_only_for_all_frozen_classes() {
         RollbackClass::Rb2Closure,
         RollbackClass::Rb3TransactionAbort,
     ] {
-        let rollback = request_precommit_rollback(
+        let rollback = rollback_request(
             &w,
             &sync,
             class,
             110,
             130,
             false,
-            "S1.09.08",
             WriteOrigin::CouplingRuntime,
         )
         .unwrap();
         assert!(!rollback.canonical_commit_performed);
     }
     assert_eq!(
-        request_precommit_rollback(
+        rollback_request(
             &w,
             &sync,
             RollbackClass::Rb1Window,
             110,
             130,
             true,
-            "S1.09.08",
             WriteOrigin::CouplingRuntime,
         ),
         Err(CouplingError::PostCommitRollbackProhibited)
@@ -373,14 +406,13 @@ fn s1_09_09_rollback_is_bounded_precommit_only_for_all_frozen_classes() {
 fn s1_09_10_horizon_contract_rejects_out_of_bound_wrong_owner_and_reverse_write() {
     let w = window();
     let sync = complete_sync();
-    let rollback = request_precommit_rollback(
+    let rollback = rollback_request(
         &w,
         &sync,
         RollbackClass::Rb1Window,
         110,
         130,
         false,
-        "S1.09.08",
         WriteOrigin::CouplingRuntime,
     )
     .unwrap();
@@ -474,14 +506,14 @@ fn integration_s1_09_01_through_s1_09_10_has_no_shortcut_or_canonical_commit() {
     for p in &packets {
         p.validate_against(&w, &c).unwrap();
     }
-    let boundary = BoundaryStateSnapshot::new(
-        "snapshot:integration",
-        "committed-cut:99",
-        "cut:99",
-        "recovery:99",
-        "replay:integration",
-        333,
-        packets
+    let boundary = BoundaryStateSnapshot::new(BoundarySnapshotInput {
+        snapshot_id: "snapshot:integration",
+        commit_marker: "committed-cut:99",
+        causal_cut: "cut:99",
+        recovery_position: "recovery:99",
+        replay_reference: "replay:integration",
+        committed_pre_state_digest64: 333,
+        recompute_refs: packets
             .iter()
             .map(|p| RecomputeReference {
                 stable_id: p.stable_id.clone(),
@@ -490,16 +522,13 @@ fn integration_s1_09_01_through_s1_09_10_has_no_shortcut_or_canonical_commit() {
                 source_digest64: p.digest64(),
             })
             .collect(),
-        vec!["S1.09.04".to_owned()],
-    )
+        event_order: vec!["S1.09.04".to_owned()],
+    })
     .unwrap();
     let accumulator = accumulate_flux(&w, &c, &packets).unwrap();
-    let exchange = build_conservative_exchange(
-        &accumulator,
-        "S1.09.05",
-        WriteOrigin::CouplingRuntime,
-    )
-    .unwrap();
+    let exchange =
+        build_conservative_exchange(&accumulator, "S1.09.05", WriteOrigin::CouplingRuntime)
+            .unwrap();
     assert!(!exchange.canonical_commit_performed);
     let localized = localize_event(
         &w,
@@ -514,19 +543,21 @@ fn integration_s1_09_01_through_s1_09_10_has_no_shortcut_or_canonical_commit() {
     let sync = synchronize(
         &w,
         ProcessPhase::Complete,
-        &[("fast".to_owned(), time(160, 0)), ("slow".to_owned(), time(160, 0))],
+        &[
+            ("fast".to_owned(), time(160, 0)),
+            ("slow".to_owned(), time(160, 0)),
+        ],
         &[localized],
         "S1.09.07",
     )
     .unwrap();
-    let rollback = request_precommit_rollback(
+    let rollback = rollback_request(
         &w,
         &sync,
         RollbackClass::Rb1Window,
         110,
         130,
         false,
-        "S1.09.08",
         WriteOrigin::CouplingRuntime,
     )
     .unwrap();

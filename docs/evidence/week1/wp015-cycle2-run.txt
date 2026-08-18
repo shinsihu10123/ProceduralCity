@@ -1,0 +1,50 @@
+WP015_CORRECTION_CYCLE=2
+CLIPPY_EXIT=0
+WORKSPACE_TEST_EXIT=0
+DEDICATED_TEST_EXIT=0
+--- CLIPPY ---
+    Checking gaonn-world-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-core)
+    Checking gaonn-identity-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-core)
+    Checking gaonn-world-time-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-time-core)
+    Checking gaonn-planetary-space-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/planetary-space-core)
+    Checking gaonn-validation-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core)
+    Checking gaonn-celestial-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/celestial-core)
+    Checking gaonn-lifecycle-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/lifecycle-core)
+    Checking gaonn-world-time-acceptance-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-time-acceptance-core)
+    Checking gaonn-creation-boundary-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/creation-boundary-core)
+    Checking gaonn-retirement-state-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retirement-state-core)
+    Checking gaonn-retention-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retention-core)
+    Checking gaonn-cross-reference-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/cross-reference-core)
+    Checking gaonn-identity-continuity-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-continuity-core)
+    Checking gaonn-identity-reuse-audit-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-reuse-audit-core)
+    Checking gaonn-scheduler-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/scheduler-core)
+    Checking gaonn-identity-acceptance-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-acceptance-core)
+    Checking gaonn-causal-random-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/causal-random-core)
+    Checking gaonn-authority-placement-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/authority-placement-core)
+    Checking gaonn-transaction-precommit-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/transaction-precommit-core)
+    Checking gaonn-multi-rate-coupling-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/multi-rate-coupling-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.05s
+--- DEDICATED ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running tests/wp015.rs (production/target/debug/deps/wp015-5af63dc96fe9e9ed)
+
+running 16 tests
+test persistence_restore_and_replay_preserve_committed_cut_identity_and_event_order ... ok
+test admission_requires_exact_wp004_and_wp010_pass_evidence ... ok
+test s1_09_01_window_contract_uses_absolute_worldtime_without_fixed_global_tick ... ok
+test integration_s1_09_01_through_s1_09_10_has_no_shortcut_or_canonical_commit ... ok
+test s1_09_02_interface_preserves_domain_ownership_and_does_not_reverse_write ... ok
+test s1_09_03_typed_flux_packet_enforces_unit_frame_version_and_authority_link ... ok
+test s1_09_04_snapshot_is_committed_cut_only_and_restore_is_digest_stable ... ok
+test s1_09_01_read_only_origins_cannot_write_coupling_contract ... ok
+test s1_09_05_accumulation_overflow_fails_closed ... ok
+test s1_09_06_exchange_is_conservative_candidate_only_and_never_domain_commit ... ok
+test s1_09_05_substep_accumulation_is_exact_order_independent_and_typed ... ok
+test s1_09_07_event_localization_keeps_phase_semantics_and_cannot_skip_crossing ... ok
+test s1_09_08_synchronization_requires_exact_causal_frontier_and_completed_events ... ok
+test s1_09_10_horizon_contract_rejects_out_of_bound_wrong_owner_and_reverse_write ... ok
+test s1_09_09_rollback_is_bounded_precommit_only_for_all_frozen_classes ... ok
+test wp015_acceptance_requires_all_members_and_exact_replay_digest ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
