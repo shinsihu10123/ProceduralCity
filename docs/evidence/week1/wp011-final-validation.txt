@@ -1,30 +1,31 @@
-WP011_FINAL_VALIDATED_HEAD=9e55898b440b1ede8216dfff84fe6a85bc2c0c8c
+WP011_FINAL_VALIDATED_HEAD=7ccfc6fed48be9fd76a784b3ca569fd8b3351f37
 EVIDENCE_PRESENT=1
 EVIDENCE_CLOSED=1
 FMT_EXIT=0
 CLIPPY_EXIT=0
 WORKSPACE_TEST_EXIT=0
 WP011_TEST_EXIT=0
-WP011_TEST_COUNT=14
+WP011_TEST_COUNT=15
 --- WP011 TEST SUMMARY ---
     Finished `test` profile [unoptimized + debuginfo] target(s) in 0.01s
      Running tests/wp011.rs (production/target/debug/deps/wp011-ac006d99498036a7)
 
-running 14 tests
-test address_excludes_worker_partition_retry_camera_and_insertion_order ... ok
+running 15 tests
 test admission_requires_wp002_and_wp004_pass_evidence ... ok
+test address_excludes_worker_partition_retry_camera_and_insertion_order ... ok
 test authority_observer_worker_retry_and_camera_cannot_mutate_random_registry ... ok
 test identity_audit_fixture_does_not_create_random_identity_shortcut ... ok
+test s1_10_02_versioned_world_seed_is_owner_version_and_lineage_checked ... ok
 test s1_10_01_contract_preserves_operands_owner_seed_address_and_candidate_only ... ok
 test s1_10_03_entity_component_is_stable_identity_not_display_name ... ok
 test persistence_restore_and_replay_preserve_registry_and_same_address_sample ... ok
-test s1_10_02_versioned_world_seed_is_owner_version_and_lineage_checked ... ok
 test s1_10_04_process_episode_component_requires_semantic_process_and_episode ... ok
 test s1_10_05_worldtime_counter_uses_absolute_worldtime_not_wall_clock ... ok
 test s1_10_06_domain_namespace_is_versioned_owner_only_and_purpose_checked ... ok
 test s1_10_08_distribution_primitives_are_deterministic_and_fail_closed ... ok
 test s1_10_07_stateless_generation_retries_same_address_without_stream_consumption ... ok
 test wp011_integration_and_acceptance_require_all_eight_members_and_snapshot_evidence ... ok
+test versioned_seed_history_remains_replayable_after_new_seed_version ... ok
 
-test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
