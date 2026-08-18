@@ -1,4 +1,4 @@
-name: WP010 bounded repair cycle 1
+name: WP010 bounded repair cycle 2
 
 on:
   push:
@@ -20,8 +20,20 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
-      - name: Apply canonical rustfmt
-        run: cargo fmt --manifest-path production/Cargo.toml --all
+      - name: Repair strict Clippy finding and format
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('production/crates/scheduler-core/src/lib.rs')
+          s = p.read_text()
+          old = 'proof.member_evidence.iter().any(|digest| *digest == 0)'
+          new = 'proof.member_evidence.contains(&0)'
+          if old not in s:
+              raise SystemExit('expected manual_contains pattern not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+          cargo fmt --manifest-path production/Cargo.toml --all
       - name: Strict validation
         shell: bash
         run: |
@@ -37,7 +49,7 @@ jobs:
           set -e
           mkdir -p docs/evidence/week1
           {
-            echo "WP010_REPAIR1_BASE=$(git rev-parse HEAD)"
+            echo "WP010_REPAIR2_BASE=$(git rev-parse HEAD)"
             echo "FMT_EXIT=$FMT"
             echo "CLIPPY_EXIT=$CLIPPY"
             echo "WORKSPACE_TEST_EXIT=$WORKSPACE"
@@ -53,7 +65,7 @@ jobs:
           git config user.email github-actions@github.com
           git add production/crates/scheduler-core production/Cargo.lock docs/evidence/week1/wp010-ci-probe.txt || true
           if ! git diff --cached --quiet; then
-            git commit -m 'fix(scheduler): bounded WP-010 repair cycle 1 [skip ci]'
+            git commit -m 'fix(scheduler): bounded WP-010 repair cycle 2 [skip ci]'
             git push
           fi
           if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$WORKSPACE" -ne 0 ] || [ "$WP010" -ne 0 ]; then exit 1; fi
