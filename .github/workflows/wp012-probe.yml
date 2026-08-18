@@ -1,0 +1,71 @@
+name: WP012 bounded repair cycle 1
+
+on:
+  push:
+    branches:
+      - execution/week1-wp012-closure
+    paths:
+      - '.github/workflows/wp012-probe.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+      - name: Apply bounded source repair and canonical rustfmt
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('production/crates/world-time-acceptance-core/src/lib.rs')
+          s = p.read_text()
+          old = '.filter(|work_id| !seen.contains(**work_id))'
+          new = '.filter(|work_id| !seen.contains(*work_id))'
+          if old not in s:
+              raise SystemExit('expected membership pattern not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+          cargo fmt --manifest-path production/Cargo.toml --all
+      - name: Strict validation
+        shell: bash
+        run: |
+          set +e
+          cargo fmt --manifest-path production/Cargo.toml --all -- --check > /tmp/fmt.log 2>&1
+          FMT=$?
+          cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings > /tmp/clippy.log 2>&1
+          CLIPPY=$?
+          cargo test --manifest-path production/Cargo.toml --workspace > /tmp/workspace.log 2>&1
+          WORKSPACE=$?
+          cargo test --manifest-path production/Cargo.toml -p gaonn-world-time-acceptance-core --test wp012 > /tmp/wp012.log 2>&1
+          WP012=$?
+          set -e
+          mkdir -p docs/evidence/week1
+          {
+            echo "WP012_REPAIR1_BASE=$(git rev-parse HEAD)"
+            echo "FMT_EXIT=$FMT"
+            echo "CLIPPY_EXIT=$CLIPPY"
+            echo "WORKSPACE_TEST_EXIT=$WORKSPACE"
+            echo "WP012_TEST_EXIT=$WP012"
+            echo '--- CLIPPY ---'
+            tail -n 120 /tmp/clippy.log
+            echo '--- WP012 TEST ---'
+            cat /tmp/wp012.log
+            echo '--- WORKSPACE TEST TAIL ---'
+            tail -n 120 /tmp/workspace.log
+          } > docs/evidence/week1/wp012-ci-probe.txt
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add production/crates/world-time-acceptance-core production/Cargo.lock docs/evidence/week1/wp012-ci-probe.txt || true
+          if ! git diff --cached --quiet; then
+            git commit -m 'fix(time-review): bounded WP-012 repair cycle 1 [skip ci]'
+            git push
+          fi
+          if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$WORKSPACE" -ne 0 ] || [ "$WP012" -ne 0 ]; then exit 1; fi
