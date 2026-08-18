@@ -148,15 +148,15 @@ fn hard_predecessor_wp001_mismatch_blocks_without_partial_result() {
 
 #[test]
 fn hard_predecessor_wp002_requires_exact_nine_member_closure_and_root_reference() {
-    let mut input = input();
-    input.wp002.root_digest64 ^= 1;
-    let error = review(&input, ReviewOrigin::ValidationQa).unwrap_err();
+    let mut root_mismatch = input();
+    root_mismatch.wp002.root_digest64 ^= 1;
+    let error = review(&root_mismatch, ReviewOrigin::ValidationQa).unwrap_err();
     assert_eq!(error.verdict, Verdict::Blocked);
     assert_eq!(error.failed_work_id, "WP-002");
 
-    let mut input = input();
-    input.wp002.member_ids[8] = "S1.99.99";
-    let error = review(&input, ReviewOrigin::ValidationQa).unwrap_err();
+    let mut member_mismatch = input();
+    member_mismatch.wp002.member_ids[8] = "S1.99.99";
+    let error = review(&member_mismatch, ReviewOrigin::ValidationQa).unwrap_err();
     assert_eq!(error.failed_work_id, "WP-002");
 }
 
@@ -269,15 +269,15 @@ fn continuity_and_reuse_audit_must_share_exact_predecessor_digest() {
 
 #[test]
 fn source_state_digests_for_s1_02_08_and_s1_02_09_are_not_replaceable() {
-    let mut input = input();
-    input.members[7].source_state_digest64 ^= 1;
-    let error = review(&input, ReviewOrigin::ValidationQa).unwrap_err();
+    let mut continuity_mismatch = input();
+    continuity_mismatch.members[7].source_state_digest64 ^= 1;
+    let error = review(&continuity_mismatch, ReviewOrigin::ValidationQa).unwrap_err();
     assert_eq!(error.failed_work_id, "S1.02.08");
     assert!(matches!(error.reason, FailureReason::ReferenceMismatch(_)));
 
-    let mut input = input();
-    input.members[8].source_state_digest64 ^= 1;
-    let error = review(&input, ReviewOrigin::ValidationQa).unwrap_err();
+    let mut audit_mismatch = input();
+    audit_mismatch.members[8].source_state_digest64 ^= 1;
+    let error = review(&audit_mismatch, ReviewOrigin::ValidationQa).unwrap_err();
     assert_eq!(error.failed_work_id, "S1.02.09");
 }
 
