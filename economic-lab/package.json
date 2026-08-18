@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "test": "node scripts/smoke-v09.mjs && node scripts/smoke-v09-social.mjs && node scripts/smoke-v10-ledger.mjs && node scripts/smoke-v10-decision-history.mjs && node scripts/smoke-v10-episodic-allocation.mjs && node scripts/smoke-v10.mjs && node scripts/smoke-v10-ensemble.mjs",
-    "test:v10": "node scripts/smoke-v10-ledger.mjs && node scripts/smoke-v10-decision-history.mjs && node scripts/smoke-v10-episodic-allocation.mjs && node scripts/smoke-v10.mjs && node scripts/smoke-v10-ensemble.mjs",
+    "test": "node scripts/smoke-v09.mjs && node scripts/smoke-v09-social.mjs && node scripts/smoke-v10-ledger.mjs && node scripts/smoke-v10-decision-history.mjs && node scripts/smoke-v10-episodic-allocation.mjs && node scripts/smoke-v10.mjs && node scripts/smoke-v10-ensemble.mjs && node scripts/smoke-v10-reality-diagnostics.mjs",
+    "test:v10": "node scripts/smoke-v10-ledger.mjs && node scripts/smoke-v10-decision-history.mjs && node scripts/smoke-v10-episodic-allocation.mjs && node scripts/smoke-v10.mjs && node scripts/smoke-v10-ensemble.mjs && node scripts/smoke-v10-reality-diagnostics.mjs",
+    "test:reality:v10": "node scripts/smoke-v10-reality-diagnostics.mjs",
+    "diagnose:reality:v10": "node scripts/reality-diagnostics-v10.mjs",
     "stress:v10": "node scripts/stress-matrix-v10.mjs",
     "emergence:v10": "node scripts/emergence-ensemble-v10.mjs",
     "bench:v10": "node scripts/benchmark-v10.mjs",
