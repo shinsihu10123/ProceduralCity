@@ -382,11 +382,12 @@ fn validate_members(input: &ReviewInput) -> Result<(), ReviewFailure> {
         .filter(|work_id| !seen.contains(**work_id))
         .map(|work_id| (*work_id).to_owned())
         .collect();
-    if let Some(first) = missing.first() {
+    if !missing.is_empty() {
+        let first = missing[0].clone();
         return Err(failure(
             input,
             Verdict::Blocked,
-            first,
+            &first,
             FailureReason::MissingMember(first.clone()),
             missing,
         ));
