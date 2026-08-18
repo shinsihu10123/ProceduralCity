@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { EconomicWorld } from '../src/core/world-v10.js';
 import { setLaborMarketDiagnosticObserver } from '../src/markets/labor-market.js';
+import { setGoodsMarketDiagnosticObserver } from '../src/markets/goods-market.js';
 import { RealityDiagnosticRecorder } from '../src/research/reality-diagnostics.js';
 
 const scaleProfile = process.env.DIAG_SCALE || 'baseline';
@@ -158,16 +159,24 @@ function planDiagnostics(country, preFirms) {
   };
 }
 
-function goodsDiagnostics(country, preFirms) {
+function goodsDiagnostics(country, marketEvent) {
+  assert.ok(marketEvent, `${country.id}: exact goods-market diagnostic event required`);
   const goods = country.lastMarkets?.goods || {};
+  const result = marketEvent.result || {};
+  const diagnostics = marketEvent.diagnostics || {};
   const households = country.households || [];
   const desiredHouseholdBudget = sum(households.map(h => h.desiredConsumptionBudget));
   const disposableIncome = sum(households.map(h => h.disposableIncome));
-  const actualConsumption = finite(goods.nominalConsumption, sum(households.map(h => h.consumption)));
-  const desiredBudget = finite(goods.desiredBudget);
-  const unmetBudget = finite(goods.unmetBudget);
-  const activeConsumers = (country.firms || []).filter(firm => firm.active !== false && firm.consumerFacing === true);
-  const preConsumers = [...(preFirms || new Map()).values()].filter(firm => firm.active && firm.consumerFacing);
+  const desiredBudget = finite(result.desiredBudget);
+  const actualConsumption = finite(result.nominalConsumption);
+  const unmetBudget = finite(result.unmetBudget);
+  const lastMarketError = Math.max(
+    Math.abs(desiredBudget - finite(goods.desiredBudget)),
+    Math.abs(actualConsumption - finite(goods.nominalConsumption)),
+    Math.abs(unmetBudget - finite(goods.unmetBudget)),
+    Math.abs(finite(result.transactions) - finite(goods.transactions)),
+    Math.abs(finite(result.units) - finite(goods.units))
+  );
   return {
     disposableIncome,
     desiredHouseholdBudget,
@@ -179,16 +188,25 @@ function goodsDiagnostics(country, preFirms) {
     desiredBudgetToDisposableIncome: ratio(desiredBudget, disposableIncome),
     desiredBudgetReconciliationError: desiredHouseholdBudget - desiredBudget,
     goodsBudgetIdentityError: desiredBudget - actualConsumption - unmetBudget,
-    transactions: finite(goods.transactions),
-    units: finite(goods.units),
-    preConsumerFirmCount: preConsumers.length,
-    activeConsumerFirmCount: activeConsumers.length,
-    preConsumerInventory: sum(preConsumers.map(firm => firm.inventory)),
-    consumerOutput: sum(activeConsumers.map(firm => firm.output)),
-    consumerSalesUnits: sum(activeConsumers.map(firm => firm.consumerSales)),
-    consumerRevenue: sum(activeConsumers.map(firm => firm.consumerRevenue)),
-    postConsumerInventory: sum(activeConsumers.map(firm => firm.inventory)),
-    sellersWithPostInventory: activeConsumers.filter(firm => finite(firm.inventory) > 1e-8).length
+    lastMarketResultError: lastMarketError,
+    transactions: finite(result.transactions),
+    units: finite(result.units),
+    marketStartActiveConsumerFirms: finite(diagnostics.initialActiveConsumerFirms),
+    marketStartEligibleSellers: finite(diagnostics.initialEligibleSellers),
+    marketStartInventoryUnits: finite(diagnostics.initialInventoryUnits),
+    marketStartInventoryValue: finite(diagnostics.initialInventoryValue),
+    marketEndEligibleSellers: finite(diagnostics.endEligibleSellers),
+    marketEndInventoryUnits: finite(diagnostics.endInventoryUnits),
+    marketEndInventoryValue: finite(diagnostics.endInventoryValue),
+    households: finite(diagnostics.households),
+    householdsWithPositiveBudget: finite(diagnostics.householdsWithPositiveBudget),
+    householdsWithUnmetBudget: finite(diagnostics.householdsWithUnmetBudget),
+    fullySpentHouseholds: finite(diagnostics.fullySpentHouseholds),
+    noEligibleSellerStops: finite(diagnostics.noEligibleSellerStops),
+    roundLimitStops: finite(diagnostics.roundLimitStops),
+    settlementFailureStops: finite(diagnostics.settlementFailureStops),
+    exhaustedSellerEvents: finite(diagnostics.exhaustedSellerEvents),
+    startInventoryValueCoverage: ratio(finite(diagnostics.initialInventoryValue), desiredBudget)
   };
 }
 
@@ -201,6 +219,7 @@ function aggregateMonthly(rows) {
     const exitDisplacements = sum(group.map(row => row.exitBoundary.displacedWorkers));
     const desiredBudget = sum(group.map(row => row.goods.goodsDesiredBudget));
     const actualConsumption = sum(group.map(row => row.goods.actualConsumption));
+    const inventoryValue = sum(group.map(row => row.goods.marketStartInventoryValue));
     return {
       month,
       countryPaths: group.length,
@@ -236,8 +255,18 @@ function aggregateMonthly(rows) {
       unmetBudget: sum(group.map(row => row.goods.unmetBudget)),
       budgetFulfillmentRate: ratio(actualConsumption, desiredBudget),
       desiredBudgetToDisposableIncome: ratio(desiredBudget, sum(group.map(row => row.goods.disposableIncome))),
-      postConsumerInventory: sum(group.map(row => row.goods.postConsumerInventory)),
-      consumerOutput: sum(group.map(row => row.goods.consumerOutput)),
+      marketStartInventoryUnits: sum(group.map(row => row.goods.marketStartInventoryUnits)),
+      marketStartInventoryValue: inventoryValue,
+      startInventoryValueCoverage: ratio(inventoryValue, desiredBudget),
+      marketStartEligibleSellers: sum(group.map(row => row.goods.marketStartEligibleSellers)),
+      marketEndEligibleSellers: sum(group.map(row => row.goods.marketEndEligibleSellers)),
+      marketEndInventoryUnits: sum(group.map(row => row.goods.marketEndInventoryUnits)),
+      householdsWithUnmetBudget: sum(group.map(row => row.goods.householdsWithUnmetBudget)),
+      noEligibleSellerStops: sum(group.map(row => row.goods.noEligibleSellerStops)),
+      roundLimitStops: sum(group.map(row => row.goods.roundLimitStops)),
+      settlementFailureStops: sum(group.map(row => row.goods.settlementFailureStops)),
+      exhaustedSellerEvents: sum(group.map(row => row.goods.exhaustedSellerEvents)),
+      consumerOutput: sum(group.map(row => row.firms.outputUnits)),
       firmExits: sum(group.map(row => row.firms.newExits)),
       creditStress: mean(group.map(row => row.banking.creditStress))
     };
@@ -248,10 +277,12 @@ function runSeed(seed) {
   const world = new EconomicWorld(seed, { scaleProfile, healthCheckInterval: 0 });
   const recorder = new RealityDiagnosticRecorder(world);
   const exitEvents = installExitBoundaryObserver(world);
+  const pendingGoods = new Map();
   const causalRows = [];
-  const maxima = { vacancy: 0, layoff: 0, exitCount: 0, exitWorkerCount: 0, desiredBudget: 0, goodsBudgetIdentity: 0 };
+  const maxima = { vacancy: 0, layoff: 0, exitCount: 0, exitWorkerCount: 0, desiredBudget: 0, goodsBudgetIdentity: 0, goodsObserverResult: 0 };
 
   setLaborMarketDiagnosticObserver(event => recorder.recordLaborMarket(event));
+  setGoodsMarketDiagnosticObserver(event => pendingGoods.set(event.countryId, structuredClone(event)));
   try {
     for (let step = 0; step < months; step++) {
       const pre = firmSnapshot(world);
@@ -262,8 +293,11 @@ function runSeed(seed) {
       for (const country of world.countries) {
         const diagnostic = diagnosticByCountry.get(country.id);
         assert.ok(diagnostic, `${seed}:${world.month}:${country.id}: diagnostic row required`);
+        const marketEvent = pendingGoods.get(country.id);
+        assert.ok(marketEvent && Number(marketEvent.month) === Number(world.month), `${seed}:${world.month}:${country.id}: exact goods event required`);
+        pendingGoods.delete(country.id);
         const firmPlans = planDiagnostics(country, pre.get(country.id));
-        const goods = goodsDiagnostics(country, pre.get(country.id));
+        const goods = goodsDiagnostics(country, marketEvent);
         const exits = exitEvents.filter(event => event.month === world.month && event.countryId === country.id);
         const exitBoundary = {
           exits: exits.length,
@@ -282,6 +316,7 @@ function runSeed(seed) {
         maxima.exitWorkerCount = Math.max(maxima.exitWorkerCount, Math.abs(exitWorkerCountError));
         maxima.desiredBudget = Math.max(maxima.desiredBudget, Math.abs(goods.desiredBudgetReconciliationError));
         maxima.goodsBudgetIdentity = Math.max(maxima.goodsBudgetIdentity, Math.abs(goods.goodsBudgetIdentityError));
+        maxima.goodsObserverResult = Math.max(maxima.goodsObserverResult, Math.abs(goods.lastMarketResultError));
 
         causalRows.push({
           seed,
@@ -297,9 +332,11 @@ function runSeed(seed) {
           reconciliation: { vacancyError, layoffError, exitCountError, exitWorkerCountError }
         });
       }
+      assert.equal(pendingGoods.size, 0, `${seed}:${world.month}: goods events must be consumed exactly once`);
     }
   } finally {
     setLaborMarketDiagnosticObserver(null);
+    setGoodsMarketDiagnosticObserver(null);
   }
 
   const health = world.forceHealthCheck();
@@ -313,6 +350,7 @@ function runSeed(seed) {
   assert.ok(maxima.exitWorkerCount <= 1e-9, `${seed}: exit-boundary worker count must equal displaced employed households`);
   assert.ok(maxima.desiredBudget <= 1e-6, `${seed}: household desired budgets must reconcile`);
   assert.ok(maxima.goodsBudgetIdentity <= 1e-6, `${seed}: goods budget identity must reconcile`);
+  assert.ok(maxima.goodsObserverResult <= 1e-9, `${seed}: exact goods observer result must equal stored market result`);
   return { seed, health, diagnosticGates: diagnostics.gates, causalRows, reconciliation: maxima, scale: world.scaleReport() };
 }
 
@@ -327,6 +365,7 @@ function windowEvidence(rows) {
   const consumption = sum(rows.map(row => row.goods.actualConsumption));
   const marketLayoffs = sum(rows.map(row => row.labor.layoffs));
   const exitDisplacements = sum(rows.map(row => row.exitBoundary.displacedWorkers));
+  const inventoryValue = sum(rows.map(row => row.goods.marketStartInventoryValue));
   return {
     countryMonths: rows.length,
     meanUnemployment: mean(rows.map(row => row.macro.unemployment)),
@@ -349,12 +388,22 @@ function windowEvidence(rows) {
     unmetBudget: sum(rows.map(row => row.goods.unmetBudget)),
     budgetFulfillmentRate: ratio(consumption, desired),
     desiredBudgetToDisposableIncome: ratio(desired, sum(rows.map(row => row.goods.disposableIncome))),
-    postConsumerInventory: sum(rows.map(row => row.goods.postConsumerInventory))
+    marketStartInventoryUnits: sum(rows.map(row => row.goods.marketStartInventoryUnits)),
+    marketStartInventoryValue: inventoryValue,
+    startInventoryValueCoverage: ratio(inventoryValue, desired),
+    marketStartEligibleSellers: sum(rows.map(row => row.goods.marketStartEligibleSellers)),
+    marketEndEligibleSellers: sum(rows.map(row => row.goods.marketEndEligibleSellers)),
+    marketEndInventoryUnits: sum(rows.map(row => row.goods.marketEndInventoryUnits)),
+    householdsWithUnmetBudget: sum(rows.map(row => row.goods.householdsWithUnmetBudget)),
+    noEligibleSellerStops: sum(rows.map(row => row.goods.noEligibleSellerStops)),
+    roundLimitStops: sum(rows.map(row => row.goods.roundLimitStops)),
+    settlementFailureStops: sum(rows.map(row => row.goods.settlementFailureStops)),
+    exhaustedSellerEvents: sum(rows.map(row => row.goods.exhaustedSellerEvents))
   };
 }
 
 const report = {
-  schemaVersion: 3,
+  schemaVersion: 4,
   kind: 'economic-lab-wp-rv03-extreme-unemployment-causal-decomposition',
   frozenEconomicBaseline: '698d10749e2897d711e5bcee61913ac34e0650a0',
   scaleProfile,
@@ -368,7 +417,8 @@ const report = {
     netObservedSeparations: 'households employed before the month and unemployed after the full month',
     jobFindingsFromPriorUnemployment: 'households unemployed before the month and employed after the full month',
     exitDisplacements: 'workers still employed at a firm immediately before evaluateExits and displaced by that exit',
-    note: 'Gross labor-market hires/layoffs are event flows and therefore are not forced to equal the pre/post household stock-transition flows.'
+    goodsMarketSupply: 'inventory and seller availability observed at the exact entry and exit boundaries of household goods clearing',
+    note: 'Gross labor-market hires/layoffs are event flows and therefore are not forced to equal pre/post household stock-transition flows.'
   },
   gates: {
     allHealthy: runs.every(run => run.health.ok),
@@ -376,7 +426,7 @@ const report = {
     completeCountryMonthCoverage: allRows.length === seeds.length * months * 4,
     laborDemandReconciled: runs.every(run => run.reconciliation.vacancy <= 1e-9 && run.reconciliation.layoff <= 1e-9),
     firmExitBoundaryReconciled: runs.every(run => run.reconciliation.exitCount <= 1e-9 && run.reconciliation.exitWorkerCount <= 1e-9),
-    householdGoodsBudgetReconciled: runs.every(run => run.reconciliation.desiredBudget <= 1e-6 && run.reconciliation.goodsBudgetIdentity <= 1e-6)
+    householdGoodsBudgetReconciled: runs.every(run => run.reconciliation.desiredBudget <= 1e-6 && run.reconciliation.goodsBudgetIdentity <= 1e-6 && run.reconciliation.goodsObserverResult <= 1e-9)
   }
 };
 report.gates.ok = Object.values(report.gates).every(Boolean);
@@ -392,8 +442,11 @@ console.table(monthly.map(row => ({
   firmExits: row.firmExits,
   negativePlanShare: row.meanNegativeHiringPlanShare,
   desiredBudget: row.desiredBudget,
+  startInventoryValue: row.marketStartInventoryValue,
+  inventoryCoverage: row.startInventoryValueCoverage,
   consumption: row.actualConsumption,
-  fulfillment: row.budgetFulfillmentRate
+  noSellerStops: row.noEligibleSellerStops,
+  roundLimitStops: row.roundLimitStops
 })));
 console.log(JSON.stringify(report, null, 2));
 if (outputJson) {
