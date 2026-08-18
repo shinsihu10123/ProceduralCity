@@ -1,4 +1,4 @@
-name: WP012 bounded repair cycle 1
+name: WP012 bounded repair cycle 2
 
 on:
   push:
@@ -20,17 +20,17 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
-      - name: Apply bounded source repair and canonical rustfmt
+      - name: Repair membership lookup and apply canonical rustfmt
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
           p = Path('production/crates/world-time-acceptance-core/src/lib.rs')
           s = p.read_text()
-          old = '.filter(|work_id| !seen.contains(**work_id))'
-          new = '.filter(|work_id| !seen.contains(*work_id))'
+          old = '.filter(|work_id| !seen.contains(*work_id))'
+          new = '.filter(|work_id| !seen.contains(**work_id))'
           if old not in s:
-              raise SystemExit('expected membership pattern not found')
+              raise SystemExit('expected repair-1 membership pattern not found')
           p.write_text(s.replace(old, new, 1))
           PY
           cargo fmt --manifest-path production/Cargo.toml --all
@@ -49,7 +49,7 @@ jobs:
           set -e
           mkdir -p docs/evidence/week1
           {
-            echo "WP012_REPAIR1_BASE=$(git rev-parse HEAD)"
+            echo "WP012_REPAIR2_BASE=$(git rev-parse HEAD)"
             echo "FMT_EXIT=$FMT"
             echo "CLIPPY_EXIT=$CLIPPY"
             echo "WORKSPACE_TEST_EXIT=$WORKSPACE"
@@ -65,7 +65,7 @@ jobs:
           git config user.email github-actions@github.com
           git add production/crates/world-time-acceptance-core production/Cargo.lock docs/evidence/week1/wp012-ci-probe.txt || true
           if ! git diff --cached --quiet; then
-            git commit -m 'fix(time-review): bounded WP-012 repair cycle 1 [skip ci]'
+            git commit -m 'fix(time-review): bounded WP-012 repair cycle 2 [skip ci]'
             git push
           fi
           if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$WORKSPACE" -ne 0 ] || [ "$WP012" -ne 0 ]; then exit 1; fi
