@@ -74,7 +74,7 @@ pub struct AdmissionReceipt {
 
 pub fn admit(proof: &Wp002ClosureProof) -> Result<AdmissionReceipt, SchedulerError> {
     if proof.version != SCHEMA_VERSION
-        || proof.member_evidence.iter().any(|digest| *digest == 0)
+        || proof.member_evidence.contains(&0)
         || proof.reuse_audit.work_id != "S1.02.09"
         || !proof.reuse_audit.pass()
         || proof.causal_parent.trim().is_empty()

@@ -1,6 +1,6 @@
-WP010_REPAIR1_BASE=894a071ee8efbb371a5d115aef4d0ec7f57450ee
+WP010_REPAIR2_BASE=392d64e0759780d298f5f0a68ce041df04d27d6d
 FMT_EXIT=0
-CLIPPY_EXIT=101
+CLIPPY_EXIT=0
 WORKSPACE_TEST_EXIT=0
 WP010_TEST_EXIT=0
 --- CLIPPY ---
@@ -9,8 +9,8 @@ WP010_TEST_EXIT=0
     Checking gaonn-world-time-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-time-core)
     Checking gaonn-planetary-space-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/planetary-space-core)
     Checking gaonn-validation-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core)
-    Checking gaonn-lifecycle-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/lifecycle-core)
     Checking gaonn-celestial-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/celestial-core)
+    Checking gaonn-lifecycle-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/lifecycle-core)
     Checking gaonn-creation-boundary-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/creation-boundary-core)
     Checking gaonn-retirement-state-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retirement-state-core)
     Checking gaonn-retention-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retention-core)
@@ -18,19 +18,7 @@ WP010_TEST_EXIT=0
     Checking gaonn-identity-continuity-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-continuity-core)
     Checking gaonn-identity-reuse-audit-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-reuse-audit-core)
     Checking gaonn-scheduler-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/scheduler-core)
-error: using `contains()` instead of `iter().any()` is more efficient
-  --> crates/scheduler-core/src/lib.rs:77:12
-   |
-77 |         || proof.member_evidence.iter().any(|digest| *digest == 0)
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `proof.member_evidence.contains(&0)`
-   |
-   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#manual_contains
-   = note: `-D clippy::manual-contains` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_contains)]`
-
-error: could not compile `gaonn-scheduler-core` (lib) due to 1 previous error
-warning: build failed, waiting for other jobs to finish...
-error: could not compile `gaonn-scheduler-core` (lib test) due to 1 previous error
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.26s
 --- WP010 TEST ---
     Finished `test` profile [unoptimized + debuginfo] target(s) in 0.01s
      Running tests/wp010.rs (production/target/debug/deps/wp010-48ca0c5b37b3f32f)
@@ -39,12 +27,12 @@ running 14 tests
 test admission_requires_complete_wp002_pass_evidence ... ok
 test authority_wrong_origin_never_mutates_future_queue ... ok
 test s1_06_01_contract_validates_owner_version_transition_and_read_only_origins ... ok
-test s1_06_02_deadline_representation_preserves_identity_owner_and_causal_parent ... ok
 test persistence_restore_and_replay_preserve_pending_state_identity_and_digest ... ok
 test s1_06_03_deterministic_key_is_semantic_and_input_order_independent ... ok
+test s1_06_04_same_time_bucket_rejects_mixed_time_and_duplicate_keys ... ok
+test s1_06_02_deadline_representation_preserves_identity_owner_and_causal_parent ... ok
 test s1_06_05_same_time_resolution_tracks_dependency_and_resource_rejections ... ok
 test s1_06_07_inactive_process_wake_sleep_distinguishes_ready_sleep_blocked_and_expired ... ok
-test s1_06_04_same_time_bucket_rejects_mixed_time_and_duplicate_keys ... ok
 test s1_06_06_future_event_queue_orders_and_blocks_without_partial_write ... ok
 test s1_06_08_scheduler_admission_preserves_pass_version_and_block_reason ... ok
 test s1_06_09_budget_handoff_transfers_source_reference_without_inventing_policy ... ok
@@ -55,12 +43,12 @@ test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 
 --- WORKSPACE TEST TAIL ---
 test behavior_normal_complete_same_run_evidence_produces_pass_record ... ok
-test boundary_out_of_scope_pass_cannot_substitute_for_required_member ... ok
 test behavior_failure_missing_evidence_blocks_and_failed_test_cannot_be_promoted ... ok
+test boundary_out_of_scope_pass_cannot_substitute_for_required_member ... ok
+test contract_preserves_frozen_root_id_version_owner_and_causal_parent ... ok
 test frozen_baseline_change_request_blocks_closure_without_reclassifying_failure ... ok
 test integration_missing_or_mismatched_predecessor_audit_blocks_closure ... ok
 test persistence_read_only_acceptance_record_snapshot_preserves_evidence_digest ... ok
-test contract_preserves_frozen_root_id_version_owner_and_causal_parent ... ok
 test replay_same_snapshot_schema_run_and_source_produces_same_record_order_and_digest ... ok
 
 test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
@@ -77,16 +65,16 @@ running 13 tests
 test s1_05_01_absolute_worldtime_contract_requires_valid_predecessor_and_owner ... ok
 test s1_05_02_epoch_unit_representation_rejects_stale_missing_and_incompatible_values ... ok
 test s1_05_03_monotonic_time_accepts_forward_and_same_time_order_but_rejects_reversal ... ok
-test s1_05_03_wrong_writer_origins_leave_canonical_state_unchanged ... ok
-test s1_05_05_same_time_equality_is_absolute_and_separate_from_microstep_order ... ok
 test s1_05_04_duration_arithmetic_is_checked_exact_and_nonnegative ... ok
+test s1_05_05_same_time_equality_is_absolute_and_separate_from_microstep_order ... ok
 test s1_05_06_calendar_human_date_is_read_only_derived_view ... ok
+test s1_05_03_wrong_writer_origins_leave_canonical_state_unchanged ... ok
 test s1_05_07_serialization_fails_closed_on_missing_boundary_or_stale_schema ... ok
-test s1_05_07_worldtime_serialization_round_trip_preserves_replay_boundary ... ok
 test s1_05_08_long_horizon_precision_reports_overflow_instead_of_wrapping ... ok
-test wp004_acceptance_requires_all_nine_member_passes_and_evidence ... ok
+test s1_05_07_worldtime_serialization_round_trip_preserves_replay_boundary ... ok
 test s1_05_09_reversal_audit_is_read_only_detects_violation_and_avoids_false_positive ... ok
 test s1_05_08_long_horizon_precision_has_no_accumulation_drift ... ok
+test wp004_acceptance_requires_all_nine_member_passes_and_evidence ... ok
 
 test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
