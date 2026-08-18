@@ -1,5 +1,6 @@
-WP005_FINAL_VALIDATED_HEAD=62fa9c02c7e3cde835f0aed9b6989d5965326819
+WP005_FINAL_VALIDATED_HEAD=494f22c94b5fe9125a712ce71e67ea2534bd8de8
 EVIDENCE_PRESENT=1
+EVIDENCE_CLOSED=1
 FMT_EXIT=0
 CLIPPY_EXIT=0
 WORKSPACE_TEST_EXIT=0
@@ -13,16 +14,16 @@ running 17 tests
 test admission_requires_wp001_pass_contract ... ok
 test decision_replay_digest_is_deterministic_and_source_domain_truth_is_only_referenced ... ok
 test authority_dangling_and_stale_reference_fail_without_partial_registry_mutation ... ok
-test s3_06_01_validation_evidence_schema_has_versioned_crud_and_replay ... ok
 test s3_06_02_vt0_semantic_integrity_registry ... ok
 test s3_06_03_vt1_deterministic_integrity_registry ... ok
 test s3_06_04_vt2_conservation_integrity_registry ... ok
 test s3_06_05_vt3_numerical_integrity_registry ... ok
-test s3_06_09_validation_outcome_pass_requires_complete_declared_coverage ... ok
-test s3_06_06_vt4_cross_lod_integrity_registry ... ok
+test s3_06_01_validation_evidence_schema_has_versioned_crud_and_replay ... ok
 test s3_06_07_vt5_empirical_statistical_integrity_registry ... ok
-test s3_06_08_vt6_observation_integrity_registry_is_not_observer_write_authority ... ok
+test s3_06_09_validation_outcome_pass_requires_complete_declared_coverage ... ok
 test s3_06_10_validation_outcome_fail_requires_explicit_failure_evidence ... ok
+test s3_06_08_vt6_observation_integrity_registry_is_not_observer_write_authority ... ok
+test s3_06_06_vt4_cross_lod_integrity_registry ... ok
 test s3_06_11_coverage_insufficient_is_distinct_and_cannot_be_silent_pass ... ok
 test s3_06_12_evidence_provenance_preserves_source_build_run_and_transform_lineage ... ok
 test s3_06_13_tolerance_acceptance_is_context_specific_and_vt0_is_zero_tolerance ... ok
