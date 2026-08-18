@@ -8,14 +8,7 @@ use std::fmt;
 pub const SCHEMA_VERSION: u32 = 1;
 pub const OWNER: &str = "domain26.world_time_runtime";
 pub const MEMBER_IDS: [&str; 9] = [
-    "S1.05.01",
-    "S1.05.02",
-    "S1.05.03",
-    "S1.05.04",
-    "S1.05.05",
-    "S1.05.06",
-    "S1.05.07",
-    "S1.05.08",
+    "S1.05.01", "S1.05.02", "S1.05.03", "S1.05.04", "S1.05.05", "S1.05.06", "S1.05.07", "S1.05.08",
     "S1.05.09",
 ];
 
@@ -312,10 +305,16 @@ impl fmt::Display for TimeError {
                 write!(f, "frame mismatch: {left} versus {right}")
             }
             Self::TimeReversal { current, proposed } => {
-                write!(f, "canonical time reversal: current={current}, proposed={proposed}")
+                write!(
+                    f,
+                    "canonical time reversal: current={current}, proposed={proposed}"
+                )
             }
             Self::CausalOrderRegression { current, proposed } => {
-                write!(f, "same-time causal order regression: current={current}, proposed={proposed}")
+                write!(
+                    f,
+                    "same-time causal order regression: current={current}, proposed={proposed}"
+                )
             }
             Self::NegativeDuration(value) => write!(f, "negative duration: {value}"),
             Self::ArithmeticOverflow => write!(f, "time arithmetic overflow"),
@@ -347,7 +346,10 @@ pub fn validate_write_authority(origin: WriteOrigin) -> Result<(), TimeError> {
     Ok(())
 }
 
-pub fn compare_instant(left: &WorldTimeState, right: &WorldTimeState) -> Result<Ordering, TimeError> {
+pub fn compare_instant(
+    left: &WorldTimeState,
+    right: &WorldTimeState,
+) -> Result<Ordering, TimeError> {
     validate_compatible(left, right)?;
     Ok(left.tick.cmp(&right.tick))
 }
@@ -630,7 +632,9 @@ fn unescape(value: &str) -> Result<String, TimeError> {
             continue;
         }
         if index + 2 >= bytes.len() {
-            return Err(TimeError::Serialization("invalid escape sequence".to_owned()));
+            return Err(TimeError::Serialization(
+                "invalid escape sequence".to_owned(),
+            ));
         }
         let code = &value[index + 1..index + 3];
         match code {
@@ -639,7 +643,11 @@ fn unescape(value: &str) -> Result<String, TimeError> {
             "3B" => out.push(';'),
             "0A" => out.push('\n'),
             "0D" => out.push('\r'),
-            _ => return Err(TimeError::Serialization("invalid escape sequence".to_owned())),
+            _ => {
+                return Err(TimeError::Serialization(
+                    "invalid escape sequence".to_owned(),
+                ));
+            }
         }
         index += 3;
     }

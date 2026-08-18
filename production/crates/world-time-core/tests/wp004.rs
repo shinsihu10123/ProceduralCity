@@ -141,7 +141,10 @@ fn s1_05_04_duration_arithmetic_is_checked_exact_and_nonnegative() {
     let b = Duration::from_ticks(2).unwrap();
     assert_eq!(a.checked_add(b).unwrap().ticks(), 42);
     assert_eq!(a.checked_sub(b).unwrap().ticks(), 38);
-    assert_eq!(Duration::from_ticks(-1), Err(TimeError::NegativeDuration(-1)));
+    assert_eq!(
+        Duration::from_ticks(-1),
+        Err(TimeError::NegativeDuration(-1))
+    );
     assert_eq!(
         Duration::from_ticks(i128::MAX)
             .unwrap()
@@ -253,13 +256,18 @@ fn s1_05_09_reversal_audit_is_read_only_detects_violation_and_avoids_false_posit
     let order_regression = state(1_000, 9);
     let pre_digest = pre.digest64();
 
-    assert_eq!(audit_time_reversal(&pre, &normal).unwrap().outcome, AuditOutcome::Pass);
+    assert_eq!(
+        audit_time_reversal(&pre, &normal).unwrap().outcome,
+        AuditOutcome::Pass
+    );
     assert_eq!(
         audit_time_reversal(&pre, &reversed).unwrap().outcome,
         AuditOutcome::Violation { field: "tick" }
     );
     assert_eq!(
-        audit_time_reversal(&pre, &order_regression).unwrap().outcome,
+        audit_time_reversal(&pre, &order_regression)
+            .unwrap()
+            .outcome,
         AuditOutcome::Violation { field: "microstep" }
     );
     assert_eq!(pre.digest64(), pre_digest);
