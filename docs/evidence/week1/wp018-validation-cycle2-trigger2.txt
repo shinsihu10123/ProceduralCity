@@ -1,0 +1,3 @@
+WP018_VALIDATION_TRIGGER=2B
+CORRECTION_WINDOW=2/2
+ACTION=execute final bounded validator after workflow trigger normalization
