@@ -1,0 +1,4 @@
+WP018_VALIDATION_TRIGGER=2
+CORRECTION_WINDOW=2/2
+FIRST_FAILURE_FROM_CYCLE1=Rust E0505 missing-vector borrow/move conflict
+ACTION=apply exact borrow-safe missing-member failure construction, canonical rustfmt, strict full validation
