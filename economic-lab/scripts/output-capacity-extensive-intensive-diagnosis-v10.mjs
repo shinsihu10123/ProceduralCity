@@ -24,7 +24,24 @@ function installAudit(world){
   const produce=world.supply.produce.bind(world.supply);
   world.supply.produce=(country,month,metrics)=>{const out=produce(country,month,metrics);world.__rv07P22.produce.set(`${month}|${country.id}`,new Map(country.firms.map(f=>[f.id,{output:finite(f.output),supplyShortage:finite(f.supplyShortage)}])));return out;};
 }
-function aggregateRows(rows){return {firms:rows.length,workers:sum(rows.map(r=>r.workers)),workersPerFirm:ratio(sum(rows.map(r=>r.workers)),rows.length),capacity:sum(rows.map(r=>r.capacity)),capacityPerFirm:ratio(sum(rows.map(r=>r.capacity)),rows.length),unconstrainedPlan:sum(rows.map(r=>r.unconstrainedPlan)),desiredProduction:sum(rows.map(r=>r.desiredProduction)),output:sum(rows.map(r=>r.output)),capacitySuppression:sum(rows.map(r=>Math.max(0,r.unconstrainedPlan-r.desiredProduction))),inputOrExecutionSuppression:sum(rows.map(r=>Math.max(0,r.desiredProduction-r.output))),capacityBoundShare:ratio(rows.filter(r=>r.capacityBound).length,rows.length),desiredToPlan:ratio(sum(rows.map(r=>r.desiredProduction)),sum(rows.map(r=>r.unconstrainedPlan)),outputToDesired:ratio(sum(rows.map(r=>r.output)),sum(rows.map(r=>r.desiredProduction)),outputPerFirm:ratio(sum(rows.map(r=>r.output)),rows.length),outputPerWorker:ratio(sum(rows.map(r=>r.output)),sum(rows.map(r=>r.workers)),inputConstrainedShare:ratio(rows.filter(r=>r.inputProduct&&r.output+TOL<r.desiredProduction&&r.supplyShortage>TOL).length,rows.length)};}
+function aggregateRows(rows){return {
+  firms:rows.length,
+  workers:sum(rows.map(r=>r.workers)),
+  workersPerFirm:ratio(sum(rows.map(r=>r.workers)),rows.length),
+  capacity:sum(rows.map(r=>r.capacity)),
+  capacityPerFirm:ratio(sum(rows.map(r=>r.capacity)),rows.length),
+  unconstrainedPlan:sum(rows.map(r=>r.unconstrainedPlan)),
+  desiredProduction:sum(rows.map(r=>r.desiredProduction)),
+  output:sum(rows.map(r=>r.output)),
+  capacitySuppression:sum(rows.map(r=>Math.max(0,r.unconstrainedPlan-r.desiredProduction))),
+  inputOrExecutionSuppression:sum(rows.map(r=>Math.max(0,r.desiredProduction-r.output))),
+  capacityBoundShare:ratio(rows.filter(r=>r.capacityBound).length,rows.length),
+  desiredToPlan:ratio(sum(rows.map(r=>r.desiredProduction)),sum(rows.map(r=>r.unconstrainedPlan))),
+  outputToDesired:ratio(sum(rows.map(r=>r.output)),sum(rows.map(r=>r.desiredProduction))),
+  outputPerFirm:ratio(sum(rows.map(r=>r.output)),rows.length),
+  outputPerWorker:ratio(sum(rows.map(r=>r.output)),sum(rows.map(r=>r.workers))),
+  inputConstrainedShare:ratio(rows.filter(r=>r.inputProduct&&r.output+TOL<r.desiredProduction&&r.supplyShortage>TOL).length,rows.length)
+};}
 function runWorld(scaleProfile,seed,horizon,audited){
   const world=createWorld(scaleProfile,seed);if(audited)installAudit(world);const firmRows=[],countryRows=[];
   for(let i=0;i<horizon;i++){world.stepMonth();for(const c of world.countries){if(audited){const key=`${world.month}|${c.id}`,plans=world.__rv07P22.plan.get(key)||[],prod=world.__rv07P22.produce.get(key)||new Map();assert.ok(plans.length>0,`${key}: plan rows missing`);for(const p of plans){const q=prod.get(p.firmId);assert.ok(q,`${key}/${p.firmId}: production row missing`);const f=c.firms.find(x=>x.id===p.firmId);firmRows.push({scaleProfile,seed,month:world.month,countryId:c.id,...p,...q,activeEnd:f?.active!==false,exitedByEnd:f?.active===false});}const joined=firmRows.filter(r=>r.scaleProfile===scaleProfile&&r.seed===seed&&r.month===world.month&&r.countryId===c.id),agg=aggregateRows(joined);const sectorOutput=sum(Object.values(c.lastIndustry?.sectorOutputs||{}));countryRows.push({scaleProfile,seed,month:world.month,countryId:c.id,...agg,activeEnd:c.firms.filter(f=>f.active!==false).length,exitThisMonth:finite(c.macro?.firmExits),sectorOutput,sectorOutputError:agg.output-sectorOutput,unemployment:finite(c.macro?.unemployment),wageArrears:finite(c.macro?.wageArrears),gdpResidual:gdpResidual(c.macro),ledgerOk:world.ledger.verifyCountry(c.id)?.ok===true});}}
