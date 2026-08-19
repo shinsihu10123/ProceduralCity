@@ -1,0 +1,4 @@
+WP018_VALIDATION_TRIGGER=1
+SCOPE=S1.06.11
+CORRECTION_WINDOW=1/2
+REASON=canonical rustfmt normalization plus predeclared review-set expression normalization
