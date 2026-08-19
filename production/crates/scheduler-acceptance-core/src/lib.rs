@@ -6,7 +6,9 @@
 //! owning or mutating canonical scheduler state.
 
 use gaonn_identity_acceptance_core::Wp013Closure;
-use gaonn_scheduler_core::{MEMBER_IDS as SCHEDULER_MEMBER_IDS, OWNER as SCHEDULER_OWNER, Wp010Acceptance};
+use gaonn_scheduler_core::{
+    MEMBER_IDS as SCHEDULER_MEMBER_IDS, OWNER as SCHEDULER_OWNER, Wp010Acceptance,
+};
 use std::collections::BTreeSet;
 
 pub const SCHEMA_VERSION: u32 = 1;
@@ -170,7 +172,9 @@ impl ReviewSnapshot {
             return Err(FailureReason::StaleVersion);
         }
         if self.evidence_hash64 == 0 || self.evidence_hash64 != self.input.digest64() {
-            return Err(FailureReason::ReferenceMismatch("snapshot.evidence_hash"));
+            return Err(FailureReason::ReferenceMismatch(
+                "snapshot.evidence_hash",
+            ));
         }
         Ok(())
     }
@@ -293,7 +297,10 @@ pub fn review(input: &ReviewInput, origin: ReviewOrigin) -> ReviewResult<Accepta
     })
 }
 
-pub fn close_wp018(record: &AcceptanceRecord, evidence_digest64: u64) -> ReviewResult<Wp018Closure> {
+pub fn close_wp018(
+    record: &AcceptanceRecord,
+    evidence_digest64: u64,
+) -> ReviewResult<Wp018Closure> {
     if record.work_id != WORK_ID
         || record.work_package != WORK_PACKAGE
         || record.verdict != Verdict::Pass
@@ -506,14 +513,15 @@ fn validate_members(input: &ReviewInput) -> ReviewResult<()> {
 
     let missing: Vec<String> = REVIEWED_MEMBER_IDS
         .iter()
-        .filter(|work_id| !seen.contains(**work_id))
+        .filter(|work_id| !seen.contains(*work_id))
         .map(|work_id| (*work_id).to_owned())
         .collect();
-    if let Some(first) = missing.first() {
+    if !missing.is_empty() {
+        let first = missing[0].clone();
         return Err(failure(
             input,
             Verdict::Blocked,
-            first,
+            &first,
             FailureReason::MissingMember(first.clone()),
             missing,
         ));
