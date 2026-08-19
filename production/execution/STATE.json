@@ -9,7 +9,7 @@
   "current_l3": null,
   "current_member_index": 0,
   "current_member_count": 0,
-  "execution_state": "IDLE",
+  "execution_state": "WAITING",
   "correction_cycle": 0,
   "correction_limit": 2,
   "completed_wps": [
@@ -46,23 +46,45 @@
   "last_ci": {
     "head_sha": "433f4f542c5d9560986b722899166c343df9cbda",
     "runs": [
-      {
-        "name": "Validate production world core",
-        "run_id": 32277754387,
-        "conclusion": "success"
-      },
-      {
-        "name": "Validate city engine",
-        "run_id": 32277754434,
-        "conclusion": "success"
-      }
+      {"name": "Validate production world core", "run_id": 32277754387, "conclusion": "success"},
+      {"name": "Validate city engine", "run_id": 32277754434, "conclusion": "success"}
     ]
+  },
+  "controller_validation": {
+    "validation_head": "f56f36aa594f258216667cd8d0eefcc91ca1f99c",
+    "controller_run_id": 32310359319,
+    "world_core_run_id": 32310359473,
+    "city_engine_run_id": 32310359231,
+    "result": "PASS",
+    "controller_tests": {"passed": 9, "failed": 0}
+  },
+  "automation_gate": {
+    "run_id": 32310359298,
+    "artifact_id": 9386205664,
+    "mechanism": "openai/codex-action@v1",
+    "api_secret_present": false,
+    "action_result": "BLOCKED_MISSING_OPENAI_API_KEY",
+    "codex_cloud_github_connection": "VERIFIED",
+    "codex_cloud_review_result": "USAGE_LIMIT_REACHED",
+    "cloud_task_probe": "PENDING_OR_NO_RESPONSE_YET",
+    "write_automation_verified": false
   },
   "next_dependency_safe_wp": "WP-019",
   "automation_enabled": false,
   "controller_mode": "single_worker",
-  "worker_status": "IDLE",
-  "last_worker_result": "Controller seed recovered; WP-018 closed; autonomous execution not yet enabled.",
-  "blocker": null,
-  "updated_at": "2026-08-20T07:38:36+09:00"
+  "worker_status": "AUTOMATION_GATE_BLOCKED",
+  "last_worker_result": "Controller/resolver validation PASS. WP-019 is dependency-safe but autonomous admission is held because no verified writable Codex execution channel is currently available.",
+  "blocker": {
+    "kind": "AUTOMATION_GATE",
+    "code": "NO_VERIFIED_WRITABLE_CODEX_CHANNEL",
+    "details": [
+      "GitHub Actions has no OPENAI_API_KEY secret, so openai/codex-action@v1 cannot execute Codex.",
+      "Codex cloud GitHub integration responded, proving the connection exists, but the review probe reported the current Codex code-review usage limit was reached."
+    ],
+    "release_conditions": [
+      "Configure repository secret OPENAI_API_KEY and rerun the Codex Action smoke gate successfully, or",
+      "Restore usable Codex cloud capacity and verify a repository task can execute under the bounded controller contract."
+    ]
+  },
+  "updated_at": "2026-08-20T07:49:27+09:00"
 }

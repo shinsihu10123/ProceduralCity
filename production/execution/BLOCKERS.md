@@ -1,21 +1,37 @@
 # Execution Blockers
 
-No project-wide blocker is active.
+## ACTIVE — AUTOMATION_GATE / NO_VERIFIED_WRITABLE_CODEX_CHANNEL
 
-## Admission holds
+The controller, Frozen graph projection, state, ledger, resolver, stop gates, and dry-run are valid. `WP-019` is dependency-safe. Autonomous admission is nevertheless held because no currently usable writable Codex execution channel has passed the Automation Gate.
 
-An unfinished WP is an **admission hold**, not a BLOCKED verdict, when one or more Frozen hard predecessors are not yet PASS/CLOSED. The controller derives these holds from the Frozen graph on every dry-run and does not persist invented blocker states.
+### Evidence
 
-## Hard stop conditions
+- Controller validation head: `f56f36aa594f258216667cd8d0eefcc91ca1f99c`
+- Controller run `32310359319`: SUCCESS; controller tests 9 / 9 PASS
+- World-core run `32310359473`: SUCCESS
+- City-engine run `32310359231`: SUCCESS
+- Codex automation gate run `32310359298`: SUCCESS as a gate workflow
+- Gate outcome: `BLOCKED_MISSING_OPENAI_API_KEY`
+- Gate artifact: `9386205664`
+- `openai/codex-action@v1` downloaded successfully; Codex execution step was skipped because the repository secret `OPENAI_API_KEY` is absent.
+- Codex cloud GitHub connection: VERIFIED by `chatgpt-codex-connector[bot]` response on PR #40.
+- Codex review execution: unavailable at the probe because the bot reported the current code-review usage limit was reached.
+- Read-only Codex cloud task probe: issued; no successful task result has been accepted yet.
 
-The worker must fail closed when any of the following occurs:
+### Release conditions
 
-- Frozen authority/version mismatch or malformed graph projection;
-- state/schema/ledger inconsistency;
-- hard predecessor not PASS/CLOSED;
-- a hard predecessor is explicitly BLOCKED;
-- another WP is already active under the single-worker controller;
-- correction cycle exceeds the configured limit (`2`);
-- Architecture/WBS/Dependency/Frozen Week semantic change would be required;
-- destructive or authority-changing operation requires approval;
-- automation mechanism is unverified while autonomous execution is requested.
+Either of these routes may release the gate, but must be verified before state changes to autonomous execution:
+
+1. Configure repository secret `OPENAI_API_KEY`, rerun `Verify Codex automation gate`, and obtain a successful Codex smoke output; or
+2. restore usable Codex cloud capacity and verify a bounded repository task can execute under the controller contract.
+
+Until then:
+
+- `automation_enabled = false`
+- no WP is admitted by automation
+- `WP-019` remains selected-but-not-started
+- no Frozen WBS/Dependency/Architecture semantics are changed
+
+## Dependency admission holds
+
+An unfinished WP is an **admission hold**, not a BLOCKED verdict, when one or more Frozen hard predecessors are not yet PASS/CLOSED. The resolver derives those holds from the Frozen graph. In particular, WP-006, WP-007, and WP-017 are dependency-held rather than failed.
