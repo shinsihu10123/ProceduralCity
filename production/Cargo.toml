@@ -18,6 +18,7 @@ members = [
     "crates/celestial-core",
     "crates/celestial-extension-core",
     "crates/scheduler-core",
+    "crates/scheduler-acceptance-core",
     "crates/causal-random-core",
     "crates/authority-placement-core",
     "crates/transaction-precommit-core",
