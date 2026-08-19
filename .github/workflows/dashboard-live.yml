@@ -1,0 +1,75 @@
+name: Verify live execution dashboard
+
+on:
+  push:
+    branches:
+      - execution/controller-v1
+    paths:
+      - 'execution-dashboard/**'
+      - 'production/execution/STATE.json'
+      - 'production/execution/DRY_RUN.json'
+      - 'production/execution/WP_LEDGER.jsonl'
+      - '.github/workflows/pages.yml'
+      - '.github/workflows/dashboard-live.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'execution-dashboard/**'
+      - 'production/execution/STATE.json'
+      - 'production/execution/DRY_RUN.json'
+      - 'production/execution/WP_LEDGER.jsonl'
+      - '.github/workflows/pages.yml'
+      - '.github/workflows/dashboard-live.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-dashboard-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe published dashboard with bounded retries
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://shinsihu10123.github.io/ProceduralCity/execution-dashboard'
+          ok=0
+          for attempt in $(seq 1 12); do
+            echo "Live dashboard probe attempt ${attempt}/12"
+            if curl --fail --silent --show-error --location --max-time 10 "$base/" -o dashboard.html \
+              && curl --fail --silent --show-error --location --max-time 10 "$base/app.css" -o app.css \
+              && curl --fail --silent --show-error --location --max-time 10 "$base/app.js" -o app.js \
+              && curl --fail --silent --show-error --location --max-time 10 "$base/data/STATE.json" -o STATE.json \
+              && curl --fail --silent --show-error --location --max-time 10 "$base/data/DRY_RUN.json" -o DRY_RUN.json \
+              && curl --fail --silent --show-error --location --max-time 10 "$base/data/WP_LEDGER.jsonl" -o WP_LEDGER.jsonl; then
+              ok=1
+              break
+            fi
+            sleep 10
+          done
+          test "$ok" -eq 1
+
+      - name: Validate published dashboard contract
+        run: |
+          grep -q '<title>가온 Autonomous Execution Dashboard</title>' dashboard.html
+          grep -q 'Observer-only' dashboard.html
+          grep -q 'POLL_MS = 45000' app.js
+          grep -q '@media(max-width:520px)' app.css
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          state = json.loads(Path('STATE.json').read_text(encoding='utf-8'))
+          dry = json.loads(Path('DRY_RUN.json').read_text(encoding='utf-8'))
+          rows = [json.loads(line) for line in Path('WP_LEDGER.jsonl').read_text(encoding='utf-8').splitlines() if line.strip()]
+          assert state['authority_version'] == 'FINAL_v2.1.3a'
+          assert state['total_wp'] == 461
+          assert state['completed_wp_count'] == 15
+          assert state['automation_enabled'] is False
+          assert dry['selected_next'] == 'WP-019'
+          assert dry['frontier'][:4] == ['WP-019', 'WP-021', 'WP-022', 'WP-023']
+          assert any(r.get('wp_id') == 'WP-018' and r.get('verdict') == 'PASS/CLOSED' for r in rows)
+          print('LIVE_DASHBOARD_GATE_PASS')
+          PY
