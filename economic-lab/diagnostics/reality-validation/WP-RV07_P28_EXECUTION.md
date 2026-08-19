@@ -29,3 +29,5 @@ Deterministic replay, health, complete coverage, candidate trace inventoryPressu
 ## Boundary
 
 This is a causal perception ablation, not a production inventory policy. Canonical mechanism changes: 0; tuning: 0; repair authorization: NO.
+
+Workflow registration trigger: 2026-08-20.
