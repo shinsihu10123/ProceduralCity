@@ -1,0 +1,8 @@
+[package]
+name = "gaonn-celestial-extension-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gaonn-celestial-core = { path = "../celestial-core" }
+gaonn-world-time-core = { path = "../world-time-core" }
