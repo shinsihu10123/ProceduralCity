@@ -1,35 +1,35 @@
 {
   "schema_version": "1.0.0",
-  "checked_at": "2026-08-20T07:49:27+09:00",
+  "checked_at": "2026-08-20T08:01:30+09:00",
   "autonomous_write_execution": "BLOCKED",
   "selected_next_wp": "WP-019",
   "controller_validation": {
-    "head": "f56f36aa594f258216667cd8d0eefcc91ca1f99c",
-    "controller_run_id": 32310359319,
-    "world_core_run_id": 32310359473,
-    "city_engine_run_id": 32310359231,
+    "head": "fd0ee164fb16f0b5e94e87f78fdb679911c99bde",
+    "controller_run_id": 32311028656,
+    "world_core_run_id": 32311028654,
+    "city_engine_run_id": 32311028696,
     "controller_tests": "9/9 PASS"
   },
   "codex_action": {
     "mechanism": "openai/codex-action@v1",
-    "gate_run_id": 32310359298,
-    "artifact_id": 9386205664,
+    "gate_run_id": 32311028658,
     "api_secret_present": false,
     "read_only_smoke": "SKIPPED",
     "result": "BLOCKED_MISSING_OPENAI_API_KEY"
   },
   "codex_cloud_github": {
     "connection": "VERIFIED",
-    "review_probe_pr": 40,
+    "probe_pr": 40,
     "review_probe_comment_id": 5348888112,
-    "bot_response_comment_id": 5348889355,
+    "review_bot_response_comment_id": 5348889355,
     "review_result": "USAGE_LIMIT_REACHED",
-    "read_only_task_probe_comment_id": 5348925254,
-    "task_probe_result": "PENDING_OR_NO_RESPONSE_YET"
+    "task_probe_comment_id": 5348925254,
+    "task_bot_response_comment_id": 5348926916,
+    "task_result": "USAGE_LIMIT_REACHED"
   },
   "write_automation_enabled": false,
   "release_conditions": [
     "OPENAI_API_KEY repository secret exists and Codex Action smoke test passes, or",
-    "Codex cloud capacity is usable and a bounded repository task execution is verified."
+    "Codex cloud usage capacity is restored and a bounded repository task execution is verified."
   ]
 }
