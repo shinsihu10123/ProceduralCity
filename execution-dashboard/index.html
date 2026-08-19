@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>가온 Autonomous Execution Dashboard</title>
+  <link rel="stylesheet" href="./app.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">경제 동아리 가온 · AI 기반 자율 세계 시뮬레이션 본판</p>
+        <h1>Execution Dashboard</h1>
+        <p class="subtitle">Repository-native state · read-only observer · 45초 polling</p>
+      </div>
+      <div class="hero-status">
+        <span id="healthDot" class="dot"></span>
+        <div><strong id="healthText">LOADING</strong><small id="lastRefresh">—</small></div>
+      </div>
+    </header>
+
+    <section id="warning" class="warning hidden" role="alert"></section>
+
+    <section class="metrics" aria-label="전체 진행률">
+      <article class="card metric"><span>Total WP</span><strong id="totalWp">—</strong></article>
+      <article class="card metric"><span>Closed</span><strong id="closedWp">—</strong></article>
+      <article class="card metric"><span>Blocked</span><strong id="blockedWp">—</strong></article>
+      <article class="card metric"><span>Remaining</span><strong id="remainingWp">—</strong></article>
+      <article class="card metric wide"><span>Overall Progress</span><strong id="progressPct">—</strong><div class="bar"><i id="progressBar"></i></div></article>
+    </section>
+
+    <section class="grid two">
+      <article class="card panel">
+        <div class="panel-head"><h2>Current Worker</h2><span id="executionState" class="pill">—</span></div>
+        <dl class="kv">
+          <div><dt>Current WP</dt><dd id="currentWp">—</dd></div>
+          <div><dt>Stage / Subsystem</dt><dd id="currentScope">—</dd></div>
+          <div><dt>L3</dt><dd id="currentL3">—</dd></div>
+          <div><dt>Member</dt><dd id="memberProgress">—</dd></div>
+          <div><dt>Correction</dt><dd id="correction">—</dd></div>
+          <div><dt>Worker result</dt><dd id="workerResult">—</dd></div>
+        </dl>
+      </article>
+
+      <article class="card panel">
+        <div class="panel-head"><h2>Dependency Resolver</h2><span class="pill muted">FROZEN</span></div>
+        <dl class="kv">
+          <div><dt>Next WP</dt><dd id="nextWp">—</dd></div>
+          <div><dt>Stage / L3</dt><dd id="nextScope">—</dd></div>
+          <div><dt>Hard predecessors</dt><dd id="preds">—</dd></div>
+          <div><dt>Safe frontier</dt><dd id="frontier">—</dd></div>
+          <div><dt>Selection rule</dt><dd id="selectionReason">—</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article class="card panel">
+        <div class="panel-head"><h2>Validation</h2><span id="validationWp" class="pill muted">—</span></div>
+        <div id="checks" class="checks"></div>
+        <dl class="kv compact">
+          <div><dt>Validated commit</dt><dd><code id="validatedCommit">—</code></dd></div>
+          <div><dt>Evidence commit</dt><dd><code id="evidenceCommit">—</code></dd></div>
+        </dl>
+        <div id="ciRuns" class="ci-list"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="panel-head"><h2>Automation Gate</h2><span id="automationPill" class="pill danger">—</span></div>
+        <dl class="kv">
+          <div><dt>Controller</dt><dd id="controllerMode">—</dd></div>
+          <div><dt>Worker status</dt><dd id="workerStatus">—</dd></div>
+          <div><dt>Automation enabled</dt><dd id="automationEnabled">—</dd></div>
+          <div><dt>Blocker</dt><dd id="blocker">—</dd></div>
+          <div><dt>State updated</dt><dd id="updatedAt">—</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="card panel history-panel">
+      <div class="panel-head"><h2>Recent WP History</h2><span class="pill muted">append-only ledger</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>WP</th><th>Scope</th><th>Verdict</th><th>Tests</th><th>CI</th><th>Evidence</th></tr></thead>
+          <tbody id="history"><tr><td colspan="6">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>
+      <span>Observer-only. This page cannot mutate simulation or execution state.</span>
+      <span id="authority">Authority —</span>
+    </footer>
+  </main>
+  <script src="./app.js" defer></script>
+</body>
+</html>

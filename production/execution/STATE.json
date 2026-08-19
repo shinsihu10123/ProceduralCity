@@ -32,6 +32,17 @@
   "blocked_wps": [],
   "last_validated_commit": "433f4f542c5d9560986b722899166c343df9cbda",
   "evidence_commit": "433f4f542c5d9560986b722899166c343df9cbda",
+  "last_validation": {
+    "wp_id": "WP-018",
+    "format": "PASS",
+    "clippy": "PASS",
+    "workspace_tests": "PASS",
+    "dedicated_tests": {
+      "status": "PASS",
+      "passed": 16,
+      "failed": 0
+    }
+  },
   "last_ci": {
     "head_sha": "433f4f542c5d9560986b722899166c343df9cbda",
     "runs": [
@@ -51,6 +62,7 @@
   "automation_enabled": false,
   "controller_mode": "single_worker",
   "worker_status": "IDLE",
+  "last_worker_result": "Controller seed recovered; WP-018 closed; autonomous execution not yet enabled.",
   "blocker": null,
-  "updated_at": "2026-08-20T07:28:00+09:00"
+  "updated_at": "2026-08-20T07:38:36+09:00"
 }

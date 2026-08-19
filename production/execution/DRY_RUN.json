@@ -1,0 +1,15 @@
+{
+  "mode": "DRY_RUN",
+  "worker": "single",
+  "authority_version": "FINAL_v2.1.3a",
+  "frontier": ["WP-019", "WP-021", "WP-022", "WP-023"],
+  "selected_next": "WP-019",
+  "selected_hard_predecessors": ["WP-011", "WP-012", "WP-013"],
+  "selected_stage": "Stage 1",
+  "selected_subsystems": ["S1.10"],
+  "selected_l3_range": ["S1.10.09", "S1.10.16"],
+  "selected_member_count": 8,
+  "reason": "lowest Frozen (Week, Dependency-safe Admission Order) among dependency-satisfied WPs",
+  "automation_enabled": false,
+  "generated_at": "2026-08-20T07:38:36+09:00"
+}

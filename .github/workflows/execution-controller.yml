@@ -1,0 +1,59 @@
+name: Validate autonomous execution controller
+
+on:
+  push:
+    branches:
+      - 'execution/**'
+    paths:
+      - 'production/execution/**'
+      - '.github/workflows/execution-controller.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'production/execution/**'
+      - '.github/workflows/execution-controller.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gaon-autonomous-execution
+  cancel-in-progress: false
+
+jobs:
+  controller-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout execution state
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile controller
+        run: python -m py_compile production/execution/controller.py
+
+      - name: Validate state graph and ledger
+        run: python production/execution/controller.py validate
+
+      - name: Run stop-gate and resolver tests
+        run: python -m unittest discover -s production/execution/tests -v
+
+      - name: Resolve dependency-safe frontier dry-run
+        run: python production/execution/controller.py dry-run | tee production/execution/ci-dry-run.json
+
+      - name: Verify automation remains gated
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          state = json.loads(Path('production/execution/STATE.json').read_text(encoding='utf-8'))
+          if state.get('automation_enabled') is not False:
+              raise SystemExit('automation_enabled must remain false until the Automation Gate is verified')
+          print('Automation Gate: CLOSED (expected during controller validation)')
+          PY
