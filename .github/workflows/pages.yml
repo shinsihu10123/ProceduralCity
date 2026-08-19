@@ -2,9 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches:
-      - main
-      - execution/controller-v1
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -20,6 +18,7 @@ jobs:
   deploy:
     outputs:
       page_url: ${{ steps.deployment.outputs.page_url }}
+      dashboard_source_sha: ${{ steps.dashboard_source.outputs.sha }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -42,6 +41,10 @@ jobs:
         with:
           ref: execution/controller-v1
           path: execution-source
+
+      - name: Capture execution dashboard source SHA
+        id: dashboard_source
+        run: echo "sha=$(git -C execution-source rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -100,7 +103,6 @@ jobs:
         uses: actions/deploy-pages@v4
 
   record-execution-dashboard-deployment:
-    if: github.ref == 'refs/heads/execution/controller-v1'
     needs: deploy
     runs-on: ubuntu-latest
     permissions:
@@ -115,9 +117,11 @@ jobs:
       - name: Record successful Pages deployment receipt
         env:
           PAGE_URL: ${{ needs.deploy.outputs.page_url }}
-          SOURCE_SHA: ${{ github.sha }}
+          DASHBOARD_SOURCE_SHA: ${{ needs.deploy.outputs.dashboard_source_sha }}
           RUN_ID: ${{ github.run_id }}
+          MAIN_DEPLOY_SHA: ${{ github.sha }}
         run: |
+          git pull --ff-only origin execution/controller-v1
           python - <<'PY'
           import json, os
           from datetime import datetime, timezone
@@ -127,7 +131,8 @@ jobs:
               "status": "SUCCESS",
               "workflow": "Deploy to GitHub Pages",
               "run_id": int(os.environ["RUN_ID"]),
-              "source_sha": os.environ["SOURCE_SHA"],
+              "main_deploy_sha": os.environ["MAIN_DEPLOY_SHA"],
+              "dashboard_source_sha": os.environ["DASHBOARD_SOURCE_SHA"],
               "page_url": os.environ["PAGE_URL"],
               "dashboard_path": "execution-dashboard/",
               "deployed_at": datetime.now(timezone.utc).isoformat(),
