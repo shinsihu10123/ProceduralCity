@@ -1,0 +1,2 @@
+WP018_WORLD_CORE_CYCLE2_TRIGGER=1
+VALIDATOR=.github/workflows/world-core.yml temporary bounded cycle 2
