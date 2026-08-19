@@ -1,0 +1,91 @@
+name: Verify Codex automation gate
+
+on:
+  push:
+    branches:
+      - execution/controller-v1
+    paths:
+      - '.github/workflows/automation-gate.yml'
+      - 'production/execution/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/automation-gate.yml'
+      - 'production/execution/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gaon-autonomous-execution
+  cancel-in-progress: false
+
+jobs:
+  codex-capability-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Probe OpenAI API secret without exposing it
+        id: secret_probe
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -n "$OPENAI_API_KEY" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "OpenAI API secret: PRESENT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "OpenAI API secret: MISSING — autonomous Codex write execution remains gated"
+          fi
+
+      - name: Run read-only Codex smoke test
+        id: codex_smoke
+        if: steps.secret_probe.outputs.present == 'true'
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          sandbox: read-only
+          safety-strategy: drop-sudo
+          codex-args: '["--ephemeral"]'
+          output-file: codex-smoke.txt
+          prompt: |
+            Read production/execution/STATE.json and production/execution/DRY_RUN.json only.
+            Do not edit files and do not use network access.
+            Verify that authority_version is FINAL_v2.1.3a, automation_enabled is false,
+            and selected_next is WP-019. Return one concise line beginning exactly
+            CODEX_AUTOMATION_SMOKE_OK and include selected_next=WP-019 automation_enabled=false.
+
+      - name: Validate Codex smoke output
+        if: steps.secret_probe.outputs.present == 'true'
+        run: |
+          test -s codex-smoke.txt
+          grep -q 'CODEX_AUTOMATION_SMOKE_OK' codex-smoke.txt
+          grep -q 'selected_next=WP-019' codex-smoke.txt
+          grep -q 'automation_enabled=false' codex-smoke.txt
+
+      - name: Write gate evidence
+        shell: bash
+        run: |
+          if [ "${{ steps.secret_probe.outputs.present }}" = "true" ]; then
+            result="CODEX_ACTION_READ_ONLY_SMOKE_PASS"
+          else
+            result="BLOCKED_MISSING_OPENAI_API_KEY"
+          fi
+          printf '{\n  "mechanism": "openai/codex-action@v1",\n  "api_secret_present": %s,\n  "result": "%s",\n  "write_automation_enabled": false\n}\n' \
+            "${{ steps.secret_probe.outputs.present }}" "$result" > automation-gate-evidence.json
+          cat automation-gate-evidence.json
+
+      - name: Upload gate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-automation-gate
+          path: automation-gate-evidence.json
+          if-no-files-found: error
