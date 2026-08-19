@@ -34,3 +34,5 @@ No other mechanism is changed.
 This is deliberately a strong causal upper bound, not a viable insolvency rule. A positive result establishes causal importance of exit/deactivation, not permission to abolish exits in production.
 
 Canonical mechanism changes: 0. Parameter tuning: 0. Repair authorization: NO.
+
+Workflow registration trigger: 2026-08-20.
