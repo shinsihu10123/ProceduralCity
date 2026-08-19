@@ -3,14 +3,14 @@ on:
   push:
     branches:
       - execution/week1-wp018-closure
-  pull_request:
-    branches:
-      - main
 permissions:
   contents: write
+concurrency:
+  group: wp018-cycle2
+  cancel-in-progress: true
 jobs:
   validate:
-    if: ${{ !contains(github.event.head_commit.message || '', 'WP-018 validation cycle 2') }}
+    if: ${{ !contains(github.event.head_commit.message, 'WP-018 validation cycle 2') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,7 +19,7 @@ jobs:
       - run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
-      - name: Apply bounded correction cycle 2
+      - name: Apply and persist bounded correction cycle 2
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -54,6 +54,13 @@ jobs:
           p.write_text(s)
           PY
           cargo fmt --manifest-path production/Cargo.toml --all
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add production/Cargo.toml production/crates/scheduler-acceptance-core
+          if ! git diff --cached --quiet; then
+            git commit -m 'fix(wp018): WP-018 validation cycle 2 code'
+            git push origin HEAD:execution/week1-wp018-closure
+          fi
       - name: Strict validation
         run: |
           set +e
@@ -78,15 +85,16 @@ jobs:
             echo "--- DEDICATED ---"
             cat /tmp/dedicated.log
           } > docs/evidence/week1/wp018-validation-cycle2.txt
+          cat docs/evidence/week1/wp018-validation-cycle2.txt
           if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$TESTS" -ne 0 ] || [ "$DEDICATED" -ne 0 ]; then
-            cat docs/evidence/week1/wp018-validation-cycle2.txt
             exit 1
           fi
-      - name: Commit validated correction
+      - name: Persist successful validation evidence
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add production/Cargo.toml production/Cargo.lock production/crates/scheduler-acceptance-core docs/evidence/week1/wp018-validation-cycle2.txt
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'fix(wp018): WP-018 validation cycle 2'
-          git push origin HEAD:execution/week1-wp018-closure
+          git add production/Cargo.lock docs/evidence/week1/wp018-validation-cycle2.txt
+          if ! git diff --cached --quiet; then
+            git commit -m 'evidence(wp018): WP-018 validation cycle 2 PASS'
+            git push origin HEAD:execution/week1-wp018-closure
+          fi
