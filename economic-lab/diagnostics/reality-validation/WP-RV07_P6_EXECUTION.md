@@ -55,3 +55,7 @@ For every short buyer, the audit also records whether non-self sellable stock an
 ## Admission rule for next causal ablation
 
 The next ablation must target the empirically dominant **actual stop branch**, not a parameter selected from outcome preference.
+
+## Dispatch note
+
+2026-08-20: execution contract touched after the workflow existed on-branch so the path-filtered push can dispatch the bounded P6 audit without changing economic semantics.
