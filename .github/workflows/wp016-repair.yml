@@ -1,0 +1,55 @@
+name: WP016 bounded correction cycle 1
+on:
+  push:
+    branches:
+      - execution/week1-wp016-celestial-extension
+permissions:
+  contents: write
+jobs:
+  repair-and-validate:
+    if: ${{ !contains(github.event.head_commit.message, 'WP-016 correction cycle 1') && !contains(github.event.head_commit.message, 'WP-016 cycle1 diagnostic') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+      - name: Apply canonical rustfmt
+        run: cargo fmt --manifest-path production/Cargo.toml --all
+      - name: Validate corrected candidate
+        run: |
+          set +e
+          cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings > /tmp/wp016-clippy.log 2>&1
+          CLIPPY=$?
+          cargo test --manifest-path production/Cargo.toml --workspace > /tmp/wp016-workspace.log 2>&1
+          TESTS=$?
+          cargo test --manifest-path production/Cargo.toml -p gaonn-celestial-extension-core --test wp016 > /tmp/wp016-dedicated.log 2>&1
+          DEDICATED=$?
+          set -e
+          mkdir -p docs/evidence/week1
+          {
+            echo "WP016_CORRECTION_CYCLE=1"
+            echo "CLIPPY_EXIT=$CLIPPY"
+            echo "WORKSPACE_TEST_EXIT=$TESTS"
+            echo "DEDICATED_TEST_EXIT=$DEDICATED"
+            echo "--- CLIPPY ---"
+            cat /tmp/wp016-clippy.log
+            echo "--- DEDICATED ---"
+            cat /tmp/wp016-dedicated.log
+          } > docs/evidence/week1/wp016-cycle1-run.txt
+          if [ "$CLIPPY" -ne 0 ] || [ "$TESTS" -ne 0 ] || [ "$DEDICATED" -ne 0 ]; then
+            git restore production/crates/celestial-extension-core production/Cargo.toml production/Cargo.lock || true
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+            git add docs/evidence/week1/wp016-cycle1-run.txt
+            git commit -m 'docs(celestial): WP-016 cycle1 diagnostic'
+            git push
+            exit 0
+          fi
+      - name: Commit validated correction cycle 1
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add production/crates/celestial-extension-core production/Cargo.toml production/Cargo.lock docs/evidence/week1/wp016-cycle1-run.txt
+          git commit -m 'fix(celestial): WP-016 correction cycle 1'
+          git push
