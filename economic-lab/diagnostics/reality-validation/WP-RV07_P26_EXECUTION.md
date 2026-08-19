@@ -33,3 +33,5 @@ Deterministic replay, health, complete coverage, exact lagged-signal reconciliat
 ## Boundary
 
 This is a diagnostic causal information-timing experiment. It does not authorize the lag convention as production architecture. Canonical mechanism changes: 0; tuning: 0; repair authorization: NO.
+
+Workflow registration trigger: 2026-08-20.
