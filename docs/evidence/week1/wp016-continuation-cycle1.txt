@@ -1,0 +1,76 @@
+WP016_CONTINUATION_CYCLE=1
+FMT_EXIT=0
+CLIPPY_EXIT=101
+WORKSPACE_TEST_EXIT=101
+DEDICATED_TEST_EXIT=101
+--- CLIPPY ---
+    Checking gaonn-world-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-core)
+    Checking gaonn-identity-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/identity-core)
+    Checking gaonn-world-time-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-time-core)
+    Checking gaonn-planetary-space-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/planetary-space-core)
+    Checking gaonn-validation-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/validation-core)
+    Checking gaonn-celestial-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/celestial-core)
+    Checking gaonn-lifecycle-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/lifecycle-core)
+    Checking gaonn-world-time-acceptance-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/world-time-acceptance-core)
+    Checking gaonn-creation-boundary-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/creation-boundary-core)
+    Checking gaonn-celestial-extension-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/celestial-extension-core)
+    Checking gaonn-retirement-state-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retirement-state-core)
+    Checking gaonn-retention-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/retention-core)
+error[E0061]: this function takes 5 arguments but 4 arguments were supplied
+   --> crates/celestial-extension-core/tests/wp016.rs:284:13
+    |
+284 |     assert!(evaluate_precision_trigger(
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+285 |         &policy(),
+286 |         &mut state,
+    |         ---------- argument #2 of type `&gaonn_celestial_extension_core::CelestialStateVersionTag` is missing
+    |
+note: function defined here
+   --> crates/celestial-extension-core/src/lib.rs:531:8
+    |
+531 | pub fn evaluate_precision_trigger(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: provide the argument
+    |
+284 ~     assert!(evaluate_precision_trigger(
+285 +         &policy(),
+286 +         /* &gaonn_celestial_extension_core::CelestialStateVersionTag */,
+287 +         &mut state,
+288 +         &breach,
+289 +         WriteOrigin::OwningResolver,
+290 +     )
+    |
+
+    Checking gaonn-cross-reference-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/cross-reference-core)
+For more information about this error, try `rustc --explain E0061`.
+error: could not compile `gaonn-celestial-extension-core` (test "wp016") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+--- DEDICATED ---
+   Compiling gaonn-celestial-extension-core v0.1.0 (/home/runner/work/ProceduralCity/ProceduralCity/production/crates/celestial-extension-core)
+error[E0061]: this function takes 5 arguments but 4 arguments were supplied
+   --> crates/celestial-extension-core/tests/wp016.rs:284:13
+    |
+284 |     assert!(evaluate_precision_trigger(
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+285 |         &policy(),
+286 |         &mut state,
+    |         ---------- argument #2 of type `&gaonn_celestial_extension_core::CelestialStateVersionTag` is missing
+    |
+note: function defined here
+   --> crates/celestial-extension-core/src/lib.rs:531:8
+    |
+531 | pub fn evaluate_precision_trigger(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: provide the argument
+    |
+284 ~     assert!(evaluate_precision_trigger(
+285 +         &policy(),
+286 +         /* &gaonn_celestial_extension_core::CelestialStateVersionTag */,
+287 +         &mut state,
+288 +         &breach,
+289 +         WriteOrigin::OwningResolver,
+290 +     )
+    |
+
+For more information about this error, try `rustc --explain E0061`.
+error: could not compile `gaonn-celestial-extension-core` (test "wp016") due to 1 previous error
