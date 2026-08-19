@@ -16,6 +16,7 @@ members = [
     "crates/world-time-acceptance-core",
     "crates/validation-core",
     "crates/celestial-core",
+    "crates/celestial-extension-core",
     "crates/scheduler-core",
     "crates/causal-random-core",
     "crates/authority-placement-core",
