@@ -1,0 +1,95 @@
+name: Economic Lab WP-RV07 Stock Flow Scale Audit
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/scripts/stock-flow-scale-audit-v10.mjs'
+      - 'economic-lab/diagnostics/reality-validation/WP-RV07_EXECUTION.md'
+      - '.github/workflows/economic-lab-rv07.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Publish WP-RV07 running beacon
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python - <<'PY' > /tmp/rv07-running.json
+          import json, os
+          print(json.dumps({
+              "state": "pending",
+              "target_url": os.environ["RUN_URL"],
+              "description": "WP-RV07 stock-flow scale audit is running",
+              "context": "economic-lab/wp-rv07"
+          }))
+          PY
+          curl -fsS -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" \
+            --data-binary @/tmp/rv07-running.json
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run bounded compact and baseline scale audit
+        working-directory: economic-lab
+        env:
+          DIAG_SCALES: 'compact,baseline'
+          DIAG_MONTHS: '3'
+          DIAG_SEEDS: 'ECON-RV02-A,ECON-RV02-B,ECON-RV02-C'
+          OUTPUT_JSON: 'performance-results/reality-diagnostics-rv07-stock-flow-scale.json'
+        run: |
+          set -euo pipefail
+          node scripts/stock-flow-scale-audit-v10.mjs &
+          pid=$!
+          while kill -0 "$pid" 2>/dev/null; do
+            echo "[WP-RV07 heartbeat] audit still running at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            sleep 30
+          done
+          wait "$pid"
+      - name: Upload WP-RV07 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: economic-lab-wp-rv07-p0
+          path: economic-lab/performance-results/reality-diagnostics-rv07-stock-flow-scale.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish WP-RV07 final beacon
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          API_STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
+          DESCRIPTION: ${{ job.status == 'success' && 'WP-RV07 stock-flow audit passed' || 'WP-RV07 stock-flow audit failed' }}
+        run: |
+          python - <<'PY' > /tmp/rv07-final.json
+          import json, os
+          print(json.dumps({
+              "state": os.environ["API_STATE"],
+              "target_url": os.environ["RUN_URL"],
+              "description": os.environ["DESCRIPTION"],
+              "context": "economic-lab/wp-rv07"
+          }))
+          PY
+          curl -fsS -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" \
+            --data-binary @/tmp/rv07-final.json
