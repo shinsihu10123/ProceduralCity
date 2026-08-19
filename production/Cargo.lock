@@ -26,6 +26,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "gaonn-celestial-extension-core"
+version = "0.1.0"
+dependencies = [
+ "gaonn-celestial-core",
+ "gaonn-world-time-core",
+]
+
+[[package]]
 name = "gaonn-creation-boundary-core"
 version = "0.1.0"
 dependencies = [

@@ -14,14 +14,7 @@ use std::fmt;
 pub const SCHEMA_VERSION: u32 = 1;
 pub const OWNER: &str = "domain01.celestial_world_state";
 pub const MEMBER_IDS: [&str; 9] = [
-    "S4.01.09",
-    "S4.01.10",
-    "S4.01.11",
-    "S4.01.12",
-    "S4.01.13",
-    "S4.01.14",
-    "S4.01.15",
-    "S4.01.16",
+    "S4.01.09", "S4.01.10", "S4.01.11", "S4.01.12", "S4.01.13", "S4.01.14", "S4.01.15", "S4.01.16",
     "S4.01.17",
 ];
 
@@ -187,7 +180,11 @@ pub fn validate_precision_policy(
     required(&policy.position_error_unit, "precision.position_error_unit")?;
     required(&policy.causal_parent, "precision.causal_parent")?;
     check_version(policy.version)?;
-    validate_exact_ref(&axial.reference(), &policy.axial_ref, "S4.01.09 axial reference")?;
+    validate_exact_ref(
+        &axial.reference(),
+        &policy.axial_ref,
+        "S4.01.09 axial reference",
+    )?;
     if policy.horizon_end_tick < policy.horizon_start_tick {
         return Err(ExtensionError::InvalidHorizon);
     }
@@ -373,18 +370,31 @@ pub struct CelestialDurableArtifact {
     pub artifact_digest64: u64,
 }
 
+#[derive(Debug)]
+pub struct CelestialArtifactInput<'a> {
+    pub commit_marker: &'a str,
+    pub causal_cut: &'a str,
+    pub recovery_position: &'a str,
+    pub replay_reference: &'a str,
+    pub tag: CelestialStateVersionTag,
+    pub axial: AxialPrecessionParameters,
+    pub policy: EphemerisPrecisionPolicy,
+    pub event_order: Vec<String>,
+}
+
 impl CelestialDurableArtifact {
     /// S4.01.12 — Celestial State Serialization.
-    pub fn build(
-        commit_marker: &str,
-        causal_cut: &str,
-        recovery_position: &str,
-        replay_reference: &str,
-        tag: CelestialStateVersionTag,
-        axial: AxialPrecessionParameters,
-        policy: EphemerisPrecisionPolicy,
-        event_order: Vec<String>,
-    ) -> Result<Self, ExtensionError> {
+    pub fn build(input: CelestialArtifactInput<'_>) -> Result<Self, ExtensionError> {
+        let CelestialArtifactInput {
+            commit_marker,
+            causal_cut,
+            recovery_position,
+            replay_reference,
+            tag,
+            axial,
+            policy,
+            event_order,
+        } = input;
         required(commit_marker, "artifact.commit_marker")?;
         required(causal_cut, "artifact.causal_cut")?;
         required(recovery_position, "artifact.recovery_position")?;
@@ -445,23 +455,32 @@ impl CelestialDurableArtifact {
         if self.artifact_digest64 == 0 || self.event_order.is_empty() {
             return Err(ExtensionError::CorruptArtifact);
         }
-        let rebuilt = Self::build(
-            &self.commit_marker,
-            &self.causal_cut,
-            &self.recovery_position,
-            &self.replay_reference,
-            self.tag.clone(),
-            self.axial.clone(),
-            self.policy.clone(),
-            self.event_order.clone(),
-        )?;
+        let rebuilt = Self::build(CelestialArtifactInput {
+            commit_marker: &self.commit_marker,
+            causal_cut: &self.causal_cut,
+            recovery_position: &self.recovery_position,
+            replay_reference: &self.replay_reference,
+            tag: self.tag.clone(),
+            axial: self.axial.clone(),
+            policy: self.policy.clone(),
+            event_order: self.event_order.clone(),
+        })?;
         if rebuilt.artifact_digest64 != self.artifact_digest64 {
             return Err(ExtensionError::CorruptArtifact);
         }
         Ok(())
     }
 
-    pub fn restore(&self) -> Result<(CelestialStateVersionTag, AxialPrecessionParameters, EphemerisPrecisionPolicy), ExtensionError> {
+    pub fn restore(
+        &self,
+    ) -> Result<
+        (
+            CelestialStateVersionTag,
+            AxialPrecessionParameters,
+            EphemerisPrecisionPolicy,
+        ),
+        ExtensionError,
+    > {
         self.validate()?;
         Ok((self.tag.clone(), self.axial.clone(), self.policy.clone()))
     }
@@ -971,7 +990,8 @@ pub fn accept_wp016(
 }
 
 pub fn validate_world_time(time: &WorldTimeState) -> Result<(), ExtensionError> {
-    time.validate().map_err(|_| ExtensionError::InvalidWorldTime)
+    time.validate()
+        .map_err(|_| ExtensionError::InvalidWorldTime)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1006,19 +1026,30 @@ impl fmt::Display for ExtensionError {
             Self::InvalidPredecessor => write!(f, "invalid WP-008 predecessor evidence"),
             Self::MissingField(field) => write!(f, "missing required field {field}"),
             Self::MissingEvidence(field) => write!(f, "missing evidence {field}"),
-            Self::MissingMemberEvidence(work_id) => write!(f, "missing PASS/evidence for {work_id}"),
+            Self::MissingMemberEvidence(work_id) => {
+                write!(f, "missing PASS/evidence for {work_id}")
+            }
             Self::WrongOwner(owner) => write!(f, "wrong PA-057 owner {owner}"),
-            Self::UnauthorizedWrite(origin) => write!(f, "unauthorized celestial write from {origin:?}"),
-            Self::StaleVersion { expected, found } => write!(f, "stale version: expected {expected}, found {found}"),
+            Self::UnauthorizedWrite(origin) => {
+                write!(f, "unauthorized celestial write from {origin:?}")
+            }
+            Self::StaleVersion { expected, found } => {
+                write!(f, "stale version: expected {expected}, found {found}")
+            }
             Self::InvalidInitialVersion(found) => write!(f, "invalid initial version {found}"),
             Self::InvalidNumeric(field) => write!(f, "invalid numeric field {field}"),
-            Self::InvalidHorizon => write!(f, "invalid long-horizon interval or rollback/precision bound"),
+            Self::InvalidHorizon => write!(
+                f,
+                "invalid long-horizon interval or rollback/precision bound"
+            ),
             Self::InvalidDisposition => write!(f, "invalid candidate/read-only disposition"),
             Self::ReferenceMismatch(name) => write!(f, "reference mismatch {name}"),
             Self::DuplicateStableId(id) => write!(f, "duplicate or reused stable ID {id}"),
             Self::DanglingReference(id) => write!(f, "dangling reference {id}"),
             Self::RetiredRecord(id) => write!(f, "retired record {id}"),
-            Self::StaleOrMismatchedRevision => write!(f, "stale or mismatched version-tag revision"),
+            Self::StaleOrMismatchedRevision => {
+                write!(f, "stale or mismatched version-tag revision")
+            }
             Self::CorruptArtifact => write!(f, "corrupt or partial celestial durable artifact"),
             Self::ReadCutMismatch => write!(f, "forcing query source cut mismatch"),
             Self::ArithmeticOverflow => write!(f, "celestial arithmetic overflow"),

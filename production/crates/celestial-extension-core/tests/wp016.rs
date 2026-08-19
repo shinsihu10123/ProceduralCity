@@ -86,21 +86,21 @@ fn registry() -> VersionTagRegistry {
 }
 
 fn artifact() -> CelestialDurableArtifact {
-    CelestialDurableArtifact::build(
-        "committed:S4.01.11",
-        "cut:100",
-        "recovery:100",
-        "replay:earth:100",
-        tag(),
-        axial(),
-        policy(),
-        vec![
+    CelestialDurableArtifact::build(CelestialArtifactInput {
+        commit_marker: "committed:S4.01.11",
+        causal_cut: "cut:100",
+        recovery_position: "recovery:100",
+        replay_reference: "replay:earth:100",
+        tag: tag(),
+        axial: axial(),
+        policy: policy(),
+        event_order: vec![
             "S4.01.09".to_owned(),
             "S4.01.10".to_owned(),
             "S4.01.11".to_owned(),
             "S4.01.12".to_owned(),
         ],
-    )
+    })
     .unwrap()
 }
 
@@ -265,23 +265,31 @@ fn s4_01_13_adaptive_precision_trigger_emits_once_per_boundary_crossing() {
         observed_position_error: 50.0,
         causal_parent: "measurement:200".to_owned(),
     };
-    let first = evaluate_precision_trigger(&policy(), &mut state, &breach, WriteOrigin::OwningResolver)
-        .unwrap()
-        .unwrap();
+    let first =
+        evaluate_precision_trigger(&policy(), &mut state, &breach, WriteOrigin::OwningResolver)
+            .unwrap()
+            .unwrap();
     assert!(first.activated);
-    assert!(evaluate_precision_trigger(&policy(), &mut state, &breach, WriteOrigin::OwningResolver)
-        .unwrap()
-        .is_none());
+    assert!(evaluate_precision_trigger(
+        &policy(),
+        &mut state,
+        &breach,
+        WriteOrigin::OwningResolver
+    )
+    .unwrap()
+    .is_none());
     let clear = PrecisionTriggerInput {
         world_tick: 201,
         observed_angular_error_rad: 0.0001,
         observed_position_error: 10.0,
         causal_parent: "measurement:201".to_owned(),
     };
-    assert!(!evaluate_precision_trigger(&policy(), &mut state, &clear, WriteOrigin::OwningResolver)
-        .unwrap()
-        .unwrap()
-        .activated);
+    assert!(
+        !evaluate_precision_trigger(&policy(), &mut state, &clear, WriteOrigin::OwningResolver)
+            .unwrap()
+            .unwrap()
+            .activated
+    );
 }
 
 #[test]
