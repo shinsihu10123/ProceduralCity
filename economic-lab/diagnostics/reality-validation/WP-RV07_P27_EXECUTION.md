@@ -27,3 +27,5 @@ Deterministic replay, health, complete coverage, interventions actually applied,
 ## Boundary
 
 This is a causal action-path ablation, not a production labor policy. It does not prevent exit displacement, does not guarantee jobs for infeasible aggregate targets, and does not alter cash constraints. Canonical mechanism changes: 0; tuning: 0; repair authorization: NO.
+
+Workflow registration trigger: 2026-08-20.
