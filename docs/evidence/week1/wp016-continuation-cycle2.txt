@@ -1,0 +1,29 @@
+WP016_CONTINUATION_CYCLE=2
+FMT_EXIT=0
+CLIPPY_EXIT=0
+WORKSPACE_TEST_EXIT=0
+DEDICATED_TEST_EXIT=0
+
+running 19 tests
+test admission_requires_exact_closed_wp008_evidence ... ok
+test s4_01_09_axial_precession_validates_owner_range_and_reference ... ok
+test s4_01_10_precision_policy_uses_explicit_source_tolerances_and_horizon ... ok
+test s4_01_11_retired_id_cannot_be_reused ... ok
+test s4_01_11_version_tag_preserves_lineage_and_rejects_reuse_wrong_owner_and_stale_update ... ok
+test s4_01_13_adaptive_precision_trigger_emits_once_per_boundary_crossing ... ok
+test s4_01_12_serialization_restore_is_digest_stable_and_corruption_fails_closed ... ok
+test s4_01_13_wrong_owner_or_out_of_horizon_does_not_mutate_state ... ok
+test s4_01_13_requires_exact_s4_01_11_version_tag_and_preserves_pre_state_on_rejection ... ok
+test s4_01_14_requires_exact_s4_01_10_policy_and_s4_01_11_tag_refs ... ok
+test s4_01_14_illumination_geometry_is_derived_and_handles_shadow_boundary ... ok
+test s4_01_15_query_is_read_only_and_preserves_time_location_object_and_provenance ... ok
+test s4_01_16_season_audit_detects_three_prohibited_paths_without_false_positive_or_mutation ... ok
+test s4_01_17_fixture_reports_first_injected_failure_without_fabricating_final_digest ... ok
+test s4_01_15_query_rejects_mixed_read_cut ... ok
+test s4_01_17_long_horizon_fixture_is_repeatable_for_same_seed_and_input ... ok
+test wp016_integration_s4_01_09_through_s4_01_17_has_no_shortcut ... ok
+test wp016_acceptance_requires_all_nine_members_snapshot_and_successful_fixture ... ok
+test wp016_snapshot_restore_preserves_id_version_pending_state_causal_refs_and_event_order ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

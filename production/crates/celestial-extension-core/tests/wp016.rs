@@ -110,6 +110,7 @@ fn adaptive_state() -> AdaptivePrecisionState {
         version: 1,
         owner: OWNER.to_owned(),
         policy_ref: policy().reference(),
+        celestial_state_ref: tag().reference(),
         phase: TriggerPhase::Inactive,
         last_transition_tick: None,
         causal_parent: "S4.01.12".to_owned(),
@@ -117,16 +118,21 @@ fn adaptive_state() -> AdaptivePrecisionState {
 }
 
 fn illumination(tick: i128) -> IlluminationGeometry {
-    derive_illumination_geometry(&IlluminationInput {
-        celestial_state_ref: tag().reference(),
-        surface_ref: "surface:equator:0".to_owned(),
-        world_tick: tick,
-        surface_normal_unit: [1.0, 0.0, 0.0],
-        sun_direction_unit: [1.0, 0.0, 0.0],
-        normal_irradiance_w_m2: 1361.0,
-        occluded_by_objective_geometry: false,
-        causal_parent: "S4.01.13".to_owned(),
-    })
+    derive_illumination_geometry(
+        &policy(),
+        &tag(),
+        &IlluminationInput {
+            celestial_state_ref: tag().reference(),
+            precision_policy_ref: policy().reference(),
+            surface_ref: "surface:equator:0".to_owned(),
+            world_tick: tick,
+            surface_normal_unit: [1.0, 0.0, 0.0],
+            sun_direction_unit: [1.0, 0.0, 0.0],
+            normal_irradiance_w_m2: 1361.0,
+            occluded_by_objective_geometry: false,
+            causal_parent: "S4.01.13".to_owned(),
+        },
+    )
     .unwrap()
 }
 
@@ -265,13 +271,19 @@ fn s4_01_13_adaptive_precision_trigger_emits_once_per_boundary_crossing() {
         observed_position_error: 50.0,
         causal_parent: "measurement:200".to_owned(),
     };
-    let first =
-        evaluate_precision_trigger(&policy(), &mut state, &breach, WriteOrigin::OwningResolver)
-            .unwrap()
-            .unwrap();
+    let first = evaluate_precision_trigger(
+        &policy(),
+        &tag(),
+        &mut state,
+        &breach,
+        WriteOrigin::OwningResolver,
+    )
+    .unwrap()
+    .unwrap();
     assert!(first.activated);
     assert!(evaluate_precision_trigger(
         &policy(),
+        &tag(),
         &mut state,
         &breach,
         WriteOrigin::OwningResolver
@@ -285,10 +297,16 @@ fn s4_01_13_adaptive_precision_trigger_emits_once_per_boundary_crossing() {
         causal_parent: "measurement:201".to_owned(),
     };
     assert!(
-        !evaluate_precision_trigger(&policy(), &mut state, &clear, WriteOrigin::OwningResolver)
-            .unwrap()
-            .unwrap()
-            .activated
+        !evaluate_precision_trigger(
+            &policy(),
+            &tag(),
+            &mut state,
+            &clear,
+            WriteOrigin::OwningResolver
+        )
+        .unwrap()
+        .unwrap()
+        .activated
     );
 }
 
@@ -303,10 +321,74 @@ fn s4_01_13_wrong_owner_or_out_of_horizon_does_not_mutate_state() {
         causal_parent: "measurement:outside".to_owned(),
     };
     assert_eq!(
-        evaluate_precision_trigger(&policy(), &mut state, &input, WriteOrigin::OwningResolver),
+        evaluate_precision_trigger(
+            &policy(),
+            &tag(),
+            &mut state,
+            &input,
+            WriteOrigin::OwningResolver
+        ),
         Err(ExtensionError::InvalidHorizon)
     );
     assert_eq!(state, pre);
+}
+
+#[test]
+fn s4_01_13_requires_exact_s4_01_11_version_tag_and_preserves_pre_state_on_rejection() {
+    let mut state = adaptive_state();
+    state.celestial_state_ref.version += 1;
+    let pre = state.clone();
+    let input = PrecisionTriggerInput {
+        world_tick: 200,
+        observed_angular_error_rad: 0.002,
+        observed_position_error: 50.0,
+        causal_parent: "measurement:dependency-audit".to_owned(),
+    };
+    assert_eq!(
+        evaluate_precision_trigger(
+            &policy(),
+            &tag(),
+            &mut state,
+            &input,
+            WriteOrigin::OwningResolver
+        ),
+        Err(ExtensionError::ReferenceMismatch(
+            "S4.01.11 trigger celestial version tag"
+        ))
+    );
+    assert_eq!(state, pre);
+}
+
+#[test]
+fn s4_01_14_requires_exact_s4_01_10_policy_and_s4_01_11_tag_refs() {
+    let p = policy();
+    let t = tag();
+    let mut input = IlluminationInput {
+        celestial_state_ref: t.reference(),
+        precision_policy_ref: p.reference(),
+        surface_ref: "surface:dependency-audit".to_owned(),
+        world_tick: 300,
+        surface_normal_unit: [1.0, 0.0, 0.0],
+        sun_direction_unit: [1.0, 0.0, 0.0],
+        normal_irradiance_w_m2: 1361.0,
+        occluded_by_objective_geometry: false,
+        causal_parent: "S4.01.13".to_owned(),
+    };
+    input.precision_policy_ref.version += 1;
+    assert_eq!(
+        derive_illumination_geometry(&p, &t, &input),
+        Err(ExtensionError::ReferenceMismatch(
+            "S4.01.10 illumination precision policy"
+        ))
+    );
+    input.precision_policy_ref = p.reference();
+    input.celestial_state_ref.version += 1;
+    assert_eq!(
+        derive_illumination_geometry(&p, &t, &input),
+        Err(ExtensionError::ReferenceMismatch(
+            "S4.01.11 illumination celestial version tag"
+        ))
+    );
 }
 
 #[test]
@@ -314,16 +396,21 @@ fn s4_01_14_illumination_geometry_is_derived_and_handles_shadow_boundary() {
     let lit = illumination(300);
     assert!(!lit.shadowed);
     assert_eq!(lit.direct_irradiance_w_m2, 1361.0);
-    let dark = derive_illumination_geometry(&IlluminationInput {
-        celestial_state_ref: tag().reference(),
-        surface_ref: "surface:night".to_owned(),
-        world_tick: 300,
-        surface_normal_unit: [-1.0, 0.0, 0.0],
-        sun_direction_unit: [1.0, 0.0, 0.0],
-        normal_irradiance_w_m2: 1361.0,
-        occluded_by_objective_geometry: false,
-        causal_parent: "S4.01.13".to_owned(),
-    })
+    let dark = derive_illumination_geometry(
+        &policy(),
+        &tag(),
+        &IlluminationInput {
+            celestial_state_ref: tag().reference(),
+            precision_policy_ref: policy().reference(),
+            surface_ref: "surface:night".to_owned(),
+            world_tick: 300,
+            surface_normal_unit: [-1.0, 0.0, 0.0],
+            sun_direction_unit: [1.0, 0.0, 0.0],
+            normal_irradiance_w_m2: 1361.0,
+            occluded_by_objective_geometry: false,
+            causal_parent: "S4.01.13".to_owned(),
+        },
+    )
     .unwrap();
     assert!(dark.shadowed);
     assert_eq!(dark.direct_irradiance_w_m2, 0.0);
@@ -452,6 +539,14 @@ fn wp016_snapshot_restore_preserves_id_version_pending_state_causal_refs_and_eve
     assert_eq!(restored.digest64().unwrap(), digest);
     assert_eq!(restored.event_order, snapshot.event_order);
     assert_eq!(restored.adaptive_state, snapshot.adaptive_state);
+    let mut mixed = snapshot.clone();
+    mixed.adaptive_state.celestial_state_ref.version += 1;
+    assert_eq!(
+        mixed.validate(),
+        Err(ExtensionError::ReferenceMismatch(
+            "snapshot adaptive celestial version tag"
+        ))
+    );
 }
 
 #[test]
@@ -499,6 +594,7 @@ fn wp016_integration_s4_01_09_through_s4_01_17_has_no_shortcut() {
     let mut adaptive = adaptive_state();
     evaluate_precision_trigger(
         &policy(),
+        &tag(),
         &mut adaptive,
         &PrecisionTriggerInput {
             world_tick: 200,

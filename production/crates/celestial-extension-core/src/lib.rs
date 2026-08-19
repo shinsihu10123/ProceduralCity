@@ -498,6 +498,7 @@ pub struct AdaptivePrecisionState {
     pub version: u32,
     pub owner: String,
     pub policy_ref: VersionRef,
+    pub celestial_state_ref: VersionRef,
     pub phase: TriggerPhase,
     pub last_transition_tick: Option<i128>,
     pub causal_parent: String,
@@ -516,6 +517,8 @@ pub struct PrecisionTriggerEvent {
     pub work_id: &'static str,
     pub state_id: String,
     pub state_version: u32,
+    pub source_tag_ref: VersionRef,
+    pub source_policy_ref: VersionRef,
     pub world_tick: i128,
     pub activated: bool,
     pub causal_parent: String,
@@ -527,12 +530,26 @@ pub struct PrecisionTriggerEvent {
 /// activation events; thresholds are read from the explicit precision policy.
 pub fn evaluate_precision_trigger(
     policy: &EphemerisPrecisionPolicy,
+    tag: &CelestialStateVersionTag,
     state: &mut AdaptivePrecisionState,
     input: &PrecisionTriggerInput,
     origin: WriteOrigin,
 ) -> Result<Option<PrecisionTriggerEvent>, ExtensionError> {
     validate_write(&state.owner, origin)?;
+    if tag.lifecycle != Lifecycle::Active {
+        return Err(ExtensionError::RetiredRecord(tag.stable_id.clone()));
+    }
     validate_exact_ref(&policy.reference(), &state.policy_ref, "trigger policy")?;
+    validate_exact_ref(
+        &tag.reference(),
+        &state.celestial_state_ref,
+        "S4.01.11 trigger celestial version tag",
+    )?;
+    validate_exact_ref(
+        &policy.reference(),
+        &tag.source_policy_ref,
+        "S4.01.10/S4.01.11 trigger policy lineage",
+    )?;
     required(&state.stable_id, "trigger.stable_id")?;
     required(&state.causal_parent, "trigger.causal_parent")?;
     required(&input.causal_parent, "trigger.input.causal_parent")?;
@@ -569,6 +586,8 @@ pub fn evaluate_precision_trigger(
         work_id: "S4.01.13",
         state_id: state.stable_id.clone(),
         state_version: state.version,
+        source_tag_ref: tag.reference(),
+        source_policy_ref: policy.reference(),
         world_tick: input.world_tick,
         activated: target == TriggerPhase::Active,
         causal_parent: input.causal_parent.clone(),
@@ -579,6 +598,7 @@ pub fn evaluate_precision_trigger(
 #[derive(Debug, Clone, PartialEq)]
 pub struct IlluminationInput {
     pub celestial_state_ref: VersionRef,
+    pub precision_policy_ref: VersionRef,
     pub surface_ref: String,
     pub world_tick: i128,
     pub surface_normal_unit: Vector3,
@@ -592,6 +612,7 @@ pub struct IlluminationInput {
 pub struct IlluminationGeometry {
     pub work_id: &'static str,
     pub celestial_state_ref: VersionRef,
+    pub precision_policy_ref: VersionRef,
     pub surface_ref: String,
     pub world_tick: i128,
     pub incidence_cosine: f64,
@@ -603,9 +624,31 @@ pub struct IlluminationGeometry {
 
 /// S4.01.14 — Planetary Shadow / Illumination Geometry.
 pub fn derive_illumination_geometry(
+    policy: &EphemerisPrecisionPolicy,
+    tag: &CelestialStateVersionTag,
     input: &IlluminationInput,
 ) -> Result<IlluminationGeometry, ExtensionError> {
-    validate_ref(&input.celestial_state_ref)?;
+    if tag.lifecycle != Lifecycle::Active {
+        return Err(ExtensionError::RetiredRecord(tag.stable_id.clone()));
+    }
+    validate_exact_ref(
+        &tag.reference(),
+        &input.celestial_state_ref,
+        "S4.01.11 illumination celestial version tag",
+    )?;
+    validate_exact_ref(
+        &policy.reference(),
+        &input.precision_policy_ref,
+        "S4.01.10 illumination precision policy",
+    )?;
+    validate_exact_ref(
+        &policy.reference(),
+        &tag.source_policy_ref,
+        "S4.01.10/S4.01.11 illumination policy lineage",
+    )?;
+    if input.world_tick < policy.horizon_start_tick || input.world_tick > policy.horizon_end_tick {
+        return Err(ExtensionError::InvalidHorizon);
+    }
     required(&input.surface_ref, "illumination.surface_ref")?;
     required(&input.causal_parent, "illumination.causal_parent")?;
     finite(
@@ -629,6 +672,7 @@ pub fn derive_illumination_geometry(
     Ok(IlluminationGeometry {
         work_id: "S4.01.14",
         celestial_state_ref: input.celestial_state_ref.clone(),
+        precision_policy_ref: input.precision_policy_ref.clone(),
         surface_ref: input.surface_ref.clone(),
         world_tick: input.world_tick,
         incidence_cosine,
@@ -679,6 +723,7 @@ pub fn query_celestial_forcing(
     if query.world_tick != illumination.world_tick
         || query.location_ref != illumination.surface_ref
         || illumination.celestial_state_ref != tag.reference()
+        || illumination.precision_policy_ref != tag.source_policy_ref
     {
         return Err(ExtensionError::ReadCutMismatch);
     }
@@ -853,16 +898,21 @@ pub fn run_long_horizon_fixture(
             .ok_or(ExtensionError::ArithmeticOverflow)?;
         let phase = axial.precession_phase_rad + axial.precession_rate_rad_per_tick * dt as f64;
         finite(phase, "fixture.precession_phase")?;
-        let illumination = derive_illumination_geometry(&IlluminationInput {
-            celestial_state_ref: tag.reference(),
-            surface_ref: input.surface_ref.clone(),
-            world_tick: tick,
-            surface_normal_unit: input.surface_normal_unit,
-            sun_direction_unit: input.sun_direction_unit,
-            normal_irradiance_w_m2: input.normal_irradiance_w_m2,
-            occluded_by_objective_geometry: false,
-            causal_parent: "S4.01.14:fixture".to_owned(),
-        })?;
+        let illumination = derive_illumination_geometry(
+            policy,
+            tag,
+            &IlluminationInput {
+                celestial_state_ref: tag.reference(),
+                precision_policy_ref: policy.reference(),
+                surface_ref: input.surface_ref.clone(),
+                world_tick: tick,
+                surface_normal_unit: input.surface_normal_unit,
+                sun_direction_unit: input.sun_direction_unit,
+                normal_irradiance_w_m2: input.normal_irradiance_w_m2,
+                occluded_by_objective_geometry: false,
+                causal_parent: "S4.01.14:fixture".to_owned(),
+            },
+        )?;
         let query = CelestialForcingQuery {
             query_id: format!("{}:{index}", input.fixture_id),
             source_tag_ref: tag.reference(),
@@ -927,6 +977,16 @@ impl Wp016Snapshot {
         if self.event_order.is_empty() || self.adaptive_state.owner != OWNER {
             return Err(ExtensionError::CorruptArtifact);
         }
+        validate_exact_ref(
+            &self.durable_artifact.policy.reference(),
+            &self.adaptive_state.policy_ref,
+            "snapshot adaptive precision policy",
+        )?;
+        validate_exact_ref(
+            &self.durable_artifact.tag.reference(),
+            &self.adaptive_state.celestial_state_ref,
+            "snapshot adaptive celestial version tag",
+        )?;
         Ok(())
     }
 
