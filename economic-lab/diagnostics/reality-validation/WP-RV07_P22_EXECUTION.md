@@ -42,3 +42,5 @@ Observer non-interference, health, complete coverage, exact desired-production e
 ## Boundary
 
 No canonical changes, no tuning, no repair selection from P22 alone.
+
+<!-- workflow-registration trigger: 2026-08-20 -->
