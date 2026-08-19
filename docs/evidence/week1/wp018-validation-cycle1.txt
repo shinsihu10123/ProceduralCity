@@ -1,0 +1,11 @@
+WP018_VALIDATION_CYCLE=1
+RUN_ID=32222675140
+JOB_ID=95976050449
+FMT_EXIT=0
+CLIPPY_EXIT=101
+WORKSPACE_TEST_EXIT=101
+DEDICATED_TEST_EXIT=101
+FIRST_FAILURE=Rust E0505 in scheduler-acceptance-core validate_members: missing.first() borrowed the missing vector while the same vector was moved into ReviewFailure missing_evidence.
+DISPOSITION=FAIL_CLOSED
+PRODUCTION_COMMIT=NO
+NEXT=bounded correction cycle 2/2
