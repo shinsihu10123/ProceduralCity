@@ -1,0 +1,68 @@
+name: Economic Lab WP-RV07-P15 Resource Guard Ablation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [scratch/new-project-2026-08-12]
+    paths:
+      - 'economic-lab/scripts/resource-sector-layoff-guard-ablation-v10.mjs'
+      - 'economic-lab/diagnostics/reality-validation/WP-RV07_P15_EXECUTION.md'
+      - '.github/workflows/economic-lab-rv07-p15.yml'
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  ablation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Publish WP-RV07-P15 running beacon
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python - <<'PY' > /tmp/rv07p15-running.json
+          import json, os
+          print(json.dumps({"state":"pending","target_url":os.environ["RUN_URL"],"description":"WP-RV07-P15 resource guard ablation is running","context":"economic-lab/wp-rv07-p15"}))
+          PY
+          curl -fsS -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" --data-binary @/tmp/rv07p15-running.json
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run resource-sector layoff guard ablation
+        working-directory: economic-lab
+        env:
+          DIAG_SCALES: compact,baseline
+          DIAG_MONTHS: 12
+          DIAG_SEEDS: ECON-RV02-A,ECON-RV02-B,ECON-RV02-C
+          OUTPUT_JSON: performance-results/reality-diagnostics-rv07-p15-resource-guard.json
+        run: |
+          set -euo pipefail
+          node scripts/resource-sector-layoff-guard-ablation-v10.mjs
+      - name: Upload WP-RV07-P15 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: economic-lab-wp-rv07-p15
+          path: economic-lab/performance-results/reality-diagnostics-rv07-p15-resource-guard.json
+          retention-days: 30
+      - name: Publish WP-RV07-P15 final beacon
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          API_STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
+          DESCRIPTION: ${{ job.status == 'success' && 'WP-RV07-P15 resource guard ablation passed hard gates' || 'WP-RV07-P15 resource guard ablation failed' }}
+        run: |
+          python - <<'PY' > /tmp/rv07p15-final.json
+          import json, os
+          print(json.dumps({"state":os.environ["API_STATE"],"target_url":os.environ["RUN_URL"],"description":os.environ["DESCRIPTION"],"context":"economic-lab/wp-rv07-p15"}))
+          PY
+          curl -fsS -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" --data-binary @/tmp/rv07p15-final.json
