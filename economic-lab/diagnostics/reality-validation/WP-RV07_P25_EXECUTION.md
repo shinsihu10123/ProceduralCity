@@ -29,3 +29,5 @@ Deterministic replay, health, complete coverage, candidate decision traces repor
 ## Boundary
 
 This is a causal diagnostic upper bound, not a truthful-information or production policy. No canonical change, tuning or repair authorization.
+
+Workflow registration trigger: 2026-08-20.
