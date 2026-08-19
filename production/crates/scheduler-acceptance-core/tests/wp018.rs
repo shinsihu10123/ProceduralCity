@@ -204,10 +204,7 @@ fn behavior_contract_or_integration_failure_cannot_be_promoted_to_pass() {
         let failure = review(&source, ReviewOrigin::ValidationQa).unwrap_err();
         assert_eq!(failure.verdict, Verdict::Fail);
         assert_eq!(failure.failed_work_id, "S1.06.03");
-        assert!(matches!(
-            failure.reason,
-            FailureReason::ContractFailure(_)
-        ));
+        assert!(matches!(failure.reason, FailureReason::ContractFailure(_)));
     }
 }
 

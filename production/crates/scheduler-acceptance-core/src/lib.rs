@@ -172,9 +172,7 @@ impl ReviewSnapshot {
             return Err(FailureReason::StaleVersion);
         }
         if self.evidence_hash64 == 0 || self.evidence_hash64 != self.input.digest64() {
-            return Err(FailureReason::ReferenceMismatch(
-                "snapshot.evidence_hash",
-            ));
+            return Err(FailureReason::ReferenceMismatch("snapshot.evidence_hash"));
         }
         Ok(())
     }
