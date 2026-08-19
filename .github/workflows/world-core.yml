@@ -3,108 +3,33 @@ name: Validate production world core
 on:
   push:
     branches:
-      - execution/week1-wp018-closure
+      - main
+      - 'execution/**'
+  pull_request:
+    branches:
+      - main
 
 permissions:
-  contents: write
-
-concurrency:
-  group: wp018-final-cycle2
-  cancel-in-progress: true
+  contents: read
 
 jobs:
   world-core:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Check out WP-018 branch
+      - name: Check out repository
         uses: actions/checkout@v4
-        with:
-          ref: execution/week1-wp018-closure
 
       - name: Install stable Rust toolchain
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
 
-      - name: Apply and persist bounded correction cycle 2
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('production/crates/scheduler-acceptance-core/src/lib.rs')
-          s = p.read_text()
-          s = s.replace('seen.contains(**work_id)', 'seen.contains(*work_id)')
-          old = '''    if let Some(first) = missing.first() {
-        return Err(failure(
-            input,
-            Verdict::Blocked,
-            first,
-            FailureReason::MissingMember(first.clone()),
-            missing,
-        ));
-    }
-'''
-          new = '''    if !missing.is_empty() {
-        let first = missing[0].clone();
-        return Err(failure(
-            input,
-            Verdict::Blocked,
-            &first,
-            FailureReason::MissingMember(first.clone()),
-            missing,
-        ));
-    }
-'''
-          if old in s:
-              s = s.replace(old, new, 1)
-          elif new not in s:
-              raise SystemExit('cycle2 patch point missing')
-          p.write_text(s)
-          PY
-          cargo fmt --manifest-path production/Cargo.toml --all
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add production/Cargo.toml production/crates/scheduler-acceptance-core
-          if ! git diff --cached --quiet; then
-            git commit -m 'fix(wp018): WP-018 validation cycle 2 code'
-            git push origin HEAD:execution/week1-wp018-closure
-          fi
+      - name: Rust format check
+        run: cargo fmt --manifest-path production/Cargo.toml --all -- --check
 
-      - name: Strict WP-018 validation
-        run: |
-          set +e
-          cargo fmt --manifest-path production/Cargo.toml --all -- --check > /tmp/fmt.log 2>&1
-          FMT=$?
-          cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings > /tmp/clippy.log 2>&1
-          CLIPPY=$?
-          cargo test --manifest-path production/Cargo.toml --workspace > /tmp/workspace.log 2>&1
-          TESTS=$?
-          cargo test --manifest-path production/Cargo.toml -p gaonn-scheduler-acceptance-core --test wp018 > /tmp/dedicated.log 2>&1
-          DEDICATED=$?
-          set -e
-          mkdir -p docs/evidence/week1
-          {
-            echo "WP018_VALIDATION_CYCLE=2"
-            echo "FMT_EXIT=$FMT"
-            echo "CLIPPY_EXIT=$CLIPPY"
-            echo "WORKSPACE_TEST_EXIT=$TESTS"
-            echo "DEDICATED_TEST_EXIT=$DEDICATED"
-            echo "--- CLIPPY ---"
-            cat /tmp/clippy.log
-            echo "--- DEDICATED ---"
-            cat /tmp/dedicated.log
-          } > docs/evidence/week1/wp018-validation-cycle2.txt
-          cat docs/evidence/week1/wp018-validation-cycle2.txt
-          if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$TESTS" -ne 0 ] || [ "$DEDICATED" -ne 0 ]; then
-            exit 1
-          fi
+      - name: Rust Clippy
+        run: cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings
 
-      - name: Persist successful validation evidence
-        run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add production/Cargo.lock docs/evidence/week1/wp018-validation-cycle2.txt
-          if ! git diff --cached --quiet; then
-            git commit -m 'evidence(wp018): WP-018 validation cycle 2 PASS'
-            git push origin HEAD:execution/week1-wp018-closure
-          fi
+      - name: Rust tests
+        run: cargo test --manifest-path production/Cargo.toml --workspace
