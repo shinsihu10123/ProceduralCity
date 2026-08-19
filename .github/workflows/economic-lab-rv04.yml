@@ -6,7 +6,7 @@ on:
       - scratch/new-project-2026-08-12
     paths:
       - 'economic-lab/scripts/firm-exit-diagnosis-v10.mjs'
-      - 'economic-lab/diagnostics/reality-validation/WP-RV04_EXECUTION.md'
+      - 'economic-lab/scripts/firm-exit-diagnosis-safe-v10.mjs'
       - '.github/workflows/economic-lab-rv04.yml'
   workflow_dispatch:
 
@@ -17,7 +17,7 @@ permissions:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - name: Publish WP-RV04 running beacon
         env:
@@ -52,7 +52,7 @@ jobs:
           DIAG_MONTHS: '12'
           DIAG_SEEDS: 'ECON-RV02-A,ECON-RV02-B,ECON-RV02-C'
           OUTPUT_JSON: 'performance-results/reality-diagnostics-rv04-firm-exits.json'
-        run: node scripts/firm-exit-diagnosis-v10.mjs
+        run: node scripts/firm-exit-diagnosis-safe-v10.mjs
       - name: Upload WP-RV04 evidence
         uses: actions/upload-artifact@v4
         with:
