@@ -6,6 +6,7 @@ on:
       - scratch/new-project-2026-08-12
     paths:
       - 'economic-lab/scripts/nia-composition-diagnosis-v10.mjs'
+      - 'economic-lab/scripts/nia-orphan-inventory-probe-v10.mjs'
       - '.github/workflows/economic-lab-rv05.yml'
   workflow_dispatch:
 
@@ -56,7 +57,23 @@ jobs:
           node scripts/nia-composition-diagnosis-v10.mjs &
           pid=$!
           while kill -0 "$pid" 2>/dev/null; do
-            echo "[WP-RV05 heartbeat] diagnosis still running at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "[WP-RV05 heartbeat] composition diagnosis still running at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            sleep 30
+          done
+          wait "$pid"
+      - name: Run book-to-physical inventory cross-check
+        working-directory: economic-lab
+        env:
+          DIAG_SCALE: 'baseline'
+          DIAG_MONTHS: '12'
+          DIAG_SEEDS: 'ECON-RV02-A,ECON-RV02-B,ECON-RV02-C'
+          OUTPUT_JSON: 'performance-results/reality-diagnostics-rv05-book-physical.json'
+        run: |
+          set -euo pipefail
+          node scripts/nia-orphan-inventory-probe-v10.mjs &
+          pid=$!
+          while kill -0 "$pid" 2>/dev/null; do
+            echo "[WP-RV05 heartbeat] book/physical probe still running at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             sleep 30
           done
           wait "$pid"
@@ -64,7 +81,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: economic-lab-wp-rv05
-          path: economic-lab/performance-results/reality-diagnostics-rv05-nia-composition.json
+          path: economic-lab/performance-results/reality-diagnostics-rv05-*.json
           if-no-files-found: error
           retention-days: 30
       - name: Publish WP-RV05 final beacon
