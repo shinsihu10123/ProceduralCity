@@ -1,0 +1,62 @@
+name: WP018 validation
+on:
+  push:
+    branches:
+      - execution/week1-wp018-closure
+permissions:
+  contents: write
+jobs:
+  validate:
+    if: ${{ !contains(github.event.head_commit.message, 'WP-018 validation cycle 1') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+      - name: Normalize known review-set expression
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('production/crates/scheduler-acceptance-core/src/lib.rs')
+          s = p.read_text()
+          s = s.replace('seen.contains(**work_id)', 'seen.contains(*work_id)')
+          p.write_text(s)
+          PY
+          cargo fmt --manifest-path production/Cargo.toml --all
+      - name: Strict validation
+        run: |
+          set +e
+          cargo fmt --manifest-path production/Cargo.toml --all -- --check > /tmp/fmt.log 2>&1
+          FMT=$?
+          cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings > /tmp/clippy.log 2>&1
+          CLIPPY=$?
+          cargo test --manifest-path production/Cargo.toml --workspace > /tmp/workspace.log 2>&1
+          TESTS=$?
+          cargo test --manifest-path production/Cargo.toml -p gaonn-scheduler-acceptance-core --test wp018 > /tmp/dedicated.log 2>&1
+          DEDICATED=$?
+          set -e
+          mkdir -p docs/evidence/week1
+          {
+            echo "WP018_VALIDATION_CYCLE=1"
+            echo "FMT_EXIT=$FMT"
+            echo "CLIPPY_EXIT=$CLIPPY"
+            echo "WORKSPACE_TEST_EXIT=$TESTS"
+            echo "DEDICATED_TEST_EXIT=$DEDICATED"
+            echo "--- CLIPPY ---"
+            cat /tmp/clippy.log
+            echo "--- DEDICATED ---"
+            cat /tmp/dedicated.log
+          } > docs/evidence/week1/wp018-validation-cycle1.txt
+          if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$TESTS" -ne 0 ] || [ "$DEDICATED" -ne 0 ]; then
+            cat docs/evidence/week1/wp018-validation-cycle1.txt
+            exit 1
+          fi
+      - name: Commit validated normalization
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add production/Cargo.toml production/Cargo.lock production/crates/scheduler-acceptance-core docs/evidence/week1/wp018-validation-cycle1.txt
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'fix(wp018): WP-018 validation cycle 1'
+          git push origin HEAD:execution/week1-wp018-closure
