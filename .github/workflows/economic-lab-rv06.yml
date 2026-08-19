@@ -5,7 +5,8 @@ on:
     branches:
       - scratch/new-project-2026-08-12
     paths:
-      - 'economic-lab/scripts/finance-transmission-diagnosis-v10.mjs'
+      - 'economic-lab/scripts/finance-transmission-diagnosis-v10b.mjs'
+      - 'economic-lab/diagnostics/reality-validation/WP-RV06_EXECUTION.md'
       - '.github/workflows/economic-lab-rv06.yml'
   workflow_dispatch:
 
@@ -30,7 +31,7 @@ jobs:
           print(json.dumps({
               "state": "pending",
               "target_url": os.environ["RUN_URL"],
-              "description": "WP-RV06 finance transmission diagnosis is running",
+              "description": "WP-RV06 corrected finance diagnosis is running",
               "context": "economic-lab/wp-rv06"
           }))
           PY
@@ -44,7 +45,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run promoted 3-seed baseline finance diagnosis
+      - name: Run corrected 3-seed baseline finance diagnosis
         working-directory: economic-lab
         env:
           DIAG_SCALE: 'baseline'
@@ -53,10 +54,10 @@ jobs:
           OUTPUT_JSON: 'performance-results/reality-diagnostics-rv06-finance.json'
         run: |
           set -euo pipefail
-          node scripts/finance-transmission-diagnosis-v10.mjs &
+          node scripts/finance-transmission-diagnosis-v10b.mjs &
           pid=$!
           while kill -0 "$pid" 2>/dev/null; do
-            echo "[WP-RV06 heartbeat] diagnosis still running at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "[WP-RV06 heartbeat] corrected diagnosis still running at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             sleep 30
           done
           wait "$pid"
@@ -75,7 +76,7 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           API_STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
-          DESCRIPTION: ${{ job.status == 'success' && 'WP-RV06 finance diagnosis passed' || 'WP-RV06 finance diagnosis failed' }}
+          DESCRIPTION: ${{ job.status == 'success' && 'WP-RV06 corrected finance diagnosis passed' || 'WP-RV06 corrected finance diagnosis failed' }}
         run: |
           python - <<'PY' > /tmp/rv06-final.json
           import json, os
