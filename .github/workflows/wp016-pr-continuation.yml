@@ -1,0 +1,90 @@
+name: WP016 continuation repair
+on:
+  pull_request:
+    branches:
+      - main
+permissions:
+  contents: write
+jobs:
+  repair-and-validate:
+    if: ${{ github.head_ref == 'execution/week1-wp016-celestial-extension' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: execution/week1-wp016-celestial-extension
+      - run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+      - name: Bind frozen hard-DAG inputs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('production/crates/celestial-extension-core/src/lib.rs')
+          s = p.read_text()
+          if 'pub celestial_state_ref: VersionRef,' not in s[s.index('pub struct AdaptivePrecisionState'):s.index('pub struct PrecisionTriggerInput')]:
+              patches = [
+              ('''pub struct AdaptivePrecisionState {\n    pub stable_id: String,\n    pub version: u32,\n    pub owner: String,\n    pub policy_ref: VersionRef,\n    pub phase: TriggerPhase,\n''','''pub struct AdaptivePrecisionState {\n    pub stable_id: String,\n    pub version: u32,\n    pub owner: String,\n    pub policy_ref: VersionRef,\n    pub celestial_state_ref: VersionRef,\n    pub phase: TriggerPhase,\n'''),
+              ('''pub struct PrecisionTriggerEvent {\n    pub work_id: &'static str,\n    pub state_id: String,\n    pub state_version: u32,\n    pub world_tick: i128,\n    pub activated: bool,\n    pub causal_parent: String,\n''','''pub struct PrecisionTriggerEvent {\n    pub work_id: &'static str,\n    pub state_id: String,\n    pub state_version: u32,\n    pub source_tag_ref: VersionRef,\n    pub source_policy_ref: VersionRef,\n    pub world_tick: i128,\n    pub activated: bool,\n    pub causal_parent: String,\n'''),
+              ('''pub fn evaluate_precision_trigger(\n    policy: &EphemerisPrecisionPolicy,\n    state: &mut AdaptivePrecisionState,\n    input: &PrecisionTriggerInput,\n    origin: WriteOrigin,\n) -> Result<Option<PrecisionTriggerEvent>, ExtensionError> {\n    validate_write(&state.owner, origin)?;\n    validate_exact_ref(&policy.reference(), &state.policy_ref, "trigger policy")?;\n''','''pub fn evaluate_precision_trigger(\n    policy: &EphemerisPrecisionPolicy,\n    tag: &CelestialStateVersionTag,\n    state: &mut AdaptivePrecisionState,\n    input: &PrecisionTriggerInput,\n    origin: WriteOrigin,\n) -> Result<Option<PrecisionTriggerEvent>, ExtensionError> {\n    validate_write(&state.owner, origin)?;\n    if tag.lifecycle != Lifecycle::Active {\n        return Err(ExtensionError::RetiredRecord(tag.stable_id.clone()));\n    }\n    validate_exact_ref(&policy.reference(), &state.policy_ref, "trigger policy")?;\n    validate_exact_ref(\n        &tag.reference(),\n        &state.celestial_state_ref,\n        "S4.01.11 trigger celestial version tag",\n    )?;\n    validate_exact_ref(\n        &policy.reference(),\n        &tag.source_policy_ref,\n        "S4.01.10/S4.01.11 trigger policy lineage",\n    )?;\n'''),
+              ('''    Ok(Some(PrecisionTriggerEvent {\n        work_id: "S4.01.13",\n        state_id: state.stable_id.clone(),\n        state_version: state.version,\n        world_tick: input.world_tick,\n''','''    Ok(Some(PrecisionTriggerEvent {\n        work_id: "S4.01.13",\n        state_id: state.stable_id.clone(),\n        state_version: state.version,\n        source_tag_ref: tag.reference(),\n        source_policy_ref: policy.reference(),\n        world_tick: input.world_tick,\n'''),
+              ('''pub struct IlluminationInput {\n    pub celestial_state_ref: VersionRef,\n    pub surface_ref: String,\n''','''pub struct IlluminationInput {\n    pub celestial_state_ref: VersionRef,\n    pub precision_policy_ref: VersionRef,\n    pub surface_ref: String,\n'''),
+              ('''pub struct IlluminationGeometry {\n    pub work_id: &'static str,\n    pub celestial_state_ref: VersionRef,\n    pub surface_ref: String,\n''','''pub struct IlluminationGeometry {\n    pub work_id: &'static str,\n    pub celestial_state_ref: VersionRef,\n    pub precision_policy_ref: VersionRef,\n    pub surface_ref: String,\n'''),
+              ('''pub fn derive_illumination_geometry(\n    input: &IlluminationInput,\n) -> Result<IlluminationGeometry, ExtensionError> {\n    validate_ref(&input.celestial_state_ref)?;\n    required(&input.surface_ref, "illumination.surface_ref")?;\n''','''pub fn derive_illumination_geometry(\n    policy: &EphemerisPrecisionPolicy,\n    tag: &CelestialStateVersionTag,\n    input: &IlluminationInput,\n) -> Result<IlluminationGeometry, ExtensionError> {\n    if tag.lifecycle != Lifecycle::Active {\n        return Err(ExtensionError::RetiredRecord(tag.stable_id.clone()));\n    }\n    validate_exact_ref(\n        &tag.reference(),\n        &input.celestial_state_ref,\n        "S4.01.11 illumination celestial version tag",\n    )?;\n    validate_exact_ref(\n        &policy.reference(),\n        &input.precision_policy_ref,\n        "S4.01.10 illumination precision policy",\n    )?;\n    validate_exact_ref(\n        &policy.reference(),\n        &tag.source_policy_ref,\n        "S4.01.10/S4.01.11 illumination policy lineage",\n    )?;\n    if input.world_tick < policy.horizon_start_tick || input.world_tick > policy.horizon_end_tick {\n        return Err(ExtensionError::InvalidHorizon);\n    }\n    required(&input.surface_ref, "illumination.surface_ref")?;\n'''),
+              ('''    Ok(IlluminationGeometry {\n        work_id: "S4.01.14",\n        celestial_state_ref: input.celestial_state_ref.clone(),\n        surface_ref: input.surface_ref.clone(),\n''','''    Ok(IlluminationGeometry {\n        work_id: "S4.01.14",\n        celestial_state_ref: input.celestial_state_ref.clone(),\n        precision_policy_ref: input.precision_policy_ref.clone(),\n        surface_ref: input.surface_ref.clone(),\n'''),
+              ('''        let illumination = derive_illumination_geometry(&IlluminationInput {\n            celestial_state_ref: tag.reference(),\n            surface_ref: input.surface_ref.clone(),\n''','''        let illumination = derive_illumination_geometry(policy, tag, &IlluminationInput {\n            celestial_state_ref: tag.reference(),\n            precision_policy_ref: policy.reference(),\n            surface_ref: input.surface_ref.clone(),\n'''),
+              ('''    if query.world_tick != illumination.world_tick\n        || query.location_ref != illumination.surface_ref\n        || illumination.celestial_state_ref != tag.reference()\n    {\n''','''    if query.world_tick != illumination.world_tick\n        || query.location_ref != illumination.surface_ref\n        || illumination.celestial_state_ref != tag.reference()\n        || illumination.precision_policy_ref != tag.source_policy_ref\n    {\n'''),
+              ('''        self.durable_artifact.validate()?;\n        if self.event_order.is_empty() || self.adaptive_state.owner != OWNER {\n            return Err(ExtensionError::CorruptArtifact);\n        }\n''','''        self.durable_artifact.validate()?;\n        if self.event_order.is_empty() || self.adaptive_state.owner != OWNER {\n            return Err(ExtensionError::CorruptArtifact);\n        }\n        validate_exact_ref(\n            &self.durable_artifact.policy.reference(),\n            &self.adaptive_state.policy_ref,\n            "snapshot adaptive precision policy",\n        )?;\n        validate_exact_ref(\n            &self.durable_artifact.tag.reference(),\n            &self.adaptive_state.celestial_state_ref,\n            "snapshot adaptive celestial version tag",\n        )?;\n''')]
+              for old, new in patches:
+                  if old not in s:
+                      raise SystemExit('missing lib patch point: ' + old.splitlines()[0])
+                  s = s.replace(old, new, 1)
+              p.write_text(s)
+
+          t = Path('production/crates/celestial-extension-core/tests/wp016.rs')
+          x = t.read_text()
+          if 's4_01_13_requires_exact_s4_01_11_version_tag' not in x:
+              x = x.replace('''        owner: OWNER.to_owned(),\n        policy_ref: policy().reference(),\n        phase: TriggerPhase::Inactive,\n''','''        owner: OWNER.to_owned(),\n        policy_ref: policy().reference(),\n        celestial_state_ref: tag().reference(),\n        phase: TriggerPhase::Inactive,\n''',1)
+              x = x.replace('''fn illumination(tick: i128) -> IlluminationGeometry {\n    derive_illumination_geometry(&IlluminationInput {\n        celestial_state_ref: tag().reference(),\n        surface_ref: "surface:equator:0".to_owned(),\n''','''fn illumination(tick: i128) -> IlluminationGeometry {\n    derive_illumination_geometry(&policy(), &tag(), &IlluminationInput {\n        celestial_state_ref: tag().reference(),\n        precision_policy_ref: policy().reference(),\n        surface_ref: "surface:equator:0".to_owned(),\n''',1)
+              x = x.replace('evaluate_precision_trigger(&policy(), &mut state,', 'evaluate_precision_trigger(&policy(), &tag(), &mut state,')
+              x = x.replace('''        &policy(),\n        &mut adaptive,\n''','''        &policy(),\n        &tag(),\n        &mut adaptive,\n''')
+              x = x.replace('''        &policy(),\n        &mut state,\n        &breach,\n''','''        &policy(),\n        &tag(),\n        &mut state,\n        &breach,\n''')
+              x = x.replace('''    let dark = derive_illumination_geometry(&IlluminationInput {\n        celestial_state_ref: tag().reference(),\n        surface_ref: "surface:night".to_owned(),\n''','''    let dark = derive_illumination_geometry(&policy(), &tag(), &IlluminationInput {\n        celestial_state_ref: tag().reference(),\n        precision_policy_ref: policy().reference(),\n        surface_ref: "surface:night".to_owned(),\n''',1)
+              marker = '''#[test]\nfn s4_01_14_illumination_geometry_is_derived_and_handles_shadow_boundary() {\n'''
+              extra = '''#[test]\nfn s4_01_13_requires_exact_s4_01_11_version_tag_and_preserves_pre_state_on_rejection() {\n    let mut state = adaptive_state();\n    state.celestial_state_ref.version += 1;\n    let pre = state.clone();\n    let input = PrecisionTriggerInput {\n        world_tick: 200,\n        observed_angular_error_rad: 0.002,\n        observed_position_error: 50.0,\n        causal_parent: "measurement:dependency-audit".to_owned(),\n    };\n    assert_eq!(\n        evaluate_precision_trigger(&policy(), &tag(), &mut state, &input, WriteOrigin::OwningResolver),\n        Err(ExtensionError::ReferenceMismatch("S4.01.11 trigger celestial version tag"))\n    );\n    assert_eq!(state, pre);\n}\n\n#[test]\nfn s4_01_14_requires_exact_s4_01_10_policy_and_s4_01_11_tag_refs() {\n    let p = policy();\n    let t = tag();\n    let mut input = IlluminationInput {\n        celestial_state_ref: t.reference(),\n        precision_policy_ref: p.reference(),\n        surface_ref: "surface:dependency-audit".to_owned(),\n        world_tick: 300,\n        surface_normal_unit: [1.0, 0.0, 0.0],\n        sun_direction_unit: [1.0, 0.0, 0.0],\n        normal_irradiance_w_m2: 1361.0,\n        occluded_by_objective_geometry: false,\n        causal_parent: "S4.01.13".to_owned(),\n    };\n    input.precision_policy_ref.version += 1;\n    assert_eq!(derive_illumination_geometry(&p, &t, &input), Err(ExtensionError::ReferenceMismatch("S4.01.10 illumination precision policy")));\n    input.precision_policy_ref = p.reference();\n    input.celestial_state_ref.version += 1;\n    assert_eq!(derive_illumination_geometry(&p, &t, &input), Err(ExtensionError::ReferenceMismatch("S4.01.11 illumination celestial version tag")));\n}\n\n#[test]\nfn s4_01_14_illumination_geometry_is_derived_and_handles_shadow_boundary() {\n'''
+              if marker not in x:
+                  raise SystemExit('missing hard-edge test insertion point')
+              x = x.replace(marker, extra, 1)
+              marker = '''    assert_eq!(restored.adaptive_state, snapshot.adaptive_state);\n}\n\n#[test]\nfn wp016_acceptance_requires_all_nine_members_snapshot_and_successful_fixture() {\n'''
+              replacement = '''    assert_eq!(restored.adaptive_state, snapshot.adaptive_state);\n    let mut mixed = snapshot.clone();\n    mixed.adaptive_state.celestial_state_ref.version += 1;\n    assert_eq!(mixed.validate(), Err(ExtensionError::ReferenceMismatch("snapshot adaptive celestial version tag")));\n}\n\n#[test]\nfn wp016_acceptance_requires_all_nine_members_snapshot_and_successful_fixture() {\n'''
+              if marker not in x:
+                  raise SystemExit('missing snapshot test patch point')
+              x = x.replace(marker, replacement, 1)
+              t.write_text(x)
+          PY
+          cargo fmt --manifest-path production/Cargo.toml --all
+      - name: Validate
+        run: |
+          cargo fmt --manifest-path production/Cargo.toml --all -- --check
+          cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings
+          cargo test --manifest-path production/Cargo.toml --workspace
+          cargo test --manifest-path production/Cargo.toml -p gaonn-celestial-extension-core --test wp016 | tee /tmp/wp016.log
+          mkdir -p docs/evidence/week1
+          {
+            echo WP016_CONTINUATION_CYCLE=2
+            echo FMT_EXIT=0
+            echo CLIPPY_EXIT=0
+            echo WORKSPACE_TEST_EXIT=0
+            echo DEDICATED_TEST_EXIT=0
+            cat /tmp/wp016.log
+          } > docs/evidence/week1/wp016-continuation-cycle2.txt
+      - name: Commit validated repair
+        run: |
+          if git diff --quiet && git diff --cached --quiet; then exit 0; fi
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add production/crates/celestial-extension-core production/Cargo.lock docs/evidence/week1/wp016-continuation-cycle2.txt
+          git commit -m 'fix(celestial): WP-016 continuation cycle 2'
+          git push origin HEAD:execution/week1-wp016-celestial-extension
