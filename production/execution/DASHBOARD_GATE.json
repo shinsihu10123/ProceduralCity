@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0.0",
+  "status": "PASS",
+  "checked_at": "2026-08-20T08:01:30+09:00",
+  "pages": {
+    "run_id": 32311270327,
+    "main_deploy_sha": "136937c90b12db6619f3384b63214f0cbe8c3860",
+    "dashboard_source_sha": "fd0ee164fb16f0b5e94e87f78fdb679911c99bde",
+    "page_url": "https://shinsihu10123.github.io/ProceduralCity/",
+    "dashboard_path": "execution-dashboard/"
+  },
+  "live_probe": {
+    "run_id": 32311028666,
+    "successful_job_id": 96254903327,
+    "result": "LIVE_DASHBOARD_GATE_PASS",
+    "published_contract": [
+      "dashboard HTML title",
+      "observer-only marker",
+      "responsive CSS mobile breakpoint",
+      "45-second polling JavaScript",
+      "STATE.json",
+      "DRY_RUN.json",
+      "WP_LEDGER.jsonl",
+      "FINAL_v2.1.3a authority",
+      "461 total WPs",
+      "15 completed WPs",
+      "WP-018 PASS/CLOSED ledger evidence",
+      "WP-019 selected next",
+      "automation_enabled=false"
+    ]
+  }
+}
