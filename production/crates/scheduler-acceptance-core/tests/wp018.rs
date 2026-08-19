@@ -1,6 +1,8 @@
 use gaonn_identity_acceptance_core::Wp013Closure;
 use gaonn_scheduler_acceptance_core::*;
-use gaonn_scheduler_core::{MEMBER_IDS as SCHEDULER_MEMBER_IDS, OWNER as SCHEDULER_OWNER, Wp010Acceptance};
+use gaonn_scheduler_core::{
+    MEMBER_IDS as SCHEDULER_MEMBER_IDS, OWNER as SCHEDULER_OWNER, Wp010Acceptance,
+};
 
 fn wp010() -> Wp010Acceptance {
     Wp010Acceptance {
@@ -89,7 +91,10 @@ fn normal_review_requires_complete_same_run_same_version_evidence() {
     let record = review(&input(), ReviewOrigin::ValidationQa).unwrap();
     assert_eq!(record.work_id, "S1.06.11");
     assert_eq!(record.work_package, "WP-018");
-    assert_eq!(record.operands, ["Schedulable", "Event", "Causal", "Deadline"]);
+    assert_eq!(
+        record.operands,
+        ["Schedulable", "Event", "Causal", "Deadline"]
+    );
     assert_eq!(record.event_order, REVIEWED_MEMBER_IDS);
     assert_eq!(record.causal_references.len(), 10);
     assert!(record.read_only);
@@ -121,7 +126,10 @@ fn missing_member_is_blocked_and_out_of_scope_pass_cannot_substitute() {
         integration_pass: true,
     });
     let failure = review(&substituted, ReviewOrigin::ValidationQa).unwrap_err();
-    assert!(matches!(failure.reason, FailureReason::OutOfScopeEvidence(_)));
+    assert!(matches!(
+        failure.reason,
+        FailureReason::OutOfScopeEvidence(_)
+    ));
 }
 
 #[test]
@@ -134,7 +142,10 @@ fn mixed_run_or_source_version_is_blocked() {
     let mut stale = input();
     stale.members[3].source_version += 1;
     let failure = review(&stale, ReviewOrigin::ValidationQa).unwrap_err();
-    assert!(matches!(failure.reason, FailureReason::SourceVersionMismatch(_)));
+    assert!(matches!(
+        failure.reason,
+        FailureReason::SourceVersionMismatch(_)
+    ));
 }
 
 #[test]
@@ -193,7 +204,10 @@ fn behavior_contract_or_integration_failure_cannot_be_promoted_to_pass() {
         let failure = review(&source, ReviewOrigin::ValidationQa).unwrap_err();
         assert_eq!(failure.verdict, Verdict::Fail);
         assert_eq!(failure.failed_work_id, "S1.06.03");
-        assert!(matches!(failure.reason, FailureReason::ContractFailure(_)));
+        assert!(matches!(
+            failure.reason,
+            FailureReason::ContractFailure(_)
+        ));
     }
 }
 
@@ -220,14 +234,18 @@ fn root_id_version_owner_causal_parent_and_digest_are_required() {
     let mut source = input();
     source.root.work_id = "S1.01.02".to_owned();
     assert!(matches!(
-        review(&source, ReviewOrigin::ValidationQa).unwrap_err().reason,
+        review(&source, ReviewOrigin::ValidationQa)
+            .unwrap_err()
+            .reason,
         FailureReason::InvalidRoot("work_id")
     ));
 
     let mut source = input();
     source.root.owner.clear();
     assert!(matches!(
-        review(&source, ReviewOrigin::ValidationQa).unwrap_err().reason,
+        review(&source, ReviewOrigin::ValidationQa)
+            .unwrap_err()
+            .reason,
         FailureReason::InvalidRoot("owner_causal_or_evidence")
     ));
 }
@@ -264,7 +282,10 @@ fn member_input_order_does_not_change_canonical_review_event_order() {
     reordered.members.reverse();
     let record = review(&reordered, ReviewOrigin::ValidationQa).unwrap();
     assert_eq!(record.event_order, REVIEWED_MEMBER_IDS);
-    assert_eq!(record.causal_references.len(), baseline.causal_references.len());
+    assert_eq!(
+        record.causal_references.len(),
+        baseline.causal_references.len()
+    );
 }
 
 #[test]
@@ -298,8 +319,14 @@ fn wp018_integration_root_to_review_to_closure_has_no_shortcut() {
     assert_eq!(record.root_version, source.root.version);
     assert_eq!(record.root_owner, source.root.owner);
     assert_eq!(record.root_causal_parent, source.root.causal_parent);
-    assert_eq!(record.wp010_evidence_digest64, source.wp010.evidence_digest64);
-    assert_eq!(record.wp013_acceptance_digest64, source.wp013.acceptance_digest64);
+    assert_eq!(
+        record.wp010_evidence_digest64,
+        source.wp010.evidence_digest64
+    );
+    assert_eq!(
+        record.wp013_acceptance_digest64,
+        source.wp013.acceptance_digest64
+    );
     let closure = close_wp018(&record, snapshot.digest64()).unwrap();
     assert!(closure.closed);
 
