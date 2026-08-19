@@ -1,0 +1,81 @@
+name: WP016 bounded correction cycle 2
+on:
+  push:
+    branches:
+      - execution/week1-wp016-celestial-extension
+permissions:
+  contents: write
+jobs:
+  repair-and-validate:
+    if: ${{ !contains(github.event.head_commit.message, 'WP-016 correction cycle 2') && !contains(github.event.head_commit.message, 'WP-016 cycle2 diagnostic') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+      - name: Apply bounded structural correction and rustfmt
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('production/crates/celestial-extension-core/src/lib.rs')
+          s = p.read_text()
+          old = '''impl CelestialDurableArtifact {\n    /// S4.01.12 — Celestial State Serialization.\n    pub fn build(\n        commit_marker: &str,\n        causal_cut: &str,\n        recovery_position: &str,\n        replay_reference: &str,\n        tag: CelestialStateVersionTag,\n        axial: AxialPrecessionParameters,\n        policy: EphemerisPrecisionPolicy,\n        event_order: Vec<String>,\n    ) -> Result<Self, ExtensionError> {\n'''
+          new = '''#[derive(Debug)]\npub struct CelestialArtifactInput<'a> {\n    pub commit_marker: &'a str,\n    pub causal_cut: &'a str,\n    pub recovery_position: &'a str,\n    pub replay_reference: &'a str,\n    pub tag: CelestialStateVersionTag,\n    pub axial: AxialPrecessionParameters,\n    pub policy: EphemerisPrecisionPolicy,\n    pub event_order: Vec<String>,\n}\n\nimpl CelestialDurableArtifact {\n    /// S4.01.12 — Celestial State Serialization.\n    pub fn build(input: CelestialArtifactInput<'_>) -> Result<Self, ExtensionError> {\n        let CelestialArtifactInput {\n            commit_marker,\n            causal_cut,\n            recovery_position,\n            replay_reference,\n            tag,\n            axial,\n            policy,\n            event_order,\n        } = input;\n'''
+          if old not in s:
+              raise SystemExit('build signature patch point missing')
+          s = s.replace(old, new)
+          old = '''        let rebuilt = Self::build(\n            &self.commit_marker,\n            &self.causal_cut,\n            &self.recovery_position,\n            &self.replay_reference,\n            self.tag.clone(),\n            self.axial.clone(),\n            self.policy.clone(),\n            self.event_order.clone(),\n        )?;\n'''
+          new = '''        let rebuilt = Self::build(CelestialArtifactInput {\n            commit_marker: &self.commit_marker,\n            causal_cut: &self.causal_cut,\n            recovery_position: &self.recovery_position,\n            replay_reference: &self.replay_reference,\n            tag: self.tag.clone(),\n            axial: self.axial.clone(),\n            policy: self.policy.clone(),\n            event_order: self.event_order.clone(),\n        })?;\n'''
+          if old not in s:
+              raise SystemExit('validate rebuild patch point missing')
+          s = s.replace(old, new)
+          p.write_text(s)
+
+          t = Path('production/crates/celestial-extension-core/tests/wp016.rs')
+          x = t.read_text()
+          old = '''    CelestialDurableArtifact::build(\n        "committed:S4.01.11",\n        "cut:100",\n        "recovery:100",\n        "replay:earth:100",\n        tag(),\n        axial(),\n        policy(),\n        vec![\n            "S4.01.09".to_owned(),\n            "S4.01.10".to_owned(),\n            "S4.01.11".to_owned(),\n            "S4.01.12".to_owned(),\n        ],\n    )\n'''
+          new = '''    CelestialDurableArtifact::build(CelestialArtifactInput {\n        commit_marker: "committed:S4.01.11",\n        causal_cut: "cut:100",\n        recovery_position: "recovery:100",\n        replay_reference: "replay:earth:100",\n        tag: tag(),\n        axial: axial(),\n        policy: policy(),\n        event_order: vec![\n            "S4.01.09".to_owned(),\n            "S4.01.10".to_owned(),\n            "S4.01.11".to_owned(),\n            "S4.01.12".to_owned(),\n        ],\n    })\n'''
+          if old not in x:
+              raise SystemExit('test artifact patch point missing')
+          x = x.replace(old, new)
+          t.write_text(x)
+          PY
+          cargo fmt --manifest-path production/Cargo.toml --all
+      - name: Validate final corrected candidate
+        run: |
+          set +e
+          cargo clippy --manifest-path production/Cargo.toml --workspace --all-targets -- -D warnings > /tmp/wp016-clippy.log 2>&1
+          CLIPPY=$?
+          cargo test --manifest-path production/Cargo.toml --workspace > /tmp/wp016-workspace.log 2>&1
+          TESTS=$?
+          cargo test --manifest-path production/Cargo.toml -p gaonn-celestial-extension-core --test wp016 > /tmp/wp016-dedicated.log 2>&1
+          DEDICATED=$?
+          set -e
+          mkdir -p docs/evidence/week1
+          {
+            echo "WP016_CORRECTION_CYCLE=2"
+            echo "CLIPPY_EXIT=$CLIPPY"
+            echo "WORKSPACE_TEST_EXIT=$TESTS"
+            echo "DEDICATED_TEST_EXIT=$DEDICATED"
+            echo "--- CLIPPY ---"
+            cat /tmp/wp016-clippy.log
+            echo "--- DEDICATED ---"
+            cat /tmp/wp016-dedicated.log
+          } > docs/evidence/week1/wp016-cycle2-run.txt
+          if [ "$CLIPPY" -ne 0 ] || [ "$TESTS" -ne 0 ] || [ "$DEDICATED" -ne 0 ]; then
+            git restore production/crates/celestial-extension-core production/Cargo.toml production/Cargo.lock || true
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+            git add docs/evidence/week1/wp016-cycle2-run.txt
+            git commit -m 'docs(celestial): WP-016 cycle2 diagnostic'
+            git push
+            exit 0
+          fi
+      - name: Commit validated correction cycle 2
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add production/crates/celestial-extension-core production/Cargo.toml production/Cargo.lock docs/evidence/week1/wp016-cycle2-run.txt
+          git commit -m 'fix(celestial): WP-016 correction cycle 2'
+          git push
