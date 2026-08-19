@@ -46,3 +46,5 @@ Exact observer non-interference, health, complete coverage, desired-worker equat
 ## Boundary
 
 P24 identifies proximate cognitive/decision drivers; association is not itself causal proof of the underlying stress variable. No canonical changes, tuning, or repair authorization.
+
+Workflow registration trigger: 2026-08-20.
