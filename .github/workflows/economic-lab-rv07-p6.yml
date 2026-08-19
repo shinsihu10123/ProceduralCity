@@ -18,9 +18,6 @@ jobs:
   diagnose:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: economic-lab
     steps:
       - name: Publish WP-RV07-P6 running beacon
         env:
@@ -52,6 +49,7 @@ jobs:
           node-version: '22'
 
       - name: Run exact procurement stop-reason diagnosis
+        working-directory: economic-lab
         env:
           DIAG_SCALES: compact,baseline
           DIAG_MONTHS: '12'
