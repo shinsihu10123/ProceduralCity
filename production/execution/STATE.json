@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0.0",
+  "project": "경제 동아리 가온 AI 기반 자율 세계 시뮬레이션 본판",
+  "authority_version": "FINAL_v2.1.3a",
+  "total_wp": 461,
+  "completed_wp_count": 15,
+  "current_wp": null,
+  "current_subsystem": null,
+  "current_l3": null,
+  "current_member_index": 0,
+  "current_member_count": 0,
+  "execution_state": "IDLE",
+  "correction_cycle": 0,
+  "correction_limit": 2,
+  "completed_wps": [
+    "WP-001",
+    "WP-002",
+    "WP-003",
+    "WP-004",
+    "WP-005",
+    "WP-008",
+    "WP-009",
+    "WP-010",
+    "WP-011",
+    "WP-012",
+    "WP-013",
+    "WP-014",
+    "WP-015",
+    "WP-016",
+    "WP-018"
+  ],
+  "blocked_wps": [],
+  "last_validated_commit": "433f4f542c5d9560986b722899166c343df9cbda",
+  "evidence_commit": "433f4f542c5d9560986b722899166c343df9cbda",
+  "last_ci": {
+    "head_sha": "433f4f542c5d9560986b722899166c343df9cbda",
+    "runs": [
+      {
+        "name": "Validate production world core",
+        "run_id": 32277754387,
+        "conclusion": "success"
+      },
+      {
+        "name": "Validate city engine",
+        "run_id": 32277754434,
+        "conclusion": "success"
+      }
+    ]
+  },
+  "next_dependency_safe_wp": "WP-019",
+  "automation_enabled": false,
+  "controller_mode": "single_worker",
+  "worker_status": "IDLE",
+  "blocker": null,
+  "updated_at": "2026-08-20T07:28:00+09:00"
+}

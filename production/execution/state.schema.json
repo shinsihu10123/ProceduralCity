@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gaon.execution.state.v1",
+  "type": "object",
+  "required": ["schema_version","project","authority_version","total_wp","completed_wp_count","current_wp","execution_state","correction_cycle","correction_limit","completed_wps","blocked_wps","last_validated_commit","evidence_commit","last_ci","next_dependency_safe_wp","automation_enabled","blocker","updated_at"],
+  "properties": {
+    "schema_version": {"type":"string"},
+    "project": {"type":"string"},
+    "authority_version": {"const":"FINAL_v2.1.3a"},
+    "total_wp": {"const":461},
+    "completed_wp_count": {"type":"integer","minimum":0,"maximum":461},
+    "current_wp": {"type":["string","null"]},
+    "execution_state": {"enum":["IDLE","ADMISSION","IMPLEMENTING","TESTING","VALIDATING","EVIDENCE","CLOSING","CLOSED","BLOCKED","WAITING"]},
+    "correction_cycle": {"type":"integer","minimum":0},
+    "correction_limit": {"type":"integer","minimum":0},
+    "completed_wps": {"type":"array","items":{"type":"string"},"uniqueItems":true},
+    "blocked_wps": {"type":"array","items":{"type":"string"},"uniqueItems":true},
+    "automation_enabled": {"type":"boolean"},
+    "blocker": {},
+    "updated_at": {"type":"string"}
+  },
+  "additionalProperties": true
+}
