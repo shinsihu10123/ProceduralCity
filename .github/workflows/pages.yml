@@ -16,6 +16,9 @@ concurrency:
 
 jobs:
   deploy:
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+      dashboard_source_sha: ${{ steps.dashboard_source.outputs.sha }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -24,6 +27,7 @@ jobs:
       - name: Checkout main site
         uses: actions/checkout@v4
         with:
+          ref: main
           path: main-site
 
       - name: Checkout Economic Lab 3D Observer
@@ -31,6 +35,16 @@ jobs:
         with:
           ref: feature/economic-lab-3d-observer-v1
           path: observer-source
+
+      - name: Checkout execution dashboard source
+        uses: actions/checkout@v4
+        with:
+          ref: execution/controller-v1
+          path: execution-source
+
+      - name: Capture execution dashboard source SHA
+        id: dashboard_source
+        run: echo "sha=$(git -C execution-source rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -53,6 +67,14 @@ jobs:
         working-directory: observer-source/economic-lab
         run: npx vite build --base=/ProceduralCity/economic-lab/
 
+      - name: Validate dashboard static sources
+        run: |
+          test -f execution-source/execution-dashboard/index.html
+          test -f execution-source/execution-dashboard/app.css
+          test -f execution-source/execution-dashboard/app.js
+          python execution-source/production/execution/controller.py validate
+          python execution-source/production/execution/controller.py dry-run
+
       - name: Compose Pages artifact
         run: |
           mkdir -p pages-artifact
@@ -61,6 +83,11 @@ jobs:
           cp -a observer-source/economic-lab/dist/. pages-artifact/economic-lab/
           cp observer-source/economic-lab/legacy.html pages-artifact/economic-lab/legacy.html
           cp -a observer-source/economic-lab/src pages-artifact/economic-lab/src
+          mkdir -p pages-artifact/execution-dashboard/data
+          cp -a execution-source/execution-dashboard/. pages-artifact/execution-dashboard/
+          cp execution-source/production/execution/STATE.json pages-artifact/execution-dashboard/data/STATE.json
+          cp execution-source/production/execution/DRY_RUN.json pages-artifact/execution-dashboard/data/DRY_RUN.json
+          cp execution-source/production/execution/WP_LEDGER.jsonl pages-artifact/execution-dashboard/data/WP_LEDGER.jsonl
           touch pages-artifact/.nojekyll
 
       - name: Configure Pages
@@ -74,3 +101,52 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+  record-execution-dashboard-deployment:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout controller branch
+        uses: actions/checkout@v4
+        with:
+          ref: execution/controller-v1
+          fetch-depth: 1
+
+      - name: Record successful Pages deployment receipt
+        env:
+          PAGE_URL: ${{ needs.deploy.outputs.page_url }}
+          DASHBOARD_SOURCE_SHA: ${{ needs.deploy.outputs.dashboard_source_sha }}
+          RUN_ID: ${{ github.run_id }}
+          MAIN_DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          git pull --ff-only origin execution/controller-v1
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          receipt = {
+              "schema_version": "1.0.0",
+              "status": "SUCCESS",
+              "workflow": "Deploy to GitHub Pages",
+              "run_id": int(os.environ["RUN_ID"]),
+              "main_deploy_sha": os.environ["MAIN_DEPLOY_SHA"],
+              "dashboard_source_sha": os.environ["DASHBOARD_SOURCE_SHA"],
+              "page_url": os.environ["PAGE_URL"],
+              "dashboard_path": "execution-dashboard/",
+              "deployed_at": datetime.now(timezone.utc).isoformat(),
+          }
+          path = Path("production/execution/PAGES_DEPLOYMENT.json")
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add production/execution/PAGES_DEPLOYMENT.json
+          if git diff --cached --quiet; then
+            echo "Deployment receipt already current"
+          else
+            git commit -m "execution: record Pages deployment receipt [skip ci]"
+            git push origin HEAD:execution/controller-v1
+          fi
