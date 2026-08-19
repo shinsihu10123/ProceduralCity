@@ -33,6 +33,3 @@ jobs:
 
       - name: Rust tests
         run: cargo test --manifest-path production/Cargo.toml --workspace
-
-      - name: WP-018 dedicated test
-        run: cargo test --manifest-path production/Cargo.toml -p gaonn-scheduler-acceptance-core --test wp018
