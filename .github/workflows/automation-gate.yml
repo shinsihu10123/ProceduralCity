@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: gaon-autonomous-execution
+  group: gaon-codex-capability-gate-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
