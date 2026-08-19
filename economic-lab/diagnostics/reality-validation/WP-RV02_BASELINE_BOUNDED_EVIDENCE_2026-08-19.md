@@ -1,16 +1,17 @@
 # WP-RV02 Baseline Bounded Evidence — 2026-08-19
 
-Status: **PARTIAL PASS — single-seed baseline reproduction passed; multi-seed promotion required**
+Status: **PASS — bounded 12-month baseline reproduction replicated across seeds A/B/C**
 
 ## Scope
 
 - Repository: `shinsihu10123/ProceduralCity`
 - Branch: `scratch/new-project-2026-08-12`
-- Evidence run: GitHub Actions `32201384077`
-- Head SHA used by run: `e1e657d666b9d14703b8f7f4cff64a934a0082f0`
+- Single-seed bounded run: GitHub Actions `32201384077`
+- Multi-seed promotion run: GitHub Actions `32217009366`
+- Multi-seed head SHA: `430af779356ae241c7eae33ced47bcb6239aef88`
 - Scale: `baseline`
-- Seed: `ECON-RV02-A`
-- Horizon: 6 months gate, then 12 months gate
+- Seeds: `ECON-RV02-A`, `ECON-RV02-B`, `ECON-RV02-C`
+- Horizon: 12 months per independent process/job
 - Economic mechanism changes: **0**
 - Parameter tuning: **0**
 
@@ -20,7 +21,7 @@ This note records diagnostic evidence only. It does not assert empirical realism
 
 ### Execution / integrity gates
 
-The 6-month and 12-month baseline jobs completed successfully. The 12-month artifact reports:
+The bounded baseline 12-month jobs for seeds A/B/C all completed successfully. Every seed reports:
 
 - all health gates: PASS
 - diagnostic reconciliation: PASS
@@ -28,22 +29,37 @@ The 6-month and 12-month baseline jobs completed successfully. The 12-month arti
 - complete labor-spell coverage: PASS
 - pre-exit snapshot reconciliation: PASS
 - labor stock-flow maximum error: `0`
-- GDP identity maximum residual: `3.637978807091713e-12`
-- firm-exit reconciliation maximum error: `0`
-- diagnostic exit events: `132`
-- pre-exit events: `132`
+- firm-exit count reconciliation maximum error: `0`
 
-### Compute envelope — baseline, one seed, 12 months
+Seed A GDP identity maximum residual was `3.637978807091713e-12`; the gate passed for all three seeds.
 
-- construction: `112.54 ms`
-- simulation: `4204.01 ms`
-- mean runtime: `350.33 ms / simulated month`
-- RSS after simulation: `601,694,208 bytes`
-- heap used after simulation: `500,475,008 bytes`
+### Compute envelope — baseline, independent 12-month jobs
 
-The bounded 12-month baseline run therefore fits comfortably inside the current GitHub Actions execution envelope. This does **not** establish that 36/60/120-month suites are safe.
+| Seed | Mean ms / month | RSS after simulation | Heap used after simulation |
+|---|---:|---:|---:|
+| A | 545.99 | 791,375,872 B | 677,967,240 B |
+| B | 515.42 | 821,104,640 B | 720,913,808 B |
+| C | 599.66 | 898,920,448 B | 366,855,256 B |
 
-### Terminal state at month 12
+The 12-month baseline workload is therefore admissible when seeds are isolated into independent bounded jobs. This does **not** establish that 36/60/120-month suites are safe in one aggregated process.
+
+### Multi-seed terminal reproduction
+
+Across 3 seeds × 4 countries = 12 country-runs:
+
+- terminal unemployment > 50%: `12 / 12`
+- terminal unemployment > 75%: `12 / 12`
+- terminal unemployment mean: `0.8959`
+- terminal unemployment range: `0.8361`–`0.9489`
+- GDP below 50% of observed peak: `12 / 12`
+- GDP below 10% of observed peak: `9 / 12`
+- consumption below 50% of observed peak: `12 / 12`
+- firm retention <= 50%: `5 / 12`
+- first month unemployment exceeds 50%: range M7–M9
+
+Thus the extreme contraction is not seed-A-specific within the tested baseline sample.
+
+### Seed A terminal state at month 12
 
 | Country | Unemployment | Active firms | Firm retention | GDP / peak | Consumption / peak | Credit stress |
 |---|---:|---:|---:|---:|---:|---:|
@@ -52,74 +68,64 @@ The bounded 12-month baseline run therefore fits comfortably inside the current 
 | CYR | 0.8361 | 24 | 0.7059 | 0.0173 | 0.0378 | 0.62 |
 | DRN | 0.9340 | 19 | 0.5000 | 0.0126 | 0.0085 | 1.00 |
 
-All four countries finish above 75% unemployment. All four finish below 5% of their observed peak nominal GDP and below 4% of peak consumption.
+### Firm-exit reproduction across seeds
+
+- Seed A exits: `132`; severe payroll stress `132/132`; liquidity failure `132/132`; severe credit stress `13/132`.
+- Seed B exits: `132`; severe payroll stress `132/132`; liquidity failure `132/132`; severe credit stress `3/132`.
+- Seed C exits: `130`; severe payroll stress `130/130`; liquidity failure `130/130`; severe credit stress `10/130`.
+
+Severe payroll stress and the current liquidity-failure diagnostic are universal immediately before observed exits in the tested sample; severe credit stress is not.
 
 ### Timing of contraction and firm exits
 
-The baseline run shows substantial contraction before the main exit wave.
-
-- Month 2 consumption is already approximately 14.5%, 16.2%, 8.5%, and 15.2% of observed peak consumption in AST, BRN, CYR, and DRN respectively.
-- By months 3–6, vacancies fall to approximately zero in most countries while unemployment rises.
-- Firm exits by month: M6 `5`, M7 `29`, M8 `20`, M9 `24`, M10 `18`, M11 `18`, M12 `18`.
-- Total firm exits: `132`.
-
-Pre-exit flags across all 132 exits:
-
-- severe payroll stress: `132 / 132`
-- liquidity failure: `132 / 132`
-- severe credit stress: `13 / 132`
-
-Thus, under the current diagnostic definitions, severe payroll stress and liquidity failure are universal immediately before observed exits, while severe credit stress is not.
+The baseline path shows substantial contraction before the main exit wave. In seed A, month-2 consumption is already approximately 14.5%, 16.2%, 8.5%, and 15.2% of observed peak consumption for AST, BRN, CYR, and DRN while firm exits are still zero. By months 3–6 vacancies are near zero in most countries while unemployment rises. The main exit wave then overlaps the sharpest unemployment increases.
 
 ### Labor path
 
-The major unemployment acceleration overlaps the exit wave. Examples:
+Seed A examples:
 
 - AST unemployment rises from 0.177 at M6 to 0.558 at M7 while 11 firms exit.
 - BRN rises from 0.253 at M6 to 0.595 at M7 while 15 firms exit.
 - CYR rises from 0.214 at M7 to 0.406 at M8 while 4 firms exit, then to 0.658 at M9 while 7 firms exit.
 - DRN rises from 0.270 at M7 to 0.426 at M8 while 4 firms exit, then to 0.604 at M9 while 6 firms exit.
 
-Vacancy counts are near zero during much of the deterioration. Job-finding rates therefore collapse toward zero even before terminal unemployment is reached.
+Vacancy counts are near zero during much of the deterioration. Worker-side matching frictions therefore cannot by themselves explain periods in which no jobs are being offered.
 
 ### GDP composition diagnostic
 
-The accounting identity reconciles numerically, but inventory investment is unusually dominant in several months. Maximum absolute inventory-investment / GDP ratios in the 12-month path are:
-
-- AST: `1.2220`
-- BRN: `0.9896`
-- CYR: `0.9836`
-- DRN: `0.9915`
+The accounting identity reconciles numerically, but inventory investment is unusually dominant. Across the 12 multi-seed country-runs, the maximum absolute inventory-investment / GDP ratio ranges from `0.9836` to `2.0638`.
 
 This is an accounting/composition diagnostic lead, not evidence that the GDP identity is broken.
 
 ## B — DIAGNOSTIC LEADS
 
-1. **Early demand/consumption contraction precedes the large firm-exit wave.** The collapse cannot be attributed solely to exits because large consumption reductions are already present by month 2 while exits are still zero.
-2. **Exit-linked labor destruction appears to amplify an already contracting economy.** The sharpest unemployment jumps overlap the main exit wave.
-3. **Vacancy scarcity is at least as important as worker-side matching frictions in the observed collapse path.** During much of the deterioration the model has few or zero vacancies, so job-finding cannot recover regardless of unemployed-worker search behavior.
-4. **Liquidity/payroll distress is strongly associated with firm exits.** Severe credit stress is not universal and therefore cannot currently be treated as the sole exit channel.
+1. **Early demand/consumption contraction precedes the large firm-exit wave.** Large consumption reductions exist before exits can explain them.
+2. **Exit-linked labor destruction appears to amplify an already contracting economy.** The sharpest unemployment jumps overlap or follow firm exits.
+3. **Vacancy scarcity is a first-order labor-market symptom.** During many deteriorating months the market has few or zero vacancies despite large unemployed stocks.
+4. **Liquidity/payroll distress is strongly associated with firm exits.** Severe credit stress is not universal and cannot currently be treated as the sole exit channel.
 5. **Inventory investment dominates measured GDP in several months despite exact identity reconciliation.** GDP construction/composition requires dedicated diagnosis under WP-RV05.
-6. The same qualitative collapse observed in compact scale is reproduced at baseline scale for seed A, reducing—but not eliminating—the probability that the pattern is a compact-scale artifact.
+6. **The collapse is reproduced across baseline seeds A/B/C.** The tested pattern is neither seed-A-specific nor compact-scale-specific.
 
 ## C — HYPOTHESES — NOT YET ESTABLISHED
 
 - H-L1: desired-worker dynamics and low vacancy creation create employment-recovery hysteresis after the initial contraction.
-- H-L2: reservation/information/matching frictions may amplify unemployment once vacancies reappear, but they do not explain periods with zero vacancies.
-- H-L3: an endogenous demand → layoff / hiring contraction → income → consumption feedback is a major propagation channel.
+- H-L2: reservation/information/matching frictions may amplify unemployment once vacancies reappear, but they do not explain zero-vacancy periods.
+- H-L3: an endogenous demand → hiring contraction / layoff → income → consumption feedback is a major propagation channel.
 - H-F1: liquidity/payroll distress → exit → worker separation is a second-stage amplification channel.
 - H-G1: inventory accounting/production dynamics amplify GDP volatility and obscure underlying final demand/output dynamics.
 - H-C1: financial stress may amplify contraction, but current evidence does not establish severe credit stress as the universal initiating cause of firm exits.
 
-## D — PROPOSED NEXT ACTIONS — DIAGNOSTIC ONLY
+## D — NEXT ACTION — DIAGNOSTIC ONLY
 
-1. Promote baseline reproduction to independent bounded runs for seeds A/B/C at 12 months. Each seed must run in a separate process/job to avoid the long-horizon memory/runtime failure previously observed in aggregated execution.
-2. If A/B/C reproduce the same ordering, close WP-RV02 as PASS for the 12-month reproduction/compute-envelope gate.
-3. Enter WP-RV03 Labor Diagnosis without changing economic mechanisms. Focus on vacancy generation, desired-worker stock dependence, separations, exit-linked separations, scan/capacity limits, and recovery hysteresis.
-4. Preserve the early consumption contraction and inventory-dominant GDP observations as cross-WP evidence for WP-RV04/WP-RV05 rather than prematurely tuning them here.
+Enter **WP-RV03 Labor Diagnosis** without changing economic mechanisms or parameters. The first probe must reconcile gross labor-market layoffs against two mechanically distinct channels:
+
+1. workers attached at month start to firms already inactive from a prior-month exit; and
+2. layoffs generated by current active firms reducing `desiredWorkers` before labor-market clearing.
+
+It must also measure vacancy starvation, gross hires versus net job findings, same-month re-employment, plan-selection/hiring-change aggregates, and the one-month lag from end-of-month firm exit to next-month labor separation.
 
 ## Admission decision
 
-**Single-seed baseline 12-month gate: PASS.**
+**WP-RV02 bounded 12-month baseline reproduction / compute-envelope gate: PASS.**
 
-**WP-RV02 overall: PARTIAL PASS pending bounded multi-seed baseline replication.**
+Longer-horizon promotion remains deferred until causal diagnosis removes the need to spend compute on an already-reproduced pathological attractor.
