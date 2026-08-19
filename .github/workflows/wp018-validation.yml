@@ -15,13 +15,38 @@ jobs:
       - run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
-      - name: Normalize bounded correction cycle 1
+      - name: Apply bounded correction cycle 2
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p = Path('production/crates/scheduler-acceptance-core/src/lib.rs')
           s = p.read_text()
           s = s.replace('seen.contains(**work_id)', 'seen.contains(*work_id)')
+          old = '''    if let Some(first) = missing.first() {
+        return Err(failure(
+            input,
+            Verdict::Blocked,
+            first,
+            FailureReason::MissingMember(first.clone()),
+            missing,
+        ));
+    }
+'''
+          new = '''    if !missing.is_empty() {
+        let first = missing[0].clone();
+        return Err(failure(
+            input,
+            Verdict::Blocked,
+            &first,
+            FailureReason::MissingMember(first.clone()),
+            missing,
+        ));
+    }
+'''
+          if old in s:
+              s = s.replace(old, new, 1)
+          elif new not in s:
+              raise SystemExit('cycle2 patch point missing')
           p.write_text(s)
           PY
           cargo fmt --manifest-path production/Cargo.toml --all
@@ -39,7 +64,7 @@ jobs:
           set -e
           mkdir -p docs/evidence/week1
           {
-            echo "WP018_VALIDATION_CYCLE=1"
+            echo "WP018_VALIDATION_CYCLE=2"
             echo "FMT_EXIT=$FMT"
             echo "CLIPPY_EXIT=$CLIPPY"
             echo "WORKSPACE_TEST_EXIT=$TESTS"
@@ -48,16 +73,16 @@ jobs:
             cat /tmp/clippy.log
             echo "--- DEDICATED ---"
             cat /tmp/dedicated.log
-          } > docs/evidence/week1/wp018-validation-cycle1.txt
+          } > docs/evidence/week1/wp018-validation-cycle2.txt
           if [ "$FMT" -ne 0 ] || [ "$CLIPPY" -ne 0 ] || [ "$TESTS" -ne 0 ] || [ "$DEDICATED" -ne 0 ]; then
-            cat docs/evidence/week1/wp018-validation-cycle1.txt
+            cat docs/evidence/week1/wp018-validation-cycle2.txt
             exit 1
           fi
       - name: Commit validated correction
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add production/Cargo.toml production/Cargo.lock production/crates/scheduler-acceptance-core docs/evidence/week1/wp018-validation-cycle1.txt
+          git add production/Cargo.toml production/Cargo.lock production/crates/scheduler-acceptance-core docs/evidence/week1/wp018-validation-cycle2.txt
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'fix(wp018): WP-018 validation cycle 1'
+          git commit -m 'fix(wp018): WP-018 validation cycle 2'
           git push origin HEAD:execution/week1-wp018-closure
