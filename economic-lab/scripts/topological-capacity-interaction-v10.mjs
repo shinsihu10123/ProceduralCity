@@ -9,7 +9,8 @@ let source=readFileSync(sourcePath,'utf8');
 
 const corrections=[
  ["const firmOutput = sum((country.firms || []).filter(f => f.active !== false).map(f => Math.max(0, finite(f.output))));","const firmOutput = sum((country.firms || []).map(f => Math.max(0, finite(f.output))));"],
- ["const productionBoundErrors = (country.firms || []).filter(f => f.active !== false).map(f => {","const productionBoundErrors = (country.firms || []).map(f => {"]
+ ["const productionBoundErrors = (country.firms || []).filter(f => f.active !== false).map(f => {","const productionBoundErrors = (country.firms || []).map(f => {"],
+ ["const bound = Math.max(0, Math.min(finite(f.desiredProduction), finite(f.capacity)));","const bound = Math.max(0, finite(f.capacity));"]
 ];
 for(const[from,to]of corrections){assert.equal(source.includes(from),true,`P44 correction anchor missing: ${from}`);source=source.replace(from,to);}
 
