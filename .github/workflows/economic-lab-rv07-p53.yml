@@ -2,7 +2,7 @@ name: Economic Lab WP-RV07-P53 Counterfactual Decomposition
 on:
   push:
     branches: [scratch/new-project-2026-08-12]
-    paths: ['economic-lab/scripts/firm-counterfactual-component-decomposition-v10.mjs','.github/workflows/economic-lab-rv07-p53.yml']
+    paths: ['economic-lab/scripts/firm-counterfactual-component-decomposition-v10.mjs','economic-lab/diagnostics/reality-validation/WP-RV07_EXPANDED_BATCH_TRIGGER_2026-08-20.md','.github/workflows/economic-lab-rv07-p53.yml']
   workflow_dispatch:
 permissions: {contents: read, statuses: write}
 jobs:
