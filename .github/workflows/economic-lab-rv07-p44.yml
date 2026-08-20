@@ -2,7 +2,7 @@ name: Economic Lab WP-RV07-P44 Topology Capacity
 on:
   push:
     branches: [scratch/new-project-2026-08-12]
-    paths: ['economic-lab/scripts/topological-capacity-interaction-v10.mjs','.github/workflows/economic-lab-rv07-p44.yml']
+    paths: ['economic-lab/scripts/topological-capacity-interaction-v10.mjs','economic-lab/diagnostics/reality-validation/WP-RV07_P44_CORRECTION_2026-08-20.md','.github/workflows/economic-lab-rv07-p44.yml']
   workflow_dispatch:
 permissions: {contents: read, statuses: write}
 jobs:
@@ -22,7 +22,12 @@ jobs:
         with: {node-version: '22'}
       - name: Run matrix
         working-directory: economic-lab
-        env: {DIAG_SCALES: 'compact,baseline', DIAG_MONTHS: '12', DIAG_SEEDS: 'ECON-RV02-A,ECON-RV02-B,ECON-RV02-C', OUTPUT_JSON: 'performance-results/reality-diagnostics-rv07-p44-topology-capacity.json'}
+        env:
+          NODE_OPTIONS: '--max-old-space-size=6144'
+          DIAG_SCALES: 'compact,baseline'
+          DIAG_MONTHS: '12'
+          DIAG_SEEDS: 'ECON-RV02-A,ECON-RV02-B,ECON-RV02-C'
+          OUTPUT_JSON: 'performance-results/reality-diagnostics-rv07-p44-topology-capacity.json'
         run: node scripts/topological-capacity-interaction-v10.mjs
       - name: Upload evidence
         if: always()
