@@ -41,3 +41,7 @@ By sector and time window:
 Exact observer non-interference on control, deterministic replay, health, capacity activation, production-bound and finite-value gates.
 
 Canonical mechanism changes: **0**. Parameter fitting/tuning: **0**. Repair merge: **0**. Empirical realism claim: **NO**.
+
+## Execution trigger
+
+Workflow-registration retrigger: `2026-08-20T12:22+09:00`. This line changes no diagnostic or economic behavior.
