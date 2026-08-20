@@ -89,3 +89,5 @@ R3 closes, in one matrix:
 
 Canonical implementation merge authorized in R3: **0**.
 Fitted parameter tuning authorized in R3: **0**.
+
+Workflow registration trigger: **2026-08-20**.
