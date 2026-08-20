@@ -2,7 +2,7 @@ name: Economic Lab WP-RV07-P54 Planner Bypass Matrix
 on:
   push:
     branches: [scratch/new-project-2026-08-12]
-    paths: ['economic-lab/scripts/firm-cognitive-planner-bypass-matrix-v10.mjs','.github/workflows/economic-lab-rv07-p54.yml']
+    paths: ['economic-lab/scripts/firm-cognitive-planner-bypass-matrix-v10.mjs','economic-lab/diagnostics/reality-validation/WP-RV07_EXPANDED_BATCH_TRIGGER_2026-08-20.md','.github/workflows/economic-lab-rv07-p54.yml']
   workflow_dispatch:
 permissions: {contents: read, statuses: write}
 jobs:
