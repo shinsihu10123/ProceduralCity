@@ -1,0 +1,100 @@
+name: Economic Lab RV08 R4 Accounting Superbatch
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - .github/workflows/economic-lab-rv08-r4-accounting-superbatch.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+env:
+  NODE_OPTIONS: --max-old-space-size=6144
+  DIAG_MONTHS: '24'
+  DIAG_SEEDS: ECON-RV02-A,ECON-RV02-B,ECON-RV02-C
+
+jobs:
+  nia-composition:
+    name: R4-E1 NIA composition 24m
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      DIAG_SCALE: baseline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run 24m NIA composition audit
+        working-directory: economic-lab
+        env:
+          OUTPUT_JSON: performance-results/rv08-r4-e1-nia-24m.json
+        run: |
+          mkdir -p performance-results
+          node scripts/nia-composition-diagnosis-v10.mjs | tee performance-results/rv08-r4-e1.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: economic-lab-wp-rv08-r4-e1
+          path: |
+            economic-lab/performance-results/rv08-r4-e1-nia-24m.json
+            economic-lab/performance-results/rv08-r4-e1.log
+          retention-days: 30
+
+  orphan-inventory:
+    name: R4-E2 book physical inventory 24m
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      DIAG_SCALE: baseline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run 24m orphan inventory audit
+        working-directory: economic-lab
+        env:
+          OUTPUT_JSON: performance-results/rv08-r4-e2-orphan-inventory-24m.json
+        run: |
+          mkdir -p performance-results
+          node scripts/nia-orphan-inventory-probe-v10.mjs | tee performance-results/rv08-r4-e2.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: economic-lab-wp-rv08-r4-e2
+          path: |
+            economic-lab/performance-results/rv08-r4-e2-orphan-inventory-24m.json
+            economic-lab/performance-results/rv08-r4-e2.log
+          retention-days: 30
+
+  physical-runoff:
+    name: R4-E3 finished goods runoff 24m
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      DIAG_SCALES: compact,baseline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run 24m physical stock runoff audit
+        working-directory: economic-lab
+        env:
+          OUTPUT_JSON: performance-results/rv08-r4-e3-runoff-24m.json
+        run: |
+          mkdir -p performance-results
+          node scripts/finished-goods-inventory-runoff-audit-v10.mjs | tee performance-results/rv08-r4-e3.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: economic-lab-wp-rv08-r4-e3
+          path: |
+            economic-lab/performance-results/rv08-r4-e3-runoff-24m.json
+            economic-lab/performance-results/rv08-r4-e3.log
+          retention-days: 30
