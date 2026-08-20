@@ -41,3 +41,7 @@ Same P35 diagnostic non-capital break-even capacity normalization for RESOURCE, 
 - If correction has little effect, demote this feedback and move to monthly stage topology / entry-exit propagation.
 
 Canonical mechanism changes: **0**. Fitted tuning: **0**. Diagnostic-only.
+
+## Expanded rerun marker — 2026-08-20 12:22 KST
+
+Re-run P40 against the same current branch state as the P36–P39 batch and P47 cube. No economic mechanism or parameter is changed by this marker.
