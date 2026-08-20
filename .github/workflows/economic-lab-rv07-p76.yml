@@ -1,0 +1,70 @@
+name: Economic Lab WP-RV07-P76 Entrant Credit Rejection Trace
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - economic-lab/scripts/entrant-credit-rejection-trace-audit-v10.mjs
+      - economic-lab/diagnostics/reality-validation/WP-RV07_P76_EXECUTION.md
+      - .github/workflows/economic-lab-rv07-p76.yml
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: economic-lab
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+      DIAG_SCALES: compact,baseline
+      DIAG_MONTHS: '12'
+      DIAG_SEEDS: ECON-RV02-A,ECON-RV02-B,ECON-RV02-C
+      OUTPUT_JSON: performance-results/reality-diagnostics-rv07-p76-entrant-rejections.json
+    steps:
+      - name: Running beacon
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python - <<'PY' >/tmp/s.json
+          import json,os;print(json.dumps({'state':'pending','target_url':os.environ['RUN_URL'],'description':'WP-RV07-P76 entrant rejection trace running','context':'economic-lab/wp-rv07-p76'}))
+          PY
+          curl -fsS -X POST -H 'Accept: application/vnd.github+json' -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" --data-binary @/tmp/s.json
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run entrant rejection trace audit
+        run: node scripts/entrant-credit-rejection-trace-audit-v10.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: economic-lab-wp-rv07-p76
+          path: economic-lab/performance-results/reality-diagnostics-rv07-p76-entrant-rejections.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Final beacon
+        if: always()
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          API_STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
+        run: |
+          python - <<'PY' >/tmp/s.json
+          import json,os;print(json.dumps({'state':os.environ['API_STATE'],'target_url':os.environ['RUN_URL'],'description':'WP-RV07-P76 finished','context':'economic-lab/wp-rv07-p76'}))
+          PY
+          curl -fsS -X POST -H 'Accept: application/vnd.github+json' -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" --data-binary @/tmp/s.json
