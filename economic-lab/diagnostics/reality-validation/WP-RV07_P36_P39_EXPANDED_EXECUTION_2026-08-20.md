@@ -68,3 +68,7 @@ After all four complete:
 - If P38 gives little benefit, demote intermediate-input coefficients as primary cause.
 - If P39 combination materially outperforms both single interventions, classify the defect as a coupled unit-system inconsistency rather than one parameter error.
 - If all remain insufficient, next batch targets stockout-censored demand beliefs, monthly stage topology and exit/entry propagation interactions.
+
+## Expanded rerun marker — 2026-08-20 12:22 KST
+
+Re-run P36–P39 concurrently against the current diagnostic branch state so their evidence is directly comparable with P49–P54 and the causal-closure cube. This marker changes no model mechanism or parameter.
