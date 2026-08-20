@@ -9,3 +9,7 @@ Observed fatal error: `Ineffective mark-compacts near heap limit / JavaScript he
 No economic result from the failed run is admissible.
 
 Correction scope is execution-only: re-run the identical diagnostic script with `NODE_OPTIONS=--max-old-space-size=6144`. No model code, mechanism, coefficient, seed, horizon, scale, or diagnostic intervention is changed.
+
+## Expanded rerun marker — 2026-08-20 12:22 KST
+
+Re-run the corrected P44 topology × capacity matrix alongside P36–P40 and P47 so interaction evidence is based on the same current diagnostic branch state. Model changes: **0**.
