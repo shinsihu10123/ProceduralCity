@@ -1,4 +1,5 @@
 name: Economic Lab WP-RV07-P51 Labor Support Audit
+# Expanded diagnostic batch retrigger: 2026-08-20
 on:
   push:
     branches: [scratch/new-project-2026-08-12]
