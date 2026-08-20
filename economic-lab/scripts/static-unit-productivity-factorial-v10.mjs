@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 // WP-RV07-P62 extends the already-gated P61 static productivity diagnostic into
 // a full 2^3 RESOURCE/MATERIALS/CONSUMER factorial. It changes diagnostic
 // intervention membership only; the normalization algebra and world mechanics are unchanged.
+// Workflow registration trigger: 2026-08-20.
 const dir=dirname(fileURLToPath(import.meta.url));
 const src=join(dir,'static-unit-productivity-normalization-matrix-v10.mjs');
 const tmp=join(dir,'.__wp-rv07-p62-factorial-runtime.mjs');
