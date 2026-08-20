@@ -34,10 +34,31 @@ function installPriceFloor(world){
     return out;
   };
 }
-function runVariant(variant,scaleProfile,seed,horizon){const world=createWorld(scaleProfile,seed);if(variant==='unit-basis-variable-cost-price-floor')installPriceFloor(world);const rows=[];for(let i=0;i<horizon;i++){world.stepMonth();for(const c of world.countries)rows.push({variant,scaleProfile,seed,month:world.month,countryId:c.id,unemployment:finite(c.macro?.unemployment),exits:finite(c.macro?.firmExits),wageArrears:finite(c.macro?.wageArrears),goodsFulfillment:1-finite(c.macro?.unmetDemandRatio),inputShortage:finite(c.macro?.inputShortageUnits),resourceOutput:finite(c.macro?.resourceOutput),materialsOutput:finite(c.macro?.materialsOutput),capitalOutput:finite(c.macro?.capitalGoodsOutput),consumerOutput:finite(c.macro?.consumerGoodsOutput),priceIndex:finite(c.macro?.priceIndex),nominalSales:finite(c.macro?.nominalSales),consumption:finite(c.macro?.consumption),firmCash:finite(c.macro?.firmCash),gdp:finite(c.macro?.gdp),gdpResidual:gdpResidual(c.macro),ledgerOk:world.ledger.verifyCountry(c.id)?.ok===true});}const health=world.forceHealthCheck();assert.ok(health.ok,`${variant}/${scaleProfile}/${seed}: health failed`);const checks=world.__rv07P31?.checks||[];return {variant,scaleProfile,seed,world,rows,checks,applications:world.__rv07P31?.applications||0,raisedAmount:world.__rv07P31?.raisedAmount||0,health,fingerprint:fingerprint(world)};}
+function runVariant(variant,scaleProfile,seed,horizon,captureFingerprint=false){
+  const world=createWorld(scaleProfile,seed);
+  if(variant==='unit-basis-variable-cost-price-floor')installPriceFloor(world);
+  const rows=[];
+  for(let i=0;i<horizon;i++){
+    world.stepMonth();
+    for(const c of world.countries)rows.push({variant,scaleProfile,seed,month:world.month,countryId:c.id,unemployment:finite(c.macro?.unemployment),exits:finite(c.macro?.firmExits),wageArrears:finite(c.macro?.wageArrears),goodsFulfillment:1-finite(c.macro?.unmetDemandRatio),inputShortage:finite(c.macro?.inputShortageUnits),resourceOutput:finite(c.macro?.resourceOutput),materialsOutput:finite(c.macro?.materialsOutput),capitalOutput:finite(c.macro?.capitalGoodsOutput),consumerOutput:finite(c.macro?.consumerGoodsOutput),priceIndex:finite(c.macro?.priceIndex),nominalSales:finite(c.macro?.nominalSales),consumption:finite(c.macro?.consumption),firmCash:finite(c.macro?.firmCash),gdp:finite(c.macro?.gdp),gdpResidual:gdpResidual(c.macro),ledgerOk:world.ledger.verifyCountry(c.id)?.ok===true});
+  }
+  const health=world.forceHealthCheck();
+  assert.ok(health.ok,`${variant}/${scaleProfile}/${seed}: health failed`);
+  return {variant,scaleProfile,seed,rows,checks:world.__rv07P31?.checks||[],applications:world.__rv07P31?.applications||0,raisedAmount:world.__rv07P31?.raisedAmount||0,health,fingerprint:captureFingerprint?fingerprint(world):null};
+}
 const variants=['unit-basis-control','unit-basis-variable-cost-price-floor'];
-const determinism=[];for(const v of variants)for(const s of scales){const seed=`ECON-RV07-P31-DET-${v}-${s}`,h=Math.min(3,months);const a=runVariant(v,s,seed,h).fingerprint,b=runVariant(v,s,seed,h).fingerprint,exact=JSON.stringify(a)===JSON.stringify(b);assert.ok(exact,`${v}/${s}: nondeterministic`);determinism.push({variant:v,scaleProfile:s,exact});}
-const runs=[];for(const v of variants)for(const s of scales)for(const seed of seeds)runs.push(runVariant(v,s,seed,months));const rows=runs.flatMap(r=>r.rows),checks=runs.flatMap(r=>r.checks);
+const determinism=[];
+for(const v of variants)for(const s of scales){
+  const seed=`ECON-RV07-P31-DET-${v}-${s}`,h=Math.min(3,months);
+  const a=runVariant(v,s,seed,h,true).fingerprint;
+  const b=runVariant(v,s,seed,h,true).fingerprint;
+  const exact=JSON.stringify(a)===JSON.stringify(b);
+  assert.ok(exact,`${v}/${s}: nondeterministic`);
+  determinism.push({variant:v,scaleProfile:s,exact});
+}
+const runs=[];
+for(const v of variants)for(const s of scales)for(const seed of seeds)runs.push(runVariant(v,s,seed,months,false));
+const rows=runs.flatMap(r=>r.rows),checks=runs.flatMap(r=>r.checks);
 const windows=[{id:'M1-3',from:1,to:Math.min(3,months)},{id:'M4-6',from:4,to:Math.min(6,months)},{id:'M7-9',from:7,to:Math.min(9,months)},{id:'M10-12',from:10,to:months},{id:'FULL',from:1,to:months}].filter(w=>w.from<=w.to);
 function aggregate(rs){return {countryMonths:rs.length,meanUnemployment:mean(rs.map(r=>r.unemployment)),totalExits:sum(rs.map(r=>r.exits)),meanWageArrears:mean(rs.map(r=>r.wageArrears)),meanGoodsFulfillment:mean(rs.map(r=>r.goodsFulfillment)),meanInputShortage:mean(rs.map(r=>r.inputShortage)),meanResourceOutput:mean(rs.map(r=>r.resourceOutput)),meanMaterialsOutput:mean(rs.map(r=>r.materialsOutput)),meanCapitalOutput:mean(rs.map(r=>r.capitalOutput)),meanConsumerOutput:mean(rs.map(r=>r.consumerOutput)),meanPriceIndex:mean(rs.map(r=>r.priceIndex)),meanNominalSales:mean(rs.map(r=>r.nominalSales)),meanConsumption:mean(rs.map(r=>r.consumption)),meanFirmCash:mean(rs.map(r=>r.firmCash)),meanGdp:mean(rs.map(r=>r.gdp))};}
 const summary=[];for(const v of variants)for(const s of scales)for(const w of windows)summary.push({variant:v,scaleProfile:s,window:w.id,...aggregate(rows.filter(r=>r.variant===v&&r.scaleProfile===s&&r.month>=w.from&&r.month<=w.to))});
