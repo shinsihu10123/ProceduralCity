@@ -19,6 +19,7 @@ jobs:
     outputs:
       page_url: ${{ steps.deployment.outputs.page_url }}
       dashboard_source_sha: ${{ steps.dashboard_source.outputs.sha }}
+      economic_lab_source_sha: ${{ steps.economic_lab_source.outputs.sha }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -42,9 +43,19 @@ jobs:
           ref: execution/controller-v1
           path: execution-source
 
+      - name: Checkout Economic Lab research dashboard source
+        uses: actions/checkout@v4
+        with:
+          ref: scratch/new-project-2026-08-12
+          path: economic-lab-source
+
       - name: Capture execution dashboard source SHA
         id: dashboard_source
         run: echo "sha=$(git -C execution-source rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Capture Economic Lab research source SHA
+        id: economic_lab_source
+        run: echo "sha=$(git -C economic-lab-source rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -74,6 +85,8 @@ jobs:
           test -f execution-source/execution-dashboard/app.js
           python execution-source/production/execution/controller.py validate
           python execution-source/production/execution/controller.py dry-run
+          test -f economic-lab-source/economic-lab-dashboard.html
+          test -f economic-lab-source/economic-lab-dashboard-data.json
 
       - name: Compose Pages artifact
         run: |
@@ -88,6 +101,9 @@ jobs:
           cp execution-source/production/execution/STATE.json pages-artifact/execution-dashboard/data/STATE.json
           cp execution-source/production/execution/DRY_RUN.json pages-artifact/execution-dashboard/data/DRY_RUN.json
           cp execution-source/production/execution/WP_LEDGER.jsonl pages-artifact/execution-dashboard/data/WP_LEDGER.jsonl
+          mkdir -p pages-artifact/economic-collapse
+          cp economic-lab-source/economic-lab-dashboard.html pages-artifact/economic-collapse/index.html
+          cp economic-lab-source/economic-lab-dashboard-data.json pages-artifact/economic-collapse/economic-lab-dashboard-data.json
           touch pages-artifact/.nojekyll
 
       - name: Configure Pages
@@ -118,6 +134,7 @@ jobs:
         env:
           PAGE_URL: ${{ needs.deploy.outputs.page_url }}
           DASHBOARD_SOURCE_SHA: ${{ needs.deploy.outputs.dashboard_source_sha }}
+          ECONOMIC_LAB_SOURCE_SHA: ${{ needs.deploy.outputs.economic_lab_source_sha }}
           RUN_ID: ${{ github.run_id }}
           MAIN_DEPLOY_SHA: ${{ github.sha }}
         run: |
@@ -127,14 +144,16 @@ jobs:
           from datetime import datetime, timezone
           from pathlib import Path
           receipt = {
-              "schema_version": "1.0.0",
+              "schema_version": "1.1.0",
               "status": "SUCCESS",
               "workflow": "Deploy to GitHub Pages",
               "run_id": int(os.environ["RUN_ID"]),
               "main_deploy_sha": os.environ["MAIN_DEPLOY_SHA"],
               "dashboard_source_sha": os.environ["DASHBOARD_SOURCE_SHA"],
+              "economic_lab_source_sha": os.environ["ECONOMIC_LAB_SOURCE_SHA"],
               "page_url": os.environ["PAGE_URL"],
               "dashboard_path": "execution-dashboard/",
+              "economic_lab_research_path": "economic-collapse/",
               "deployed_at": datetime.now(timezone.utc).isoformat(),
           }
           path = Path("production/execution/PAGES_DEPLOYMENT.json")
