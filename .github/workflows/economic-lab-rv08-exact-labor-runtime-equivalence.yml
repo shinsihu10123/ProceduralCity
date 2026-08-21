@@ -1,0 +1,48 @@
+name: Economic Lab RV08 Exact Labor Runtime Equivalence
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - '.github/workflows/economic-lab-rv08-exact-labor-runtime-equivalence.yml'
+      - 'economic-lab/src/markets/labor-market.js'
+      - 'economic-lab/scripts/rv08-exact-labor-runtime-equivalence-v10.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  equivalence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify bit-exact labor/payroll runtime acceleration
+        working-directory: economic-lab
+        run: node scripts/rv08-exact-labor-runtime-equivalence-v10.mjs
+      - name: Publish success status
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -d '{"state":"success","context":"economic-lab/rv08-exact-labor-runtime","description":"Exact labor/payroll runtime equivalence passed","target_url":"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+      - name: Publish failure status
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -d '{"state":"failure","context":"economic-lab/rv08-exact-labor-runtime","description":"Exact labor/payroll runtime equivalence failed","target_url":"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
