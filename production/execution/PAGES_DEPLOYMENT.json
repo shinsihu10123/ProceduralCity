@@ -1,11 +1,13 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "status": "SUCCESS",
   "workflow": "Deploy to GitHub Pages",
-  "run_id": 32311270327,
-  "main_deploy_sha": "136937c90b12db6619f3384b63214f0cbe8c3860",
-  "dashboard_source_sha": "fd0ee164fb16f0b5e94e87f78fdb679911c99bde",
+  "run_id": 32455793643,
+  "main_deploy_sha": "19bf25c4d805e5020b8d33723c1426bd0919ff7d",
+  "dashboard_source_sha": "4bf77483f4810cd27ffc69d2bfa66eaa058cfb6f",
+  "economic_lab_source_sha": "658bae1c1f2107405d5b51c687381c37d8e312fe",
   "page_url": "https://shinsihu10123.github.io/ProceduralCity/",
   "dashboard_path": "execution-dashboard/",
-  "deployed_at": "2026-08-19T23:00:04.971643+00:00"
+  "economic_lab_research_path": "economic-collapse/",
+  "deployed_at": "2026-08-21T06:48:06.411223+00:00"
 }
