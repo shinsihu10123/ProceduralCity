@@ -1,0 +1,183 @@
+name: Economic Lab RV08 R4-LMN Accounting Superbatch
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - .github/workflows/economic-lab-rv08-r4-lmn-superbatch.yml
+      - economic-lab/scripts/rv08-accounting-tax-estate-factorial-v10.mjs
+
+permissions:
+  contents: read
+  statuses: write
+
+env:
+  NODE_OPTIONS: --max-old-space-size=6144
+  DIAG_SCALES: compact,baseline
+  DIAG_MONTHS: '24'
+  DIAG_SEEDS: ECON-RV02-A,ECON-RV02-B,ECON-RV02-C
+
+jobs:
+  recognition-timing:
+    name: R4-L recognition timing x tax boundary
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Running beacon
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python - <<'PY' >/tmp/status.json
+          import json,os
+          print(json.dumps({'state':'pending','target_url':os.environ['RUN_URL'],'description':'RV08 R4-L accounting timing running','context':'economic-lab/wp-rv08-r4-l'}))
+          PY
+          curl -fsS -X POST -H 'Accept: application/vnd.github+json' -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" --data-binary @/tmp/status.json
+      - name: Run R4-L 24m recognition timing decomposition
+        working-directory: economic-lab
+        env:
+          DIAG_TRACK: L
+          OUTPUT_JSON: performance-results/rv08-r4-l-accounting-recognition-24m.json
+        run: |
+          set -o pipefail
+          mkdir -p performance-results
+          node scripts/rv08-accounting-tax-estate-factorial-v10.mjs | tee performance-results/rv08-r4-l.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: economic-lab-wp-rv08-r4-l
+          path: |
+            economic-lab/performance-results/rv08-r4-l-accounting-recognition-24m.json
+            economic-lab/performance-results/rv08-r4-l.log
+          retention-days: 30
+          if-no-files-found: warn
+      - name: Final beacon
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          API_STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
+        run: |
+          python - <<'PY' >/tmp/status.json
+          import json,os
+          print(json.dumps({'state':os.environ['API_STATE'],'target_url':os.environ['RUN_URL'],'description':'RV08 R4-L accounting timing finished','context':'economic-lab/wp-rv08-r4-l'}))
+          PY
+          curl -fsS -X POST -H 'Accept: application/vnd.github+json' -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" --data-binary @/tmp/status.json
+
+  recognition-scope:
+    name: R4-M zero-output vs all-labor accounting upper bound
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Running beacon
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python - <<'PY' >/tmp/status.json
+          import json,os
+          print(json.dumps({'state':'pending','target_url':os.environ['RUN_URL'],'description':'RV08 R4-M accounting scope running','context':'economic-lab/wp-rv08-r4-m'}))
+          PY
+          curl -fsS -X POST -H 'Accept: application/vnd.github+json' -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" --data-binary @/tmp/status.json
+      - name: Run R4-M 24m recognition scope upper bound
+        working-directory: economic-lab
+        env:
+          DIAG_TRACK: M
+          OUTPUT_JSON: performance-results/rv08-r4-m-accounting-scope-24m.json
+        run: |
+          set -o pipefail
+          mkdir -p performance-results
+          node scripts/rv08-accounting-tax-estate-factorial-v10.mjs | tee performance-results/rv08-r4-m.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: economic-lab-wp-rv08-r4-m
+          path: |
+            economic-lab/performance-results/rv08-r4-m-accounting-scope-24m.json
+            economic-lab/performance-results/rv08-r4-m.log
+          retention-days: 30
+          if-no-files-found: warn
+      - name: Final beacon
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          API_STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
+        run: |
+          python - <<'PY' >/tmp/status.json
+          import json,os
+          print(json.dumps({'state':os.environ['API_STATE'],'target_url':os.environ['RUN_URL'],'description':'RV08 R4-M accounting scope finished','context':'economic-lab/wp-rv08-r4-m'}))
+          PY
+          curl -fsS -X POST -H 'Accept: application/vnd.github+json' -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" --data-binary @/tmp/status.json
+
+  accounting-estate:
+    name: R4-N accounting x estate 2x2
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Running beacon
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python - <<'PY' >/tmp/status.json
+          import json,os
+          print(json.dumps({'state':'pending','target_url':os.environ['RUN_URL'],'description':'RV08 R4-N accounting-estate running','context':'economic-lab/wp-rv08-r4-n'}))
+          PY
+          curl -fsS -X POST -H 'Accept: application/vnd.github+json' -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" --data-binary @/tmp/status.json
+      - name: Run R4-N 24m accounting x estate factorial
+        working-directory: economic-lab
+        env:
+          DIAG_TRACK: N
+          OUTPUT_JSON: performance-results/rv08-r4-n-accounting-estate-24m.json
+        run: |
+          set -o pipefail
+          mkdir -p performance-results
+          node scripts/rv08-accounting-tax-estate-factorial-v10.mjs | tee performance-results/rv08-r4-n.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: economic-lab-wp-rv08-r4-n
+          path: |
+            economic-lab/performance-results/rv08-r4-n-accounting-estate-24m.json
+            economic-lab/performance-results/rv08-r4-n.log
+          retention-days: 30
+          if-no-files-found: warn
+      - name: Final beacon
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          API_STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
+        run: |
+          python - <<'PY' >/tmp/status.json
+          import json,os
+          print(json.dumps({'state':os.environ['API_STATE'],'target_url':os.environ['RUN_URL'],'description':'RV08 R4-N accounting-estate finished','context':'economic-lab/wp-rv08-r4-n'}))
+          PY
+          curl -fsS -X POST -H 'Accept: application/vnd.github+json' -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" --data-binary @/tmp/status.json
