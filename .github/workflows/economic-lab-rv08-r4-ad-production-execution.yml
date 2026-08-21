@@ -1,0 +1,103 @@
+name: Economic Lab RV08 R4-AD Production Execution Decomposition
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - '.github/workflows/economic-lab-rv08-r4-ad-production-execution.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: economic-lab-rv08-r4-ad-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_OPTIONS: --max-old-space-size=7168
+
+jobs:
+  launch-beacon:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish pending status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -d '{"state":"pending","context":"economic-lab/wp-rv08-r4-ad","description":"R4-AD production execution decomposition running","target_url":"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+
+  audit:
+    name: R4-AD ${{ matrix.mode }} · ${{ matrix.seedcase }} · ${{ matrix.base }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [canonical, restructure]
+        seedcase:
+          - original-A__ECON-RV02-A
+          - original-C__ECON-RV02-C
+          - heldout-E__ECON-RV08-HOLDOUT-E
+        base: [consumer, materials-consumer]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run production execution decomposition
+        working-directory: economic-lab
+        env:
+          MODE: ${{ matrix.mode }}
+          CASE: ${{ matrix.seedcase }}
+          BASE: ${{ matrix.base }}
+        run: |
+          set -euo pipefail
+          LABEL="${CASE%%__*}"
+          SEED="${CASE#*__}"
+          mkdir -p performance-results
+          DIAG_MODE="$MODE" \
+          DIAG_MONTHS=18 \
+          DIAG_BASES="$BASE" \
+          DIAG_SEEDS="$SEED" \
+          OUTPUT_JSON="performance-results/rv08-r4-ad-${MODE}-${LABEL}-${BASE}.json" \
+          node scripts/rv08-production-execution-decomposition-v10.mjs \
+          | tee "performance-results/rv08-r4-ad-${MODE}-${LABEL}-${BASE}.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rv08-r4-ad-${{ matrix.mode }}-${{ matrix.seedcase }}-${{ matrix.base }}
+          path: |
+            economic-lab/performance-results/rv08-r4-ad-*.json
+            economic-lab/performance-results/rv08-r4-ad-*.log
+          if-no-files-found: warn
+          retention-days: 90
+
+  final-beacon:
+    if: always()
+    needs: audit
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish final status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ needs.audit.result }}
+        run: |
+          if [ "$RESULT" = "success" ]; then
+            STATE=success
+            DESC='R4-AD production execution decomposition passed'
+          else
+            STATE=failure
+            DESC="R4-AD incomplete: $RESULT"
+          fi
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -d "{\"state\":\"$STATE\",\"context\":\"economic-lab/wp-rv08-r4-ad\",\"description\":\"$DESC\",\"target_url\":\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
