@@ -38,7 +38,7 @@ jobs:
   r4-y:
     name: R4-Y canonical 24m ${{ matrix.label }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -72,12 +72,12 @@ jobs:
           path: |
             economic-lab/performance-results/rv08-r4-y-${{ matrix.label }}.json
             economic-lab/performance-results/rv08-r4-y-${{ matrix.label }}.log
-          retention-days: 30
+          retention-days: 90
 
   r4-z:
     name: R4-Z restructure 36m ${{ matrix.label }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -111,7 +111,7 @@ jobs:
           path: |
             economic-lab/performance-results/rv08-r4-z-${{ matrix.label }}.json
             economic-lab/performance-results/rv08-r4-z-${{ matrix.label }}.log
-          retention-days: 30
+          retention-days: 90
 
   final-beacon:
     name: YZ final beacon
