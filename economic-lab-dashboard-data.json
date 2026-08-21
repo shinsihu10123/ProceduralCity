@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-08-21T15:30:00+09:00",
+  "project": "GAON Economic Lab",
+  "phase": "RV08 — endogenous collapse causal diagnosis",
+  "frontier": "Labor-demand / payroll coherence",
+  "repository": {
+    "owner": "shinsihu10123",
+    "repo": "ProceduralCity",
+    "branch": "scratch/new-project-2026-08-12"
+  },
+  "activeExperiment": {
+    "name": "R4-Y / R4-Z Labor Coherence Superbatch",
+    "runId": 32452759136,
+    "workflowFile": "economic-lab-rv08-r4-yz-superbatch.yml",
+    "expectedJobs": 12,
+    "regimes": 120,
+    "status": "running",
+    "description": "Canonical 24m and restructuring 36m experiments across original A/B/C and held-out D/E/F seeds, comparing control / production / settlement / realized / hybrid labor-demand rules."
+  },
+  "verifiedBaseline": [
+    {
+      "base": "CONSUMER",
+      "unemploymentPct": 47.5,
+      "firmExits": 666,
+      "wageArrears": 108454,
+      "fulfillmentPct": 38.9
+    },
+    {
+      "base": "MATERIALS+CONSUMER",
+      "unemploymentPct": 44.0,
+      "firmExits": 644,
+      "wageArrears": 101604,
+      "fulfillmentPct": 48.8
+    }
+  ],
+  "latestEvidence": [
+    {
+      "id": "R4-X-B-CONSUMER",
+      "label": "R4-X original-B / CONSUMER",
+      "age0PaidCoveragePct": 8.31,
+      "age0RealizedCoveragePct": 5.28,
+      "age6PaidCoveragePct": 8.10,
+      "age6RealizedCoveragePct": 10.95,
+      "restructureEvents": 446,
+      "uniqueFirms": 121,
+      "recurrentFirms": 114,
+      "recurrentSharePct": 94.21,
+      "maxRepeats": 8,
+      "verdict": "PASS"
+    },
+    {
+      "id": "R4-X-F-CONSUMER",
+      "label": "R4-X held-out-F / CONSUMER",
+      "age0PaidCoveragePct": 4.73,
+      "age0RealizedCoveragePct": 2.79,
+      "age6PaidCoveragePct": 6.37,
+      "age6RealizedCoveragePct": 20.72,
+      "restructureEvents": 452,
+      "uniqueFirms": 124,
+      "recurrentFirms": 112,
+      "recurrentSharePct": 90.32,
+      "maxRepeats": 8,
+      "verdict": "PASS"
+    },
+    {
+      "id": "R4-X-B-MC",
+      "label": "R4-X original-B / MATERIALS+CONSUMER",
+      "age0PaidCoveragePct": 9.39,
+      "age0RealizedCoveragePct": 8.94,
+      "age6PaidCoveragePct": 21.15,
+      "age6RealizedCoveragePct": 36.60,
+      "restructureEvents": 474,
+      "uniqueFirms": 113,
+      "recurrentFirms": 96,
+      "recurrentSharePct": 84.96,
+      "maxRepeats": 8,
+      "verdict": "PASS"
+    },
+    {
+      "id": "R4-X-F-MC",
+      "label": "R4-X held-out-F / MATERIALS+CONSUMER",
+      "age0PaidCoveragePct": 9.22,
+      "age0RealizedCoveragePct": 8.36,
+      "age6PaidCoveragePct": 29.96,
+      "age6RealizedCoveragePct": 54.61,
+      "restructureEvents": 412,
+      "uniqueFirms": 106,
+      "recurrentFirms": 91,
+      "recurrentSharePct": 85.85,
+      "maxRepeats": 8,
+      "verdict": "PASS"
+    }
+  ],
+  "causalChain": [
+    "Labor demand / retained workforce exceeds realized sustainable payroll",
+    "Current-worker wage arrears accumulate",
+    "Firm liquidity distress rises",
+    "Repeated restructuring occurs",
+    "Eventual liquidation and firm exit propagate unemployment",
+    "Inactive estates strand physical and financial resources",
+    "Supply and demand weaken further, amplifying collapse"
+  ],
+  "researchTimeline": [
+    {"stage": "RV02", "result": "Long-run collapse reproduced under controlled baseline."},
+    {"stage": "RV03–RV06", "result": "Labor matching, voluntary consumption cuts, and single-factor credit explanations narrowed or rejected as primary roots."},
+    {"stage": "RV07", "result": "Exit propagation identified as a major late-stage unemployment amplifier; generic root search closed."},
+    {"stage": "RV08 R1–R3", "result": "Entrant credit timing and startup-finance defects confirmed, but aggregate employment impact remained secondary."},
+    {"stage": "RV08 R4-H–N", "result": "Estate stranding and accounting representation defects confirmed; tax-feedback root hypothesis falsified."},
+    {"stage": "RV08 R4-O–U", "result": "Restructure-vs-liquidate architecture shown to be economically material; supply relief becomes a complement after restructuring."},
+    {"stage": "RV08 R4-V/W", "result": "Detached former-worker claims exist, but do not explain the restructuring arrears penalty; current-worker arrears dominate."},
+    {"stage": "RV08 R4-X", "result": "Post-restructure payroll coverage remains severely inadequate and restructuring recurs across original and held-out seeds."},
+    {"stage": "RV08 R4-Y/Z", "result": "Currently testing labor-demand coherence rules across 120 regimes."}
+  ],
+  "notes": [
+    "Diagnostic-only results are kept separate from canonical production repairs.",
+    "Observer instrumentation must not alter simulation state.",
+    "A PASS on accounting identity is not treated as proof of economic realism.",
+    "Dashboard data should be updated whenever a diagnostic closure materially changes the causal frontier."
+  ]
+}
