@@ -1,0 +1,138 @@
+name: Economic Lab RV08 R4-X Payroll Cohort
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - .github/workflows/economic-lab-rv08-r4-x-payroll-cohort.yml
+      - economic-lab/scripts/rv08-post-restructure-payroll-cohort-v10.mjs
+
+concurrency:
+  group: economic-lab-rv08-r4-x-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  statuses: write
+
+env:
+  NODE_OPTIONS: --max-old-space-size=7168
+
+jobs:
+  launch-beacon:
+    name: X launch beacon
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish pending status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python - <<'PY' >/tmp/status.json
+          import json,os
+          print(json.dumps({'state':'pending','target_url':os.environ['RUN_URL'],'description':'RV08 R4-X 6-shard payroll cohort running','context':'economic-lab/wp-rv08-r4-x'}))
+          PY
+          curl -fsS -X POST -H 'Accept: application/vnd.github+json' -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" --data-binary @/tmp/status.json
+
+  original:
+    name: R4-X original 36m ${{ matrix.id }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - { id: A, seed: ECON-RV02-A }
+          - { id: B, seed: ECON-RV02-B }
+          - { id: C, seed: ECON-RV02-C }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run R4-X original cohort
+        working-directory: economic-lab
+        env:
+          DIAG_MONTHS: '36'
+          DIAG_SCALES: baseline
+          DIAG_SEEDS: ${{ matrix.seed }}
+          OUTPUT_JSON: performance-results/rv08-r4-x-original-${{ matrix.id }}.json
+        run: |
+          set -o pipefail
+          mkdir -p performance-results
+          node scripts/rv08-post-restructure-payroll-cohort-v10.mjs | tee performance-results/rv08-r4-x-original-${{ matrix.id }}.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: economic-lab-wp-rv08-r4-x-original-${{ matrix.id }}
+          path: |
+            economic-lab/performance-results/rv08-r4-x-original-${{ matrix.id }}.json
+            economic-lab/performance-results/rv08-r4-x-original-${{ matrix.id }}.log
+          retention-days: 30
+          if-no-files-found: warn
+
+  heldout:
+    name: R4-X held-out 36m ${{ matrix.id }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - { id: D, seed: ECON-RV08-HOLDOUT-D }
+          - { id: E, seed: ECON-RV08-HOLDOUT-E }
+          - { id: F, seed: ECON-RV08-HOLDOUT-F }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run R4-X held-out cohort
+        working-directory: economic-lab
+        env:
+          DIAG_MONTHS: '36'
+          DIAG_SCALES: baseline
+          DIAG_SEEDS: ${{ matrix.seed }}
+          OUTPUT_JSON: performance-results/rv08-r4-x-heldout-${{ matrix.id }}.json
+        run: |
+          set -o pipefail
+          mkdir -p performance-results
+          node scripts/rv08-post-restructure-payroll-cohort-v10.mjs | tee performance-results/rv08-r4-x-heldout-${{ matrix.id }}.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: economic-lab-wp-rv08-r4-x-heldout-${{ matrix.id }}
+          path: |
+            economic-lab/performance-results/rv08-r4-x-heldout-${{ matrix.id }}.json
+            economic-lab/performance-results/rv08-r4-x-heldout-${{ matrix.id }}.log
+          retention-days: 30
+          if-no-files-found: warn
+
+  final-beacon:
+    name: X final beacon
+    if: always()
+    needs: [original, heldout]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish final status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          O: ${{ needs.original.result }}
+          H: ${{ needs.heldout.result }}
+        run: |
+          python - <<'PY' >/tmp/status.json
+          import json,os
+          rs=[os.environ['O'],os.environ['H']]
+          state='success' if all(x=='success' for x in rs) else 'failure'
+          print(json.dumps({'state':state,'target_url':os.environ['RUN_URL'],'description':('RV08 R4-X finished: '+','.join(rs))[:140],'context':'economic-lab/wp-rv08-r4-x'}))
+          PY
+          curl -fsS -X POST -H 'Accept: application/vnd.github+json' -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$REPOSITORY/statuses/$COMMIT_SHA" --data-binary @/tmp/status.json
