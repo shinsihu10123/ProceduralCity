@@ -13,7 +13,7 @@ It exists for two reasons:
 1. preserve the causal research trail independently of transient GitHub Actions artifacts;
 2. make the work directly reusable later as a standalone research report on endogenous collapse in an agent-based economy.
 
-GitHub Actions artifacts are evidence carriers, not the sole record. Some current workflows retain artifacts for only 30 days. Therefore every major claim that survives causal review must eventually be summarized in repository-native Markdown and, where needed, compact JSON/CSV evidence.
+GitHub Actions artifacts are evidence carriers, not the sole record. Artifact retention differs by workflow and remains finite. Therefore every major claim that survives causal review must eventually be summarized in repository-native Markdown and, where needed, compact JSON/CSV evidence.
 
 ## 2. Research question
 
@@ -178,7 +178,8 @@ These mechanisms may remain amplifiers or independent defects.
 
 ### WP-RV08 R4-Y / R4-Z — labor-demand coherence ablation
 
-Workflow run: 32452759136
+Initial workflow run: 32452759136
+Recovery workflow run: 32455326123
 
 Purpose: test whether labor demand itself must be anchored to production need and/or actual settlement/realized operating capacity.
 
@@ -201,7 +202,15 @@ R4-Z:
 
 The superbatch represents 12 independent shards and 120 principal simulation regimes across two productive-normalization bases and five labor-demand rules.
 
-At the time of this register update, the launch beacon had passed and all principal Y/Z jobs were executing; no causal verdict is recorded here until shard evidence is available.
+The first superbatch attempt reached the former 30-minute per-job execution timeout before any Y/Z shard produced an artifact. Log inspection showed the simulation process itself was still running when GitHub Actions cancelled it at the configured wall-clock limit. This is classified as an execution-runtime condition, not an economic-model failure.
+
+Recovery action:
+- Y timeout expanded from 30 to 120 minutes;
+- Z timeout expanded from 30 to 120 minutes;
+- Y/Z artifact retention expanded from 30 to 90 days;
+- the full batch was restarted as run 32455326123.
+
+At the latest bounded status check, the recovery launch beacon had passed and all 12 principal Y/Z jobs were in progress. No causal verdict is recorded until actual shard evidence is produced.
 
 ## 8. R4-X execution status
 
@@ -223,7 +232,8 @@ R4-X has already passed observer non-interference, deterministic replay, health,
 - QRSTU high-throughput: 32451260894
 - V/W arrears cohort/persistence: 32451833036
 - X post-restructure payroll cohort: 32452192028
-- Y/Z labor-demand coherence superbatch: 32452759136
+- Y/Z labor-demand coherence initial superbatch: 32452759136
+- Y/Z labor-demand coherence timeout-recovery superbatch: 32455326123
 
 Selected repository synthesis/closure commits in the current causal sequence:
 - R4-I/J/K closure: 5f60c7500136c8411fc963fd1fd0bba073a11ca0
@@ -232,6 +242,7 @@ Selected repository synthesis/closure commits in the current causal sequence:
 - QRSU interim synthesis: 4ba74def1d84737983feeb148c9b1adc1e54719b
 - V interim causal synthesis: f81c042fa3c4d55eeab6be2d982f67b2694e9ee0
 - R4-X interim synthesis / branch checkpoint before this register: 3fbdac360e15fcef98b2da1260217b1fcffdb204
+- Y/Z timeout recovery workflow change: 6690580d3d770b5e291aa1464a9f7ca717d9bfec
 
 ## 10. Report-conversion map
 
@@ -260,6 +271,18 @@ For every new major causal closure:
 - distinguish timeout/cancellation from model failure;
 - store a repository-native closure/synthesis document;
 - promote compact machine-readable results into the repository when the artifact contains data needed for later report figures/tables;
-- do not rely on 30-day Actions artifacts as the only evidence.
+- do not rely on finite-retention Actions artifacts as the only evidence.
+
+## 12. Living visualization / report observer
+
+A read-only Economic Lab research dashboard is maintained from the active diagnostic branch:
+- source HTML: `economic-lab-dashboard.html`
+- source data: `economic-lab-dashboard-data.json`
+- live data source: the public raw form of the diagnostic-branch JSON
+- intended Pages path: `economic-collapse/`
+
+The repository's established `main` GitHub Pages pipeline has been extended to compose this dashboard as a subpath rather than creating a competing Pages deployment from the diagnostic branch. This preserves the existing site, 3D observer and execution dashboard while giving the economic-collapse research a stable visualization surface.
+
+The dashboard is strictly observational: it may read repository evidence and GitHub Actions job state, but it must not write back into simulation state.
 
 This register is intentionally a living document and should be updated after R4-X full completion and R4-Y/Z closure.
