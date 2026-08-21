@@ -14,13 +14,30 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  statuses: write
 
 concurrency:
   group: economic-lab-dashboard-pages
   cancel-in-progress: false
 
 jobs:
+  launch-beacon:
+    name: Dashboard deploy launch beacon
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish pending status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -d '{"state":"pending","context":"economic-lab/dashboard-pages","description":"Economic Lab dashboard deployment running","target_url":"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+
   deploy:
+    name: Deploy dashboard to GitHub Pages
+    needs: launch-beacon
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -47,3 +64,27 @@ jobs:
       - name: Deploy dashboard
         id: deployment
         uses: actions/deploy-pages@v4
+
+  final-beacon:
+    name: Dashboard deploy final beacon
+    if: always()
+    needs: deploy
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish final status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+        run: |
+          if [ "$DEPLOY_RESULT" = "success" ]; then
+            STATE=success
+            DESC='Economic Lab dashboard deployed'
+          else
+            STATE=failure
+            DESC="Economic Lab dashboard deploy incomplete: $DEPLOY_RESULT"
+          fi
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -d "{\"state\":\"$STATE\",\"context\":\"economic-lab/dashboard-pages\",\"description\":\"$DESC\",\"target_url\":\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
