@@ -1,79 +1,326 @@
 {
-  "schemaVersion": 2,
-  "updatedAt": "2026-08-22T05:46:00+09:00",
+  "schemaVersion": 3,
+  "updatedAt": "2026-08-22T07:38:00+09:00",
   "project": "GAON Economic Lab",
   "phase": "RV08 — endogenous collapse causal diagnosis",
-  "frontier": "Production–revenue–payroll coherence",
+  "frontier": "Sector-specific value-product + production-execution decomposition",
   "repository": {
     "owner": "shinsihu10123",
     "repo": "ProceduralCity",
     "branch": "scratch/new-project-2026-08-12"
   },
   "activeExperiment": {
-    "name": "R4-Y / R4-Z Labor Coherence — ultra-shard + runtime recovery",
+    "name": "R4-Y/Z labor-rule batch — evidence archive; frontier moved to R4-AD/R4-AE",
     "runId": 32481366521,
     "workflowFile": "economic-lab-rv08-r4-yz-ultrashard.yml",
     "expectedJobs": 120,
     "regimes": 120,
-    "status": "running",
-    "description": "The 120-regime ultra-shard has produced many complete control/production artifacts and a first full 24m hybrid result. Slow settlement/realized/hybrid trajectories are being recovered separately after exact runtime equivalence validation and a same-horizon 12m probe launch."
+    "status": "partial",
+    "description": "Y/Z produced decisive control/production/hybrid evidence; many slow settlement/realized/hybrid shards were cancelled. Current causal work is R4-AD production execution and R4-AE downstream absorption."
   },
-  "runtimeRecovery": {
-    "equivalenceRunId": 32524000489,
-    "equivalenceVerdict": "PASS",
-    "worldSpeedupRange": "1.03x–1.44x",
-    "stressSpeedupRange": "1.07x–1.48x",
-    "interpretation": "The exact labor/payroll acceleration is state-equivalent, but the measured speedup is too small to explain the pathological slow-variant runtime by itself."
-  },
+  "currentDiagnostics": [
+    {
+      "id": "R4-AA",
+      "runId": 32524831084,
+      "status": "economic-complete",
+      "detail": "12/12 economic shards successful; two-mechanism sector split confirmed."
+    },
+    {
+      "id": "R4-AB",
+      "runId": 32528611154,
+      "status": "economic-complete-final-beacon-queued",
+      "detail": "12/12 economic shards successful; RESOURCE value-product root confirmed."
+    },
+    {
+      "id": "R4-AC",
+      "runId": 32528698633,
+      "status": "11/12-complete",
+      "detail": "One held-out E restructure/CONSUMER shard remains queued; production execution dominates CONSUMER/CAPITAL first loss."
+    },
+    {
+      "id": "R4-AD",
+      "runId": 32532999902,
+      "status": "queued",
+      "detail": "Launch beacon passed; 12 decomposition shards queued."
+    },
+    {
+      "id": "R4-AE",
+      "runId": null,
+      "status": "awaiting-runner-pickup",
+      "detail": "Workflow committed; no launch beacon yet at bounded check."
+    }
+  ],
   "verifiedBaseline": [
-    {"base": "CONSUMER", "unemploymentPct": 47.5, "firmExits": 666, "wageArrears": 108454, "fulfillmentPct": 38.9},
-    {"base": "MATERIALS+CONSUMER", "unemploymentPct": 44.0, "firmExits": 644, "wageArrears": 101604, "fulfillmentPct": 48.8}
+    {
+      "base": "CONSUMER",
+      "unemploymentPct": 47.5,
+      "firmExits": 666,
+      "wageArrears": 108454,
+      "fulfillmentPct": 38.9
+    },
+    {
+      "base": "MATERIALS+CONSUMER",
+      "unemploymentPct": 44.0,
+      "firmExits": 644,
+      "wageArrears": 101604,
+      "fulfillmentPct": 48.8
+    }
   ],
   "latestEvidence": [
-    {"id": "R4-X-B-CONSUMER", "label": "R4-X original-B / CONSUMER", "age0PaidCoveragePct": 8.31, "age0RealizedCoveragePct": 5.28, "age6PaidCoveragePct": 8.10, "age6RealizedCoveragePct": 10.95, "restructureEvents": 446, "uniqueFirms": 121, "recurrentFirms": 114, "recurrentSharePct": 94.21, "maxRepeats": 8, "verdict": "PASS"},
-    {"id": "R4-X-F-CONSUMER", "label": "R4-X held-out-F / CONSUMER", "age0PaidCoveragePct": 4.73, "age0RealizedCoveragePct": 2.79, "age6PaidCoveragePct": 6.37, "age6RealizedCoveragePct": 20.72, "restructureEvents": 452, "uniqueFirms": 124, "recurrentFirms": 112, "recurrentSharePct": 90.32, "maxRepeats": 8, "verdict": "PASS"},
-    {"id": "R4-X-B-MC", "label": "R4-X original-B / MATERIALS+CONSUMER", "age0PaidCoveragePct": 9.39, "age0RealizedCoveragePct": 8.94, "age6PaidCoveragePct": 21.15, "age6RealizedCoveragePct": 36.60, "restructureEvents": 474, "uniqueFirms": 113, "recurrentFirms": 96, "recurrentSharePct": 84.96, "maxRepeats": 8, "verdict": "PASS"},
-    {"id": "R4-X-F-MC", "label": "R4-X held-out-F / MATERIALS+CONSUMER", "age0PaidCoveragePct": 9.22, "age0RealizedCoveragePct": 8.36, "age6PaidCoveragePct": 29.96, "age6RealizedCoveragePct": 54.61, "restructureEvents": 412, "uniqueFirms": 106, "recurrentFirms": 91, "recurrentSharePct": 85.85, "maxRepeats": 8, "verdict": "PASS"}
+    {
+      "id": "R4-X-B-CONSUMER",
+      "label": "R4-X original-B / CONSUMER",
+      "age0PaidCoveragePct": 8.31,
+      "age0RealizedCoveragePct": 5.28,
+      "age6PaidCoveragePct": 8.1,
+      "age6RealizedCoveragePct": 10.95,
+      "restructureEvents": 446,
+      "uniqueFirms": 121,
+      "recurrentFirms": 114,
+      "recurrentSharePct": 94.21,
+      "maxRepeats": 8,
+      "verdict": "PASS"
+    },
+    {
+      "id": "R4-X-F-CONSUMER",
+      "label": "R4-X held-out-F / CONSUMER",
+      "age0PaidCoveragePct": 4.73,
+      "age0RealizedCoveragePct": 2.79,
+      "age6PaidCoveragePct": 6.37,
+      "age6RealizedCoveragePct": 20.72,
+      "restructureEvents": 452,
+      "uniqueFirms": 124,
+      "recurrentFirms": 112,
+      "recurrentSharePct": 90.32,
+      "maxRepeats": 8,
+      "verdict": "PASS"
+    },
+    {
+      "id": "R4-X-B-MC",
+      "label": "R4-X original-B / MATERIALS+CONSUMER",
+      "age0PaidCoveragePct": 9.39,
+      "age0RealizedCoveragePct": 8.94,
+      "age6PaidCoveragePct": 21.15,
+      "age6RealizedCoveragePct": 36.6,
+      "restructureEvents": 474,
+      "uniqueFirms": 113,
+      "recurrentFirms": 96,
+      "recurrentSharePct": 84.96,
+      "maxRepeats": 8,
+      "verdict": "PASS"
+    },
+    {
+      "id": "R4-X-F-MC",
+      "label": "R4-X held-out-F / MATERIALS+CONSUMER",
+      "age0PaidCoveragePct": 9.22,
+      "age0RealizedCoveragePct": 8.36,
+      "age6PaidCoveragePct": 29.96,
+      "age6RealizedCoveragePct": 54.61,
+      "restructureEvents": 412,
+      "uniqueFirms": 106,
+      "recurrentFirms": 91,
+      "recurrentSharePct": 85.85,
+      "maxRepeats": 8,
+      "verdict": "PASS"
+    }
   ],
   "laborRuleEvidence": [
-    {"label": "R4-Z A / CONSUMER control", "mode": "restructure 36m", "rule": "control", "unemploymentPct": 44.49, "terminalUnemploymentPct": 73.41, "arrears": 229300, "terminalArrears": 431722, "gdp": 24342, "output": 778.0},
-    {"label": "R4-Z A / CONSUMER production", "mode": "restructure 36m", "rule": "production", "unemploymentPct": 8.90, "terminalUnemploymentPct": 13.82, "arrears": 588698, "terminalArrears": 1463704, "gdp": 48143, "output": 1012.6},
-    {"label": "R4-Z E / CONSUMER control", "mode": "restructure 36m held-out", "rule": "control", "unemploymentPct": 44.13, "terminalUnemploymentPct": 74.66, "arrears": 233526, "terminalArrears": 442329, "gdp": 24507, "output": 758.5},
-    {"label": "R4-Z E / CONSUMER production", "mode": "restructure 36m held-out", "rule": "production", "unemploymentPct": 9.73, "terminalUnemploymentPct": 15.81, "arrears": 602122, "terminalArrears": 1474220, "gdp": 50255, "output": 1027.7},
-    {"label": "R4-Z F / CONSUMER control", "mode": "restructure 36m held-out", "rule": "control", "unemploymentPct": 42.99, "terminalUnemploymentPct": 71.11, "arrears": 234011, "terminalArrears": 453392, "gdp": 25033, "output": 753.3},
-    {"label": "R4-Z F / CONSUMER production", "mode": "restructure 36m held-out", "rule": "production", "unemploymentPct": 9.56, "terminalUnemploymentPct": 16.14, "arrears": 620498, "terminalArrears": 1516833, "gdp": 50879, "output": 946.1},
-    {"label": "R4-Y C / CONSUMER control", "mode": "canonical 24m", "rule": "control", "unemploymentPct": 48.21, "terminalUnemploymentPct": 83.92, "arrears": 112326, "terminalArrears": 183293, "gdp": 24879, "output": 873.4},
-    {"label": "R4-Y C / CONSUMER production", "mode": "canonical 24m", "rule": "production", "unemploymentPct": 22.59, "terminalUnemploymentPct": 55.66, "arrears": 256107, "terminalArrears": 562748, "gdp": 42397, "output": 1173.9},
-    {"label": "R4-Y C / CONSUMER hybrid", "mode": "canonical 24m", "rule": "hybrid", "unemploymentPct": 87.26, "terminalUnemploymentPct": 95.23, "arrears": 0, "terminalArrears": 0, "gdp": 8049, "output": 241.2}
+    {
+      "label": "R4-Z A / CONSUMER control",
+      "mode": "restructure 36m",
+      "rule": "control",
+      "unemploymentPct": 44.49,
+      "terminalUnemploymentPct": 73.41,
+      "arrears": 229300,
+      "terminalArrears": 431722,
+      "gdp": 24342,
+      "output": 778.0
+    },
+    {
+      "label": "R4-Z A / CONSUMER production",
+      "mode": "restructure 36m",
+      "rule": "production",
+      "unemploymentPct": 8.9,
+      "terminalUnemploymentPct": 13.82,
+      "arrears": 588698,
+      "terminalArrears": 1463704,
+      "gdp": 48143,
+      "output": 1012.6
+    },
+    {
+      "label": "R4-Z E / CONSUMER control",
+      "mode": "restructure 36m held-out",
+      "rule": "control",
+      "unemploymentPct": 44.13,
+      "terminalUnemploymentPct": 74.66,
+      "arrears": 233526,
+      "terminalArrears": 442329,
+      "gdp": 24507,
+      "output": 758.5
+    },
+    {
+      "label": "R4-Z E / CONSUMER production",
+      "mode": "restructure 36m held-out",
+      "rule": "production",
+      "unemploymentPct": 9.73,
+      "terminalUnemploymentPct": 15.81,
+      "arrears": 602122,
+      "terminalArrears": 1474220,
+      "gdp": 50255,
+      "output": 1027.7
+    },
+    {
+      "label": "R4-Z F / CONSUMER control",
+      "mode": "restructure 36m held-out",
+      "rule": "control",
+      "unemploymentPct": 42.99,
+      "terminalUnemploymentPct": 71.11,
+      "arrears": 234011,
+      "terminalArrears": 453392,
+      "gdp": 25033,
+      "output": 753.3
+    },
+    {
+      "label": "R4-Z F / CONSUMER production",
+      "mode": "restructure 36m held-out",
+      "rule": "production",
+      "unemploymentPct": 9.56,
+      "terminalUnemploymentPct": 16.14,
+      "arrears": 620498,
+      "terminalArrears": 1516833,
+      "gdp": 50879,
+      "output": 946.1
+    },
+    {
+      "label": "R4-Y C / CONSUMER control",
+      "mode": "canonical 24m",
+      "rule": "control",
+      "unemploymentPct": 48.21,
+      "terminalUnemploymentPct": 83.92,
+      "arrears": 112326,
+      "terminalArrears": 183293,
+      "gdp": 24879,
+      "output": 873.4
+    },
+    {
+      "label": "R4-Y C / CONSUMER production",
+      "mode": "canonical 24m",
+      "rule": "production",
+      "unemploymentPct": 22.59,
+      "terminalUnemploymentPct": 55.66,
+      "arrears": 256107,
+      "terminalArrears": 562748,
+      "gdp": 42397,
+      "output": 1173.9
+    },
+    {
+      "label": "R4-Y C / CONSUMER hybrid",
+      "mode": "canonical 24m",
+      "rule": "hybrid",
+      "unemploymentPct": 87.26,
+      "terminalUnemploymentPct": 95.23,
+      "arrears": 0,
+      "terminalArrears": 0,
+      "gdp": 8049,
+      "output": 241.2
+    }
+  ],
+  "sectorEvidence": [
+    {
+      "sector": "RESOURCE",
+      "abNetVplWageRange": "0.526–0.602",
+      "abPlanViableRange": "0%",
+      "acFinding": "plan economics fails before realization",
+      "verdict": "value-product root confirmed"
+    },
+    {
+      "sector": "MATERIALS",
+      "abNetVplWageRange": "0.431–0.988",
+      "abPlanViableRange": "0–26.7%",
+      "acFinding": "normalized viable minority shows execution + absorption gaps",
+      "verdict": "mixed upstream value-product and downstream execution/absorption"
+    },
+    {
+      "sector": "CAPITAL",
+      "abNetVplWageRange": "1.148–1.285",
+      "abPlanViableRange": "67.0–91.2%",
+      "acFinding": "output/plan 21.1–51.6%; sell-through 17.0–39.4%",
+      "verdict": "production execution first, investment absorption second"
+    },
+    {
+      "sector": "CONSUMER",
+      "abNetVplWageRange": "1.016–1.050",
+      "abPlanViableRange": "51.9–71.3%",
+      "acFinding": "output/plan 12.5–25.7%; sell-through 68.6–93.3%",
+      "verdict": "production execution dominates; finished-goods absorption not primary"
+    }
   ],
   "causalChain": [
-    "Physical production plans require far more labor than firms can sustainably pay from settled/realized operating flows",
-    "Canonical requested labor sits between the two constraints: often too low for physical plans yet too high for sustainable payroll",
-    "Production-linked staffing restores employment/output but finances the expansion through large current-worker wage arrears",
-    "A hard realized-payroll hybrid removes arrears by collapsing employment and real output instead of restoring viability",
-    "Payroll distress drives repeated restructuring and later firm-exit propagation",
-    "Inactive estates then strand physical and financial resources, amplifying the collapse",
-    "Current repair frontier: a bounded production–payroll transition rather than either unconstrained physical hiring or a hard prior-cash cap"
+    "RESOURCE and much of MATERIALS begin with an internal value-product problem: contribution value per worker is below wage at current price/productivity scales",
+    "CAPITAL and much of CONSUMER are often plan-economically viable, so their main failure occurs after planning",
+    "For plan-viable CONSUMER firms, actual output is only about 12.5–25.7% of plan while available inventory sell-through is about 68.6–93.3%",
+    "For CAPITAL, production execution is the largest first loss and weak investment-market absorption is a second material loss",
+    "Insufficient realized operating contribution leaves current payroll underfunded",
+    "Payroll arrears trigger recurrent restructuring and later liquidity-driven exit",
+    "Exit propagation displaces labor and strands estates, further weakening supply and demand",
+    "Current diagnostic target: decompose workforce-capacity versus input-availability execution loss (R4-AD) and downstream B2B/investment absorption (R4-AE)"
   ],
   "researchTimeline": [
-    {"stage": "RV02", "result": "Long-run collapse reproduced under controlled baseline."},
-    {"stage": "RV03–RV06", "result": "Labor matching, voluntary consumption cuts, and single-factor credit explanations narrowed or rejected as primary roots."},
-    {"stage": "RV07", "result": "Exit propagation identified as a major late-stage unemployment amplifier; generic root search closed."},
-    {"stage": "RV08 R1–R3", "result": "Entrant credit timing and startup-finance defects confirmed, but aggregate employment impact remained secondary."},
-    {"stage": "RV08 R4-H–N", "result": "Estate stranding and accounting representation defects confirmed; tax-feedback root hypothesis falsified."},
-    {"stage": "RV08 R4-O–U", "result": "Restructure-vs-liquidate architecture shown to be economically material; supply relief becomes a complement after restructuring."},
-    {"stage": "RV08 R4-V/W", "result": "Detached former-worker claims exist, but do not explain the restructuring arrears penalty; current-worker arrears dominate."},
-    {"stage": "RV08 R4-X", "result": "Post-restructure payroll coverage remains severely inadequate and restructuring recurs across original and held-out seeds."},
-    {"stage": "RV08 R4-Y/Z production", "result": "Original A/B and held-out E/F reproduce the same production-payroll wedge: production-linked staffing sharply improves employment/output while multiplying current-worker arrears."},
-    {"stage": "RV08 R4-Y hybrid", "result": "First full 24m hard-hybrid completion eliminates arrears but drives mean unemployment to 87.3% and collapses output, falsifying the hard affordability cap as a sufficient repair."},
-    {"stage": "RV08 runtime recovery", "result": "Exact diagnostic labor/payroll acceleration passed bit-exact equivalence. Its modest speedup shows the pathological slow variants are not explained by queue/payroll implementation cost alone; full-horizon recovery and a 12m same-horizon probe were launched."}
+    {
+      "stage": "RV02",
+      "result": "Long-run collapse reproduced under controlled baseline."
+    },
+    {
+      "stage": "RV03–RV06",
+      "result": "Labor matching, voluntary consumption cuts, and single-factor credit explanations narrowed or rejected as primary roots."
+    },
+    {
+      "stage": "RV07",
+      "result": "Exit propagation identified as a major late-stage unemployment amplifier; generic root search closed."
+    },
+    {
+      "stage": "RV08 R1–R3",
+      "result": "Entrant credit timing and startup-finance defects confirmed, but aggregate employment impact remained secondary."
+    },
+    {
+      "stage": "RV08 R4-H–N",
+      "result": "Estate stranding and accounting representation defects confirmed; tax-feedback root hypothesis falsified."
+    },
+    {
+      "stage": "RV08 R4-O–U",
+      "result": "Restructure-vs-liquidate architecture shown economically material; supply relief becomes a complement after restructuring."
+    },
+    {
+      "stage": "RV08 R4-V/W/X",
+      "result": "Detached former-worker claims are secondary; current-worker payroll under-coverage and repeated restructuring are dominant."
+    },
+    {
+      "stage": "RV08 R4-Y/Z",
+      "result": "Production-linked staffing restores employment/output but explodes arrears; hard hybrid removes arrears by collapsing employment/output."
+    },
+    {
+      "stage": "RV08 R4-AA",
+      "result": "Two sector mechanisms separated: upstream plan-economics shortfall versus downstream realization failure."
+    },
+    {
+      "stage": "RV08 R4-AB",
+      "result": "12/12 economic shards confirm RESOURCE value product/wage only 0.526–0.602 with 100% of rows below wage; worker indivisibility falsified as the RESOURCE root."
+    },
+    {
+      "stage": "RV08 R4-AC",
+      "result": "11/12 shards show CONSUMER and CAPITAL realization loss occurs mainly at production execution; CONSUMER finished-goods absorption is comparatively strong."
+    },
+    {
+      "stage": "RV08 R4-AD/R4-AE",
+      "result": "Production-execution decomposition launched; downstream B2B/investment absorption audit committed and awaiting runner pickup."
+    }
   ],
   "notes": [
-    "Diagnostic-only results are kept separate from canonical production repairs.",
-    "Observer instrumentation must not alter simulation state.",
+    "Diagnostic-only results remain separate from canonical production repairs.",
+    "Observer/instrumentation must not alter simulation state.",
     "A PASS on accounting identity is not treated as proof of economic realism.",
-    "Production-linked staffing is rejected as a standalone repair because it produces large unpaid payroll liabilities.",
-    "Hard hybrid staffing is rejected on the first full 24m completion because it cures arrears through mass unemployment/output destruction.",
-    "Actions artifacts are supporting evidence, not the sole permanent record; closure-level evidence is committed to the repository."
+    "R4-AB economic evidence is complete even though its final workflow beacon remains runner-queued.",
+    "R4-AC has one runner-queued shard; the missing shard is not classified as an economic failure.",
+    "Actions artifacts are supporting evidence; closure-level Markdown and compact CSV evidence are now committed in-repository."
   ]
 }
