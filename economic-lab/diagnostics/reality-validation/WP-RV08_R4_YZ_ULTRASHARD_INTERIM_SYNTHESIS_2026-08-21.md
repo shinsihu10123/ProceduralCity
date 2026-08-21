@@ -7,9 +7,9 @@ Launch commit: `823aecc9b06ced8b6508253a322b8cc79cd9cd8a`
 
 ## 1. Scope
 
-This is an interim synthesis from the first completed R4-Z single-regime artifacts. It is not a final Y/Z closure and it does not authorize a canonical repair.
+This is an interim synthesis from completed R4-Y/Z single-regime artifacts. It is not a final Y/Z closure and it does not authorize a canonical repair.
 
-All inspected completed artifacts passed:
+All inspected completed JSON artifacts passed:
 
 - deterministic replay;
 - health;
@@ -138,7 +138,7 @@ The broader productive normalization improves physical throughput and reduces th
 
 ## 7. Additional controls already completed
 
-Original C / CONSUMER control:
+Original C / CONSUMER control, 36m restructuring:
 
 - mean unemployment: `46.16%`
 - terminal unemployment: `76.49%`
@@ -147,7 +147,7 @@ Original C / CONSUMER control:
 - exits: `172`
 - restructures: `424`.
 
-Held-out E / MATERIALS+CONSUMER control:
+Held-out E / MATERIALS+CONSUMER control, 36m restructuring:
 
 - mean unemployment: `28.83%`
 - terminal unemployment: `49.03%`
@@ -184,17 +184,80 @@ It creates a large employment/output expansion but multiplies current-worker arr
 
 The labor quantity required by physical plans and the labor quantity that firms can sustainably pay are far apart.
 
-## 9. Remaining decisive comparisons
+## 9. First completed hard-hybrid result — original C / CONSUMER / canonical 24m
 
-The running batch must still provide same-seed/base comparisons for:
+A full 24-month R4-Y hybrid shard completed and passed all hard gates.
 
-- settlement;
-- realized;
-- hybrid;
-- remaining controls and production variants;
-- canonical R4-Y 24m jobs;
-- original versus held-out consistency.
+Same seed/base comparison:
 
-The main decision now is whether `hybrid` or another bounded rule can reduce payroll insolvency **without** simply converting the problem into mass unemployment or output collapse.
+### Control
+- mean unemployment: `48.21%`
+- terminal unemployment: `83.92%`
+- mean arrears: `112,326`
+- terminal arrears: `183,293`
+- linked/current-worker arrears: `24,254`
+- GDP: `24,879`
+- output: `873.4`
+- exits: `227`
+
+### Production-linked
+- mean unemployment: `22.59%`
+- terminal unemployment: `55.66%`
+- mean arrears: `256,107`
+- terminal arrears: `562,748`
+- linked/current-worker arrears: `143,754`
+- GDP: `42,397`
+- output: `1,173.9`
+- exits: `257`
+
+### Hard hybrid = min(physical-production labor, prior realized-contribution labor)
+- mean unemployment: `87.26%`
+- terminal unemployment: `95.23%`
+- mean arrears: `0`
+- terminal arrears: `0`
+- linked/current-worker arrears: `0`
+- GDP: `8,049`
+- output: `241.2`
+- exits: `0`
+- mean chosen workers: `2.23`
+- mean physical requirement: `36.20`
+
+This is a decisive warning against a hard affordability ceiling.
+
+The hybrid rule solves wage arrears by collapsing employment and real activity. Relative to control it raises mean unemployment by roughly `39.1 pp`, cuts output by roughly `72.4%`, and cuts GDP by roughly `67.6%`.
+
+The zero-exit result must not be read as economic health: the rule eliminates payroll stress by retaining almost no labor, leaving a low-employment, low-output economy rather than restoring viable firms.
+
+### H-YZ-5: hard physical×realized hybrid is a sufficient repair
+
+**FALSIFIED ON THE FIRST FULL 24m COMPLETION.**
+
+It is financially conservative but economically destructive.
+
+This strengthens the next architectural direction: affordability should constrain labor adjustment through a **bounded transition / arrears-cure mechanism**, not through an immediate hard cap to prior realized contribution.
+
+## 10. Runtime recovery and equivalence result
+
+Several settlement/realized/hybrid jobs time out before producing JSON. This remains classified as an execution-runtime condition, not an economic verdict.
+
+A diagnostic-only exact labor/payroll runtime fast path was introduced and independently verified:
+
+- equivalence run: `32524000489`
+- verdict: **PASS**
+- canonical and accelerated executions produced bit-exact world fingerprints on original and held-out seeds plus a synthetic high-unemployment stress test.
+
+Measured speedup was only about `1.03×–1.44×` in 8-month world runs and `1.07×–1.48×` in the synthetic labor/payroll stress test. Therefore the queue/payroll implementation cost is real but is not sufficient to explain the very large slow-variant runtime explosion.
+
+A same-horizon 12-month probe has also been launched across control / production / settlement / realized / hybrid so that causal ranking does not depend on waiting for every pathological 24m/36m trajectory.
+
+## 11. Remaining decisive comparisons
+
+Still required for closure:
+
+- settlement and realized economic direction at a common horizon;
+- hybrid replication beyond original C / CONSUMER;
+- original versus held-out consistency;
+- whether slower variants create runtime explosion through firm/state churn rather than the labor-market queue itself;
+- whether any bounded rule can reduce arrears without destroying employment/output.
 
 Final verdict remains `PARTIAL — RUNNING`.
