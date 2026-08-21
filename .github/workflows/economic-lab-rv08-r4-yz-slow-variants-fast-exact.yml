@@ -1,0 +1,134 @@
+name: Economic Lab RV08 R4-YZ Slow Variants Exact Runtime
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - '.github/workflows/economic-lab-rv08-r4-yz-slow-variants-fast-exact.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: economic-lab-rv08-r4-yz-slow-exact-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_OPTIONS: --max-old-space-size=7168
+
+jobs:
+  equivalence:
+    name: Exact runtime equivalence gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify state-equivalent acceleration
+        working-directory: economic-lab
+        run: node scripts/rv08-exact-labor-runtime-equivalence-v10.mjs
+
+  slow-variants:
+    name: R4-${{ matrix.mode == 'canonical' && 'Y' || 'Z' }} ${{ matrix.seedcase }} · ${{ matrix.base }} · ${{ matrix.variant }}
+    needs: equivalence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [canonical, restructure]
+        seedcase:
+          - original-A__ECON-RV02-A
+          - original-B__ECON-RV02-B
+          - original-C__ECON-RV02-C
+          - heldout-D__ECON-RV08-HOLDOUT-D
+          - heldout-E__ECON-RV08-HOLDOUT-E
+          - heldout-F__ECON-RV08-HOLDOUT-F
+        base: [consumer, materials-consumer]
+        variant: [settlement, realized, hybrid]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run one exact-accelerated slow labor-coherence regime
+        working-directory: economic-lab
+        env:
+          MODE: ${{ matrix.mode }}
+          CASE: ${{ matrix.seedcase }}
+          BASE: ${{ matrix.base }}
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          set -euo pipefail
+          LABEL="${CASE%%__*}"
+          SEED="${CASE#*__}"
+          if [ "$MODE" = "canonical" ]; then
+            LETTER=y
+            MONTHS=24
+          else
+            LETTER=z
+            MONTHS=36
+          fi
+          mkdir -p performance-results
+          cp scripts/rv08-labor-demand-coherence-ablation-v10.mjs scripts/.rv08-labor-demand-coherence-fast-shard.mjs
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path('scripts/.rv08-labor-demand-coherence-fast-shard.mjs')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace("const bases=['consumer','materials-consumer'];", "const bases=[%r];" % os.environ['BASE'])
+          s=s.replace("const variants=['control','production','settlement','realized','hybrid'];", "const variants=[%r];" % os.environ['VARIANT'])
+          needle="function run(base,variant,scale,seed,h,capture=false){const w=makeWorld(scale,seed);"
+          replacement=needle+"for(const c of w.countries)Object.defineProperty(c,'__diagnosticExactLaborRuntime',{value:true,writable:true,configurable:true,enumerable:false});"
+          if needle not in s:
+              raise SystemExit('run() injection point not found')
+          s=s.replace(needle,replacement,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          OUTPUT="performance-results/rv08-r4-${LETTER}-${LABEL}-${BASE}-${VARIANT}-exact.json"
+          LOG="performance-results/rv08-r4-${LETTER}-${LABEL}-${BASE}-${VARIANT}-exact.log"
+          DIAG_MODE="$MODE" \
+          DIAG_MONTHS="$MONTHS" \
+          DIAG_SCALES=baseline \
+          DIAG_SEEDS="$SEED" \
+          OUTPUT_JSON="$OUTPUT" \
+          node scripts/.rv08-labor-demand-coherence-fast-shard.mjs | tee "$LOG"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rv08-${{ matrix.mode }}-${{ matrix.seedcase }}-${{ matrix.base }}-${{ matrix.variant }}-exact
+          path: |
+            economic-lab/performance-results/*-exact.json
+            economic-lab/performance-results/*-exact.log
+          if-no-files-found: warn
+          retention-days: 90
+
+  final-beacon:
+    name: Slow-variant exact-runtime final beacon
+    if: always()
+    needs: [equivalence, slow-variants]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish final status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EQ_RESULT: ${{ needs.equivalence.result }}
+          SLOW_RESULT: ${{ needs.slow-variants.result }}
+        run: |
+          if [ "$EQ_RESULT" = "success" ] && [ "$SLOW_RESULT" = "success" ]; then
+            STATE=success
+            DESC='R4-Y/Z slow labor variants passed with exact runtime acceleration'
+          else
+            STATE=failure
+            DESC="R4-Y/Z slow exact incomplete: equivalence=$EQ_RESULT variants=$SLOW_RESULT"
+          fi
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -d "{\"state\":\"$STATE\",\"context\":\"economic-lab/wp-rv08-r4-yz-slow-exact\",\"description\":\"$DESC\",\"target_url\":\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
