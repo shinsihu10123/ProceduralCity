@@ -1,0 +1,110 @@
+name: Economic Lab RV08 R4-YZ 12m Labor Rule Probe
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - '.github/workflows/economic-lab-rv08-r4-yz-12m-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: economic-lab-rv08-r4-yz-12m-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_OPTIONS: --max-old-space-size=7168
+
+jobs:
+  probe:
+    name: R4-${{ matrix.mode == 'canonical' && 'Y' || 'Z' }} 12m ${{ matrix.seedcase }} · ${{ matrix.base }} · ${{ matrix.variant }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [canonical, restructure]
+        seedcase:
+          - original-A__ECON-RV02-A
+          - original-C__ECON-RV02-C
+          - heldout-E__ECON-RV08-HOLDOUT-E
+        base: [consumer, materials-consumer]
+        variant: [control, production, settlement, realized, hybrid]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run 12m same-horizon labor-rule probe
+        working-directory: economic-lab
+        env:
+          MODE: ${{ matrix.mode }}
+          CASE: ${{ matrix.seedcase }}
+          BASE: ${{ matrix.base }}
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          set -euo pipefail
+          LABEL="${CASE%%__*}"
+          SEED="${CASE#*__}"
+          if [ "$MODE" = "canonical" ]; then LETTER=y; else LETTER=z; fi
+          mkdir -p performance-results
+          cp scripts/rv08-labor-demand-coherence-ablation-v10.mjs scripts/.rv08-labor-rule-probe.mjs
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path('scripts/.rv08-labor-rule-probe.mjs')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace("const bases=['consumer','materials-consumer'];", "const bases=[%r];" % os.environ['BASE'])
+          s=s.replace("const variants=['control','production','settlement','realized','hybrid'];", "const variants=[%r];" % os.environ['VARIANT'])
+          needle="function run(base,variant,scale,seed,h,capture=false){const w=makeWorld(scale,seed);"
+          replacement=needle+"for(const c of w.countries)Object.defineProperty(c,'__diagnosticExactLaborRuntime',{value:true,writable:true,configurable:true,enumerable:false});"
+          if needle not in s:
+              raise SystemExit('run() injection point not found')
+          s=s.replace(needle,replacement,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          OUTPUT="performance-results/rv08-r4-${LETTER}-12m-${LABEL}-${BASE}-${VARIANT}.json"
+          LOG="performance-results/rv08-r4-${LETTER}-12m-${LABEL}-${BASE}-${VARIANT}.log"
+          DIAG_MODE="$MODE" \
+          DIAG_MONTHS=12 \
+          DIAG_SCALES=baseline \
+          DIAG_SEEDS="$SEED" \
+          OUTPUT_JSON="$OUTPUT" \
+          node scripts/.rv08-labor-rule-probe.mjs | tee "$LOG"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rv08-12m-${{ matrix.mode }}-${{ matrix.seedcase }}-${{ matrix.base }}-${{ matrix.variant }}
+          path: |
+            economic-lab/performance-results/*12m*.json
+            economic-lab/performance-results/*12m*.log
+          if-no-files-found: warn
+          retention-days: 90
+
+  final-beacon:
+    name: YZ 12m probe final beacon
+    if: always()
+    needs: probe
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish final status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ needs.probe.result }}
+        run: |
+          if [ "$RESULT" = "success" ]; then
+            STATE=success
+            DESC='R4-Y/Z 12m labor-rule probe passed'
+          else
+            STATE=failure
+            DESC="R4-Y/Z 12m labor-rule probe incomplete: $RESULT"
+          fi
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -d "{\"state\":\"$STATE\",\"context\":\"economic-lab/wp-rv08-r4-yz-12m-probe\",\"description\":\"$DESC\",\"target_url\":\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
