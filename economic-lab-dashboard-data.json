@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-21T21:18:00+09:00",
+  "updatedAt": "2026-08-21T21:30:00+09:00",
   "project": "GAON Economic Lab",
   "phase": "RV08 — endogenous collapse causal diagnosis",
-  "frontier": "Labor-demand / payroll coherence",
+  "frontier": "Physical production need vs financially sustainable payroll wedge",
   "repository": {
     "owner": "shinsihu10123",
     "repo": "ProceduralCity",
@@ -16,7 +16,7 @@
     "expectedJobs": 120,
     "regimes": 120,
     "status": "running",
-    "description": "Canonical 24m and restructuring 36m experiments across original A/B/C and held-out D/E/F seeds, two productive-normalization bases, and control / production / settlement / realized / hybrid labor-demand rules. The 12-job batch architecture exceeded both 30-minute and 120-minute per-job limits because each job serialized ten regimes. Recovery now maps one principal regime to one independent Actions job, preserving the same economic design while removing the wall-clock bottleneck."
+    "description": "One principal regime now maps to one Actions job. First completed R4-Z artifacts pass all hard gates. Original-A CONSUMER production-need staffing cuts mean unemployment from 44.49% to 8.90% and raises output about 30%, but mean arrears rise 2.57x and linked/current-worker arrears 4.15x. Physical-need-only staffing is therefore not an admissible repair."
   },
   "verifiedBaseline": [
     {
@@ -93,12 +93,12 @@
     }
   ],
   "causalChain": [
-    "Labor demand / retained workforce exceeds realized sustainable payroll",
-    "Current-worker wage arrears accumulate",
-    "Firm liquidity distress rises",
-    "Repeated restructuring occurs",
-    "Eventual liquidation and firm exit propagate unemployment",
-    "Inactive estates strand physical and financial resources",
+    "Physical production labor requirements diverge from financially sustainable payroll capacity",
+    "Canonical requested labor is often below physical need but above realized/settlement-supported labor",
+    "Expanding staffing to physical need alone produces output while accumulating unpaid payroll",
+    "Current-worker wage arrears drive renewed liquidity distress",
+    "Repeated restructuring occurs and eventually gives way to liquidation",
+    "Firm exit propagates unemployment and inactive estates strand resources",
     "Supply and demand weaken further, amplifying collapse"
   ],
   "researchTimeline": [
@@ -108,15 +108,15 @@
     {"stage": "RV08 R1–R3", "result": "Entrant credit timing and startup-finance defects confirmed, but aggregate employment impact remained secondary."},
     {"stage": "RV08 R4-H–N", "result": "Estate stranding and accounting representation defects confirmed; tax-feedback root hypothesis falsified."},
     {"stage": "RV08 R4-O–U", "result": "Restructure-vs-liquidate architecture shown to be economically material; supply relief becomes a complement after restructuring."},
-    {"stage": "RV08 R4-V/W", "result": "Detached former-worker claims exist, but do not explain the restructuring arrears penalty; current-worker arrears dominate."},
+    {"stage": "RV08 R4-V/W", "result": "R4-V closed across all six seeds: total restructuring arrears rise while former-worker/orphan arrears fall; current-worker arrears dominate. Three completed 48m W shards reproduce the long-horizon trade-off."},
     {"stage": "RV08 R4-X", "result": "Post-restructure payroll coverage remains severely inadequate and restructuring recurs across original and held-out seeds."},
-    {"stage": "RV08 R4-Y/Z", "result": "The 12-job design serialized ten regimes per job and hit both 30m and 120m execution ceilings. The economic experiment was preserved and re-issued as 120 independent regime jobs in run 32481366521."}
+    {"stage": "RV08 R4-Y/Z", "result": "Ultra-sharding is producing valid artifacts. Early direct A comparison falsifies physical-need-only staffing as a repair: unemployment and output improve dramatically, but linked/current-worker arrears multiply. The frontier is now the wedge between physical labor need and sustainable payroll capacity."}
   ],
   "notes": [
     "Diagnostic-only results are kept separate from canonical production repairs.",
     "Observer instrumentation must not alter simulation state.",
     "A PASS on accounting identity is not treated as proof of economic realism.",
-    "Dashboard data should be updated whenever a diagnostic closure materially changes the causal frontier.",
+    "Physical production need alone is not a financially admissible staffing criterion.",
     "Actions artifacts are supporting evidence, not the sole permanent record; closure-level evidence is committed to the repository."
   ]
 }
