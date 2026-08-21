@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-21T15:37:00+09:00",
+  "updatedAt": "2026-08-21T21:18:00+09:00",
   "project": "GAON Economic Lab",
   "phase": "RV08 — endogenous collapse causal diagnosis",
   "frontier": "Labor-demand / payroll coherence",
@@ -10,13 +10,13 @@
     "branch": "scratch/new-project-2026-08-12"
   },
   "activeExperiment": {
-    "name": "R4-Y / R4-Z Labor Coherence Superbatch — timeout-recovery run",
-    "runId": 32455326123,
-    "workflowFile": "economic-lab-rv08-r4-yz-superbatch.yml",
-    "expectedJobs": 12,
+    "name": "R4-Y / R4-Z Labor Coherence — ultra-sharded recovery run",
+    "runId": 32481366521,
+    "workflowFile": "economic-lab-rv08-r4-yz-ultrashard.yml",
+    "expectedJobs": 120,
     "regimes": 120,
     "status": "running",
-    "description": "Canonical 24m and restructuring 36m experiments across original A/B/C and held-out D/E/F seeds, comparing control / production / settlement / realized / hybrid labor-demand rules. The first Y/Z run reached the former 30-minute job timeout before producing artifacts; the workflow timeout is now 120 minutes and artifacts are retained for 90 days."
+    "description": "Canonical 24m and restructuring 36m experiments across original A/B/C and held-out D/E/F seeds, two productive-normalization bases, and control / production / settlement / realized / hybrid labor-demand rules. The 12-job batch architecture exceeded both 30-minute and 120-minute per-job limits because each job serialized ten regimes. Recovery now maps one principal regime to one independent Actions job, preserving the same economic design while removing the wall-clock bottleneck."
   },
   "verifiedBaseline": [
     {
@@ -110,7 +110,7 @@
     {"stage": "RV08 R4-O–U", "result": "Restructure-vs-liquidate architecture shown to be economically material; supply relief becomes a complement after restructuring."},
     {"stage": "RV08 R4-V/W", "result": "Detached former-worker claims exist, but do not explain the restructuring arrears penalty; current-worker arrears dominate."},
     {"stage": "RV08 R4-X", "result": "Post-restructure payroll coverage remains severely inadequate and restructuring recurs across original and held-out seeds."},
-    {"stage": "RV08 R4-Y/Z", "result": "First superbatch attempt hit the 30-minute execution timeout; timeout was expanded to 120 minutes and the full 120-regime batch was restarted."}
+    {"stage": "RV08 R4-Y/Z", "result": "The 12-job design serialized ten regimes per job and hit both 30m and 120m execution ceilings. The economic experiment was preserved and re-issued as 120 independent regime jobs in run 32481366521."}
   ],
   "notes": [
     "Diagnostic-only results are kept separate from canonical production repairs.",
