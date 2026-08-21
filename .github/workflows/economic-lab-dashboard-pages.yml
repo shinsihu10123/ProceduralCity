@@ -1,0 +1,49 @@
+name: Deploy Economic Lab Dashboard
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab-dashboard.html'
+      - 'economic-lab-dashboard-data.json'
+      - '.github/workflows/economic-lab-dashboard-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: economic-lab-dashboard-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout dashboard branch
+        uses: actions/checkout@v4
+
+      - name: Prepare dashboard site
+        run: |
+          mkdir -p _dashboard_site
+          cp economic-lab-dashboard.html _dashboard_site/index.html
+          cp economic-lab-dashboard-data.json _dashboard_site/economic-lab-dashboard-data.json
+          touch _dashboard_site/.nojekyll
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _dashboard_site
+
+      - name: Deploy dashboard
+        id: deployment
+        uses: actions/deploy-pages@v4
