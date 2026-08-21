@@ -5,6 +5,10 @@ export function setLaborMarketDiagnosticObserver(observer = null) {
   laborMarketDiagnosticObserver = observer;
 }
 
+function exactDiagnosticRuntimeEnabled(country) {
+  return country?.__diagnosticExactLaborRuntime === true;
+}
+
 function clearLaborMarketCore(country, rng) {
   const diagnostics = laborMarketDiagnosticObserver ? {
     initialVacancies: 0,
@@ -43,6 +47,11 @@ function clearLaborMarketCore(country, rng) {
     .map(h => ({ h, score: (h.skill || 0) + rng.normal(0, 0.03) }))
     .sort((a, b) => b.score - a.score || a.h.id.localeCompare(b.h.id))
     .map(x => x.h);
+  const useExactFastQueue = exactDiagnosticRuntimeEnabled(country);
+  let unemployedHead = 0;
+  const unemployedCount = () => useExactFastQueue ? unemployed.length - unemployedHead : unemployed.length;
+  const takeUnemployed = () => useExactFastQueue ? unemployed[unemployedHead++] : unemployed.shift();
+
   const firms = country.firms
     .filter(f => f.active !== false)
     .sort((a, b) => b.wage - a.wage || a.id.localeCompare(b.id));
@@ -58,10 +67,10 @@ function clearLaborMarketCore(country, rng) {
     }
     let hiredHere = 0;
     let scans = 0;
-    const maxScans = Math.min(unemployed.length, Math.max(10, monthlyHiringCapacity * 8));
+    const maxScans = Math.min(unemployedCount(), Math.max(10, monthlyHiringCapacity * 8));
 
-    while (f.workers < f.desiredWorkers && unemployed.length && hiredHere < monthlyHiringCapacity && scans < maxScans) {
-      const h = unemployed.shift();
+    while (f.workers < f.desiredWorkers && unemployedCount() && hiredHere < monthlyHiringCapacity && scans < maxScans) {
+      const h = takeUnemployed();
       scans += 1;
       if (diagnostics) diagnostics.scanAttempts += 1;
       const reservation = h.reservationWage || h.wage * 0.72;
@@ -92,7 +101,7 @@ function clearLaborMarketCore(country, rng) {
     if (diagnostics && gap > 0) {
       if (hiredHere >= monthlyHiringCapacity) diagnostics.hiringCapacityBoundVacancies += gap;
       else if (scans >= maxScans) diagnostics.scanLimitBoundVacancies += gap;
-      else if (!unemployed.length) diagnostics.noApplicantVacancies += gap;
+      else if (!unemployedCount()) diagnostics.noApplicantVacancies += gap;
     }
     if (gap > 0) f.wage *= 1 + Math.min(0.025, gap / Math.max(1, f.desiredWorkers) * 0.03);
   }
@@ -150,10 +159,19 @@ function settlePayrollCore(country, ledger, month) {
     if (paid > 0) payments += 1;
   }
 
-  for (const f of country.firms) {
-    f.wageArrears = country.households
-      .filter(h => h.employerId === f.id)
-      .reduce((s, h) => s + Math.max(0, h.wageArrears || 0), 0);
+  if (exactDiagnosticRuntimeEnabled(country)) {
+    const arrearsByFirm = new Map();
+    for (const h of country.households) {
+      if (!h.employerId) continue;
+      arrearsByFirm.set(h.employerId, (arrearsByFirm.get(h.employerId) || 0) + Math.max(0, h.wageArrears || 0));
+    }
+    for (const f of country.firms) f.wageArrears = arrearsByFirm.get(f.id) || 0;
+  } else {
+    for (const f of country.firms) {
+      f.wageArrears = country.households
+        .filter(h => h.employerId === f.id)
+        .reduce((s, h) => s + Math.max(0, h.wageArrears || 0), 0);
+    }
   }
 
   return { payroll, unpaid, payments };
