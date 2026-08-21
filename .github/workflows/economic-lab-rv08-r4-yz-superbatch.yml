@@ -1,0 +1,139 @@
+name: Economic Lab RV08 R4-YZ Labor Coherence Superbatch
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - '.github/workflows/economic-lab-rv08-r4-yz-superbatch.yml'
+      - 'economic-lab/scripts/rv08-labor-demand-coherence-ablation-v10.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: economic-lab-rv08-r4-yz-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_OPTIONS: --max-old-space-size=7168
+
+jobs:
+  launch-beacon:
+    name: YZ launch beacon
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish pending status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -d '{"state":"pending","context":"economic-lab/wp-rv08-r4-yz","description":"R4-Y/Z labor coherence diagnostics running","target_url":"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+
+  r4-y:
+    name: R4-Y canonical 24m ${{ matrix.label }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { label: original-A, seed: ECON-RV02-A }
+          - { label: original-B, seed: ECON-RV02-B }
+          - { label: original-C, seed: ECON-RV02-C }
+          - { label: heldout-D, seed: ECON-RV08-HOLDOUT-D }
+          - { label: heldout-E, seed: ECON-RV08-HOLDOUT-E }
+          - { label: heldout-F, seed: ECON-RV08-HOLDOUT-F }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run R4-Y canonical labor coherence
+        working-directory: economic-lab
+        env:
+          DIAG_MODE: canonical
+          DIAG_MONTHS: '24'
+          DIAG_SCALES: baseline
+          DIAG_SEEDS: ${{ matrix.seed }}
+          OUTPUT_JSON: performance-results/rv08-r4-y-${{ matrix.label }}.json
+        run: |
+          set -o pipefail
+          mkdir -p performance-results
+          node scripts/rv08-labor-demand-coherence-ablation-v10.mjs | tee performance-results/rv08-r4-y-${{ matrix.label }}.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: economic-lab-wp-rv08-r4-y-${{ matrix.label }}
+          path: |
+            economic-lab/performance-results/rv08-r4-y-${{ matrix.label }}.json
+            economic-lab/performance-results/rv08-r4-y-${{ matrix.label }}.log
+          retention-days: 30
+
+  r4-z:
+    name: R4-Z restructure 36m ${{ matrix.label }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { label: original-A, seed: ECON-RV02-A }
+          - { label: original-B, seed: ECON-RV02-B }
+          - { label: original-C, seed: ECON-RV02-C }
+          - { label: heldout-D, seed: ECON-RV08-HOLDOUT-D }
+          - { label: heldout-E, seed: ECON-RV08-HOLDOUT-E }
+          - { label: heldout-F, seed: ECON-RV08-HOLDOUT-F }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run R4-Z restructuring labor coherence
+        working-directory: economic-lab
+        env:
+          DIAG_MODE: restructure
+          DIAG_MONTHS: '36'
+          DIAG_SCALES: baseline
+          DIAG_SEEDS: ${{ matrix.seed }}
+          OUTPUT_JSON: performance-results/rv08-r4-z-${{ matrix.label }}.json
+        run: |
+          set -o pipefail
+          mkdir -p performance-results
+          node scripts/rv08-labor-demand-coherence-ablation-v10.mjs | tee performance-results/rv08-r4-z-${{ matrix.label }}.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: economic-lab-wp-rv08-r4-z-${{ matrix.label }}
+          path: |
+            economic-lab/performance-results/rv08-r4-z-${{ matrix.label }}.json
+            economic-lab/performance-results/rv08-r4-z-${{ matrix.label }}.log
+          retention-days: 30
+
+  final-beacon:
+    name: YZ final beacon
+    if: always()
+    needs: [r4-y, r4-z]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish final status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          Y_RESULT: ${{ needs.r4-y.result }}
+          Z_RESULT: ${{ needs.r4-z.result }}
+        run: |
+          if [ "$Y_RESULT" = "success" ] && [ "$Z_RESULT" = "success" ]; then
+            STATE=success
+            DESC='R4-Y/Z labor coherence diagnostics passed'
+          else
+            STATE=failure
+            DESC="R4-Y/Z incomplete: Y=$Y_RESULT Z=$Z_RESULT"
+          fi
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -d "{\"state\":\"$STATE\",\"context\":\"economic-lab/wp-rv08-r4-yz\",\"description\":\"$DESC\",\"target_url\":\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
