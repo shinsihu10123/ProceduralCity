@@ -9,6 +9,14 @@ function exactDiagnosticRuntimeEnabled(country) {
   return country?.__diagnosticExactLaborRuntime === true;
 }
 
+function laborEligibilityDiagnosticEnabled(country) {
+  return country?.__diagnosticLaborEligibility === true;
+}
+
+function laborEligible(country, household) {
+  return !laborEligibilityDiagnosticEnabled(country) || household?.__diagnosticLaborEligible !== false;
+}
+
 function clearLaborMarketCore(country, rng) {
   const diagnostics = laborMarketDiagnosticObserver ? {
     initialVacancies: 0,
@@ -24,7 +32,11 @@ function clearLaborMarketCore(country, rng) {
 
   const employedByFirm = new Map(country.firms.map(f => [f.id, []]));
   for (const h of country.households) {
-    if (h.employed && h.employerId && employedByFirm.has(h.employerId)) employedByFirm.get(h.employerId).push(h);
+    if (h.employed && h.employerId && employedByFirm.has(h.employerId) && laborEligible(country, h)) employedByFirm.get(h.employerId).push(h);
+    else if (h.employed && !laborEligible(country, h)) {
+      h.employed = false;
+      h.employerId = null;
+    }
   }
 
   let layoffs = 0;
@@ -43,7 +55,7 @@ function clearLaborMarketCore(country, rng) {
   }
 
   const unemployed = country.households
-    .filter(h => !h.employed)
+    .filter(h => !h.employed && laborEligible(country, h))
     .map(h => ({ h, score: (h.skill || 0) + rng.normal(0, 0.03) }))
     .sort((a, b) => b.score - a.score || a.h.id.localeCompare(b.h.id))
     .map(x => x.h);
