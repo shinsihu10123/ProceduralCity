@@ -1,0 +1,2 @@
+run_id,seed_count,horizon_months,entrants,entrant_exits,payroll_liquidity_exits,credit_exits,both_exits,other_exits,mean_wage_change_share,max_wage_down_share,mean_price_move_share,firm_credit_applications,firm_credit_approved,approval_rate,approved_mean_prior_revenue,rejected_mean_prior_revenue,approved_3m_active_share,rejected_3m_active_share,all_gates
+32584670965,4,36,922,797,797,0,0,0,0.00192763,0,0.9642357,891,35,0.03928,61710.5,2754.5,0.7143,0.5935,true
