@@ -1,0 +1,432 @@
+name: Economic Lab RV08 R4-BR-BW Wide Frontier
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - '.github/workflows/economic-lab-rv08-r4-br-bw-wide-frontier.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+env:
+  NODE_OPTIONS: --max-old-space-size=7168
+  WIDE_SEEDS: ECON-RV02-A,ECON-RV02-C,ECON-RV08-HOLDOUT-E,ECON-RV08-HOLDOUT-F
+
+jobs:
+  launch-beacon:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish pending status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -d '{"state":"pending","context":"economic-lab/wp-rv08-r4-br-bw","description":"R4-BR-BW wide frontier running","target_url":"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+
+  br-waterfall:
+    name: R4-BR cash-flow waterfall ${{ matrix.seedcase }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        seedcase:
+          - original-A__ECON-RV02-A
+          - original-C__ECON-RV02-C
+          - heldout-E__ECON-RV08-HOLDOUT-E
+          - heldout-F__ECON-RV08-HOLDOUT-F
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Run exit-candidate cash-flow waterfall
+        working-directory: economic-lab
+        env:
+          CASE: ${{ matrix.seedcase }}
+        run: |
+          set -euo pipefail
+          LABEL="${CASE%%__*}"
+          SEED="${CASE#*__}"
+          mkdir -p performance-results
+          DIAG_SEED="$SEED" DIAG_SEEDS="$SEED" DIAG_MONTHS=36 DIAG_SCALES=baseline \
+          OUTPUT_JSON="performance-results/r4-br-waterfall-${LABEL}.json" \
+          OUTPUT_CSV="performance-results/r4-br-waterfall-${LABEL}.csv" \
+          node scripts/rv08-exit-candidate-cashflow-waterfall-v10.mjs \
+          | tee "performance-results/r4-br-waterfall-${LABEL}.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-br-waterfall-${{ matrix.seedcase }}
+          path: economic-lab/performance-results/r4-br-waterfall-*
+          if-no-files-found: warn
+          retention-days: 90
+
+  br-lifecycle:
+    name: R4-BR entrant finance lifecycle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Run entrant finance lifecycle audit
+        working-directory: economic-lab
+        run: |
+          set -euo pipefail
+          mkdir -p performance-results
+          DIAG_SEEDS="$WIDE_SEEDS" DIAG_MONTHS=36 DIAG_SCALES=baseline \
+          OUTPUT_JSON="performance-results/r4-br-entrant-lifecycle.json" \
+          node scripts/entrant-finance-lifecycle-audit-v10.mjs \
+          | tee performance-results/r4-br-entrant-lifecycle.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-br-entrant-lifecycle
+          path: economic-lab/performance-results/r4-br-entrant-lifecycle*
+          if-no-files-found: warn
+          retention-days: 90
+
+  bs-rejection-trace:
+    name: R4-BS credit rejection trace
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Run entrant credit rejection trace
+        working-directory: economic-lab
+        run: |
+          set -euo pipefail
+          mkdir -p performance-results
+          DIAG_MONTHS=36 DIAG_SCALES=baseline DIAG_SEEDS="$WIDE_SEEDS" \
+          node scripts/entrant-credit-rejection-trace-audit-v10.mjs \
+          | tee performance-results/r4-bs-credit-rejection-trace.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-bs-credit-rejection-trace
+          path: economic-lab/performance-results/r4-bs-credit-rejection-trace.log
+          if-no-files-found: warn
+          retention-days: 90
+
+  bs-underwriting-timing:
+    name: R4-BS underwriting timing matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Run underwriting timing matrix
+        working-directory: economic-lab
+        run: |
+          set -euo pipefail
+          mkdir -p performance-results
+          DIAG_MONTHS=36 DIAG_SCALES=baseline DIAG_SEEDS="$WIDE_SEEDS" \
+          OUTPUT_JSON="performance-results/r4-bs-underwriting-timing.json" \
+          node scripts/rv08-entrant-underwriting-timing-matrix-v10.mjs \
+          | tee performance-results/r4-bs-underwriting-timing.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-bs-underwriting-timing
+          path: economic-lab/performance-results/r4-bs-underwriting-timing*
+          if-no-files-found: warn
+          retention-days: 90
+
+  bu-demographic:
+    name: R4-BU demographic labor-force structure
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Run demographic labor-force audit
+        working-directory: economic-lab
+        run: |
+          set -euo pipefail
+          mkdir -p performance-results
+          DIAG_MONTHS=36 DIAG_SCALES=baseline DIAG_SEEDS="$WIDE_SEEDS" \
+          OUTPUT_JSON="performance-results/r4-bu-demographic.json" \
+          node scripts/rv08-demographic-labor-force-structure-audit-v10.mjs \
+          | tee performance-results/r4-bu-demographic.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-bu-demographic
+          path: economic-lab/performance-results/r4-bu-demographic*
+          if-no-files-found: warn
+          retention-days: 90
+
+  bu-working-age:
+    name: R4-BU working-age feasibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Run working-age feasibility audit
+        working-directory: economic-lab
+        run: |
+          set -euo pipefail
+          mkdir -p performance-results
+          DIAG_MONTHS=36 DIAG_SCALES=baseline DIAG_SEEDS="$WIDE_SEEDS" \
+          OUTPUT_JSON="performance-results/r4-bu-working-age.json" \
+          node scripts/rv08-working-age-labor-force-feasibility-audit-v10.mjs \
+          | tee performance-results/r4-bu-working-age.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-bu-working-age
+          path: economic-lab/performance-results/r4-bu-working-age*
+          if-no-files-found: warn
+          retention-days: 90
+
+  bu-person-unit:
+    name: R4-BU household-person labor-unit ontology
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Run household/person ontology audit
+        working-directory: economic-lab
+        run: |
+          set -euo pipefail
+          mkdir -p performance-results
+          DIAG_MONTHS=36 DIAG_SCALES=baseline DIAG_SEEDS="$WIDE_SEEDS" \
+          OUTPUT_JSON="performance-results/r4-bu-person-unit.json" \
+          node scripts/rv08-household-person-labor-unit-ontology-audit-v10.mjs \
+          | tee performance-results/r4-bu-person-unit.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-bu-person-unit
+          path: economic-lab/performance-results/r4-bu-person-unit*
+          if-no-files-found: warn
+          retention-days: 90
+
+  bu-eligibility:
+    name: R4-BU labor eligibility counterfactual
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Run labor eligibility counterfactual
+        working-directory: economic-lab
+        run: |
+          set -euo pipefail
+          mkdir -p performance-results
+          DIAG_MONTHS=36 DIAG_SCALES=baseline DIAG_SEEDS="$WIDE_SEEDS" \
+          OUTPUT_JSON="performance-results/r4-bu-eligibility.json" \
+          node scripts/rv08-labor-eligibility-counterfactual-v10.mjs \
+          | tee performance-results/r4-bu-eligibility.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-bu-eligibility
+          path: economic-lab/performance-results/r4-bu-eligibility*
+          if-no-files-found: warn
+          retention-days: 90
+
+  bv-stranded-assets:
+    name: R4-BV stranded estate assets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Run exit-estate stranded-assets audit
+        working-directory: economic-lab
+        run: |
+          set -euo pipefail
+          mkdir -p performance-results
+          DIAG_MONTHS=36 DIAG_SCALES=baseline DIAG_SEEDS="$WIDE_SEEDS" \
+          OUTPUT_JSON="performance-results/r4-bv-stranded-assets.json" \
+          node scripts/rv08-exit-estate-stranded-assets-audit-v10.mjs \
+          | tee performance-results/r4-bv-stranded-assets.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-bv-stranded-assets
+          path: economic-lab/performance-results/r4-bv-stranded-assets*
+          if-no-files-found: warn
+          retention-days: 90
+
+  bv-recycling:
+    name: R4-BV estate recycling upper-bound
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Run estate recycling counterfactual matrix
+        working-directory: economic-lab
+        run: |
+          set -euo pipefail
+          mkdir -p performance-results
+          DIAG_MONTHS=36 DIAG_SCALES=baseline DIAG_SEEDS="$WIDE_SEEDS" \
+          OUTPUT_JSON="performance-results/r4-bv-recycling.json" \
+          OUTPUT_CSV="performance-results/r4-bv-recycling.csv" \
+          node scripts/rv08-estate-recycling-counterfactual-matrix-v10.mjs \
+          | tee performance-results/r4-bv-recycling.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-bv-recycling
+          path: economic-lab/performance-results/r4-bv-recycling*
+          if-no-files-found: warn
+          retention-days: 90
+
+  bv-accounting-estate:
+    name: R4-BV accounting-tax-estate factorial
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Run accounting tax estate factorial
+        working-directory: economic-lab
+        run: |
+          set -euo pipefail
+          mkdir -p performance-results
+          DIAG_MONTHS=36 DIAG_SCALES=baseline DIAG_SEEDS="$WIDE_SEEDS" \
+          OUTPUT_JSON="performance-results/r4-bv-accounting-estate.json" \
+          node scripts/rv08-accounting-tax-estate-factorial-v10.mjs \
+          | tee performance-results/r4-bv-accounting-estate.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-bv-accounting-estate
+          path: economic-lab/performance-results/r4-bv-accounting-estate*
+          if-no-files-found: warn
+          retention-days: 90
+
+  bv-liquidation-state:
+    name: R4-BV restructure-liquidation state machine
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Run restructure liquidation state machine
+        working-directory: economic-lab
+        run: |
+          set -euo pipefail
+          mkdir -p performance-results
+          DIAG_MONTHS=36 DIAG_SCALES=baseline DIAG_SEEDS="$WIDE_SEEDS" \
+          OUTPUT_JSON="performance-results/r4-bv-liquidation-state.json" \
+          node scripts/rv08-restructure-liquidation-state-machine-v10.mjs \
+          | tee performance-results/r4-bv-liquidation-state.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-bv-liquidation-state
+          path: economic-lab/performance-results/r4-bv-liquidation-state*
+          if-no-files-found: warn
+          retention-days: 90
+
+  bw-ecosystem:
+    name: R4-BW economic ecosystem structural audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Run ecosystem structural audit
+        working-directory: economic-lab
+        run: |
+          set -euo pipefail
+          mkdir -p performance-results
+          DIAG_MONTHS=48 DIAG_SCALES=baseline DIAG_SEEDS="$WIDE_SEEDS" \
+          OUTPUT_JSON="performance-results/r4-bw-ecosystem.json" \
+          node scripts/rv08-economic-ecosystem-structural-audit-v10.mjs \
+          | tee performance-results/r4-bw-ecosystem.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-bw-ecosystem
+          path: economic-lab/performance-results/r4-bw-ecosystem*
+          if-no-files-found: warn
+          retention-days: 90
+
+  bw-institutional:
+    name: R4-BW institutional maturity network census
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Run institutional maturity network census
+        working-directory: economic-lab
+        run: |
+          set -euo pipefail
+          mkdir -p performance-results
+          DIAG_MONTHS=48 DIAG_SCALES=baseline DIAG_SEEDS="$WIDE_SEEDS" \
+          OUTPUT_JSON="performance-results/r4-bw-institutional.json" \
+          node scripts/rv08-institutional-maturity-network-census-v10.mjs \
+          | tee performance-results/r4-bw-institutional.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-bw-institutional
+          path: economic-lab/performance-results/r4-bw-institutional*
+          if-no-files-found: warn
+          retention-days: 90
+
+  final-beacon:
+    if: always()
+    needs:
+      - br-waterfall
+      - br-lifecycle
+      - bs-rejection-trace
+      - bs-underwriting-timing
+      - bu-demographic
+      - bu-working-age
+      - bu-person-unit
+      - bu-eligibility
+      - bv-stranded-assets
+      - bv-recycling
+      - bv-accounting-estate
+      - bv-liquidation-state
+      - bw-ecosystem
+      - bw-institutional
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish final status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULTS: ${{ toJson(needs) }}
+        run: |
+          if echo "$RESULTS" | grep -Eq '"result"[[:space:]]*:[[:space:]]*"(failure|cancelled)"'; then
+            STATE=failure
+            DESC='R4-BR-BW wide frontier completed with failed fronts'
+          else
+            STATE=success
+            DESC='R4-BR-BW wide frontier completed'
+          fi
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -d "{\"state\":\"$STATE\",\"context\":\"economic-lab/wp-rv08-r4-br-bw\",\"description\":\"$DESC\",\"target_url\":\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
