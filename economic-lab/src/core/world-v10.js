@@ -6,6 +6,7 @@ import { LongRunHealthMonitor } from '../research/long-run-health.js';
 import { analyzeWorldEmergence } from '../research/emergence-metrics.js';
 import { RuntimeProfiler } from '../research/runtime-profiler.js';
 import { ShadowPersonHouseholdSystem } from '../research/shadow-person-household.js';
+import { ShadowLaborDemandSystem } from '../research/shadow-labor-demand.js';
 
 function nowMs() {
   return globalThis.performance?.now?.() ?? Date.now();
@@ -74,6 +75,20 @@ export class EconomicWorld extends CognitiveEconomicWorld {
       shadow.initialize(this.countries);
       Object.defineProperty(this, 'shadowPersonHousehold', {
         value: shadow,
+        enumerable: false,
+        configurable: true,
+        writable: false
+      });
+    }
+
+    if (options.enableShadowLaborDemand) {
+      const shadowLabor = new ShadowLaborDemandSystem({
+        ledger: this.ledger,
+        shadowPersonSystem: this.shadowPersonHousehold || null
+      });
+      shadowLabor.refresh(this.countries, this.month);
+      Object.defineProperty(this, 'shadowLaborDemand', {
+        value: shadowLabor,
         enumerable: false,
         configurable: true,
         writable: false
@@ -181,6 +196,7 @@ export class EconomicWorld extends CognitiveEconomicWorld {
     }
 
     if (this.shadowPersonHousehold) this.shadowPersonHousehold.refresh(this.countries);
+    if (this.shadowLaborDemand) this.shadowLaborDemand.refresh(this.countries, this.month);
   }
 
   forceHealthCheck() {
@@ -201,6 +217,10 @@ export class EconomicWorld extends CognitiveEconomicWorld {
 
   shadowPersonReport() {
     return this.shadowPersonHousehold ? this.shadowPersonHousehold.report() : null;
+  }
+
+  shadowLaborDemandReport() {
+    return this.shadowLaborDemand ? this.shadowLaborDemand.report() : null;
   }
 
   profilingReport() {
