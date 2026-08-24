@@ -1,0 +1,54 @@
+name: Stage 1 CI
+
+on:
+  push:
+    branches:
+      - stage1-time-service
+  pull_request:
+    branches:
+      - stage0-rebuild
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage1-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    name: Rust workspace
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Check workspace
+        run: cargo check --workspace --all-targets
+
+      - name: Run Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Run tests
+        run: cargo test --workspace --all-targets
+
+      - name: Run release time soak test
+        run: cargo test --release -p artificial-world-kernel time::tests::million_tick_soak_has_no_drift -- --exact
+
+      - name: Run release terrain soak test
+        run: cargo test --release -p artificial-world-kernel --test terrain_soak large_multi_chunk_pipeline_is_deterministic_and_connected -- --exact
+
+      - name: Run release terrain pipeline gate
+        run: cargo run --release -p artificial-world-benchmark --bin terrain_pipeline

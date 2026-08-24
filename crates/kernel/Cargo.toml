@@ -1,0 +1,10 @@
+[package]
+name = "artificial-world-kernel"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[lints]
+workspace = true

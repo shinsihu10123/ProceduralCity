@@ -1,0 +1,806 @@
+────────────────────────────────────────
+16. src/biology/
+────────────────────────────────────────
+
+구조:
+
+src/biology/
+├─ api/
+├─ body/
+├─ metabolism/
+├─ thermoregulation/
+├─ injury/
+├─ disease/
+├─ immunity/
+├─ growth/
+├─ reproduction/
+├─ genetics/
+├─ aging/
+├─ death/
+├─ persistence/
+├─ diagnostics/
+└─ internal/
+
+소유 상태:
+- 생명 여부
+- 에너지·수분
+- 체온
+- 피로
+- 부상
+- 질병
+- 성장
+- 유전
+- 번식
+- 노화
+
+주요 Query:
+- QueryActionCapacity
+- QuerySensoryCapacity
+- QueryHealthSummary
+
+주요 Event:
+- InjuryOccurred
+- DiseaseProgressed
+- BirthOccurred
+- DeathOccurred
+
+────────────────────────────────────────
+17. src/cognition/
+────────────────────────────────────────
+
+구조:
+
+src/cognition/
+├─ api/
+├─ perception/
+├─ observations/
+├─ memory/
+├─ beliefs/
+├─ needs/
+├─ goals/
+├─ planning/
+├─ habits/
+├─ learning/
+├─ action_selection/
+├─ persistence/
+├─ diagnostics/
+└─ internal/
+
+소유 상태:
+- Observation
+- 기억
+- 믿음
+- 욕구 평가
+- 목표
+- 계획
+- 습관
+- 학습 파라미터
+
+중요 경계:
+- cognition은 실제 세계 참값을 직접 조회하지 않음
+- perception이 생성한 Observation만 사용
+- 행동 결과가 아닌 Intent만 제출
+
+금지:
+- FindNearestFoodTruth()
+- GetEnemyExactStrength()
+- SetPhysicalPosition()
+- AddKnowledgeWithoutSource()
+
+────────────────────────────────────────
+18. src/society/
+────────────────────────────────────────
+
+구조:
+
+src/society/
+├─ api/
+├─ interactions/
+├─ relationships/
+├─ trust/
+├─ obligations/
+├─ kinship/
+├─ group_patterns/
+├─ norms/
+├─ roles/
+├─ collective_decision/
+├─ aggregation/
+├─ persistence/
+├─ diagnostics/
+└─ internal/
+
+소유 상태:
+- 상호작용 이력
+- 신뢰
+- 의무
+- 친족 관계
+- 반복 협력 패턴
+- 규범
+- 역할 기대
+- 집단 의사결정 상태
+
+주의:
+가족·부족·국가를 고정 타입으로 먼저 생성하지 않는다.
+분석 계층이 관계 패턴을 분류할 수 있다.
+
+────────────────────────────────────────
+19. src/knowledge/
+────────────────────────────────────────
+
+구조:
+
+src/knowledge/
+├─ api/
+├─ observations/
+├─ hypotheses/
+├─ experiments/
+├─ procedures/
+├─ evidence/
+├─ reproduction/
+├─ teaching/
+├─ records/
+├─ distortion/
+├─ lineage/
+├─ persistence/
+├─ diagnostics/
+└─ internal/
+
+소유 상태:
+- 지식 주장
+- 근거
+- 절차
+- 재현 기록
+- 신뢰도
+- 전승 계보
+- 왜곡과 망각 상태
+
+금지:
+- TechTree
+- UnlockTechnology
+- CivilizationLevel
+
+허용:
+- ProcedureKnowledge
+- EvidenceRecord
+- ReproductionAttempt
+- TeachingTransfer
+
+────────────────────────────────────────
+20. src/construction/
+────────────────────────────────────────
+
+구조:
+
+src/construction/
+├─ api/
+├─ proposals/
+├─ materials/
+├─ placement/
+├─ assembly/
+├─ design_search/
+├─ use_evaluation/
+├─ maintenance/
+├─ aggregation/
+├─ persistence/
+├─ diagnostics/
+└─ internal/
+
+소유 상태:
+- 설계 제안
+- 건설 작업 상태
+- 사용 평가
+- 유지보수 계획
+
+Physics가 소유:
+- 실제 구조 연결
+- 하중
+- 붕괴
+- 물리 손상
+
+금지:
+- HousePrefab
+- MarketBuilding
+- CastleBuilding
+- BuildCityCommand
+
+────────────────────────────────────────
+21. src/economy/
+────────────────────────────────────────
+
+구조:
+
+src/economy/
+├─ api/
+├─ ownership/
+├─ inventory_views/
+├─ production/
+├─ consumption/
+├─ storage/
+├─ transfer/
+├─ exchange/
+├─ obligations/
+├─ price_formation/
+├─ logistics/
+├─ aggregation/
+├─ persistence/
+├─ diagnostics/
+└─ internal/
+
+소유 상태:
+- 소유권 주장
+- 채무·의무
+- 교환 제안과 합의
+- 가격 형성 이력
+- 물류 약속
+
+실제 물질 위치와 수량은 Resource/Physics 권위 상태와 분리한다.
+
+거래는 실제 이전이 완료된 후 커밋한다.
+
+────────────────────────────────────────
+22. src/politics/
+────────────────────────────────────────
+
+구조:
+
+src/politics/
+├─ api/
+├─ authority/
+├─ rules/
+├─ enforcement/
+├─ legitimacy/
+├─ collective_resources/
+├─ territorial_control/
+├─ administration/
+├─ rebellion/
+├─ aggregation/
+├─ persistence/
+├─ diagnostics/
+└─ internal/
+
+소유 상태:
+- 권한 주장
+- 규칙
+- 집행 기록
+- 정당성 평가
+- 자원 통제 관계
+- 지역 통제 강도
+
+금지:
+- NationManager
+- CreateGovernment()
+- SetCountryBorder()
+
+허용:
+- AuthorityClaim
+- RuleProposal
+- EnforcementAttempt
+- TerritoryControlEstimate
+
+────────────────────────────────────────
+23. src/culture/
+────────────────────────────────────────
+
+구조:
+
+src/culture/
+├─ api/
+├─ symbols/
+├─ language_signals/
+├─ customs/
+├─ values/
+├─ rituals/
+├─ identities/
+├─ narratives/
+├─ diffusion/
+├─ persistence/
+├─ diagnostics/
+└─ internal/
+
+소유 상태:
+- 공유 상징
+- 신호 의미
+- 관습
+- 가치 분포
+- 의례
+- 정체성
+- 서사와 전승
+
+문화 분류명은 분석 라벨이며 행동을 직접 강제하지 않는다.
+
+────────────────────────────────────────
+24. src/warfare/
+────────────────────────────────────────
+
+구조:
+
+src/warfare/
+├─ api/
+├─ recruitment/
+├─ equipment/
+├─ formation/
+├─ command/
+├─ supply/
+├─ combat_intents/
+├─ occupation/
+├─ resistance/
+├─ recovery/
+├─ aggregation/
+├─ persistence/
+├─ diagnostics/
+└─ internal/
+
+소유 상태:
+- 군사적 조직 관계
+- 모집 상태
+- 명령 구조
+- 작전 계획
+- 보급 계획
+- 점령 주장
+
+Physics/Biology가 소유:
+- 이동
+- 충돌
+- 피해
+- 부상
+- 사망
+
+금지:
+- CompareArmyPowerAndResolveWar()
+
+────────────────────────────────────────
+25. src/observation/
+────────────────────────────────────────
+
+구조:
+
+src/observation/
+├─ api/
+├─ read_models/
+├─ event_queries/
+├─ causal_graph/
+├─ classification/
+├─ statistics/
+├─ replay/
+├─ exporters/
+├─ diagnostics/
+└─ internal/
+
+역할:
+- 권위 상태와 사건을 읽기 모델로 변환
+- 원인과 결과 탐색
+- 도시형·국가형 패턴 분류
+- 통계
+- 리플레이
+- 외부 분석용 내보내기
+
+규칙:
+- 시뮬레이션 상태 쓰기 금지
+- 분류 결과로 기능 자동 부여 금지
+- 분석 캐시는 권위 상태가 아님
+
+────────────────────────────────────────
+26. src/persistence/
+────────────────────────────────────────
+
+구조:
+
+src/persistence/
+├─ api/
+├─ snapshot_store/
+├─ event_store/
+├─ manifests/
+├─ checksums/
+├─ compression/
+├─ migrations/
+├─ recovery/
+├─ validation/
+└─ internal/
+
+역할:
+- World Snapshot 저장
+- Event Segment 저장
+- Manifest
+- 체크섬
+- 압축
+- 마이그레이션
+- 손상 검증과 복구
+
+중요:
+persistence가 각 모듈 내부 상태 구조를 임의로 해석하지 않는다.
+각 모듈이 제공하는 버전된 직렬화 계약을 사용한다.
+
+────────────────────────────────────────
+27. src/adapters/
+────────────────────────────────────────
+
+구조:
+
+src/adapters/
+├─ engine/
+├─ renderer/
+├─ input/
+├─ storage/
+├─ networking/
+├─ telemetry/
+└─ external_libraries/
+
+역할:
+외부 엔진, 라이브러리, 운영체제 구현을 프로젝트 계약에 연결한다.
+
+예:
+- Unity Transform ↔ RenderSnapshot
+- Unreal Actor ↔ Presentation Entity
+- 파일 DB ↔ EventStorePort
+- GPU compute ↔ SimulationComputePort
+
+규칙:
+- 도메인 코어가 외부 엔진 타입에 의존하지 않음
+- 외부 타입은 Adapter 경계에서 변환
+- 교체 가능한 인터페이스 제공
+
+────────────────────────────────────────
+28. src/shared/
+────────────────────────────────────────
+
+허용 범위:
+- 오류 코드 기반 타입
+- Result
+- 안정 식별자 포맷
+- 작은 불변 컬렉션 도구
+- 공통 테스트 어노테이션
+- 공통 직렬화 envelope
+
+금지:
+- 도메인별 규칙
+- 여러 모듈의 상태를 조정하는 서비스
+- “편의”라는 이유로 이동된 중요 코드
+- 순환 의존성을 숨기는 중간 계층
+
+shared가 커지면 즉시 책임 모듈을 재검토한다.
+
+────────────────────────────────────────
+29. apps/
+────────────────────────────────────────
+
+구조:
+
+apps/
+├─ headless/
+├─ viewer/
+├─ editor/
+├─ replay/
+└─ experiment_runner/
+
+29.1 headless/
+
+렌더링 없이 시뮬레이션 실행.
+
+기능:
+- 설정 로드
+- 세계 생성
+- 틱 실행
+- 저장
+- 성능 로그
+- 실험 반복
+
+29.2 viewer/
+
+3D 세계 관찰용 애플리케이션.
+
+읽기 전용 Snapshot 기반.
+
+29.3 editor/
+
+세계 생성 설정, 실험 설정, 디버그 도구.
+
+직접 상태 변경이 아니라 InterventionGateway 사용.
+
+29.4 replay/
+
+과거 Snapshot과 Event를 재생.
+
+29.5 experiment_runner/
+
+동일 설정 반복, 시드 비교, 변수 실험, 결과 집계.
+
+규칙:
+apps는 조립과 진입점만 담당한다.
+도메인 규칙을 apps에 작성하지 않는다.
+
+────────────────────────────────────────
+30. tests/
+────────────────────────────────────────
+
+구조:
+
+tests/
+├─ unit/
+├─ integration/
+├─ contracts/
+├─ invariants/
+├─ determinism/
+├─ persistence/
+├─ lod/
+├─ soak/
+├─ regression/
+├─ scenarios/
+├─ fixtures/
+└─ support/
+
+30.1 unit/
+
+모듈 내부 순수 규칙.
+
+경로는 src 구조를 반영한다.
+
+예:
+tests/unit/physics/thermal/
+tests/unit/biology/metabolism/
+
+30.2 integration/
+
+복수 모듈 연결.
+
+예:
+- 이동 Intent → Physics → Biology energy
+- 연소 → Thermal → Injury
+- 거래 → Transfer → Ownership commit
+
+30.3 contracts/
+
+Command/Event/Snapshot 스키마 호환성.
+
+30.4 invariants/
+
+자원, ID, 참조, 생명 상태 등 전역 불변 조건.
+
+30.5 determinism/
+
+동일 시드·설정·버전 재현.
+
+30.6 persistence/
+
+저장→복원→재실행.
+
+30.7 lod/
+
+강등·승격 전후 보존과 오차.
+
+30.8 soak/
+
+장기 실행.
+
+30.9 regression/
+
+발견된 버그를 고정하는 테스트.
+
+30.10 scenarios/
+
+프로젝트 검증 시나리오.
+
+예:
+- 물 없는 환경
+- 서로 다른 온도대
+- 자원 경쟁
+- 구조 붕괴
+- 기억에 따른 경로 변경
+
+30.11 fixtures/
+
+작고 버전된 테스트 데이터.
+
+30.12 support/
+
+테스트 전용 도구.
+프로덕션 도메인 코드가 support를 참조해서는 안 된다.
+
+────────────────────────────────────────
+31. benchmarks/
+────────────────────────────────────────
+
+구조:
+
+benchmarks/
+├─ micro/
+├─ systems/
+├─ scenarios/
+├─ memory/
+├─ persistence/
+├─ lod/
+└─ reports/
+
+31.1 micro/
+
+자료구조, 공간 조회, 직렬화 등의 미세 벤치마크.
+
+31.2 systems/
+
+시스템 단위 처리량.
+
+31.3 scenarios/
+
+정해진 개체 수·지역 수·이벤트 밀도의 종합 성능.
+
+31.4 memory/
+
+메모리 사용량과 증가율.
+
+31.5 persistence/
+
+저장 크기, 저장 시간, 복원 시간.
+
+31.6 lod/
+
+LOD별 비용과 오차.
+
+31.7 reports/
+
+자동 생성된 결과.
+원시 결과와 환경 정보를 함께 보존한다.
+
+────────────────────────────────────────
+32. tools/
+────────────────────────────────────────
+
+구조:
+
+tools/
+├─ schema_codegen/
+├─ save_inspector/
+├─ event_inspector/
+├─ causal_graph_viewer/
+├─ determinism_checker/
+├─ lod_analyzer/
+├─ profiler/
+├─ migration_tool/
+├─ config_validator/
+└─ repo_linter/
+
+32.1 schema_codegen/
+
+스키마에서 코드 타입 생성.
+
+32.2 save_inspector/
+
+저장 파일 구조와 체크섬 확인.
+
+32.3 event_inspector/
+
+사건 필터, 인과 연결, 누락 검사.
+
+32.4 causal_graph_viewer/
+
+사건 원인·결과 그래프.
+
+32.5 determinism_checker/
+
+두 실행의 digest 차이 위치 탐색.
+
+32.6 lod_analyzer/
+
+LOD 전환 전후 오차 비교.
+
+32.7 profiler/
+
+시스템별 시간·할당·처리량 분석.
+
+32.8 migration_tool/
+
+저장 스키마 변환.
+
+32.9 config_validator/
+
+실행 전 설정 검증.
+
+32.10 repo_linter/
+
+의존성, 금지 import, 파일 위치, 문서 누락 검사.
+
+────────────────────────────────────────
+33. examples/
+────────────────────────────────────────
+
+구조:
+
+examples/
+├─ minimal_world/
+├─ deterministic_run/
+├─ save_restore/
+├─ custom_experiment/
+└─ read_only_viewer/
+
+예제 목적:
+- 핵심 API 사용법
+- 헤드리스 실행
+- 고정 시드 재현
+- 저장·복원
+- 실험 설정
+- 읽기 전용 Snapshot 소비
+
+예제는 테스트가 아니며,
+테스트는 별도 tests/에서 관리한다.
+
+────────────────────────────────────────
+34. assets/
+────────────────────────────────────────
+
+구조:
+
+assets/
+├─ presentation/
+├─ debug/
+├─ ui/
+├─ audio/
+└─ source/
+
+원칙:
+- 시뮬레이션의 권위 상태를 포함하지 않음
+- 렌더링과 UI 자산만 포함
+- 원본과 변환 결과 구분
+- 대용량 파일 정책은 Stage 0.8에서 확정
+
+건물 프리팹이 시뮬레이션의 건물 유형을 결정해서는 안 된다.
+프리팹은 관찰용 표현 템플릿일 뿐이다.
+
+────────────────────────────────────────
+35. generated/
+────────────────────────────────────────
+
+목적:
+스키마, 코드 생성기, 빌드 과정이 만든 파일.
+
+규칙:
+- 직접 수정 금지
+- 생성 원본과 도구 버전 명시
+- 재생성 가능해야 함
+- 커밋 여부는 기술 스택과 빌드 안정성에 따라 Stage 0.8에서 결정
+
+파일 상단:
+GENERATED FILE — DO NOT EDIT
+
+────────────────────────────────────────
+36. third_party/
+────────────────────────────────────────
+
+목적:
+외부 코드와 라이선스 고지.
+
+구조:
+
+third_party/
+├─ manifests/
+├─ licenses/
+├─ patches/
+└─ vendored/
+
+규칙:
+- 외부 의존성 목록과 버전 고정
+- 라이선스 보존
+- 직접 수정 시 patch 기록
+- 도메인 코드는 외부 패키지를 직접 광범위하게 참조하지 않음
+- adapters 또는 foundation의 제한된 wrapper 사용
+
+────────────────────────────────────────
+37. scripts/
+────────────────────────────────────────
+
+구조:
+
+scripts/
+├─ bootstrap/
+├─ build/
+├─ test/
+├─ benchmark/
+├─ format/
+├─ lint/
+├─ package/
+└─ release/
+
+규칙:
+- 반복 개발 작업 자동화
+- 운영체제별 차이는 내부에서 흡수
+- 사용자 입력 없이 CI에서 실행 가능
+- 실패 시 0이 아닌 종료 코드
+- 문서에 동일 명령 기록
+

@@ -1,0 +1,975 @@
+────────────────────────────────────────
+14. RandomTrace
+────────────────────────────────────────
+
+RandomTrace:
+- stream_id
+- stream_seed_derivation
+- draw_index_start
+- draw_count
+- sampled_values optional
+- distribution_id
+- distribution_parameters
+- purpose_code
+- deterministic_digest
+
+중요 사건은 sampled_values 또는 재현 가능한 최소 정보를 보존한다.
+
+────────────────────────────────────────
+15. Observation
+────────────────────────────────────────
+
+15.1 ObservationRecord
+
+fields:
+- observation_id
+- observer_entity_id
+- observed_tick
+- received_tick
+- sensory_channel
+- spatial_reference
+- subject_refs
+- measured_features
+- uncertainty
+- occlusion
+- noise_level
+- source_type
+- source_entity_id optional
+- source_event_id optional
+- raw_signal_ref optional
+- interpretation_state
+- retention_priority
+
+15.2 SensoryChannel
+
+- vision
+- hearing
+- touch
+- smell
+- taste
+- temperature
+- pain
+- balance
+- internal_body
+- symbolic_message
+- instrument
+
+15.3 MeasuredFeature
+
+fields:
+- feature_type_id
+- estimated_value
+- unit
+- confidence
+- lower_bound optional
+- upper_bound optional
+- categorical_candidates
+- evidence_strength
+
+15.4 SourceType
+
+- direct_sense
+- communicated
+- recorded
+- inferred
+- rumored
+- instrument_reading
+
+15.5 관측 규칙
+
+- 관측은 실제 상태의 완전 복사가 아님
+- 감각 범위·빛·가림·거리·소음 반영
+- 관측 시점과 수신 시점 분리
+- 같은 현상을 여러 개체가 다르게 관측 가능
+- 관측 오류와 누락 허용
+
+────────────────────────────────────────
+16. Memory
+────────────────────────────────────────
+
+16.1 MemoryRecord
+
+fields:
+- memory_id
+- owner_entity_id
+- memory_type
+- created_tick
+- last_recalled_tick
+- source_observation_ids
+- source_memory_ids
+- source_event_ids
+- subject_refs
+- content
+- emotional_weight
+- confidence
+- salience
+- decay_rate
+- distortion_state
+- retrieval_cues
+- consolidation_state
+- retention_class
+
+16.2 MemoryType
+
+- episodic
+- semantic
+- procedural
+- social
+- spatial
+- traumatic
+- working
+
+16.3 DistortionState
+
+fields:
+- distortion_level
+- omitted_fields
+- altered_values
+- contamination_source_ids
+- last_distorted_tick
+
+16.4 ConsolidationState
+
+- working
+- short_term
+- consolidated
+- compressed
+- forgotten
+
+16.5 MemorySummary
+
+장기 압축용:
+
+MemorySummary:
+- summary_id
+- owner_entity_id
+- covered_tick_range
+- recurring_patterns
+- dominant_subjects
+- emotional_totals
+- confidence_distribution
+- retained_event_links
+- source_memory_count
+
+압축 후에도 주요 인과 링크를 유지한다.
+
+────────────────────────────────────────
+17. Belief
+────────────────────────────────────────
+
+17.1 BeliefRecord
+
+fields:
+- belief_id
+- owner_entity_id 또는 group_ref
+- proposition_type_id
+- subject_refs
+- predicate
+- estimated_value
+- confidence
+- evidence_memory_ids
+- counter_evidence_memory_ids
+- source_chain
+- created_tick
+- updated_tick
+- expiry_or_decay
+- contradiction_group_id optional
+- action_relevance
+- belief_status
+
+17.2 BeliefStatus
+
+- tentative
+- accepted
+- doubted
+- rejected
+- obsolete
+- unknown
+
+17.3 ContradictionSet
+
+fields:
+- contradiction_group_id
+- belief_ids
+- conflict_type
+- unresolved
+- resolution_history
+
+17.4 신념 규칙
+
+- 실제 상태와 독립
+- 틀린 믿음도 유효한 상태
+- 행동 선택에 사용 가능
+- 출처·신뢰도·시간을 보존
+- 다른 행위자의 전달로 왜곡 가능
+
+────────────────────────────────────────
+18. Need, Goal, Plan
+────────────────────────────────────────
+
+18.1 NeedState
+
+fields:
+- owner_entity_id
+- need_type_id
+- current_intensity
+- threshold
+- urgency
+- trend
+- last_evaluated_tick
+- source_body_state_revision
+- personality_modifier
+- social_modifier
+
+예:
+- energy
+- hydration
+- temperature
+- safety
+- pain_avoidance
+- attachment
+- status
+- curiosity
+
+18.2 GoalRecord
+
+fields:
+- goal_id
+- owner_entity_id
+- goal_type_id
+- created_tick
+- source_need_ids
+- source_belief_ids
+- target_condition
+- priority
+- expected_value
+- expected_cost
+- risk_estimate
+- deadline_tick optional
+- status
+- parent_goal_id optional
+
+18.3 GoalStatus
+
+- candidate
+- active
+- suspended
+- achieved
+- failed
+- abandoned
+- obsolete
+
+18.4 PlanRecord
+
+fields:
+- plan_id
+- owner_entity_id
+- goal_id
+- created_tick
+- plan_steps
+- contingencies
+- estimated_cost
+- estimated_duration
+- confidence
+- current_step_index
+- status
+- revision
+- source_knowledge_ids
+- source_memory_ids
+
+18.5 PlanStep
+
+fields:
+- step_id
+- intended_command_type
+- preconditions
+- expected_effects
+- alternatives
+- failure_policy
+- interruption_policy
+
+────────────────────────────────────────
+19. 관계 데이터
+────────────────────────────────────────
+
+19.1 RelationshipState
+
+fields:
+- relationship_id
+- subject_a_id
+- subject_b_id
+- directed
+- created_tick
+- last_interaction_tick
+- trust
+- fear
+- affection
+- hostility
+- familiarity
+- dependency
+- obligation_balance
+- authority_acceptance
+- kinship_ref optional
+- shared_memory_refs
+- unresolved_conflicts
+- relationship_revision
+
+방향성이 있는 값은 A→B와 B→A를 분리한다.
+
+19.2 InteractionRecord
+
+fields:
+- interaction_id
+- tick
+- participant_ids
+- interaction_type
+- related_event_ids
+- resource_flows
+- perceived_outcomes
+- relationship_deltas
+- communication_refs
+
+19.3 ObligationRecord
+
+fields:
+- obligation_id
+- debtor_id
+- creditor_id
+- obligation_type
+- quantity_or_action
+- created_tick
+- due_tick optional
+- origin_event_id
+- fulfillment_state
+- enforcement_expectation
+- social_visibility
+
+19.4 KinshipRecord
+
+fields:
+- kinship_id
+- entity_a
+- entity_b
+- genetic_relatedness optional
+- social_parentage_type
+- recognized_by_a
+- recognized_by_b
+- source_events
+
+────────────────────────────────────────
+20. 집단과 조직 패턴
+────────────────────────────────────────
+
+고정된 부족·국가 타입을 먼저 생성하지 않는다.
+
+20.1 CooperativePatternState
+
+fields:
+- pattern_id
+- participant_ids
+- repeated_goal_types
+- shared_resource_refs
+- interaction_density
+- coordination_frequency
+- norm_refs
+- role_expectation_refs
+- persistence_duration
+- boundary_strength
+- internal_conflict_level
+- external_distinction_level
+
+20.2 GroupAnalysisView
+
+분석 계층의 읽기 모델:
+
+fields:
+- classification_id
+- source_pattern_ids
+- member_estimates
+- spatial_extent
+- cohesion_score
+- governance_score
+- resource_integration_score
+- confidence
+- labels
+- generated_tick
+
+주의:
+GroupAnalysisView는 권위 집단 객체가 아니다.
+
+20.3 CollectiveDecisionState
+
+fields:
+- decision_id
+- participant_ids
+- proposal_refs
+- voting_or_influence_records
+- authority_weights
+- dissent
+- decision_outcome
+- accepted_by
+- rejected_by
+- enforcement_plan optional
+
+────────────────────────────────────────
+21. 지식 데이터
+────────────────────────────────────────
+
+21.1 KnowledgeClaim
+
+fields:
+- knowledge_id
+- owner_ref
+- claim_type_id
+- subject_refs
+- proposition
+- confidence
+- evidence_ids
+- counter_evidence_ids
+- created_tick
+- updated_tick
+- transmission_lineage
+- reproducibility_state
+- distortion_level
+- availability_state
+
+21.2 ProcedureKnowledge
+
+fields:
+- procedure_id
+- owner_ref
+- goal_condition
+- required_conditions
+- ordered_actions
+- acceptable_material_properties
+- expected_outputs
+- known_failure_modes
+- success_count
+- failure_count
+- confidence
+- skill_requirement
+- teaching_difficulty
+- reproducibility_score
+
+21.3 EvidenceRecord
+
+fields:
+- evidence_id
+- observer_ids
+- observation_ids
+- experiment_id optional
+- supporting_claim_ids
+- contradicting_claim_ids
+- reliability
+- context
+- created_tick
+
+21.4 ExperimentRecord
+
+fields:
+- experiment_id
+- initiator_ids
+- hypothesis_ids
+- setup_state_refs
+- controlled_variables
+- changed_variables
+- procedure_ref
+- start_tick
+- end_tick
+- observations
+- outcome
+- repeat_of_experiment_id optional
+
+21.5 TransmissionRecord
+
+fields:
+- transmission_id
+- sender_id
+- receiver_ids
+- knowledge_ids
+- channel
+- sent_tick
+- received_tick
+- fidelity
+- distortion
+- comprehension_estimate
+- resulting_knowledge_ids
+
+21.6 KnowledgeLineage
+
+그래프:
+- node: KnowledgeId
+- edge: copied_from, inferred_from, taught_by, contradicted_by, improved_from
+
+────────────────────────────────────────
+22. 물리 데이터
+────────────────────────────────────────
+
+22.1 PhysicalBodyState
+
+fields:
+- entity_id
+- position
+- orientation
+- linear_velocity
+- angular_velocity
+- mass
+- center_of_mass
+- collision_shape_ref
+- material_composition_ref
+- temperature
+- accumulated_force
+- sleeping_state
+- region_id
+- revision
+
+22.2 MaterialComposition
+
+fields:
+- composition_id
+- components
+- total_mass
+- density
+- porosity
+- moisture
+- phase_state
+- temperature
+- contamination
+
+ComponentFraction:
+- material_type_id
+- mass_fraction
+
+22.3 MaterialProperties
+
+fields:
+- material_type_id
+- density
+- compressive_strength
+- tensile_strength
+- elasticity
+- brittleness
+- thermal_conductivity
+- heat_capacity
+- ignition_temperature
+- permeability
+- water_resistance
+- decay_rate
+- processing_difficulty
+
+MaterialProperties는 설정 또는 발견 가능한 실제 속성이다.
+행위자가 이를 아는지는 별도 Belief/Knowledge 상태다.
+
+22.4 StructuralConnection
+
+fields:
+- connection_id
+- part_a
+- part_b
+- attachment_points
+- connection_method
+- strength
+- stiffness
+- damage
+- created_tick
+- creator_ids
+- source_command_id
+
+22.5 DamageState
+
+fields:
+- entity_id
+- damage_channels
+- fracture_state
+- deformation
+- integrity_ratio
+- last_damage_event_id
+
+────────────────────────────────────────
+23. 세계·지형·환경 데이터
+────────────────────────────────────────
+
+23.1 TerrainCellState
+
+fields:
+- cell_id
+- region_id
+- elevation
+- slope
+- surface_material
+- subsurface_layers
+- soil_ref
+- water_ref
+- vegetation_ref
+- erosion_state
+- passability
+- last_modified_tick
+- revision
+
+23.2 SubsurfaceLayer
+
+fields:
+- depth_start
+- depth_end
+- material_composition
+- moisture
+- porosity
+- mineral_refs
+
+23.3 ClimateCellState
+
+fields:
+- cell_id
+- air_temperature
+- humidity
+- pressure
+- wind_vector
+- precipitation_rate
+- cloud_cover
+- solar_input
+- update_tick
+
+23.4 WaterCellState
+
+fields:
+- cell_id
+- water_volume
+- surface_height
+- flow_vector
+- temperature
+- salinity
+- contamination
+- frozen_fraction
+
+23.5 SoilState
+
+fields:
+- soil_id
+- cell_id
+- moisture
+- organic_matter
+- nutrient_levels
+- compaction
+- erosion
+- contamination
+- fertility_estimate
+
+fertility_estimate는 실제 여러 상태에서 계산되는 파생 값으로 둘 수 있다.
+
+────────────────────────────────────────
+24. 생태 데이터
+────────────────────────────────────────
+
+24.1 PlantClusterState
+
+fields:
+- cluster_id
+- species_or_genome_ref
+- region_id
+- bounds
+- count_estimate
+- biomass
+- age_distribution
+- health_distribution
+- water_demand
+- nutrient_demand
+- reproduction_state
+- resource_yield_state
+
+24.2 AnimalPopulationAggregate
+
+fields:
+- population_id
+- genome_distribution
+- region_id
+- population_count
+- age_distribution
+- health_distribution
+- energy_distribution
+- migration_vector
+- predator_pressure
+- food_pressure
+
+24.3 ResourceDepositState
+
+fields:
+- deposit_id
+- resource_type_id
+- region_id
+- bounds
+- total_quantity
+- accessible_quantity
+- extraction_difficulty
+- regeneration_model
+- contamination
+- discovery_visibility
+
+discovery_visibility는 실제 노출 정도.
+행위자가 발견했는지는 Knowledge 상태.
+
+────────────────────────────────────────
+25. 생물 데이터
+────────────────────────────────────────
+
+25.1 BodyState
+
+fields:
+- entity_id
+- alive
+- life_stage
+- age_ticks
+- energy_stored
+- hydration
+- core_temperature
+- fatigue
+- pain
+- oxygenation
+- mobility_capacity
+- sensory_capacity_ref
+- injury_refs
+- disease_refs
+- immune_state_ref
+- genome_ref
+- reproductive_state_ref
+- last_metabolism_tick
+- revision
+
+25.2 InjuryRecord
+
+fields:
+- injury_id
+- entity_id
+- body_region
+- injury_type
+- severity
+- bleeding_rate
+- infection_risk
+- mobility_effect
+- sensory_effect
+- pain_effect
+- created_tick
+- cause_event_id
+- healing_state
+
+25.3 DiseaseState
+
+fields:
+- disease_instance_id
+- entity_id
+- pathogen_or_condition_ref
+- exposure_tick
+- stage
+- severity
+- contagiousness
+- symptoms
+- immune_response
+- progression_parameters
+- source_event_id
+
+25.4 GenomeRecord
+
+fields:
+- genome_id
+- parent_genome_ids
+- trait_loci
+- mutation_records
+- creation_tick
+- lineage_id
+
+25.5 ReproductiveState
+
+fields:
+- entity_id
+- fertility
+- reproductive_cycle
+- pregnancy_or_gestation_state
+- offspring_refs
+- parent_refs
+- reproductive_costs
+
+────────────────────────────────────────
+26. 건축 데이터
+────────────────────────────────────────
+
+26.1 DesignProposal
+
+fields:
+- proposal_id
+- creator_ids
+- goal_refs
+- intended_functions
+- part_specs
+- connection_specs
+- site_ref
+- expected_cost
+- expected_duration
+- predicted_performance
+- risk_estimate
+- source_knowledge_ids
+- revision
+- status
+
+26.2 ConstructionTaskState
+
+fields:
+- task_id
+- proposal_id
+- assigned_participants
+- required_materials
+- reserved_materials
+- current_step
+- completion_ratio
+- failures
+- started_tick
+- last_progress_tick
+- status
+
+26.3 FunctionalUseRecord
+
+fields:
+- use_record_id
+- structure_refs
+- user_ids
+- purpose_estimate
+- start_tick
+- end_tick
+- environmental_conditions
+- observed_effects
+- failures
+- resulting_memories
+
+주의:
+"집"은 저장 타입이 아니다.
+기능적 사용 패턴을 분석 계층이 주거 구조로 분류할 수 있다.
+
+────────────────────────────────────────
+27. 경제 데이터
+────────────────────────────────────────
+
+27.1 OwnershipClaim
+
+fields:
+- claim_id
+- claimant_id
+- subject_ref
+- claim_type
+- quantity_or_fraction
+- created_tick
+- origin_event_id
+- recognized_by
+- contested_by
+- enforcement_strength
+- status
+
+27.2 ExchangeProposal
+
+fields:
+- proposal_id
+- proposer_id
+- recipient_ids
+- offered_items
+- requested_items
+- created_tick
+- expiry_tick
+- communication_ref
+- status
+
+27.3 ExchangeAgreement
+
+fields:
+- agreement_id
+- participant_ids
+- promised_transfers
+- conditions
+- accepted_tick
+- fulfillment_state
+- breach_events
+- resulting_obligations
+
+27.4 PriceObservation
+
+fields:
+- observation_id
+- item_property_ref
+- quantity
+- exchange_context
+- offered_value
+- accepted_value optional
+- location
+- tick
+- participant_bargaining_power
+- scarcity_context
+
+가격은 단일 전역 권위값이 아니라 교환 이력에서 파생될 수 있다.
+
+────────────────────────────────────────
+28. 정치 데이터
+────────────────────────────────────────
+
+28.1 AuthorityClaim
+
+fields:
+- authority_claim_id
+- claimant_ref
+- subject_population_or_region_refs
+- claimed_scope
+- basis
+- created_tick
+- recognized_by
+- rejected_by
+- enforcement_capacity
+- legitimacy_estimates
+- status
+
+28.2 RuleRecord
+
+fields:
+- rule_id
+- proposer_refs
+- rule_expression
+- applicable_subjects
+- applicable_region
+- created_tick
+- communication_lineage
+- accepted_by
+- enforcement_refs
+- violation_events
+- revision
+- status
+
+28.3 TerritoryControlState
+
+fields:
+- control_id
+- controller_ref
+- region_or_area_ref
+- control_strength
+- presence
+- enforcement_reach
+- local_acceptance
+- competing_claims
+- last_updated_tick
+
+국경선은 TerritoryControlState의 공간 분포에서 파생되는 분석 결과다.
+
+────────────────────────────────────────
+29. 문화 데이터
+────────────────────────────────────────
+
+29.1 SymbolRecord
+
+fields:
+- symbol_id
+- physical_or_signal_form
+- meaning_distribution
+- user_population_refs
+- created_tick
+- transmission_lineage
+- ambiguity
+- contexts
+
+29.2 CustomPattern
+
+fields:
+- custom_id
+- behavior_pattern

@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://artificial-world.local/schemas/performance/performance-run.v1.schema.json",
+  "title": "PerformanceRunManifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "benchmarkId",
+    "codeBuildId",
+    "createdAtUtc",
+    "hardware",
+    "configuration",
+    "emptyTickDuration",
+    "emptyTickThroughput",
+    "snapshotWriteDuration",
+    "saveWriteDuration",
+    "saveLoadDuration",
+    "snapshotBytes",
+    "saveBytes",
+    "finalTick",
+    "finalDigest"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "performance-run.v1" },
+    "runId": { "type": "string", "minLength": 1 },
+    "benchmarkId": { "const": "stage0-kernel-baseline.v1" },
+    "codeBuildId": { "type": "string", "minLength": 1 },
+    "createdAtUtc": { "type": ["string", "null"] },
+    "hardware": { "$ref": "#/$defs/hardware" },
+    "configuration": { "$ref": "#/$defs/configuration" },
+    "emptyTickDuration": { "$ref": "#/$defs/duration" },
+    "emptyTickThroughput": { "$ref": "#/$defs/throughput" },
+    "snapshotWriteDuration": { "$ref": "#/$defs/duration" },
+    "saveWriteDuration": { "$ref": "#/$defs/duration" },
+    "saveLoadDuration": { "$ref": "#/$defs/duration" },
+    "snapshotBytes": { "type": "integer", "minimum": 1 },
+    "saveBytes": { "type": "integer", "minimum": 1 },
+    "finalTick": { "type": "integer", "minimum": 1 },
+    "finalDigest": { "type": "string", "pattern": "^[0-9a-fA-F]{16}$" }
+  },
+  "$defs": {
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "environment",
+        "operatingSystem",
+        "architecture",
+        "logicalCpuCount",
+        "rustcVersion",
+        "buildProfile"
+      ],
+      "properties": {
+        "environment": { "type": "string", "minLength": 1 },
+        "operatingSystem": { "type": "string", "minLength": 1 },
+        "architecture": { "type": "string", "minLength": 1 },
+        "logicalCpuCount": { "type": "integer", "minimum": 1 },
+        "rustcVersion": { "type": "string", "minLength": 1 },
+        "buildProfile": { "enum": ["debug", "release"] }
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "worldSeed",
+        "warmupTicks",
+        "measuredTicksPerSample",
+        "sampleCount"
+      ],
+      "properties": {
+        "worldSeed": { "type": "integer", "minimum": 0 },
+        "warmupTicks": { "type": "integer", "minimum": 0 },
+        "measuredTicksPerSample": { "type": "integer", "minimum": 1 },
+        "sampleCount": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "duration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sampleCount", "minimumNs", "medianNs", "p95Ns", "maximumNs"],
+      "properties": {
+        "sampleCount": { "type": "integer", "minimum": 1 },
+        "minimumNs": { "type": "integer", "minimum": 0 },
+        "medianNs": { "type": "integer", "minimum": 0 },
+        "p95Ns": { "type": "integer", "minimum": 0 },
+        "maximumNs": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "throughput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sampleCount",
+        "minimumTicksPerSecond",
+        "medianTicksPerSecond",
+        "maximumTicksPerSecond"
+      ],
+      "properties": {
+        "sampleCount": { "type": "integer", "minimum": 1 },
+        "minimumTicksPerSecond": { "type": "integer", "minimum": 1 },
+        "medianTicksPerSecond": { "type": "integer", "minimum": 1 },
+        "maximumTicksPerSecond": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

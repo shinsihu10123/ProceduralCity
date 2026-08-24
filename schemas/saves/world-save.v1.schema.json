@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://artificial-world.invalid/schemas/saves/world-save.v1.schema.json",
+  "title": "Artificial World Save v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "saveId",
+    "worldId",
+    "createdAtUtc",
+    "worldTick",
+    "codeBuildId",
+    "configurationHash",
+    "moduleManifests",
+    "randomState",
+    "eventPosition",
+    "interventionCount",
+    "kernelState",
+    "manifestDigest"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "world-save.v1" },
+    "saveId": { "type": "string", "pattern": "^save-[0-9a-f]{16}-[0-9a-f]{16}$" },
+    "worldId": { "type": "string", "pattern": "^world-[0-9a-f]{16}$" },
+    "createdAtUtc": { "type": ["string", "null"] },
+    "worldTick": { "type": "integer", "minimum": 0 },
+    "codeBuildId": { "type": "string", "minLength": 1 },
+    "configurationHash": { "$ref": "#/$defs/digest" },
+    "moduleManifests": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": { "$ref": "#/$defs/moduleManifest" }
+    },
+    "randomState": { "$ref": "#/$defs/randomState" },
+    "eventPosition": { "$ref": "#/$defs/eventPosition" },
+    "interventionCount": { "type": "integer", "minimum": 0 },
+    "kernelState": { "$ref": "#/$defs/kernelState" },
+    "manifestDigest": { "$ref": "#/$defs/digest" }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{16}$"
+    },
+    "moduleManifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "moduleId",
+        "moduleVersion",
+        "schemaVersion",
+        "stateDigest",
+        "recordCount"
+      ],
+      "properties": {
+        "moduleId": { "const": "kernel" },
+        "moduleVersion": { "type": "string", "minLength": 1 },
+        "schemaVersion": { "const": "kernel-state.v1" },
+        "stateDigest": { "$ref": "#/$defs/digest" },
+        "recordCount": { "const": 1 }
+      }
+    },
+    "randomState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["worldSeed", "streamCount", "globalDrawCount"],
+      "properties": {
+        "worldSeed": { "type": "integer", "minimum": 0 },
+        "streamCount": { "type": "integer", "minimum": 0 },
+        "globalDrawCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "eventPosition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lastEventId", "eventCount"],
+      "properties": {
+        "lastEventId": { "type": ["integer", "null"], "minimum": 0 },
+        "eventCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "kernelState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "tick",
+        "worldSeed",
+        "running",
+        "deterministicDigest"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "kernel-state.v1" },
+        "tick": { "type": "integer", "minimum": 0 },
+        "worldSeed": { "type": "integer", "minimum": 0 },
+        "running": { "type": "boolean" },
+        "deterministicDigest": { "$ref": "#/$defs/digest" }
+      }
+    }
+  }
+}
