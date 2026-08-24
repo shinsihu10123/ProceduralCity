@@ -5,6 +5,7 @@ import { ExperimentSystem } from '../research/experiment-system.js';
 import { LongRunHealthMonitor } from '../research/long-run-health.js';
 import { analyzeWorldEmergence } from '../research/emergence-metrics.js';
 import { RuntimeProfiler } from '../research/runtime-profiler.js';
+import { ShadowPersonHouseholdSystem } from '../research/shadow-person-household.js';
 
 function nowMs() {
   return globalThis.performance?.now?.() ?? Date.now();
@@ -67,6 +68,17 @@ export class EconomicWorld extends CognitiveEconomicWorld {
 
     this.installSubsystemProfiling();
     this.lastExperimentEvents = [];
+
+    if (options.enableShadowPersonLayer) {
+      const shadow = new ShadowPersonHouseholdSystem({ profile: options.shadowDemographyProfile });
+      shadow.initialize(this.countries);
+      Object.defineProperty(this, 'shadowPersonHousehold', {
+        value: shadow,
+        enumerable: false,
+        configurable: true,
+        writable: false
+      });
+    }
   }
 
   enableCompactDecisionHistory(agent) {
@@ -167,6 +179,8 @@ export class EconomicWorld extends CognitiveEconomicWorld {
     if (this.healthCheckInterval > 0 && this.month % this.healthCheckInterval === 0) {
       this.health.record(this, elapsed);
     }
+
+    if (this.shadowPersonHousehold) this.shadowPersonHousehold.refresh(this.countries);
   }
 
   forceHealthCheck() {
@@ -183,6 +197,10 @@ export class EconomicWorld extends CognitiveEconomicWorld {
       runtime: structuredClone(this.runtime),
       decisionHistory: structuredClone(this.decisionHistory)
     };
+  }
+
+  shadowPersonReport() {
+    return this.shadowPersonHousehold ? this.shadowPersonHousehold.report() : null;
   }
 
   profilingReport() {
