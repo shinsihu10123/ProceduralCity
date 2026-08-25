@@ -73,7 +73,7 @@ const registryValid = a.monthly.every(row => row.registryValidation.ok === true)
 const wageAttributionIdentities = a.monthly.every(row => row.report.gates.ok === true);
 const hardAccountingHealthy = a.health.ok === true && b.health.ok === true && a.ledgerOk && b.ledgerOk && a.accountingOk && b.accountingOk;
 const unresolvedAttributionVisible = Number(finalA.totals.unresolvedEmploymentContradictions) > 0;
-const glWageClaimsObserved = Number(finalA.totals.householdWageReceivable) > 0 || Number(finalA.totals.firmWagesPayable) > 0;
+const glWageClaimsObserved = Number(finalA.totals.signedHouseholdWageReceivable) > 0 || Number(finalA.totals.signedFirmWagesPayable) > 0;
 const firstWageIdentityFailure = a.monthly.find(row => row.report.gates.ok !== true) || null;
 
 const gates = {
