@@ -74,6 +74,7 @@ const wageAttributionIdentities = a.monthly.every(row => row.report.gates.ok ===
 const hardAccountingHealthy = a.health.ok === true && b.health.ok === true && a.ledgerOk && b.ledgerOk && a.accountingOk && b.accountingOk;
 const unresolvedAttributionVisible = Number(finalA.totals.unresolvedEmploymentContradictions) > 0;
 const glWageClaimsObserved = Number(finalA.totals.householdWageReceivable) > 0 || Number(finalA.totals.firmWagesPayable) > 0;
+const firstWageIdentityFailure = a.monthly.find(row => row.report.gates.ok !== true) || null;
 
 const gates = {
   exactWorldReplay,
@@ -86,13 +87,10 @@ const gates = {
 };
 gates.ok = Object.values(gates).every(Boolean);
 
-assert.equal(exactWorldReplay, true, `${seed}: world replay changed`);
-assert.equal(exactAuditReplay, true, `${seed}: wage audit replay changed`);
-assert.equal(registryValid, true, `${seed}: contract registry validation failed`);
-assert.equal(wageAttributionIdentities, true, `${seed}: wage attribution identity failed`);
-assert.equal(hardAccountingHealthy, true, `${seed}: canonical accounting/health gate failed`);
-assert.equal(unresolvedAttributionVisible, true, `${seed}: unresolved attribution not visible`);
-assert.equal(glWageClaimsObserved, true, `${seed}: wage claim balances not observed`);
+console.log('WP_RV08_R4_CE_B_GATES', JSON.stringify(gates));
+console.log('WP_RV08_R4_CE_B_TOTALS', JSON.stringify(finalA.totals));
+if (firstWageIdentityFailure) console.log('WP_RV08_R4_CE_B_FIRST_FAILURE', JSON.stringify(firstWageIdentityFailure));
+console.log('WP_RV08_R4_CE_B_WORLD_DIGEST', a.digest);
 
 const result = {
   workPackage: 'WP-RV08-R4-CE-B-PREFLIGHT',
@@ -102,16 +100,21 @@ const result = {
   months,
   fixture: diagnosticProfile,
   gates,
+  firstWageIdentityFailure,
   runA: { digest: a.digest, monthly: a.monthly, final: finalA },
   runB: { digest: b.digest, final: b.monthly[b.monthly.length - 1].report }
 };
-
-console.log('WP_RV08_R4_CE_B_GATES', JSON.stringify(gates));
-console.log('WP_RV08_R4_CE_B_TOTALS', JSON.stringify(finalA.totals));
-console.log('WP_RV08_R4_CE_B_WORLD_DIGEST', a.digest);
 
 if (outputJson) {
   mkdirSync(dirname(outputJson), { recursive: true });
   writeFileSync(outputJson, JSON.stringify(result, null, 2));
   console.log('WP_RV08_R4_CE_B_OUTPUT', outputJson);
 }
+
+assert.equal(exactWorldReplay, true, `${seed}: world replay changed`);
+assert.equal(exactAuditReplay, true, `${seed}: wage audit replay changed`);
+assert.equal(registryValid, true, `${seed}: contract registry validation failed`);
+assert.equal(wageAttributionIdentities, true, `${seed}: wage attribution identity failed`);
+assert.equal(hardAccountingHealthy, true, `${seed}: canonical accounting/health gate failed`);
+assert.equal(unresolvedAttributionVisible, true, `${seed}: unresolved attribution not visible`);
+assert.equal(glWageClaimsObserved, true, `${seed}: wage claim balances not observed`);
