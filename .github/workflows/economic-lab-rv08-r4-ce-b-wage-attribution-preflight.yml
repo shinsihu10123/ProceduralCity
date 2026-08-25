@@ -1,0 +1,99 @@
+name: Economic Lab RV08 R4-CE-B Wage Attribution Preflight
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - '.github/workflows/economic-lab-rv08-r4-ce-b-wage-attribution-preflight.yml'
+      - 'economic-lab/src/research/person-wage-attribution-audit.js'
+      - 'economic-lab/scripts/rv08-r4-ce-b-wage-attribution-preflight-v10.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+env:
+  NODE_OPTIONS: --max-old-space-size=7168
+
+jobs:
+  launch-beacon:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish pending status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -d '{"state":"pending","context":"economic-lab/wp-rv08-r4-ce-b","description":"R4-CE-B wage attribution preflight running","target_url":"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+
+  preflight:
+    name: R4-CE-B ${{ matrix.seedcase }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        seedcase:
+          - original-A__ECON-RV02-A
+          - original-C__ECON-RV02-C
+          - heldout-E__ECON-RV08-HOLDOUT-E
+          - heldout-F__ECON-RV08-HOLDOUT-F
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Syntax gates
+        working-directory: economic-lab
+        run: |
+          node --check src/research/person-employment-contract-registry.js
+          node --check src/research/person-wage-attribution-audit.js
+          node --check scripts/rv08-r4-ce-b-wage-attribution-preflight-v10.mjs
+      - name: Run wage attribution preflight
+        working-directory: economic-lab
+        env:
+          CASE: ${{ matrix.seedcase }}
+        run: |
+          set -euo pipefail
+          LABEL="${CASE%%__*}"
+          SEED="${CASE#*__}"
+          mkdir -p performance-results
+          DIAG_SEED="$SEED" DIAG_MONTHS=12 \
+          OUTPUT_JSON="performance-results/r4-ce-b-${LABEL}.json" \
+          node scripts/rv08-r4-ce-b-wage-attribution-preflight-v10.mjs \
+          | tee "performance-results/r4-ce-b-${LABEL}.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-ce-b-${{ matrix.seedcase }}
+          path: economic-lab/performance-results/r4-ce-b-*
+          if-no-files-found: warn
+          retention-days: 90
+
+  final-beacon:
+    if: always()
+    needs: preflight
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish final status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ needs.preflight.result }}
+        run: |
+          if [ "$RESULT" = "success" ]; then
+            STATE=success
+            DESC='R4-CE-B wage attribution preflight passed'
+          else
+            STATE=failure
+            DESC="R4-CE-B incomplete: $RESULT"
+          fi
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -d "{\"state\":\"$STATE\",\"context\":\"economic-lab/wp-rv08-r4-ce-b\",\"description\":\"$DESC\",\"target_url\":\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
