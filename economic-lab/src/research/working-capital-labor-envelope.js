@@ -123,13 +123,7 @@ export class WorkingCapitalLaborEnvelope {
           source: { committedUndrawnCredit: 0, committedUndrawnCreditSource: 'NOT_MODELED_IN_CANONICAL_BANK_SYSTEM' }
         };
         if (bank && bankStatement && application?.applicationEligible) {
-          underwriting = evaluateUnderwritingSnapshot({
-            bank,
-            application,
-            bankStatement,
-            signals,
-            rngState: this.rng.state
-          });
+          underwriting = evaluateUnderwritingSnapshot({ bank, application, bankStatement, signals, rngState: this.rng.state });
         }
 
         const wage = Math.max(EPS, finite(row.payrollPerLaborUnit, EPS));
@@ -138,9 +132,7 @@ export class WorkingCapitalLaborEnvelope {
         const physical = nullableFinite(row.physicalLaborNeed);
         const capacity = nullableFinite(row.capacityLaborLimit);
         const inputRatio = nullableFinite(row.inputConstraintRatio);
-        const inputCeiling = physical === null
-          ? null
-          : inputRatio === null ? null : Math.max(0, physical * Math.min(1, Math.max(0, inputRatio)));
+        const inputCeiling = physical === null ? null : inputRatio === null ? null : Math.max(0, physical * Math.min(1, Math.max(0, inputRatio)));
         const cashOnlyFinanceableLabor = liquidBeforeNewCredit / Math.max(EPS, unitOperatingCost);
         const existingFacilityFinanceableLabor = (liquidBeforeNewCredit + existingUndrawnCommittedCredit) / Math.max(EPS, unitOperatingCost);
         const admissibleCreditFinanceableLabor = (liquidBeforeNewCredit + existingUndrawnCommittedCredit + Math.max(0, finite(underwriting.admissibleAmount))) / Math.max(EPS, unitOperatingCost);
@@ -149,45 +141,22 @@ export class WorkingCapitalLaborEnvelope {
         const binding = classifyBinding({ physical, capacity, input: inputCeiling, finance: admissibleCreditFinanceableLabor, underwriting });
 
         rows.push({
-          countryId: String(country.id),
-          firmId: String(firm.id),
-          sectorId: row.sectorId,
-          sizeBin: row.sizeBin,
-          workerCount: row.workerCount,
-          canonicalDesiredWorkers: row.canonicalDesiredWorkers,
-          plannedOutput: row.plannedOutput,
-          effectiveOutputPerLaborUnit: row.effectiveOutputPerLaborUnit,
-          physicalLaborNeed: physical,
-          capacityLaborLimit: capacity,
-          requiredInputUnits: row.requiredInputUnits,
-          availableInputUnits: row.availableInputUnits,
-          inputCostPerOutput: row.inputCostPerOutput,
+          countryId: String(country.id), firmId: String(firm.id), sectorId: row.sectorId, sizeBin: row.sizeBin,
+          workerCount: row.workerCount, canonicalDesiredWorkers: row.canonicalDesiredWorkers, plannedOutput: row.plannedOutput,
+          effectiveOutputPerLaborUnit: row.effectiveOutputPerLaborUnit, physicalLaborNeed: physical, capacityLaborLimit: capacity,
+          requiredInputUnits: row.requiredInputUnits, availableInputUnits: row.availableInputUnits, inputCostPerOutput: row.inputCostPerOutput,
           inputCostForPhysicalPlan: physical === null || inputCostPerLaborUnit === null ? null : physical * inputCostPerLaborUnit,
-          inputConstrainedLaborCeiling: inputCeiling,
-          depositCash,
-          existingLoanPrincipal: Math.max(0, finite(firm.loanBalance)),
-          scheduledDebtServiceCurrentMonth: debtService,
-          existingUndrawnCommittedCredit,
-          existingUndrawnCommittedCreditSource: 'NOT_MODELED_IN_CANONICAL_BANK_SYSTEM',
-          liquidWorkingCapitalBeforeNewCredit: liquidBeforeNewCredit,
-          payrollPerLaborUnit: wage,
-          inputCostPerLaborUnit,
-          unitOperatingCost,
-          workingCapitalCreditRequested: Math.max(0, finite(underwriting.requestedAmount)),
-          workingCapitalCreditAdmissible: Math.max(0, finite(underwriting.admissibleAmount)),
-          underwritingApplicationEligible: Boolean(underwriting.applicationEligible),
-          underwritingApproved: Boolean(underwriting.approved),
-          underwritingRejectReason: underwriting.rejectionReason || null,
-          underwritingRate: Number.isFinite(underwriting.annualRate) ? underwriting.annualRate : null,
+          inputConstrainedLaborCeiling: inputCeiling, depositCash, existingLoanPrincipal: Math.max(0, finite(firm.loanBalance)),
+          scheduledDebtServiceCurrentMonth: debtService, existingUndrawnCommittedCredit,
+          existingUndrawnCommittedCreditSource: 'NOT_MODELED_IN_CANONICAL_BANK_SYSTEM', liquidWorkingCapitalBeforeNewCredit: liquidBeforeNewCredit,
+          payrollPerLaborUnit: wage, inputCostPerLaborUnit, unitOperatingCost,
+          workingCapitalCreditRequested: Math.max(0, finite(underwriting.requestedAmount)), workingCapitalCreditAdmissible: Math.max(0, finite(underwriting.admissibleAmount)),
+          underwritingApplicationEligible: Boolean(underwriting.applicationEligible), underwritingApproved: Boolean(underwriting.approved),
+          underwritingRejectReason: underwriting.rejectionReason || null, underwritingRate: Number.isFinite(underwriting.annualRate) ? underwriting.annualRate : null,
           underwritingMaturity: application?.termMonths ?? null,
           underwritingCollateralOrCapacityProxy: Number.isFinite(underwriting.capitalCapacity) ? underwriting.capitalCapacity : null,
-          underwritingTraceSource: underwriting.source?.evaluator || 'NO_EVALUATION',
-          cashOnlyFinanceableLabor,
-          existingFacilityFinanceableLabor,
-          admissibleCreditFinanceableLabor,
-          fullFinanceableLabor,
-          primaryBindingConstraint: binding.primary,
-          secondaryBindingConstraints: binding.secondary
+          underwritingTraceSource: underwriting.source?.evaluator || 'NO_EVALUATION', cashOnlyFinanceableLabor, existingFacilityFinanceableLabor,
+          admissibleCreditFinanceableLabor, fullFinanceableLabor, primaryBindingConstraint: binding.primary, secondaryBindingConstraints: binding.secondary
         });
       }
 
@@ -198,10 +167,7 @@ export class WorkingCapitalLaborEnvelope {
         (bySize[row.sizeBin] ||= []).push(row);
       }
       this.countryData.set(String(country.id), {
-        countryId: String(country.id),
-        month,
-        rows,
-        aggregate: aggregate(rows),
+        countryId: String(country.id), month, rows, aggregate: aggregate(rows),
         bySector: Object.fromEntries(Object.entries(bySector).map(([k, v]) => [k, aggregate(v)])),
         bySize: Object.fromEntries(Object.entries(bySize).map(([k, v]) => [k, aggregate(v)]))
       });
@@ -213,21 +179,12 @@ export class WorkingCapitalLaborEnvelope {
     const issues = [];
     for (const [countryId, data] of this.countryData.entries()) {
       for (const row of data.rows) {
-        const requiredFinite = [
-          'depositCash','existingLoanPrincipal','scheduledDebtServiceCurrentMonth','existingUndrawnCommittedCredit',
-          'liquidWorkingCapitalBeforeNewCredit','payrollPerLaborUnit','unitOperatingCost','workingCapitalCreditRequested',
-          'workingCapitalCreditAdmissible','cashOnlyFinanceableLabor','existingFacilityFinanceableLabor','admissibleCreditFinanceableLabor'
-        ];
+        const requiredFinite = ['depositCash','existingLoanPrincipal','scheduledDebtServiceCurrentMonth','existingUndrawnCommittedCredit','liquidWorkingCapitalBeforeNewCredit','payrollPerLaborUnit','unitOperatingCost','workingCapitalCreditRequested','workingCapitalCreditAdmissible','cashOnlyFinanceableLabor','existingFacilityFinanceableLabor','admissibleCreditFinanceableLabor'];
         for (const field of requiredFinite) if (!Number.isFinite(row[field])) issues.push({ countryId, firmId: row.firmId, type: 'NONFINITE_REQUIRED', field });
         if (row.cashOnlyFinanceableLabor > row.existingFacilityFinanceableLabor + 1e-7) issues.push({ countryId, firmId: row.firmId, type: 'NONMONOTONIC_EXISTING_FACILITY' });
         if (row.existingFacilityFinanceableLabor > row.admissibleCreditFinanceableLabor + 1e-7) issues.push({ countryId, firmId: row.firmId, type: 'NONMONOTONIC_ADMISSIBLE_CREDIT' });
         if (row.fullFinanceableLabor !== null) {
-          for (const [field, bound] of [
-            ['physicalLaborNeed', row.physicalLaborNeed],
-            ['capacityLaborLimit', row.capacityLaborLimit],
-            ['inputConstrainedLaborCeiling', row.inputConstrainedLaborCeiling],
-            ['admissibleCreditFinanceableLabor', row.admissibleCreditFinanceableLabor]
-          ]) {
+          for (const [field, bound] of [['physicalLaborNeed', row.physicalLaborNeed], ['capacityLaborLimit', row.capacityLaborLimit], ['inputConstrainedLaborCeiling', row.inputConstrainedLaborCeiling], ['admissibleCreditFinanceableLabor', row.admissibleCreditFinanceableLabor]]) {
             if (Number.isFinite(bound) && row.fullFinanceableLabor > bound + 1e-7) issues.push({ countryId, firmId: row.firmId, type: 'FULL_ENVELOPE_EXCEEDS_BOUND', field });
           }
         }
@@ -243,7 +200,7 @@ export class WorkingCapitalLaborEnvelope {
   }
 
   report() {
-    const countries = [...this.countryData.values()].map(structuredClone);
+    const countries = [...this.countryData.values()].map(value => structuredClone(value));
     return {
       version: 'r4-ce-d3-working-capital-envelope-v1',
       countries,
