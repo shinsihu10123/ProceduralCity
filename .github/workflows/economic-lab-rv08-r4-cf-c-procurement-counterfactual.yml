@@ -1,0 +1,89 @@
+name: Economic Lab RV08 R4-CF-C Procurement Counterfactual Gate
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/src/research/procurement-counterfactual-envelope.js'
+      - 'economic-lab/scripts/rv08-r4-cf-c-procurement-counterfactual-v10.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cf-c-procurement-counterfactual.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  launch-beacon:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish pending status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -d '{"state":"pending","context":"economic-lab/wp-rv08-r4-cf-c","description":"R4-CF-C procurement counterfactual gate running"}' >/dev/null
+
+  validate:
+    needs: launch-beacon
+    strategy:
+      fail-fast: false
+      matrix:
+        case:
+          - original-A__ECON-RV02-A
+          - original-C__ECON-RV02-C
+          - heldout-E__ECON-RV08-HOLDOUT-E
+          - heldout-F__ECON-RV08-HOLDOUT-F
+    name: R4-CF-C ${{ matrix.case }}
+    runs-on: ubuntu-24.04
+    env:
+      NODE_OPTIONS: --max-old-space-size=7168
+      CASE: ${{ matrix.case }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax gates
+        working-directory: economic-lab
+        run: |
+          node --check src/research/procurement-counterfactual-envelope.js
+          node --check scripts/rv08-r4-cf-c-procurement-counterfactual-v10.mjs
+      - name: Run 24-month procurement counterfactual gate
+        working-directory: economic-lab
+        run: |
+          set -euo pipefail
+          LABEL="${CASE%%__*}"
+          SEED="${CASE#*__}"
+          mkdir -p performance-results
+          DIAG_SEED="$SEED" DIAG_MONTHS=24 \
+          OUTPUT_JSON="performance-results/r4-cf-c-${LABEL}.json" \
+          node scripts/rv08-r4-cf-c-procurement-counterfactual-v10.mjs \
+          | tee "performance-results/r4-cf-c-${LABEL}.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-cf-c-${{ matrix.case }}
+          path: economic-lab/performance-results/r4-cf-c-*
+          retention-days: 90
+
+  final-beacon:
+    if: always()
+    needs: validate
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish final status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ needs.validate.result }}
+        run: |
+          if [ "$RESULT" = "success" ]; then STATE=success; DESC='R4-CF-C procurement counterfactual gate passed'; else STATE=failure; DESC='R4-CF-C procurement counterfactual gate failed'; fi
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -d "{\"state\":\"${STATE}\",\"context\":\"economic-lab/wp-rv08-r4-cf-c\",\"description\":\"${DESC}\"}" >/dev/null
