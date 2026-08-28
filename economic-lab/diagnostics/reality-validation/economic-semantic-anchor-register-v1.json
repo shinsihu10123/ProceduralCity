@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "1.0",
+  "workPackage": "WP-RV08-R4-CT",
+  "canonicalMutationAuthorized": false,
+  "allowedTargetStatuses": [
+    "INTERNAL_INVARIANT",
+    "REPOSITORY_SUPPORTED",
+    "EXTERNAL_EMPIRICAL_REQUIRED",
+    "UNRESOLVED",
+    "DERIVED_AFTER_ANCHORS"
+  ],
+  "anchors": [
+    {"id":"A1","name":"Monetary unit M","dimension":"M","kind":"unit_definition","targetStatus":"INTERNAL_INVARIANT","canonicalMutationAuthorized":false,"dependencies":[],"prohibitedSilentRescaling":true},
+    {"id":"A2","name":"Household cash/wealth stock","dimension":"M","kind":"stock","targetStatus":"EXTERNAL_EMPIRICAL_REQUIRED","canonicalMutationAuthorized":false,"dependencies":["A1"],"prohibitedSilentRescaling":true},
+    {"id":"A3","name":"Firm cash stock","dimension":"M","kind":"stock","targetStatus":"EXTERNAL_EMPIRICAL_REQUIRED","canonicalMutationAuthorized":false,"dependencies":["A1"],"prohibitedSilentRescaling":true},
+    {"id":"B1","name":"Wage","dimension":"M/worker/month","kind":"flow_rate","targetStatus":"EXTERNAL_EMPIRICAL_REQUIRED","canonicalMutationAuthorized":false,"dependencies":["A1","B2"],"prohibitedSilentRescaling":true},
+    {"id":"B2","name":"Employment unit","dimension":"worker","kind":"count_state","targetStatus":"UNRESOLVED","canonicalMutationAuthorized":false,"dependencies":[],"prohibitedSilentRescaling":true},
+    {"id":"B3","name":"Payroll","dimension":"M/month","kind":"flow","targetStatus":"INTERNAL_INVARIANT","canonicalMutationAuthorized":false,"dependencies":["A1","B1","B2"],"prohibitedSilentRescaling":true},
+    {"id":"C1","name":"Industry product unit Q_i","dimension":"Q_i","kind":"quantity_unit","targetStatus":"UNRESOLVED","canonicalMutationAuthorized":false,"dependencies":[],"prohibitedSilentRescaling":true},
+    {"id":"C2","name":"Capacity per worker","dimension":"Q_i/worker/month","kind":"technology_flow_capacity","targetStatus":"EXTERNAL_EMPIRICAL_REQUIRED","canonicalMutationAuthorized":false,"dependencies":["B2","C1"],"prohibitedSilentRescaling":true},
+    {"id":"C3","name":"Input coefficient","dimension":"Q_upstream/Q_downstream","kind":"technology_coefficient","targetStatus":"EXTERNAL_EMPIRICAL_REQUIRED","canonicalMutationAuthorized":false,"dependencies":["C1"],"prohibitedSilentRescaling":true},
+    {"id":"C4","name":"Capital stock","dimension":"productive_capital_index_or_declared_unit","kind":"stock_state","targetStatus":"UNRESOLVED","canonicalMutationAuthorized":false,"dependencies":[],"prohibitedSilentRescaling":true},
+    {"id":"D1","name":"Industry unit price P_i","dimension":"M/Q_i","kind":"price","targetStatus":"EXTERNAL_EMPIRICAL_REQUIRED","canonicalMutationAuthorized":false,"dependencies":["A1","C1"],"prohibitedSilentRescaling":true},
+    {"id":"D2","name":"Industry relative-price structure","dimension":"relative_price_ratio","kind":"relative_price","targetStatus":"EXTERNAL_EMPIRICAL_REQUIRED","canonicalMutationAuthorized":false,"dependencies":["C1","D1"],"prohibitedSilentRescaling":true},
+    {"id":"D3","name":"Book unit cost","dimension":"M/Q_i","kind":"accounting_valuation","targetStatus":"INTERNAL_INVARIANT","canonicalMutationAuthorized":false,"dependencies":["A1","C1","B3"],"prohibitedSilentRescaling":true},
+    {"id":"E1","name":"Desired consumption budget","dimension":"M/month","kind":"behavioral_flow","targetStatus":"EXTERNAL_EMPIRICAL_REQUIRED","canonicalMutationAuthorized":false,"dependencies":["A1","A2"],"prohibitedSilentRescaling":true},
+    {"id":"E2","name":"Consumer basket/bundle","dimension":"Q_CONSUMER_or_composite_basket","kind":"real_quantity_bundle","targetStatus":"UNRESOLVED","canonicalMutationAuthorized":false,"dependencies":["C1"],"prohibitedSilentRescaling":true},
+    {"id":"E3","name":"Real wage in consumer-basket units","dimension":"consumer_basket/worker/month","kind":"derived_real_metric","targetStatus":"DERIVED_AFTER_ANCHORS","canonicalMutationAuthorized":false,"dependencies":["B1","D1","D2","E2"],"prohibitedSilentRescaling":true},
+    {"id":"F1","name":"Real Unit Labor Cost","dimension":"dimensionless","kind":"derived_invariant_metric","targetStatus":"REPOSITORY_SUPPORTED","canonicalMutationAuthorized":false,"dependencies":["B1","C2","D1"],"prohibitedSilentRescaling":true},
+    {"id":"F2","name":"Payroll coverage by productive value","dimension":"dimensionless","kind":"derived_viability_metric","targetStatus":"REPOSITORY_SUPPORTED","canonicalMutationAuthorized":false,"dependencies":["B3","C2","D1"],"prohibitedSilentRescaling":true},
+    {"id":"F3","name":"Desired demand / consumer capacity value","dimension":"dimensionless","kind":"derived_demand_capacity_metric","targetStatus":"REPOSITORY_SUPPORTED","canonicalMutationAuthorized":false,"dependencies":["C2","D1","E1"],"prohibitedSilentRescaling":true}
+  ],
+  "sectorRequirement": {
+    "sectorBlindNormalizationAllowed": false,
+    "sectors": ["RESOURCE","MATERIALS","CAPITAL","CONSUMER"],
+    "requiredCandidateFields": [
+      "labor_value_anchor",
+      "product_bundle_definition",
+      "productive_quantity_anchor",
+      "price_relative_price_anchor",
+      "input_output_relation",
+      "wage_differential_assumption",
+      "household_purchasing_power_effect",
+      "procurement_inventory_valuation_effect"
+    ]
+  },
+  "prohibitedShortcuts": [
+    "GLOBAL_WAGE_DIVISOR_FROM_OBSERVED_RULC",
+    "GLOBAL_PRICE_MULTIPLIER_FROM_BOOK_COST_RATIO",
+    "GLOBAL_OUTPUT_MULTIPLIER_WITHOUT_Q_REDEFINITION",
+    "DEMAND_BUDGET_SCALAR_FROM_R4_CR_RESIDUAL_ONLY",
+    "SECTOR_FACTORS_CHOSEN_ONLY_TO_FLATTEN_R4_CS",
+    "ISOLATED_PRICE_WAGE_OUTPUT_CHANGE_LABELLED_AS_UNIT_CONVERSION"
+  ]
+}
