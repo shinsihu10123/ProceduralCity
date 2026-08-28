@@ -46,10 +46,22 @@ function flows(entries, accountId) {
   let totalIn = 0, totalOut = 0;
   const kinds = {};
   for (const e of entries) {
-    const amount = Math.max(0, finite(e.amount));
     const cls = classifyKind(e.kind);
-    if (String(e.to) === String(accountId)) { buckets[cls].in += amount; totalIn += amount; kinds[e.kind || 'unknown'] = (kinds[e.kind || 'unknown'] || 0) + amount; }
-    if (String(e.from) === String(accountId)) { buckets[cls].out += amount; totalOut += amount; kinds[e.kind || 'unknown'] = (kinds[e.kind || 'unknown'] || 0) - amount; }
+    let signed = 0;
+    for (const posting of e.postings || []) {
+      if (String(posting.accountId) !== String(accountId)) continue;
+      signed += finite(posting.delta);
+    }
+    if (signed > EPS) {
+      buckets[cls].in += signed;
+      totalIn += signed;
+      kinds[e.kind || 'unknown'] = (kinds[e.kind || 'unknown'] || 0) + signed;
+    } else if (signed < -EPS) {
+      const amount = -signed;
+      buckets[cls].out += amount;
+      totalOut += amount;
+      kinds[e.kind || 'unknown'] = (kinds[e.kind || 'unknown'] || 0) - amount;
+    }
   }
   return { buckets, totalIn, totalOut, kinds };
 }
@@ -138,7 +150,8 @@ const gates = {
   hardAccountingHealthy:a.hardAccountingHealthy && b.hardAccountingHealthy,
   settlementObservationsPresent:summary.firmMonths>0 && summary.ledgerRevenuePositiveShare>0,
   revenueComponentsFinite:Number.isFinite(summary.meanLedgerOperatingRevenue),
-  payrollAttributionFinite:Number.isFinite(summary.payrollPositiveShare)
+  payrollAttributionFinite:Number.isFinite(summary.payrollPositiveShare),
+  cashReconciliationExact:summary.meanAbsoluteCashResidual < 1e-7 && summary.cashResidualAboveToleranceShare === 0
 };
 gates.ok = Object.values(gates).every(Boolean);
 
