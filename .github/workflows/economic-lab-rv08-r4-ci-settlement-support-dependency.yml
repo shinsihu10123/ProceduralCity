@@ -1,0 +1,63 @@
+name: Economic Lab RV08 R4-CI Settlement Support Dependency Gate
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - economic-lab/scripts/rv08-r4-ci-settlement-support-dependency-v10.mjs
+      - .github/workflows/economic-lab-rv08-r4-ci-settlement-support-dependency.yml
+  workflow_dispatch:
+
+jobs:
+  launch-beacon:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CI launched'
+
+  matrix:
+    needs: launch-beacon
+    strategy:
+      fail-fast: false
+      matrix:
+        case:
+          - original-A__ECON-RV02-A
+          - original-C__ECON-RV02-C
+          - heldout-E__ECON-RV08-HOLDOUT-E
+          - heldout-F__ECON-RV08-HOLDOUT-F
+    name: R4-CI ${{ matrix.case }}
+    runs-on: ubuntu-24.04
+    env:
+      NODE_OPTIONS: --max-old-space-size=7168
+      CASE: ${{ matrix.case }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax gate
+        run: node --check economic-lab/scripts/rv08-r4-ci-settlement-support-dependency-v10.mjs
+      - name: Run 24-month settlement support dependency audit
+        shell: bash
+        run: |
+          set -o pipefail
+          LABEL="${CASE%%__*}"
+          SEED="${CASE#*__}"
+          mkdir -p economic-lab/performance-results
+          DIAG_SEED="$SEED" DIAG_MONTHS=24 \
+          OUTPUT_JSON="economic-lab/performance-results/r4-ci-${LABEL}.json" \
+          node economic-lab/scripts/rv08-r4-ci-settlement-support-dependency-v10.mjs \
+          2>&1 | tee "economic-lab/performance-results/r4-ci-${LABEL}.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-ci-${{ matrix.case }}
+          path: economic-lab/performance-results/r4-ci-*
+          retention-days: 90
+
+  final-beacon:
+    needs: matrix
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CI matrix completed'
