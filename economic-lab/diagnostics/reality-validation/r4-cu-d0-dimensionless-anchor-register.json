@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D0",
+  "canonicalMutationAuthorized": false,
+  "numericRangesAdmitted": false,
+  "sources": [
+    {
+      "id": "CU-D0-LABSHARE",
+      "concept": "labour income share of GDP",
+      "sourceOrganization": "ILO",
+      "sourceDataset": "ILOSTAT SDG indicator 10.4.1",
+      "sourceUrl": "https://ilostat.ilo.org/topics/sdg/",
+      "dimensionless": true,
+      "status": "TRANSFORMATION_REQUIRED",
+      "modelUse": "future constraint on labour-income share after a model value-added bridge exists",
+      "blockedDirectUse": "do not equate payroll/sales or payroll/gross-output with labour-income-share/GDP without a value-added bridge"
+    },
+    {
+      "id": "CU-D0-HHSAVE",
+      "concept": "household saving as share of household net disposable income",
+      "sourceOrganization": "OECD",
+      "sourceDataset": "Household savings",
+      "sourceUrl": "https://www.oecd.org/en/data/indicators/household-savings.html",
+      "dimensionless": true,
+      "status": "SEMANTIC_MATCH",
+      "modelUse": "future constraint on realized household consumption relative to disposable income, with SNA adjustments explicit",
+      "blockedDirectUse": "must not directly calibrate desiredConsumptionBudget because desired budget is ex-ante while final consumption is realized"
+    },
+    {
+      "id": "CU-D0-HHDISP",
+      "concept": "household disposable income identity linking final consumption and saving",
+      "sourceOrganization": "OECD",
+      "sourceDataset": "Household disposable income",
+      "sourceUrl": "https://www.oecd.org/en/data/indicators/household-disposable-income.html",
+      "dimensionless": false,
+      "status": "SEMANTIC_MATCH",
+      "modelUse": "identity support for realized household flow accounting only",
+      "blockedDirectUse": "not a numeric target for desiredConsumptionBudget"
+    },
+    {
+      "id": "CU-D0-STAN",
+      "concept": "industry relative value-added productivity and labour-cost structure",
+      "sourceOrganization": "OECD",
+      "sourceDataset": "STAN Structural Analysis Database",
+      "sourceUrl": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+      "dimensionless": "derived relative ratios",
+      "status": "TRANSFORMATION_REQUIRED",
+      "modelUse": "future sector-relative calibration constraints",
+      "blockedDirectUse": "RESOURCE/MATERIALS/CAPITAL/CONSUMER cannot be mapped to ISIC industries until a classification bridge is frozen"
+    },
+    {
+      "id": "CU-D0-LIQ",
+      "concept": "firm liquid resources relative to monthly operating cost or working-capital duration",
+      "sourceOrganization": null,
+      "sourceDataset": null,
+      "sourceUrl": null,
+      "dimensionless": true,
+      "status": "INSUFFICIENT_EVIDENCE",
+      "modelUse": "none until an external evidence source and concept match are established",
+      "blockedDirectUse": "simulation cash/payroll months, arrears and bankruptcy rates are diagnostics, not empirical truth"
+    }
+  ],
+  "rules": {
+    "candidateRatiosAreNotTargets": true,
+    "numeratorDenominatorMatchRequired": true,
+    "institutionalSectorMatchRequired": true,
+    "realizedVsExAnteExplicit": true,
+    "valueAddedVsGrossOutputExplicit": true,
+    "sectorBridgeRequiredBeforeSectorRatios": true,
+    "unresolvedLiquidityMayRemainUnresolved": true,
+    "internalDiagnosticsCannotSelfAuthorize": true,
+    "canonicalMutationLocked": true
+  }
+}
