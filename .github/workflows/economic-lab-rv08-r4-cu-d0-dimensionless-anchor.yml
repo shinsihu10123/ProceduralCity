@@ -1,0 +1,30 @@
+name: Economic Lab RV08 R4-CU-D0 Dimensionless Empirical Anchor Gate
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d0-dimensionless-anchor-register.json'
+      - 'economic-lab/scripts/rv08-r4-cu-d0-dimensionless-anchor-gate.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d0-dimensionless-anchor.yml'
+  workflow_dispatch:
+
+jobs:
+  dimensionless-anchor-gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax gate
+        run: node --check economic-lab/scripts/rv08-r4-cu-d0-dimensionless-anchor-gate.mjs
+      - name: Validate R4-CU-D0 register
+        run: node economic-lab/scripts/rv08-r4-cu-d0-dimensionless-anchor-gate.mjs
+
+  final-beacon:
+    needs: dimensionless-anchor-gate
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CU-D0 dimensionless empirical anchor register validated'
