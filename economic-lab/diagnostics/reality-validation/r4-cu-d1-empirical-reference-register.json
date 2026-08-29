@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D1",
+  "canonicalMutationAuthorized": false,
+  "rules": {
+    "rawObservationIsNotCalibrationTarget": true,
+    "referencePointNeedsApplicabilityGate": true,
+    "fictionalCountriesNeedMappingContract": true,
+    "desiredConsumptionBudgetDirectMappingBlocked": true,
+    "sectorBridgeRequiredBeforeSectorTargets": true,
+    "noInternalDiagnosticAsExternalTarget": true
+  },
+  "references": [
+    {
+      "id": "D1-LABOUR-SHARE-GLOBAL-2024",
+      "concept": "labour income share of GDP",
+      "sourceOrganization": "International Labour Organization",
+      "source": "Global employment forecast / labour income share reporting",
+      "sourceUrl": "https://www.ilo.org/resource/news/global-employment-forecast-downgraded-7-million-jobs-2025-amid-rising",
+      "referencePeriod": "2024",
+      "observation": 52.4,
+      "unit": "percent of GDP",
+      "scope": "global",
+      "evidenceStatus": "OFFICIAL_REFERENCE_POINT",
+      "modelApplicability": "REFERENCE_ONLY",
+      "calibrationTargetAuthorized": false,
+      "mappingNote": "Useful as an external sanity reference for aggregate labour-income distribution; not a direct target for any single fictional country or sector."
+    },
+    {
+      "id": "D1-EA-SAVING-2024Q4",
+      "concept": "household saving rate",
+      "sourceOrganization": "Eurostat",
+      "source": "Quarterly non-financial sector accounts",
+      "sourceUrl": "https://ec.europa.eu/eurostat/web/products-euro-indicators/w/2-09042026-ap",
+      "referencePeriod": "2024 Q4",
+      "observation": 14.8,
+      "unit": "percent of adjusted gross disposable income",
+      "scope": "euro area",
+      "evidenceStatus": "OFFICIAL_REFERENCE_POINT",
+      "modelApplicability": "REFERENCE_ONLY",
+      "calibrationTargetAuthorized": false,
+      "mappingNote": "Implies realized consumption is below disposable income by the saving component, but does not identify ex-ante desired consumption budget."
+    },
+    {
+      "id": "D1-EA-SAVING-2025Q4",
+      "concept": "household saving rate",
+      "sourceOrganization": "Eurostat",
+      "source": "Quarterly non-financial sector accounts",
+      "sourceUrl": "https://ec.europa.eu/eurostat/web/products-euro-indicators/w/2-09042026-ap",
+      "referencePeriod": "2025 Q4",
+      "observation": 14.4,
+      "unit": "percent of adjusted gross disposable income",
+      "scope": "euro area",
+      "evidenceStatus": "OFFICIAL_REFERENCE_POINT",
+      "modelApplicability": "REFERENCE_ONLY",
+      "calibrationTargetAuthorized": false,
+      "mappingNote": "Recent euro-area realized saving reference; not a direct behavioural propensity target."
+    },
+    {
+      "id": "D1-OECD-SAVING-2024-CROSSCOUNTRY",
+      "concept": "household net saving rate cross-country dispersion",
+      "sourceOrganization": "OECD",
+      "source": "Economic Outlook 115 Annex Table 28",
+      "sourceUrl": "https://www.oecd.org/content/dam/oecd/en/topics/policy-sub-issues/economic-outlook/eo115/EO115_Annexes_E.pdf/_jcr_content/renditions/original./EO115_Annexes_E.pdf",
+      "referencePeriod": "2024 OECD estimate/projection in May 2024 vintage",
+      "unit": "percent of disposable household income",
+      "scope": "selected OECD economies",
+      "examples": {
+        "Australia": 4.5,
+        "Germany": 11.3,
+        "Korea": 10.8,
+        "Sweden": 16.0,
+        "Switzerland": 19.3,
+        "UnitedStates": 4.0
+      },
+      "evidenceStatus": "OFFICIAL_OBSERVED_DISPERSION_EXAMPLES",
+      "modelApplicability": "REFERENCE_ONLY",
+      "calibrationTargetAuthorized": false,
+      "mappingNote": "Shows that one universal saving-rate point is not defensible. Country archetype mapping and gross/net convention must be resolved first."
+    },
+    {
+      "id": "D1-SECTOR-STAN",
+      "concept": "sector-relative value added, labour input, compensation and output",
+      "sourceOrganization": "OECD",
+      "source": "STAN Structural Analysis Database",
+      "sourceUrl": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+      "referencePeriod": "multi-year dataset",
+      "unit": "multiple",
+      "scope": "industry by country",
+      "evidenceStatus": "SOURCE_AVAILABLE_MAPPING_REQUIRED",
+      "modelApplicability": "BLOCKED_PENDING_CLASSIFICATION_BRIDGE",
+      "calibrationTargetAuthorized": false,
+      "mappingNote": "No RESOURCE/MATERIALS/CAPITAL/CONSUMER target may be admitted before a documented ISIC-to-model-sector bridge."
+    },
+    {
+      "id": "D1-FIRM-LIQUIDITY",
+      "concept": "firm liquidity and working-capital buffer",
+      "sourceOrganization": null,
+      "source": null,
+      "referencePeriod": null,
+      "unit": "months or dimensionless stock-flow ratio expected",
+      "scope": "firm",
+      "evidenceStatus": "INSUFFICIENT_EVIDENCE",
+      "modelApplicability": "UNRESOLVED",
+      "calibrationTargetAuthorized": false,
+      "mappingNote": "No value fabricated. Requires a defensible firm-finance source and a definition separating cash, receivables, payables, inventory and undrawn credit."
+    }
+  ]
+}
