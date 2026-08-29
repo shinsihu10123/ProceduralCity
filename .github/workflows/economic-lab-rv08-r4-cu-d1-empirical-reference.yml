@@ -1,0 +1,30 @@
+name: Economic Lab RV08 R4-CU-D1 Empirical Reference Gate
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d1-empirical-reference-register.json'
+      - 'economic-lab/scripts/rv08-r4-cu-d1-empirical-reference-gate.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d1-empirical-reference.yml'
+  workflow_dispatch:
+
+jobs:
+  empirical-reference-gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax gate
+        run: node --check economic-lab/scripts/rv08-r4-cu-d1-empirical-reference-gate.mjs
+      - name: Validate R4-CU-D1 references
+        run: node economic-lab/scripts/rv08-r4-cu-d1-empirical-reference-gate.mjs
+
+  final-beacon:
+    needs: empirical-reference-gate
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CU-D1 empirical reference register validated'
