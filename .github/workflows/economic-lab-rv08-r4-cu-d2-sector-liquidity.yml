@@ -1,0 +1,30 @@
+name: Economic Lab RV08 R4-CU-D2 Sector Liquidity Gate
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d2-sector-liquidity-evidence-register.json'
+      - 'economic-lab/scripts/rv08-r4-cu-d2-sector-liquidity-gate.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d2-sector-liquidity.yml'
+  workflow_dispatch:
+
+jobs:
+  sector-liquidity-gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax gate
+        run: node --check economic-lab/scripts/rv08-r4-cu-d2-sector-liquidity-gate.mjs
+      - name: Validate R4-CU-D2 evidence contract
+        run: node economic-lab/scripts/rv08-r4-cu-d2-sector-liquidity-gate.mjs
+
+  final-beacon:
+    needs: sector-liquidity-gate
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CU-D2 sector and liquidity evidence contract validated'
