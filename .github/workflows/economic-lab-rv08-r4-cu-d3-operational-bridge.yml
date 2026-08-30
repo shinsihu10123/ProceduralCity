@@ -1,0 +1,30 @@
+name: Economic Lab RV08 R4-CU-D3 Operational Bridge Gate
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3-operational-bridge-register.json'
+      - 'economic-lab/scripts/rv08-r4-cu-d3-operational-bridge-gate.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3-operational-bridge.yml'
+  workflow_dispatch:
+
+jobs:
+  operational-bridge-gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax gate
+        run: node --check economic-lab/scripts/rv08-r4-cu-d3-operational-bridge-gate.mjs
+      - name: Validate R4-CU-D3 operational bridge
+        run: node economic-lab/scripts/rv08-r4-cu-d3-operational-bridge-gate.mjs
+
+  final-beacon:
+    needs: operational-bridge-gate
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CU-D3 operational empirical bridge validated'
