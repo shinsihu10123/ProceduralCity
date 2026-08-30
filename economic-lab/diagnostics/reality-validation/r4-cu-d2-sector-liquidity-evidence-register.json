@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D2",
+  "canonicalMutationAuthorized": false,
+  "calibrationRangesAuthorized": false,
+  "rules": {
+    "sectorBridgeIsInterpretiveNotIdentity": true,
+    "isicMappingMustPreserveAmbiguity": true,
+    "servicesNotSilentlyForcedIntoConsumer": true,
+    "stanEstimatedCellsNeedEvidenceFlags": true,
+    "liquidityStockFlowComponentsSeparated": true,
+    "crisisCashEvidenceNotSteadyStateTarget": true,
+    "rawObservationIsNotCalibrationTarget": true
+  },
+  "sectorBridge": [
+    {
+      "modelSector": "RESOURCE",
+      "empiricalActivityCandidates": ["ISIC A Agriculture, forestry and fishing", "ISIC B Mining and quarrying"],
+      "bridgeStatus": "CANDIDATE_COMPOSITE",
+      "mappingRisk": "Model RESOURCE is a stylized upstream resource bundle, not one exact ISIC activity. Agriculture and mining have very different capital, labour and price structures.",
+      "targetAuthorized": false
+    },
+    {
+      "modelSector": "MATERIALS",
+      "empiricalActivityCandidates": ["selected ISIC C Manufacturing intermediate-goods activities"],
+      "bridgeStatus": "REQUIRES_PRODUCT_USE_FILTER",
+      "mappingRisk": "ISIC classifies producer activity, not whether output is intermediate material. Supply-use/product evidence is required to distinguish intermediate from final goods.",
+      "targetAuthorized": false
+    },
+    {
+      "modelSector": "CAPITAL",
+      "empiricalActivityCandidates": ["selected ISIC C machinery/equipment and capital-goods manufacturing", "potential construction/investment-producing activities only if model semantics justify inclusion"],
+      "bridgeStatus": "REQUIRES_CAPITAL_GOODS_FILTER",
+      "mappingRisk": "Capital goods are defined by economic use, not by a single industry code. Industry-only mapping would mix intermediate and consumption products.",
+      "targetAuthorized": false
+    },
+    {
+      "modelSector": "CONSUMER",
+      "empiricalActivityCandidates": ["final-consumption producing activities identified through supply-use tables"],
+      "bridgeStatus": "REQUIRES_FINAL_USE_FILTER",
+      "mappingRisk": "Consumer goods/services are defined by final use. Retail/services cannot be silently equated with the model consumer sector.",
+      "targetAuthorized": false
+    }
+  ],
+  "officialSectorSources": [
+    {
+      "organization": "OECD",
+      "dataset": "STAN Database for Structural Analysis, 2025 edition",
+      "concepts": ["output", "value added", "labour input", "investment", "capital stock"],
+      "classification": "ISIC Rev.4",
+      "evidenceRole": "industry performance source after bridge",
+      "caveat": "STAN contains OECD Secretariat estimates for missing detail; flags must be retained."
+    },
+    {
+      "organization": "OECD",
+      "dataset": "Supply and Use Tables",
+      "concepts": ["output", "intermediate consumption", "final demand", "compensation of employees", "gross operating surplus"],
+      "classification": "ISIC Rev.4 activities with product/use breakdown",
+      "evidenceRole": "preferred bridge evidence for intermediate-vs-final-use and capital/consumer semantics",
+      "caveat": "Use price concept and country/year coverage must be explicit."
+    }
+  ],
+  "liquidityEvidence": [
+    {
+      "id": "D2-LIQ-FED-SMALLBUSINESS-2020",
+      "organization": "Federal Reserve Board",
+      "concept": "cash reserves sufficient for operations without revenue",
+      "observation": "roughly half of small businesses entered the COVID-19 crisis with fewer than 15 days of cash reserves",
+      "evidenceRole": "stress-vulnerability reference",
+      "steadyStateTargetAuthorized": false,
+      "reason": "Crisis-era small-business evidence is size- and episode-specific and does not identify a normal steady-state working-capital target."
+    }
+  ],
+  "requiredLiquidityComponentsBeforeTarget": [
+    "cash and deposits",
+    "accounts receivable",
+    "accounts payable",
+    "inventory",
+    "short-term debt",
+    "undrawn committed credit",
+    "monthly operating expenses",
+    "payroll",
+    "cash conversion timing"
+  ],
+  "nextFront": "R4-CU-D3 sector bridge operationalization and multi-source liquidity range acquisition"
+}
