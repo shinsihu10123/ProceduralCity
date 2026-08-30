@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3B",
+  "canonicalMutationAuthorized": false,
+  "numericCalibrationRangesAuthorized": false,
+  "purpose": "Freeze transparent reference-economy cohorts before first multi-country empirical extraction.",
+  "cohortPolicy": {
+    "universe": "OECD members with required official series availability",
+    "membershipIsCalibrationTarget": false,
+    "fictionalCountryDirectCopyBlocked": true,
+    "minimumIndependentEconomiesPerBand": 5,
+    "preferredCompleteYears": 3,
+    "rule": "Membership is frozen before extracting outcome values. Missing observations may reduce a metric-specific analytic sample but may not be replaced ad hoc to obtain a preferred band."
+  },
+  "referenceClasses": [
+    {
+      "id": "REF-ADV-DIV",
+      "label": "advanced diversified",
+      "members": ["AUS", "CAN", "DNK", "FRA", "DEU", "NLD", "SWE", "GBR", "USA"],
+      "selectionBasis": "broad advanced OECD comparison cohort; used as baseline rather than as a model-country template"
+    },
+    {
+      "id": "REF-MFG",
+      "label": "advanced manufacturing-intensive",
+      "members": ["CZE", "DEU", "JPN", "KOR", "SVK", "SVN"],
+      "selectionBasis": "advanced OECD economies retained for manufacturing-intensive comparison; manufacturing intensity must be verified from official value-added data before any sector calibration use"
+    },
+    {
+      "id": "REF-RESOURCE",
+      "label": "resource-exposed advanced",
+      "members": ["AUS", "CAN", "NOR", "NZL", "CHL"],
+      "selectionBasis": "OECD economies with material resource exposure; this class is a comparison cohort, not a claim of identical production structures"
+    },
+    {
+      "id": "REF-HIGHSAVE",
+      "label": "high household-saving advanced",
+      "members": ["DEU", "KOR", "NLD", "SWE", "CHE"],
+      "selectionBasis": "candidate high-saving OECD cohort; admission to a saving-rate band requires official comparable household-sector data and does not map to desiredConsumptionBudget"
+    }
+  ],
+  "firstExtraction": {
+    "metric": "manufacturing gross value added share",
+    "source": "OECD NAAG Chapter 4: Production",
+    "dataset": "DSD_NAAG_IV@DF_NAAG_IV",
+    "measure": "Gross value added",
+    "activity": "Manufacturing (ISIC Rev.4 C)",
+    "unit": "percentage of gross value added",
+    "frequency": "annual",
+    "status": "SOURCE_SCHEMA_VERIFIED_EXTRACTION_PENDING",
+    "semanticUse": "cohort characterization only; not a RESOURCE/MATERIALS/CAPITAL/CONSUMER target because use-classification bridge remains required"
+  },
+  "sourceVerification": [
+    {
+      "source": "OECD Data Explorer — NAAG Chapter 4: Production",
+      "verifiedAt": "2026-08-30",
+      "finding": "Official OECD dataset exposes annual manufacturing gross value added as percentage of gross value added for 38 reference areas and provides an SDMX API query."
+    },
+    {
+      "source": "OECD Data Explorer — Annual value added and its components by economic activity",
+      "verifiedAt": "2026-08-30",
+      "finding": "Detailed ISIC Rev.4 activity data include gross value added, output, intermediate consumption, wages and salaries, and operating surplus; latest page update observed in August 2026."
+    }
+  ],
+  "blockedMappings": [
+    "manufacturing GVA share -> model MATERIALS share",
+    "manufacturing GVA share -> model CAPITAL share",
+    "household saving rate -> desiredConsumptionBudget",
+    "reference-class membership -> fictional-country identity",
+    "single-year raw observation -> calibration center"
+  ],
+  "nextFront": "R4-CU-D3C execute reproducible official observations and compute provisional empirical bands with dispersion"
+}
