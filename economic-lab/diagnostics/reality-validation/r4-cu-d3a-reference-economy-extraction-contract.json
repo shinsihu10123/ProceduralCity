@@ -1,0 +1,105 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3A",
+  "canonicalMutationAuthorized": false,
+  "numericCalibrationRangesAuthorized": false,
+  "objective": "Freeze reference-economy classes and extraction rules before computing any empirical calibration bands.",
+  "rules": {
+    "classBeforeCountry": true,
+    "noFictionalCountryDirectCopy": true,
+    "multiYearPreferred": true,
+    "crossCountryDispersionPreserved": true,
+    "officialSourcesPreferred": true,
+    "nominalRealPPPExplicit": true,
+    "stockFlowExplicit": true,
+    "grossNetExplicit": true,
+    "realizedVsExAnteExplicit": true,
+    "valueAddedVsGrossOutputExplicit": true,
+    "industryUseBridgeRequired": true,
+    "sampleInclusionRulesFrozenBeforeExtraction": true,
+    "outlierExclusionRequiresDocumentedReason": true,
+    "rawObservationIsNotCalibrationTarget": true
+  },
+  "referenceEconomyClasses": [
+    {
+      "id": "REF-ADV-DIVERSIFIED",
+      "label": "advanced diversified market economies",
+      "purpose": "broad baseline for labour share, household saving/consumption and firm-finance ratios",
+      "candidateMembershipRule": "high-income OECD members with diversified sector structure and sufficiently complete official series",
+      "membershipFrozen": false,
+      "directModelCountryMappingAuthorized": false
+    },
+    {
+      "id": "REF-ADV-MANUFACTURING",
+      "label": "advanced manufacturing-intensive economies",
+      "purpose": "sector productivity and materials/capital-goods relative-value comparison",
+      "candidateMembershipRule": "high-income OECD members with above-median manufacturing value-added share and sufficient STAN/SUT coverage",
+      "membershipFrozen": false,
+      "directModelCountryMappingAuthorized": false
+    },
+    {
+      "id": "REF-RESOURCE-EXPOSED",
+      "label": "resource-exposed advanced economies",
+      "purpose": "RESOURCE-sector sensitivity and relative-value comparison without treating mining/agriculture as universal",
+      "candidateMembershipRule": "high-income economies with material resource-sector contribution and sufficient official industry data",
+      "membershipFrozen": false,
+      "directModelCountryMappingAuthorized": false
+    },
+    {
+      "id": "REF-HIGH-SAVING",
+      "label": "high household-saving advanced economies",
+      "purpose": "upper behavioural/accounting reference for realized household saving, not desiredConsumptionBudget",
+      "candidateMembershipRule": "advanced economies persistently above the median household saving rate over the selected window",
+      "membershipFrozen": false,
+      "directModelCountryMappingAuthorized": false
+    }
+  ],
+  "extractionFamilies": [
+    {
+      "id": "D3A-LABOUR-SHARE",
+      "concept": "labour income share",
+      "preferredSourceFamily": "ILO/ILOSTAT",
+      "targetStatistic": "multi-year country distribution and robust class band",
+      "timeWindowCandidate": "2019-2024 or latest six complete annual observations",
+      "unit": "percent of GDP",
+      "admissionStatus": "SPECIFICATION_ONLY"
+    },
+    {
+      "id": "D3A-HOUSEHOLD-SAVING",
+      "concept": "household saving rate and realized consumption share of disposable income",
+      "preferredSourceFamily": "OECD national accounts / Eurostat sector accounts",
+      "targetStatistic": "multi-year country distribution, median and central band",
+      "timeWindowCandidate": "2019-2025 subject to complete comparable annual data",
+      "unit": "percent of disposable household income",
+      "directDesiredBudgetMapping": "BLOCKED",
+      "admissionStatus": "SPECIFICATION_ONLY"
+    },
+    {
+      "id": "D3A-SECTOR-PRODUCTIVITY",
+      "concept": "sector-relative value added, labour input and compensation",
+      "preferredSourceFamily": "OECD STAN after OECD SUT use-classification bridge",
+      "targetStatistic": "within-country sector-relative ratios followed by cross-country robust bands",
+      "classification": "ISIC Rev.4 plus documented intermediate/investment/final-use allocation",
+      "admissionStatus": "BLOCKED_UNTIL_MEMBERSHIP_AND_USE_WEIGHTS_FROZEN"
+    },
+    {
+      "id": "D3A-FIRM-LIQUIDITY",
+      "concept": "firm liquidity and working-capital coverage",
+      "preferredSourceFamily": "official central-bank, statistical-office or OECD SME/business-finance evidence",
+      "targetStatistic": "size-class-specific cash/expense coverage and AR/AP/inventory timing distributions",
+      "requiredSeparation": ["cash", "receivables", "payables", "inventory", "short-term debt", "undrawn credit"],
+      "admissionStatus": "SOURCE_ACQUISITION_ACTIVE"
+    }
+  ],
+  "rangeAdmissionGate": {
+    "minimumIndependentEconomiesPerClass": 5,
+    "minimumCompleteYearsPreferred": 3,
+    "requiresDocumentedMembership": true,
+    "requiresSourceProvenance": true,
+    "requiresSemanticMatch": true,
+    "requiresTransformationFormulaIfAny": true,
+    "requiresUncertaintyOrDispersion": true,
+    "requiresNoFictionalCountryDirectCopy": true
+  },
+  "nextFront": "R4-CU-D3B freeze class membership and execute first official multi-country extraction"
+}
