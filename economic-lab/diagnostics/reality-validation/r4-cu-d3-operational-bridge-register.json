@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3",
+  "canonicalMutationAuthorized": false,
+  "calibrationRangesAuthorized": false,
+  "purpose": "Operationalize the empirical sector bridge and firm-liquidity evidence without converting raw observations into canonical targets.",
+  "sectorBridgeMethod": {
+    "primarySource": "OECD Supply and Use Tables",
+    "industryClassification": "ISIC Rev.4",
+    "productClassification": "CPA-compatible product breakdown",
+    "useBuckets": ["intermediate consumption", "household final consumption", "gross capital formation", "other final demand/export"],
+    "allocationRule": "Classify candidate products by observed use shares rather than producer-industry identity alone; retain mixed-use products as weighted or unresolved rather than forcing a single model sector.",
+    "requiredPriceBasis": "explicit basic-price or purchasers-price basis",
+    "requiredCountryYear": true,
+    "sourceUrl": "https://www.oecd.org/en/data/datasets/supply-and-use-tables.html"
+  },
+  "modelSectorOperationalRules": [
+    {
+      "modelSector": "RESOURCE",
+      "rule": "Begin from primary-extraction activities (ISIC A/B), then preserve agriculture/mining heterogeneity; do not average into one target until a reference-economy weighting contract exists.",
+      "status": "OPERATIONAL_METHOD_DEFINED_TARGET_BLOCKED"
+    },
+    {
+      "modelSector": "MATERIALS",
+      "rule": "Admit product groups only when intermediate-consumption use share is dominant under the chosen country-year SUT; mixed-use products remain weighted/unresolved.",
+      "status": "OPERATIONAL_METHOD_DEFINED_TARGET_BLOCKED"
+    },
+    {
+      "modelSector": "CAPITAL",
+      "rule": "Admit product groups only when gross-capital-formation use is material and semantics match durable productive capital; investment classification overrides producer-industry shorthand.",
+      "status": "OPERATIONAL_METHOD_DEFINED_TARGET_BLOCKED"
+    },
+    {
+      "modelSector": "CONSUMER",
+      "rule": "Admit product groups only when household-final-consumption use is dominant and the model actually represents that consumption category; services are not silently included.",
+      "status": "OPERATIONAL_METHOD_DEFINED_TARGET_BLOCKED"
+    }
+  ],
+  "sectorMetricsAfterBridge": [
+    "value added per worker or hour",
+    "compensation of employees / value added",
+    "gross output / labour input",
+    "intermediate consumption / output",
+    "relative value-added productivity index"
+  ],
+  "liquidityEvidenceProtocol": {
+    "targetObjects": [
+      "cash-to-monthly-operating-expense",
+      "cash-to-payroll",
+      "accounts-receivable-days",
+      "accounts-payable-days",
+      "inventory-days",
+      "short-term-debt-to-operating-expense",
+      "undrawn-credit-to-operating-expense"
+    ],
+    "evidencePriority": [
+      "official business balance-sheet or sector-account statistics",
+      "official central-bank SME/business surveys",
+      "official cross-country SME financing scoreboards",
+      "stress-event evidence as lower-tier boundary evidence"
+    ],
+    "steadyStateRule": "No stress-event cash runway observation may define the steady-state target by itself.",
+    "sizeClassRule": "Micro/small/medium/large firm evidence must not be pooled without explicit weighting.",
+    "industryRule": "Industry liquidity differences must be preserved when material."
+  },
+  "officialLiquiditySources": [
+    {
+      "organization": "OECD",
+      "source": "Financing SMEs and Entrepreneurs 2024",
+      "role": "cross-country SME finance conditions, payment delay, credit conditions and distress context",
+      "sourceUrl": "https://www.oecd.org/en/publications/financing-smes-and-entrepreneurs-2024_fa521246-en.html",
+      "calibrationTargetAuthorized": false
+    },
+    {
+      "organization": "OECD",
+      "source": "Financing SMEs and Entrepreneurs 2024 - Korea",
+      "role": "country-specific short-term SME payment-delay evidence; 2022 average payment delay reported at 9.2 days",
+      "sourceUrl": "https://www.oecd.org/en/publications/financing-smes-and-entrepreneurs-2024_fa521246-en/full-report/component-34.html",
+      "calibrationTargetAuthorized": false,
+      "mappingNote": "Payment delay is not accounts-payable days and is not a universal trade-credit term."
+    },
+    {
+      "organization": "Federal Reserve Board",
+      "source": "Monetary Policy Report 2020 small-business liquidity discussion",
+      "role": "stress-boundary evidence for low cash resilience",
+      "calibrationTargetAuthorized": false
+    }
+  ],
+  "admissionGateForNumericRanges": [
+    "reference-economy class defined",
+    "country/year and firm-size coverage explicit",
+    "stock-flow denominator compatible with model variable",
+    "sector bridge passed for sectoral metric",
+    "at least two independent official evidence families where feasible",
+    "stress-event evidence not used as sole steady-state center",
+    "uncertainty/range construction documented",
+    "shadow-only validation planned before canonical proposal"
+  ],
+  "nextFront": "R4-CU-D3A data extraction specification and reference-economy class construction"
+}
