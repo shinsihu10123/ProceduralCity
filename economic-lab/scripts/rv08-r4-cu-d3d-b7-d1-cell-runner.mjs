@@ -63,7 +63,8 @@ function temporaryPath(sourcePath, label) {
 function buildD1InterventionCompatibilityView() {
   const original = readFileSync(D1_INTERVENTION_SOURCE_PATH, 'utf8');
   let patched = original;
-  patched = replaceExactlyOnce(patched,
+  patched = replaceExactlyOnce(
+    patched,
 `  SupplyChainSystem.prototype.procureInputs = function d1TopologyNeutralProcureInputs(country, month) {
     const state = stateFor(this, country);
     const firms = activeFirms(country);`,
@@ -93,35 +94,149 @@ function buildD1InterventionCompatibilityView() {
   };
 }
 
-function buildTTargetCompatibilityView() {
+function buildCellTargetCompatibilityView() {
   const sourcePath = resolve(ROOT, sourceTarget);
   const original = readFileSync(sourcePath, 'utf8');
   let patched = original;
+  let replacementCount = 0;
 
   patched = replaceExactlyOnce(
     patched,
-    '  terminalAxisApplicationExact: first.terminalAxisExact && second.terminalAxisExact,',
+`function runOnce() {`,
+`function d1PreMonthOneIdentity(world) {
+  const countries = world.countries
+    .slice()
+    .sort((left, right) => left.id.localeCompare(right.id));
+  const axisSurface = countries.map((country) => ({
+    countryId: country.id,
+    firms: (country.firms || [])
+      .slice()
+      .sort((left, right) => left.id.localeCompare(right.id))
+      .map((firm) => {
+        const tag = b6FirmTag(firm);
+        return {
+          id: firm.id,
+          active: firm.active !== false,
+          industryId: firm.industryId,
+          product: firm.product,
+          inputProduct: firm.inputProduct,
+          productivity: finite(firm.productivity),
+          inputPerOutput: finite(firm.inputPerOutput),
+          capacity: finite(firm.capacity),
+          desiredProduction: finite(firm.desiredProduction),
+          targetInventory: finite(firm.targetInventory),
+          previousSales: finite(firm.previousSales),
+          inventory: finite(firm.inventory),
+          inputInventory: firm.inputInventory,
+          price: finite(firm.price),
+          wage: finite(firm.wage),
+          ledgerCash: finite(world.ledger.balance(firm.accountId)),
+          candidateTag: tag ? {
+            candidateId: tag.candidateId,
+            applicationCount: tag.applicationCount,
+            productivityFactor: tag.productivityFactor,
+            materialEfficiencyDivisor: tag.materialEfficiencyDivisor,
+            baseProductivity: tag.baseProductivity,
+            baseInputPerOutput: tag.baseInputPerOutput
+          } : null
+        };
+      })
+  }));
+  const protectedState = protectedSurface(world);
+  const payload = {
+    surface: 'PRE_MONTH_ONE_UNSTEPPED_WORLD',
+    month: world.month,
+    countryIds: countries.map((country) => country.id),
+    countryCount: countries.length,
+    firmCount: sum(countries.map((country) => country.firms?.length || 0)),
+    householdCount: sum(countries.map((country) => country.households?.length || 0)),
+    worldDigestSha256: worldDigest(world),
+    protectedSurfaceSha256: createHash('sha256').update(JSON.stringify(protectedState)).digest('hex'),
+    axisSurfaceSha256: createHash('sha256').update(JSON.stringify(axisSurface)).digest('hex'),
+    axisSurface
+  };
+  return {
+    ...payload,
+    identitySha256: createHash('sha256').update(JSON.stringify(payload)).digest('hex')
+  };
+}
+
+function runOnce() {`,
+    'target-pre-month-one-identity-function'
+  );
+  replacementCount += 1;
+
+  patched = replaceExactlyOnce(
+    patched,
+`  const world = new ShadowWorld(seed);
+  const canonicalProtectedSurface = protectedSurface(canonicalWorld);`,
+`  const world = new ShadowWorld(seed);
+  const d1InitialIdentity = d1PreMonthOneIdentity(world);
+  const canonicalProtectedSurface = protectedSurface(canonicalWorld);`,
+    'target-pre-month-one-identity-capture'
+  );
+  replacementCount += 1;
+
+  patched = replaceExactlyOnce(
+    patched,
+`  return {
+    world,
+    rows,`,
+`  return {
+    world,
+    d1InitialIdentity,
+    rows,`,
+    'target-pre-month-one-identity-return'
+  );
+  replacementCount += 1;
+
+  patched = replaceExactlyOnce(
+    patched,
+`const exactDiagnosticReplay = JSON.stringify(first.rows) === JSON.stringify(second.rows);
+const summary = summarize(first.rows);`,
+`const exactDiagnosticReplay = JSON.stringify(first.rows) === JSON.stringify(second.rows);
+const d1InitialIdentityReplayExact =
+  JSON.stringify(first.d1InitialIdentity) === JSON.stringify(second.d1InitialIdentity);
+const summary = summarize(first.rows);`,
+    'target-pre-month-one-identity-replay'
+  );
+  replacementCount += 1;
+
+  patched = replaceExactlyOnce(
+    patched,
+`  initialAxisApplicationExact: first.initialAxisExact && second.initialAxisExact,
+  terminalAxisApplicationExact: first.terminalAxisExact && second.terminalAxisExact,`,
+`  initialAxisApplicationExact: first.initialAxisExact && second.initialAxisExact,
+  d1InitialIdentityReplayExact,
+  terminalAxisApplicationExact: first.terminalAxisExact && second.terminalAxisExact,`,
+    'target-pre-month-one-identity-gate'
+  );
+  replacementCount += 1;
+
+  if (cellId === 'T') {
+    patched = replaceExactlyOnce(
+      patched,
+      '  terminalAxisApplicationExact: first.terminalAxisExact && second.terminalAxisExact,',
 `  terminalAxisApplicationExact: true,
   d1TerminalAxisValidationDelegatedToProcurementBoundary: true,`,
-    'target-terminal-axis-boundary-delegation'
-  );
+      'target-terminal-axis-boundary-delegation'
+    );
+    replacementCount += 1;
 
-  patched = replaceExactlyOnce(
-    patched,
-    '  controlCanonicalEquivalence: first.controlCanonicalDigestExact && second.controlCanonicalDigestExact,',
+    patched = replaceExactlyOnce(
+      patched,
+      '  controlCanonicalEquivalence: first.controlCanonicalDigestExact && second.controlCanonicalDigestExact,',
 `  controlCanonicalEquivalence: true,
   d1TopologyCounterfactualDivergenceObserved:
     candidate.control !== true || (!first.controlCanonicalDigestExact && !second.controlCanonicalDigestExact),
   d1ControlEquivalenceValidationDelegatedToObservedCell: true,`,
-    'target-control-counterfactual-separation'
-  );
+      'target-control-counterfactual-separation'
+    );
+    replacementCount += 1;
+  }
 
-  patched = replaceExactlyOnce(
-    patched,
-`  gates,
-  summary,`,
-`  gates,
-  d1Compatibility: {
+  const compatibilityReceipt = cellId === 'T'
+    ? `  d1Compatibility: {
     topologyCell: true,
     sourceTerminalAxisApplicationExactObserved: first.terminalAxisExact && second.terminalAxisExact,
     sourceControlCanonicalEquivalenceObserved: first.controlCanonicalDigestExact && second.controlCanonicalDigestExact,
@@ -130,9 +245,23 @@ function buildTTargetCompatibilityView() {
     candidateAxisMutationAuthorized: false,
     canonicalSourceMutationAuthorized: false
   },
+`
+    : '';
+
+  patched = replaceExactlyOnce(
+    patched,
+`  gates,
   summary,`,
-    'target-delegation-receipt'
+`  gates,
+  d1InitialIdentity: {
+    ...first.d1InitialIdentity,
+    replayExact: d1InitialIdentityReplayExact,
+    secondIdentitySha256: second.d1InitialIdentity.identitySha256
+  },
+${compatibilityReceipt}  summary,`,
+    'target-pre-month-one-identity-receipt'
   );
+  replacementCount += 1;
 
   const runtimePath = temporaryPath(sourcePath, 'd1-target-runtime');
   writeFileSync(runtimePath, patched);
@@ -140,29 +269,31 @@ function buildTTargetCompatibilityView() {
     runtimePath,
     originalSha256: sha256(original),
     patchedSha256: sha256(patched),
-    replacementCount: 3,
-    terminalAxisValidationDelegatedToProcurementBoundary: true,
-    controlEquivalenceValidationDelegatedToObservedCell: true,
+    replacementCount,
+    preMonthOneWorldIdentityRequired: true,
+    terminalAxisValidationDelegatedToProcurementBoundary: cellId === 'T',
+    controlEquivalenceValidationDelegatedToObservedCell: cellId === 'T',
     canonicalSourceMutationAuthorized: false
   };
 }
 
-function initialPanelIdentity(observation) {
-  const rows = (observation?.rows || [])
-    .filter((row) => Number(row.month) === 1)
-    .sort((left, right) => left.countryId.localeCompare(right.countryId))
-    .map((row) => ({
-      candidateId: row.candidateId,
-      countryId: row.countryId,
-      month: row.month,
-      opening: row.opening,
-      plan: row.plan
-    }));
+function initialPanelIdentity(source) {
+  const identity = source?.d1InitialIdentity;
+  assert.ok(identity, 'D1 pre-month-one source identity missing');
+  assert.equal(identity.surface, 'PRE_MONTH_ONE_UNSTEPPED_WORLD');
+  assert.equal(identity.replayExact, true, 'D1 pre-month-one source identity did not replay exactly');
+  assert.equal(identity.identitySha256, identity.secondIdentitySha256, 'D1 initial replay hashes differ');
+  assert.ok(Array.isArray(identity.axisSurface), 'D1 initial axis surface missing');
   return {
-    surface: 'B7_MONTH1_OPENING_AND_PLAN',
-    rowCount: rows.length,
-    sha256: sha256(JSON.stringify(rows)),
-    rows
+    surface: identity.surface,
+    rowCount: identity.countryCount,
+    sha256: identity.identitySha256,
+    worldDigestSha256: identity.worldDigestSha256,
+    protectedSurfaceSha256: identity.protectedSurfaceSha256,
+    axisSurfaceSha256: identity.axisSurfaceSha256,
+    firmCount: identity.firmCount,
+    householdCount: identity.householdCount,
+    rows: identity.axisSurface
   };
 }
 
@@ -230,6 +361,20 @@ let intervention = null;
 let caught = null;
 
 try {
+  targetView = buildCellTargetCompatibilityView();
+  compatibilityViews.sourceTarget = {
+    originalSha256: targetView.originalSha256,
+    patchedSha256: targetView.patchedSha256,
+    replacementCount: targetView.replacementCount,
+    preMonthOneWorldIdentityRequired: targetView.preMonthOneWorldIdentityRequired,
+    terminalAxisValidationDelegatedToProcurementBoundary:
+      targetView.terminalAxisValidationDelegatedToProcurementBoundary,
+    controlEquivalenceValidationDelegatedToObservedCell:
+      targetView.controlEquivalenceValidationDelegatedToObservedCell,
+    canonicalSourceMutationAuthorized: false
+  };
+  process.argv[2] = targetView.runtimePath;
+
   if (cellId === 'T') {
     interventionView = buildD1InterventionCompatibilityView();
     compatibilityViews.d1Intervention = {
@@ -240,18 +385,8 @@ try {
       sellerCostRuleExact: interventionView.sellerCostRuleExact,
       canonicalSourceMutationAuthorized: false
     };
-    targetView = buildTTargetCompatibilityView();
-    compatibilityViews.sourceTarget = {
-      originalSha256: targetView.originalSha256,
-      patchedSha256: targetView.patchedSha256,
-      replacementCount: targetView.replacementCount,
-      terminalAxisValidationDelegatedToProcurementBoundary: true,
-      controlEquivalenceValidationDelegatedToObservedCell: true,
-      canonicalSourceMutationAuthorized: false
-    };
     const interventionModule = await import(pathToFileURL(interventionView.runtimePath).href);
     intervention = interventionModule.installD1TopologyNeutralProcurement({ expectedCandidateId: candidateId });
-    process.argv[2] = targetView.runtimePath;
   }
 
   process.env.B7_OUTPUT_JSON = nestedB7Output;
@@ -263,7 +398,7 @@ try {
   const observation = b7.diagnostics;
   const interventionObservation = intervention ? intervention.finish(source) : null;
   const sourceScenario = source.s3ScenarioValidation;
-  const initialIdentity = initialPanelIdentity(observation);
+  const initialIdentity = initialPanelIdentity(source);
   compatibilityViews.b7Observer = b7.observerCompatibilityView;
 
   const gates = {
@@ -277,6 +412,10 @@ try {
     seedAuthorized: source.seed === seed && validationSeeds.includes(seed),
     scenarioAuthorized: sourceScenario?.scenarioId === scenarioId && scenarioIds.includes(scenarioId),
     horizonFrozen: source.months === contract.frozenPanel.months,
+    sourceInitialIdentityReplayExact:
+      source.gates?.d1InitialIdentityReplayExact === true &&
+      source.d1InitialIdentity?.replayExact === true &&
+      source.d1InitialIdentity?.identitySha256 === source.d1InitialIdentity?.secondIdentitySha256,
     authoritativeB7EntryUsed:
       compatibilityViews.b7Entry.signedStockGvaBridgeRequired === true &&
       observation?.summary?.gvaBridgeSource === 'B6_SIGNED_STOCK_VALIDATED_RECONSTRUCTION',
@@ -300,7 +439,11 @@ try {
     shortageAttributionReconciles: b7.gates?.shortageAttributionReconciles === true,
     gvaApproachesReconcile: b7.gates?.gvaApproachesReconcile === true,
     initialIdentityProduced:
-      initialIdentity.rowCount === observation?.expectedCountries?.length && initialIdentity.sha256.length === 64,
+      initialIdentity.rowCount === observation?.expectedCountries?.length &&
+      initialIdentity.sha256.length === 64 &&
+      initialIdentity.worldDigestSha256.length === 64 &&
+      initialIdentity.protectedSurfaceSha256.length === 64 &&
+      initialIdentity.axisSurfaceSha256.length === 64,
     observedCellUsesUndelegatedSourceGates:
       cellId !== 'O' || (
         source.gates?.terminalAxisApplicationExact === true &&
@@ -374,6 +517,7 @@ try {
       worldDigest: source.worldDigest,
       replayDigest: source.replayDigest,
       scenarioScheduleSha256: sourceScenario?.scheduleSha256,
+      initialIdentitySha256: source.d1InitialIdentity?.identitySha256,
       summary: source.summary,
       d1Compatibility: source.d1Compatibility || null
     },
@@ -385,6 +529,7 @@ try {
       purpose: 'DISPOSABLE_CAUSAL_DIAGNOSTIC_CELL_ONLY',
       observedCell: cellId === 'O',
       topologyNeutralCell: cellId === 'T',
+      preMonthOneWorldIdentityUsed: true,
       signedStockGvaBridgeUsed: true,
       terminalAxisGateDelegatedOnlyInTopologyCell: cellId === 'T',
       empiricalBandsUsedAsParameters: false,
@@ -403,6 +548,7 @@ try {
     cellId,
     gates,
     initialPanelSha256: initialIdentity.sha256,
+    initialWorldDigestSha256: initialIdentity.worldDigestSha256,
     sourceD1Compatibility: source.d1Compatibility || null,
     interventionRowsSha256: interventionObservation?.rowsSha256 || null,
     diagnosticRowsSha256: observation?.rowsSha256 || null
