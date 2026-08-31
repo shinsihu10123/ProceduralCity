@@ -1,0 +1,231 @@
+name: Economic Lab RV08 R4-CU-D3D-B7-D1 Supplier Topology Causal Isolation
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b7-d1-supplier-topology-causal-contract.json'
+      - 'economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B7_D1_SUPPLIER_TOPOLOGY_CAUSAL_PREREGISTRATION_v0.1.md'
+      - 'economic-lab/src/research/d1-topology-neutral-procurement.js'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b7-d1-cell-runner.mjs'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b7-d1-aggregate.mjs'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b7-d1-closure.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3d-b7-d1-supplier-topology-causal.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preregistration-gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and frozen-contract gates
+        run: |
+          node --check economic-lab/src/research/d1-topology-neutral-procurement.js
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b7-d1-cell-runner.mjs
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b7-d1-aggregate.mjs
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b7-d1-closure.mjs
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          const path = 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b7-d1-supplier-topology-causal-contract.json';
+          const x = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const candidates = x.frozenPanel.candidates.map((entry) => entry.id);
+          const seeds = x.frozenPanel.validationSeeds.map((entry) => entry.seed);
+          const scenarios = x.frozenPanel.scenarios.map((entry) => entry.id);
+          const windows = x.frozenPanel.windows.map((entry) => entry.id);
+          const cells = x.cells.map((entry) => entry.id);
+          assert.equal(x.schemaVersion, '1.0');
+          assert.equal(x.front, 'R4-CU-D3D-B7-D1');
+          assert.equal(x.status, 'FROZEN_BEFORE_TOPOLOGY_COUNTERFACTUAL_EXECUTION');
+          assert.equal(x.sourceD0.decision, 'SEQUENCED_MIXED_CAUSAL_PREREGISTRATION_PASSED');
+          assert.deepEqual(candidates, ['V1_M1_C42', 'V24_M16_C42']);
+          assert.deepEqual(seeds, ['ECON-RV08-LONG-G', 'ECON-RV08-LONG-H']);
+          assert.deepEqual(scenarios, ['BASELINE_36', 'SUPPLY_SHOCK_M13', 'FINANCIAL_CONFIDENCE_STRESS_M13']);
+          assert.deepEqual(windows, ['FULL_36', 'PRE_SHOCK_12', 'TRANSITION_12', 'TERMINAL_12']);
+          assert.deepEqual(cells, ['O', 'T']);
+          assert.equal(x.frozenPanel.months, 36);
+          assert.equal(x.frozenPanel.jobs, 12);
+          assert.equal(x.frozenPanel.cellsPerJob, 2);
+          assert.equal(x.frozenPanel.modelReplayStatesPerCell, 2);
+          assert.equal(x.frozenPanel.totalModelReplayStates, 48);
+          assert.equal(x.intervention.id, 'D1-TOPOLOGY-REACHABILITY-EXHAUSTIVE-V1');
+          assert.equal(x.intervention.budgetRule, 'opening buyer ledger balance multiplied by 0.42');
+          assert.equal(x.intervention.inventoryCreationAuthorized, false);
+          assert.equal(x.intervention.cashCreationAuthorized, false);
+          assert.equal(x.technicalEvidenceContract.observedAndTopologyInitialPanelIdentityRequired, true);
+          assert.equal(x.technicalEvidenceContract.interventionReplayExactRequired, true);
+          assert.equal(x.technicalEvidenceContract.failedJobMayNotBeDropped, true);
+          assert.equal(x.canonicalMutationAuthorized, false);
+          assert.equal(x.directParameterCalibrationAuthorized, false);
+          assert.equal(x.candidateRetuningAuthorized, false);
+          console.log('WP_RV08_R4_CU_D3D_B7_D1_PREREGISTRATION_GATE', JSON.stringify({
+            candidates, seeds, scenarios, windows, cells,
+            jobs: x.frozenPanel.jobs,
+            modelReplayStates: x.frozenPanel.totalModelReplayStates,
+            interventionId: x.intervention.id
+          }));
+          NODE
+
+  causal-panel:
+    needs: preregistration-gate
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        candidate:
+          - V1_M1_C42
+          - V24_M16_C42
+        case:
+          - long-G__ECON-RV08-LONG-G
+          - long-H__ECON-RV08-LONG-H
+        scenario:
+          - BASELINE_36
+          - SUPPLY_SHOCK_M13
+          - FINANCIAL_CONFIDENCE_STRESS_M13
+    name: D1 ${{ matrix.candidate }} / ${{ matrix.case }} / ${{ matrix.scenario }}
+    runs-on: ubuntu-24.04
+    env:
+      NODE_OPTIONS: --max-old-space-size=7168
+      CANDIDATE: ${{ matrix.candidate }}
+      CASE: ${{ matrix.case }}
+      S3_SCENARIO_ID: ${{ matrix.scenario }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Execute paired O and T cells
+        id: paired
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -uo pipefail
+          LABEL="${CASE%%__*}"
+          SEED="${CASE#*__}"
+          BASE="r4-cu-d3d-b7-d1-${CANDIDATE}-${LABEL}-${S3_SCENARIO_ID}"
+          SOURCE_SCRIPT="economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs"
+          SIGNED_SCRIPT="${SOURCE_SCRIPT}.d1-signed-${GITHUB_RUN_ID}-${CANDIDATE}-${LABEL}-${S3_SCENARIO_ID}.mjs"
+          mkdir -p economic-lab/performance-results
+          node economic-lab/scripts/rv08-r4-cu-d3d-b6-signed-stock-view.mjs "$SOURCE_SCRIPT" "$SIGNED_SCRIPT"
+
+          run_cell() {
+            local CELL="$1"
+            local SOURCE_JSON="economic-lab/performance-results/${BASE}-${CELL}-source.json"
+            local RESULT_JSON="economic-lab/performance-results/${BASE}-${CELL}.json"
+            local LOG="economic-lab/performance-results/${BASE}-${CELL}.log"
+            DIAG_SEED="$SEED" DIAG_MONTHS=36 CANDIDATE="$CANDIDATE" \
+              S3_SCENARIO_ID="$S3_SCENARIO_ID" D1_CELL_ID="$CELL" \
+              OUTPUT_JSON="$SOURCE_JSON" D1_OUTPUT_JSON="$RESULT_JSON" \
+              node economic-lab/scripts/rv08-r4-cu-d3d-b7-d1-cell-runner.mjs "$SIGNED_SCRIPT" \
+              2>&1 | tee "$LOG"
+            local STATUS=${PIPESTATUS[0]}
+            if [ "$STATUS" -eq 0 ]; then
+              rm -f "$SOURCE_JSON"
+            fi
+            return "$STATUS"
+          }
+
+          set +e
+          run_cell O
+          O_STATUS=$?
+          run_cell T
+          T_STATUS=$?
+          set -e
+          rm -f "$SIGNED_SCRIPT"
+          cat > "economic-lab/performance-results/${BASE}-status.json" <<JSON
+          {
+            "candidate": "${CANDIDATE}",
+            "seed": "${SEED}",
+            "scenario": "${S3_SCENARIO_ID}",
+            "observedCellExit": ${O_STATUS},
+            "topologyCellExit": ${T_STATUS}
+          }
+          JSON
+          echo "observed_status=${O_STATUS}" >> "$GITHUB_OUTPUT"
+          echo "topology_status=${T_STATUS}" >> "$GITHUB_OUTPUT"
+          if [ "$O_STATUS" -ne 0 ] || [ "$T_STATUS" -ne 0 ]; then
+            exit 1
+          fi
+      - name: Report paired outcome
+        if: always()
+        run: |
+          echo "O outcome: ${{ steps.paired.outcome }}"
+          echo "O exit: ${{ steps.paired.outputs.observed_status }}"
+          echo "T exit: ${{ steps.paired.outputs.topology_status }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-cu-d3d-b7-d1-pair-${{ matrix.candidate }}-${{ matrix.case }}-${{ matrix.scenario }}
+          path: |
+            economic-lab/performance-results/r4-cu-d3d-b7-d1-${{ matrix.candidate }}-*.json
+            economic-lab/performance-results/r4-cu-d3d-b7-d1-${{ matrix.candidate }}-*.log
+          retention-days: 90
+
+  aggregate:
+    needs: causal-panel
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r4-cu-d3d-b7-d1-pair-*
+          path: downloaded-d1
+          merge-multiple: false
+      - name: Aggregate frozen 12-job 24-cell D1 panel
+        id: aggregate
+        continue-on-error: true
+        run: |
+          mkdir -p economic-lab/performance-results
+          INPUT_ROOT=downloaded-d1 \
+            OUTPUT_JSON=economic-lab/performance-results/r4-cu-d3d-b7-d1-aggregate.json \
+            OUTPUT_MD=economic-lab/performance-results/r4-cu-d3d-b7-d1-summary.md \
+            node economic-lab/scripts/rv08-r4-cu-d3d-b7-d1-aggregate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-cu-d3d-b7-d1-authoritative-aggregate
+          path: |
+            economic-lab/performance-results/r4-cu-d3d-b7-d1-aggregate.json
+            economic-lab/performance-results/r4-cu-d3d-b7-d1-summary.md
+          retention-days: 90
+      - name: Enforce D1 technical aggregation state
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          const path = 'economic-lab/performance-results/r4-cu-d3d-b7-d1-aggregate.json';
+          assert.ok(fs.existsSync(path), 'D1 aggregate JSON missing');
+          const x = JSON.parse(fs.readFileSync(path, 'utf8'));
+          assert.equal(x.schemaVersion, 'r4-cu-d3d-b7-d1-aggregate-v0.1');
+          assert.equal(x.front, 'R4-CU-D3D-B7-D1');
+          assert.equal(x.technicalGates?.ok, true, `D1 technical aggregation failed: ${JSON.stringify(x.technicalGates)}`);
+          assert.ok(['TOPOLOGY_CAUSAL', 'TOPOLOGY_NONCAUSAL'].includes(x.decision));
+          assert.equal(x.interpretation?.canonicalMutationAuthorized, false);
+          console.log('WP_RV08_R4_CU_D3D_B7_D1_AUTHORITATIVE_DECISION', JSON.stringify({
+            status: x.status,
+            decision: x.decision,
+            detailLabel: x.detailLabel,
+            effectSummary: x.effectSummary,
+            routing: x.routing
+          }));
+          NODE
+
+  final-beacon:
+    needs: aggregate
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CU-D3D-B7-D1 supplier-topology causal panel completed; inspect authoritative aggregate for technical and causal decision'
