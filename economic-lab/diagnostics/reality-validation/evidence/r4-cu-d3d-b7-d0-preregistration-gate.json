@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "r4-cu-d3d-b7-d0-preregistration-gate-v0.1",
+  "front": "R4-CU-D3D-B7-D0",
+  "generatedAt": "2026-08-31T09:51:13.338Z",
+  "status": "PASS_FROZEN_SEQUENCED_MIXED_CAUSAL_PREREGISTRATION",
+  "contract": {
+    "path": "economic-lab/diagnostics/reality-validation/r4-cu-d3d-b7-d0-sequenced-mixed-causal-contract.json",
+    "sha256": "d5e0780d389dfc7a7c6a18ba7a95d6b17ec7bee4c88a6f1eb88beab4de0bab69"
+  },
+  "sourceB7": {
+    "closureCommit": "53275393b6906e203640c4db60f00dbd67bd30c8",
+    "workflowRunId": 33371200438,
+    "workflowHeadSha": "9bed96f445e87765431235c9ff7908bf73668e07",
+    "aggregateArtifactId": 9750222167,
+    "aggregateArtifactDigest": "sha256:a77cc56408882ecb5318a2c2dd116a3f5772ff520579bee68dd1b3b63ed381b2",
+    "aggregateJsonSha256": "8618beb8a8de76f87fc553e008be107b19bb332d6d26f5e60e604f0223ccd03c",
+    "decision": "MIXED",
+    "routing": "R4-CU-D3D-B7-D0 sequenced multi-mechanism causal preregistration"
+  },
+  "frozenSequence": [
+    {
+      "order": 1,
+      "front": "R4-CU-D3D-B7-D1",
+      "name": "SUPPLIER_TOPOLOGY_AND_REACHABLE_INVENTORY_CAUSAL_ISOLATION"
+    },
+    {
+      "order": 2,
+      "front": "R4-CU-D3D-B7-D6",
+      "name": "PRICE_COST_AND_VALUE_ADDED_TRANSFORMATION_AUDIT"
+    },
+    {
+      "order": 3,
+      "front": "R4-CU-D3D-B7-D0-R1",
+      "name": "SEQUENCED_TOPOLOGY_VALUE_CAUSAL_RECONCILIATION"
+    }
+  ],
+  "dominantMechanisms": [
+    "INPUT_SUPPLIER_TOPOLOGY_BINDING",
+    "VALUE_TRANSFORMATION_BINDING"
+  ],
+  "gates": {
+    "contractIdentityExact": true,
+    "sourceClosureCommitFrozen": true,
+    "sourceExecutionReceiptExact": true,
+    "sourceAggregateHashExact": true,
+    "sourceAggregateTechnicalPass": true,
+    "sourceDecisionAndRouteExact": true,
+    "completeSourcePanel": true,
+    "dominantMechanismsExact": true,
+    "sourceMechanismEvidenceExact": true,
+    "contractMechanismEvidenceExact": true,
+    "sourcePanelInheritedExactly": true,
+    "causalSequenceExact": true,
+    "counterfactualCellsExact": true,
+    "diagnosticThresholdsFrozen": true,
+    "finalLabelSetExact": true,
+    "technicalEvidenceFailClosed": true,
+    "shadowBoundaryLocked": true,
+    "canonicalAndRetuningLocksExact": true,
+    "closureReceiptTextExact": true,
+    "preregistrationTextExact": true,
+    "ok": true
+  },
+  "nextAuthorizedFront": "R4-CU-D3D-B7-D1 supplier-topology and reachable-inventory causal isolation",
+  "interpretation": {
+    "causalConclusionReached": false,
+    "candidateRetuningAuthorized": false,
+    "canonicalMutationAuthorized": false,
+    "directParameterCalibrationAuthorized": false
+  }
+}
