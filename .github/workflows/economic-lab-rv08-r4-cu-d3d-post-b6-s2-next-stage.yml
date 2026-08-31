@@ -1,0 +1,257 @@
+name: Economic Lab RV08 Post-B6-S2 Next-Stage Bootstrap
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_POST_B6_S2_NEXT_STAGE_BOOTSTRAP_v0.1.md'
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-post-b6-s2-next-stage-bootstrap-contract.json'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-post-b6-s2-resolve.mjs'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b6-next-stage-compat-runner.mjs'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-post-b6-s2-bootstrap-aggregate.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3d-post-b6-s2-next-stage.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: economic-lab-rv08-post-b6-s2-next-stage
+  cancel-in-progress: false
+
+jobs:
+  resolve-route:
+    runs-on: ubuntu-24.04
+    outputs:
+      route: ${{ steps.resolve.outputs.route }}
+      primary: ${{ steps.resolve.outputs.primary }}
+      control: ${{ steps.resolve.outputs.control }}
+      s3_matrix_json: ${{ steps.resolve.outputs.s3_matrix_json }}
+      b7_matrix_json: ${{ steps.resolve.outputs.b7_matrix_json }}
+      months: ${{ steps.resolve.outputs.months }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and frozen-contract gates
+        run: |
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-post-b6-s2-resolve.mjs
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b6-next-stage-compat-runner.mjs
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-post-b6-s2-bootstrap-aggregate.mjs
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          const path = 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-post-b6-s2-next-stage-bootstrap-contract.json';
+          const x = JSON.parse(fs.readFileSync(path, 'utf8'));
+          assert.equal(x.front, 'R4-CU-D3D-POST-B6-S2-BOOTSTRAP');
+          assert.equal(x.status, 'FROZEN_PRE_EXECUTION');
+          assert.equal(x.canonicalMutationAuthorized, false);
+          assert.equal(x.resultDependentRetuningAuthorized, false);
+          assert.deepEqual(x.s3.seeds, ['ECON-RV08-LONGRUN-G', 'ECON-RV08-LONGRUN-H']);
+          assert.equal(x.s3.months, 36);
+          assert.equal(x.s3.candidateSeedJobs, 4);
+          assert.equal(x.b7.candidateSeedJobs, 2);
+          NODE
+      - name: Locate authoritative B6-S2 aggregate
+        id: locate
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          FILE=''
+          for CANDIDATE in \
+            economic-lab/performance-results/r4-cu-d3d-b6-s2-authoritative-aggregate.json \
+            economic-lab/performance-results/r4-cu-d3d-b6-s2-aggregate.json
+          do
+            if [[ -f "$CANDIDATE" ]]; then FILE="$CANDIDATE"; break; fi
+          done
+          if [[ -z "$FILE" ]]; then
+            FILE="$(find economic-lab -type f -iname '*b6-s2*aggregate*.json' | head -n 1 || true)"
+          fi
+          if [[ -z "$FILE" ]]; then
+            RUN_ID="$(gh run list \
+              --workflow economic-lab-rv08-r4-cu-d3d-b6-s2-heldout-replication.yml \
+              --branch scratch/new-project-2026-08-12 \
+              --status success \
+              --limit 1 \
+              --json databaseId \
+              --jq '.[0].databaseId')"
+            test -n "$RUN_ID"
+            mkdir -p /tmp/b6-s2-authoritative
+            gh run download "$RUN_ID" \
+              --name r4-cu-d3d-b6-s2-authoritative-aggregate \
+              --dir /tmp/b6-s2-authoritative
+            FILE="$(find /tmp/b6-s2-authoritative -type f -iname '*aggregate*.json' | head -n 1)"
+          fi
+          test -f "$FILE"
+          echo "path=$FILE" >> "$GITHUB_OUTPUT"
+          echo "Authoritative B6-S2 aggregate: $FILE"
+      - name: Resolve dependency-safe route
+        id: resolve
+        env:
+          S2_AGGREGATE_JSON: ${{ steps.locate.outputs.path }}
+          ROUTE_SNAPSHOT_JSON: /tmp/post-b6-s2-route.json
+        run: node economic-lab/scripts/rv08-r4-cu-d3d-post-b6-s2-resolve.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r4-cu-d3d-post-b6-s2-route
+          path: /tmp/post-b6-s2-route.json
+          retention-days: 90
+
+  s3-long-horizon-screen:
+    needs: resolve-route
+    if: needs.resolve-route.outputs.route == 'S3'
+    timeout-minutes: 70
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.resolve-route.outputs.s3_matrix_json) }}
+    name: B6-S3 bootstrap ${{ matrix.candidate }} / ${{ matrix.seed }}
+    runs-on: ubuntu-24.04
+    env:
+      NODE_OPTIONS: --max-old-space-size=7168
+      CANDIDATE: ${{ matrix.candidate }}
+      DIAG_SEED: ${{ matrix.seed }}
+      DIAG_MONTHS: '36'
+      NEXT_STAGE_SEEDS: ECON-RV08-LONGRUN-G,ECON-RV08-LONGRUN-H
+      NEXT_STAGE_MONTHS: '36'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run frozen 36-month B6-S3 long-horizon bootstrap
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p economic-lab/performance-results
+          OUTPUT_JSON="economic-lab/performance-results/r4-cu-d3d-b6-s3-bootstrap-${CANDIDATE}-${DIAG_SEED}.json" \
+          node economic-lab/scripts/rv08-r4-cu-d3d-b6-next-stage-compat-runner.mjs \
+            economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs \
+          2>&1 | tee "economic-lab/performance-results/r4-cu-d3d-b6-s3-bootstrap-${CANDIDATE}-${DIAG_SEED}.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-cu-d3d-b6-s3-bootstrap-${{ matrix.candidate }}-${{ matrix.seed }}
+          path: economic-lab/performance-results/r4-cu-d3d-b6-s3-bootstrap-${{ matrix.candidate }}-${{ matrix.seed }}.*
+          retention-days: 90
+
+  b7-structural-baseline-screen:
+    needs: resolve-route
+    if: needs.resolve-route.outputs.route == 'B7'
+    timeout-minutes: 70
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.resolve-route.outputs.b7_matrix_json) }}
+    name: B7 baseline ${{ matrix.candidate }} / ${{ matrix.seed }}
+    runs-on: ubuntu-24.04
+    env:
+      NODE_OPTIONS: --max-old-space-size=7168
+      CANDIDATE: ${{ matrix.candidate }}
+      DIAG_SEED: ${{ matrix.seed }}
+      DIAG_MONTHS: '36'
+      NEXT_STAGE_SEEDS: ECON-RV08-LONGRUN-G,ECON-RV08-LONGRUN-H
+      NEXT_STAGE_MONTHS: '36'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run frozen 36-month B7 canonical structural baseline
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p economic-lab/performance-results
+          OUTPUT_JSON="economic-lab/performance-results/r4-cu-d3d-b7-baseline-${CANDIDATE}-${DIAG_SEED}.json" \
+          node economic-lab/scripts/rv08-r4-cu-d3d-b6-next-stage-compat-runner.mjs \
+            economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs \
+          2>&1 | tee "economic-lab/performance-results/r4-cu-d3d-b7-baseline-${CANDIDATE}-${DIAG_SEED}.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-cu-d3d-b7-baseline-${{ matrix.candidate }}-${{ matrix.seed }}
+          path: economic-lab/performance-results/r4-cu-d3d-b7-baseline-${{ matrix.candidate }}-${{ matrix.seed }}.*
+          retention-days: 90
+
+  s3-bootstrap-aggregate:
+    needs: [resolve-route, s3-long-horizon-screen]
+    if: needs.resolve-route.outputs.route == 'S3' && needs.s3-long-horizon-screen.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r4-cu-d3d-b6-s3-bootstrap-*
+          path: downloaded-next-stage
+          merge-multiple: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: r4-cu-d3d-post-b6-s2-route
+          path: downloaded-route
+      - name: Aggregate B6-S3 long-horizon bootstrap
+        run: |
+          mkdir -p economic-lab/performance-results
+          ROUTE_JSON=downloaded-route/post-b6-s2-route.json \
+          RESULTS_ROOT=downloaded-next-stage \
+          OUTPUT_JSON=economic-lab/performance-results/r4-cu-d3d-b6-s3-bootstrap-aggregate.json \
+          OUTPUT_MD=economic-lab/performance-results/r4-cu-d3d-b6-s3-bootstrap-summary.md \
+          node economic-lab/scripts/rv08-r4-cu-d3d-post-b6-s2-bootstrap-aggregate.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r4-cu-d3d-b6-s3-bootstrap-authoritative
+          path: |
+            economic-lab/performance-results/r4-cu-d3d-b6-s3-bootstrap-aggregate.json
+            economic-lab/performance-results/r4-cu-d3d-b6-s3-bootstrap-summary.md
+          retention-days: 90
+
+  b7-bootstrap-aggregate:
+    needs: [resolve-route, b7-structural-baseline-screen]
+    if: needs.resolve-route.outputs.route == 'B7' && needs.b7-structural-baseline-screen.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r4-cu-d3d-b7-baseline-*
+          path: downloaded-next-stage
+          merge-multiple: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: r4-cu-d3d-post-b6-s2-route
+          path: downloaded-route
+      - name: Aggregate B7 structural baseline bootstrap
+        run: |
+          mkdir -p economic-lab/performance-results
+          ROUTE_JSON=downloaded-route/post-b6-s2-route.json \
+          RESULTS_ROOT=downloaded-next-stage \
+          OUTPUT_JSON=economic-lab/performance-results/r4-cu-d3d-b7-baseline-bootstrap-aggregate.json \
+          OUTPUT_MD=economic-lab/performance-results/r4-cu-d3d-b7-baseline-bootstrap-summary.md \
+          node economic-lab/scripts/rv08-r4-cu-d3d-post-b6-s2-bootstrap-aggregate.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r4-cu-d3d-b7-baseline-bootstrap-authoritative
+          path: |
+            economic-lab/performance-results/r4-cu-d3d-b7-baseline-bootstrap-aggregate.json
+            economic-lab/performance-results/r4-cu-d3d-b7-baseline-bootstrap-summary.md
+          retention-days: 90
+
+  final-beacon:
+    needs: [resolve-route, s3-bootstrap-aggregate, b7-bootstrap-aggregate]
+    if: >-
+      always() &&
+      needs.resolve-route.result == 'success' &&
+      (needs.s3-bootstrap-aggregate.result == 'success' || needs.b7-bootstrap-aggregate.result == 'success')
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'Post-B6-S2 dependency-safe next-stage bootstrap completed'
