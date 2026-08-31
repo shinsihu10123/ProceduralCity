@@ -1,0 +1,68 @@
+name: Economic Lab RV08 R4-CU-D3D-B3 Model-Side National Accounts Gate
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B3_MODEL_SIDE_NATIONAL_ACCOUNTS_RECONSTRUCTION_DESIGN_v0.1.md'
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b3-model-side-national-accounts-contract.json'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b3-model-side-national-accounts.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3d-b3-model-side-national-accounts.yml'
+  workflow_dispatch:
+
+jobs:
+  launch-beacon:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CU-D3D-B3 model-side national accounts reconstruction launched'
+
+  model-side-national-accounts:
+    needs: launch-beacon
+    strategy:
+      fail-fast: false
+      matrix:
+        case:
+          - original-A__ECON-RV02-A
+          - original-C__ECON-RV02-C
+          - heldout-E__ECON-RV08-HOLDOUT-E
+          - heldout-F__ECON-RV08-HOLDOUT-F
+    name: R4-CU-D3D-B3 ${{ matrix.case }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      NODE_OPTIONS: --max-old-space-size=7168
+      CASE: ${{ matrix.case }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax gate
+        run: node --check economic-lab/scripts/rv08-r4-cu-d3d-b3-model-side-national-accounts.mjs
+      - name: Validate measurement contract JSON
+        run: node -e "const fs=require('fs'); const p='economic-lab/diagnostics/reality-validation/r4-cu-d3d-b3-model-side-national-accounts-contract.json'; const x=JSON.parse(fs.readFileSync(p,'utf8')); if(x.front!=='R4-CU-D3D-B3'||x.canonicalMutationAuthorized!==false) process.exit(1);"
+      - name: Run 24-month model-side national accounts reconstruction
+        shell: bash
+        run: |
+          set -o pipefail
+          LABEL="${CASE%%__*}"
+          SEED="${CASE#*__}"
+          mkdir -p economic-lab/performance-results
+          DIAG_SEED="$SEED" DIAG_MONTHS=24 \
+          OUTPUT_JSON="economic-lab/performance-results/r4-cu-d3d-b3-${LABEL}.json" \
+          node economic-lab/scripts/rv08-r4-cu-d3d-b3-model-side-national-accounts.mjs \
+          2>&1 | tee "economic-lab/performance-results/r4-cu-d3d-b3-${LABEL}.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-cu-d3d-b3-${{ matrix.case }}
+          path: economic-lab/performance-results/r4-cu-d3d-b3-*
+          retention-days: 90
+
+  final-beacon:
+    needs: model-side-national-accounts
+    if: always() && needs.model-side-national-accounts.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CU-D3D-B3 four-seed reconstruction matrix completed'
