@@ -1,0 +1,53 @@
+name: Economic Lab RV08 R4-CU-D3D-B4 Empirical-Model Gap Gate
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B4_EMPIRICAL_MODEL_GAP_ADMISSIBILITY_DESIGN_v0.1.md'
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b4-empirical-model-gap-contract.json'
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b3-authoritative-summary.json'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b3-model-side-national-accounts.mjs'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b4-empirical-model-gap.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3d-b4-empirical-model-gap.yml'
+  workflow_dispatch:
+
+jobs:
+  empirical-model-gap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      NODE_OPTIONS: --max-old-space-size=7168
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax gates
+        run: |
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b3-model-side-national-accounts.mjs
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b4-empirical-model-gap.mjs
+      - name: Validate B4 contract JSON
+        run: node -e "const fs=require('fs'); const p='economic-lab/diagnostics/reality-validation/r4-cu-d3d-b4-empirical-model-gap-contract.json'; const x=JSON.parse(fs.readFileSync(p,'utf8')); if(x.front!=='R4-CU-D3D-B4'||x.canonicalMutationAuthorized!==false||x.directParameterCalibrationAuthorized!==false) process.exit(1);"
+      - name: Run four-seed empirical-model gap and admissibility audit
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p economic-lab/performance-results
+          OUTPUT_JSON="economic-lab/performance-results/r4-cu-d3d-b4-empirical-model-gap.json" \
+          node economic-lab/scripts/rv08-r4-cu-d3d-b4-empirical-model-gap.mjs \
+          2>&1 | tee economic-lab/performance-results/r4-cu-d3d-b4-empirical-model-gap.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-cu-d3d-b4-empirical-model-gap
+          path: economic-lab/performance-results/r4-cu-d3d-b4-*
+          retention-days: 90
+
+  final-beacon:
+    needs: empirical-model-gap
+    if: always() && needs.empirical-model-gap.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CU-D3D-B4 empirical-model gap gate completed'
