@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3C",
+  "canonicalMutationAuthorized": false,
+  "numericCalibrationRangesAuthorized": false,
+  "purpose": "Execute the first reproducible official country-year extraction against the frozen D3B cohorts and compute provisional descriptive bands with coverage and dispersion.",
+  "source": {
+    "publisher": "OECD",
+    "dataset": "OECD.SDD.NAD,DSD_NAAG_IV@DF_NAAG_IV,1.0",
+    "metric": "manufacturing gross value added share",
+    "measure": "B1G",
+    "activity": "C",
+    "unit": "PT_B1G",
+    "frequency": "A",
+    "requestedYears": [2021, 2022, 2023, 2024],
+    "primaryBalancedYears": [2021, 2022, 2023],
+    "latestYearRole": "2024 descriptive snapshot subject to official availability"
+  },
+  "extractionRules": {
+    "membershipSource": "r4-cu-d3b-reference-membership-register.json",
+    "membershipSubstitutionAllowed": false,
+    "rawCountryYearPanelRequired": true,
+    "rawResponseHashRequired": true,
+    "sourceMetadataRequired": true,
+    "countryLevelAggregation": "arithmetic mean over the complete 2021-2023 balanced window",
+    "crossCountryAggregation": "unweighted distribution of country-level means",
+    "statisticsRequired": ["min", "p25", "median", "p75", "max", "iqr", "mean"],
+    "minimumIndependentEconomiesPerClass": 5,
+    "maximumCountryYearMissingShare": 0.25,
+    "numericTransformation": "none beyond parsing the OECD percentage observation",
+    "outlierExclusionAllowed": false
+  },
+  "interpretation": {
+    "status": "PROVISIONAL_REFERENCE_BAND_ONLY",
+    "allowedUse": [
+      "reference-class characterization",
+      "coverage and dispersion assessment",
+      "manufacturing-intensity membership sanity check"
+    ],
+    "blockedUse": [
+      "direct MATERIALS-sector calibration",
+      "direct CAPITAL-sector calibration",
+      "direct CONSUMER-sector calibration",
+      "fictional-country direct copying",
+      "canonical parameter mutation"
+    ]
+  },
+  "hardGates": [
+    "official dataset identifier exact",
+    "frozen memberships unchanged",
+    "raw panel retained",
+    "all values within percentage bounds",
+    "at least five complete primary-window economies per class",
+    "missingness at or below 25 percent",
+    "provisional bands not promoted to calibration targets",
+    "canonical mutation remains locked"
+  ],
+  "nextFront": "R4-CU-D3D source snapshot closure and multi-indicator empirical-band expansion after D3C evidence review"
+}
