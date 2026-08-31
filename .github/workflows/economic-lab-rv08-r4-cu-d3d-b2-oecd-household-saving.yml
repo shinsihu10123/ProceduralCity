@@ -1,0 +1,41 @@
+name: Economic Lab RV08 R4-CU-D3D-B2 OECD Household Saving
+
+on:
+  push:
+    branches: [scratch/new-project-2026-08-12]
+    paths:
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3b-reference-membership-register.json'
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b2-oecd-household-saving-extraction-contract.json'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b2-oecd-household-saving-extraction.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3d-b2-oecd-household-saving.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  official-oecd-extraction:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax gate
+        run: node --check economic-lab/scripts/rv08-r4-cu-d3d-b2-oecd-household-saving-extraction.mjs
+      - name: Extract official OECD household-saving panel
+        run: node economic-lab/scripts/rv08-r4-cu-d3d-b2-oecd-household-saving-extraction.mjs
+      - name: Upload raw response, provenance and descriptors
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r4-cu-d3d-b2-oecd-household-saving
+          path: artifacts/r4-cu-d3d-b2/
+          if-no-files-found: warn
+          retention-days: 30
+  final-beacon:
+    needs: official-oecd-extraction
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CU-D3D-B2 OECD household-saving extraction validated; desiredConsumptionBudget mapping remains blocked'
