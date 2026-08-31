@@ -48,7 +48,7 @@ const gateRows = Object.entries(aggregate.technicalGates || {})
 const panelRows = (aggregate.panelEvaluations || []).flatMap((panel) =>
   (panel.windows || []).map((window) =>
     `| ${panel.candidateId} | ${panel.seed} | ${panel.scenario?.id || 'UNKNOWN'} | ${window.window?.id || 'UNKNOWN'} | ${(window.qualifiedLabels || []).join(', ') || 'NONE'} | ${fmt(window.metrics?.inputShortageRate)} | ${fmt(window.metrics?.topologyShareOfShortage)} | ${fmt(window.metrics?.cashShareOfShortage)} | ${fmt(window.metrics?.searchExecutionShareOfShortage)} | ${fmt(window.metrics?.salesToPlanRatio)} | ${fmt(window.metrics?.inventoryAboveTargetRatio)} | ${fmt(window.metrics?.goodsUnmetShare)} | ${fmt(window.metrics?.nonPositiveGvaCountryMonthShare)} | ${fmt(window.metrics?.belowCostRevenueShare)} |`
-  })
+  )
 ).join('\n');
 
 const dominant = aggregate.dominantPrimaryLabels?.length
