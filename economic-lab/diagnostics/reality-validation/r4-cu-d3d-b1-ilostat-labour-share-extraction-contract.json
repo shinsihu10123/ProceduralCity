@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3D-B1",
+  "canonicalMutationAuthorized": false,
+  "numericCalibrationRangesAuthorized": false,
+  "purpose": "Extract a reproducible official ILOSTAT labour-income-share panel for the frozen D3B reference cohorts and compute provisional dimensionless reference descriptors.",
+  "source": {
+    "publisher": "International Labour Organization",
+    "system": "ILOSTAT",
+    "database": "SDG Labour Market Indicators",
+    "datasetId": "SDG_1041_NOC_RT_A",
+    "indicatorCode": "SDG_1041_NOC_RT",
+    "indicatorLabel": "SDG indicator 10.4.1 - Labour income share as a percent of GDP (%)",
+    "endpoint": "https://rplumber.ilo.org/data/indicator/",
+    "frequency": "annual",
+    "requestedYears": [2021, 2022, 2023, 2024],
+    "primaryBalancedYears": [2021, 2022, 2023]
+  },
+  "semanticContract": {
+    "externalNumerator": "total labour income, including the ILO treatment of employee and self-employed labour income",
+    "externalDenominator": "gross domestic product",
+    "externalUnit": "percent",
+    "modelRole": "national dimensionless labour-compensation plausibility anchor",
+    "notEquivalentTo": [
+      "mean firm wage",
+      "firm payroll divided by gross sales",
+      "household wage income alone",
+      "sector-specific real unit labour cost",
+      "a direct canonical wage multiplier"
+    ],
+    "translationDependency": "model national value-added and total labour-compensation measurement must be reconstructed before comparison"
+  },
+  "extractionRules": {
+    "membershipSource": "r4-cu-d3b-reference-membership-register.json",
+    "membershipSubstitutionAllowed": false,
+    "queryParameters": {
+      "type": "both",
+      "format": ".csv"
+    },
+    "rawResponseRetentionRequired": true,
+    "rawResponseHashRequired": true,
+    "sourceAndObservationStatusRetentionRequired": true,
+    "duplicateCountryYearPolicy": "FAIL_WITHOUT_POST_HOC_SOURCE_SELECTION",
+    "countryLevelAggregation": "arithmetic mean over complete 2021-2023 observations",
+    "crossCountryAggregation": "unweighted distribution of complete-country means",
+    "minimumIndependentEconomiesPerClass": 5,
+    "maximumCountryYearMissingShare": 0.25,
+    "outlierExclusionAllowed": false,
+    "valueBoundsPercent": [0, 100]
+  },
+  "coveragePolicy": {
+    "thresholdMayNotBeLoweredAfterObservation": true,
+    "missingMemberMayNotBeSubstitutedAfterObservation": true,
+    "classBelowMinimumStatus": "BLOCKED_INSUFFICIENT_COMPLETE_ECONOMIES",
+    "classAboveMissingnessLimitStatus": "BLOCKED_EXCESSIVE_MISSINGNESS",
+    "blockedClassMayRemainDescriptive": true,
+    "blockedClassMayNotPublishProvisionalBand": true,
+    "blockedClassDoesNotInvalidateSuccessfulOfficialExtraction": true
+  },
+  "interpretation": {
+    "status": "PROVISIONAL_REFERENCE_DESCRIPTOR_ONLY",
+    "allowedUse": [
+      "reference-class labour-share characterization",
+      "cross-seed calibration-vector plausibility constraint after model-side value-added reconstruction",
+      "coverage and dispersion assessment"
+    ],
+    "blockedUse": [
+      "direct wage calibration",
+      "direct productivity calibration",
+      "direct fictional-country copying",
+      "canonical parameter mutation"
+    ]
+  },
+  "executionHardGates": [
+    "official ILOSTAT dataset and indicator exact",
+    "frozen membership unchanged",
+    "raw response retained and hashed",
+    "source and observation status retained",
+    "country-year uniqueness or explicit extraction failure",
+    "values within 0 to 100 percent",
+    "every class explicitly admitted or blocked",
+    "no provisional descriptor promoted to a calibration target",
+    "canonical mutation remains locked"
+  ],
+  "nextFront": "R4-CU-D3D-B2 household saving and realized-consumption share extraction specification"
+}
