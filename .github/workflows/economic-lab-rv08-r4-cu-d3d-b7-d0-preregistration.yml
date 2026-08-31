@@ -1,0 +1,101 @@
+name: Economic Lab RV08 R4-CU-D3D-B7-D0 Preregistration
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b7-d0-sequenced-mixed-causal-contract.json'
+      - 'economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B7_D0_SEQUENCED_MIXED_CAUSAL_PREREGISTRATION_v0.1.md'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b7-d0-contract-gate.mjs'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b7-d0-closure.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3d-b7-d0-preregistration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: r4-cu-d3d-b7-d0-preregistration-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  freeze-sequenced-mixed-causal-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SOURCE_BRANCH: scratch/new-project-2026-08-12
+      SOURCE_B7_CLOSURE_COMMIT: 53275393b6906e203640c4db60f00dbd67bd30c8
+      GATE_JSON: economic-lab/diagnostics/reality-validation/evidence/r4-cu-d3d-b7-d0-preregistration-gate.json
+      CLOSURE_MD: economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B7_D0_CLOSURE_v0.1.md
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: scratch/new-project-2026-08-12
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax gates
+        run: |
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b7-d0-contract-gate.mjs
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b7-d0-closure.mjs
+      - name: Verify frozen B7 dependency is ancestral
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "${SOURCE_B7_CLOSURE_COMMIT}^{commit}"
+          git merge-base --is-ancestor "${SOURCE_B7_CLOSURE_COMMIT}" HEAD
+      - name: Execute frozen D0 contract gate
+        env:
+          OUTPUT_JSON: ${{ env.GATE_JSON }}
+        run: |
+          node economic-lab/scripts/rv08-r4-cu-d3d-b7-d0-contract-gate.mjs
+      - name: Generate D0 closure
+        env:
+          SOURCE_RUN_ID: ${{ github.run_id }}
+          SOURCE_HEAD_SHA: ${{ github.sha }}
+          SOURCE_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node economic-lab/scripts/rv08-r4-cu-d3d-b7-d0-closure.mjs "$GATE_JSON" "$CLOSURE_MD"
+      - name: Validate generated receipt and closure
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          const gate = JSON.parse(fs.readFileSync(process.env.GATE_JSON, 'utf8'));
+          const closure = fs.readFileSync(process.env.CLOSURE_MD, 'utf8');
+          assert.equal(gate.front, 'R4-CU-D3D-B7-D0');
+          assert.equal(gate.status, 'PASS_FROZEN_SEQUENCED_MIXED_CAUSAL_PREREGISTRATION');
+          assert.equal(gate.gates.ok, true);
+          assert.equal(gate.sourceB7.decision, 'MIXED');
+          assert.equal(gate.interpretation.causalConclusionReached, false);
+          assert.equal(gate.interpretation.canonicalMutationAuthorized, false);
+          assert.equal(gate.nextAuthorizedFront, 'R4-CU-D3D-B7-D1 supplier-topology and reachable-inventory causal isolation');
+          assert.ok(closure.includes('SEQUENCED MIXED CAUSAL PREREGISTRATION PASSED'));
+          assert.ok(closure.includes('NO CAUSAL MECHANISM YET CONFIRMED'));
+          assert.ok(closure.includes('CANONICAL MUTATION NOT AUTHORIZED'));
+          NODE
+      - name: Persist authoritative D0 receipt and closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$GATE_JSON" "$CLOSURE_MD"
+          if git diff --cached --quiet; then
+            echo 'D0 preregistration evidence is already persisted.'
+            exit 0
+          fi
+          git commit -m 'docs(econ): close R4-CU-D3D-B7-D0 preregistration route D1'
+          git pull --rebase origin "$SOURCE_BRANCH"
+          git push origin "HEAD:$SOURCE_BRANCH"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r4-cu-d3d-b7-d0-preregistration-evidence
+          path: |
+            economic-lab/diagnostics/reality-validation/evidence/r4-cu-d3d-b7-d0-preregistration-gate.json
+            economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B7_D0_CLOSURE_v0.1.md
+          retention-days: 90
+      - name: Final beacon
+        run: echo 'R4-CU-D3D-B7-D0 preregistration frozen; next authorized front is D1'
