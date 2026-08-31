@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url';
 const ROOT = process.cwd();
 const CONTRACT_PATH = resolve(ROOT, 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b7-d1-supplier-topology-causal-contract.json');
 const D1_INTERVENTION_SOURCE_PATH = resolve(ROOT, 'economic-lab/src/research/d1-topology-neutral-procurement.js');
-const B7_RUNNER_PATH = resolve(ROOT, 'economic-lab/scripts/rv08-r4-cu-d3d-b7-diagnostic-runner.mjs');
+const B7_RUNNER_SOURCE_PATH = resolve(ROOT, 'economic-lab/scripts/rv08-r4-cu-d3d-b7-diagnostic-runner.mjs');
 const sourceTarget = process.argv[2];
 const sourceOutput = process.env.OUTPUT_JSON ? resolve(process.env.OUTPUT_JSON) : null;
 const outputJson = process.env.D1_OUTPUT_JSON ? resolve(process.env.D1_OUTPUT_JSON) : null;
@@ -58,6 +58,22 @@ function replaceExactlyOnce(source, needle, replacement, label) {
 
 function temporaryPath(sourcePath, label) {
   return resolve(dirname(sourcePath), `${basename(sourcePath)}.${label}-${process.pid}-${Date.now()}.mjs`);
+}
+
+function buildB7RunnerCompatibilityView() {
+  const original = readFileSync(B7_RUNNER_SOURCE_PATH, 'utf8');
+  const needle = "    assert.ok(state, \\`${countryId}/${month}: goods observer has no active B7 replay\\`);";
+  const replacement = "    assert.ok(state, \\`\\${countryId}/\\${month}: goods observer has no active B7 replay\\`);";
+  const patched = replaceExactlyOnce(original, needle, replacement, 'b7-runner-goods-template-preservation');
+  const runtimePath = temporaryPath(B7_RUNNER_SOURCE_PATH, 'd1-b7-runner-runtime');
+  writeFileSync(runtimePath, patched);
+  return {
+    runtimePath,
+    originalSha256: sha256(original),
+    patchedSha256: sha256(patched),
+    replacementCount: 1,
+    sourceMutationAuthorized: false
+  };
 }
 
 function buildD1InterventionCompatibilityView() {
@@ -179,12 +195,21 @@ const compatibilityViews = {};
 const previousArgvTarget = process.argv[2];
 const previousB7Output = process.env.B7_OUTPUT_JSON;
 const nestedB7Output = resolve(dirname(outputJson), `${basename(outputJson, '.json')}.nested-b7-${process.pid}.json`);
+let b7RunnerView = null;
 let interventionView = null;
 let targetView = null;
 let intervention = null;
 let caught = null;
 
 try {
+  b7RunnerView = buildB7RunnerCompatibilityView();
+  compatibilityViews.b7Runner = {
+    originalSha256: b7RunnerView.originalSha256,
+    patchedSha256: b7RunnerView.patchedSha256,
+    replacementCount: b7RunnerView.replacementCount,
+    sourceMutationAuthorized: false
+  };
+
   if (cellId === 'T') {
     interventionView = buildD1InterventionCompatibilityView();
     compatibilityViews.d1Intervention = {
@@ -207,7 +232,7 @@ try {
   }
 
   process.env.B7_OUTPUT_JSON = nestedB7Output;
-  await import(pathToFileURL(B7_RUNNER_PATH).href);
+  await import(pathToFileURL(b7RunnerView.runtimePath).href);
 
   const b7 = JSON.parse(readFileSync(nestedB7Output, 'utf8'));
   const sourceText = readFileSync(sourceOutput, 'utf8');
@@ -343,7 +368,7 @@ try {
   process.argv[2] = previousArgvTarget;
   if (previousB7Output === undefined) delete process.env.B7_OUTPUT_JSON;
   else process.env.B7_OUTPUT_JSON = previousB7Output;
-  for (const path of [interventionView?.runtimePath, targetView?.runtimePath, nestedB7Output]) {
+  for (const path of [b7RunnerView?.runtimePath, interventionView?.runtimePath, targetView?.runtimePath, nestedB7Output]) {
     if (!path) continue;
     try {
       unlinkSync(path);
