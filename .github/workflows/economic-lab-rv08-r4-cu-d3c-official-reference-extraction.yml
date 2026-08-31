@@ -1,0 +1,41 @@
+name: Economic Lab RV08 R4-CU-D3C Official Reference Extraction
+
+on:
+  push:
+    branches: [scratch/new-project-2026-08-12]
+    paths:
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3b-reference-membership-register.json'
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3c-official-extraction-contract.json'
+      - 'economic-lab/scripts/rv08-r4-cu-d3c-official-reference-extraction.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3c-official-reference-extraction.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  official-reference-extraction:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax gate
+        run: node --check economic-lab/scripts/rv08-r4-cu-d3c-official-reference-extraction.mjs
+      - name: Extract OECD panel and compute provisional class bands
+        run: node economic-lab/scripts/rv08-r4-cu-d3c-official-reference-extraction.mjs
+      - name: Upload raw panel, provenance and provisional bands
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r4-cu-d3c-official-reference-extraction
+          path: artifacts/r4-cu-d3c/
+          if-no-files-found: warn
+          retention-days: 30
+  final-beacon:
+    needs: official-reference-extraction
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CU-D3C official OECD reference extraction validated; bands remain non-calibrating'
