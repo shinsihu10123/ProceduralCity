@@ -1,0 +1,149 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3D-B6-S3",
+  "status": "FROZEN_BEFORE_LONG_HORIZON_STRESS_EXECUTION",
+  "canonicalMutationAuthorized": false,
+  "directParameterCalibrationAuthorized": false,
+  "purpose": "Validate the single B6-S2 primary replicated causal family over a 36-month horizon and preregistered adverse supply and confidence-financial stress paths without retuning.",
+  "sourceStage2": {
+    "closure": "economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B6_S2_CLOSURE_v0.1.md",
+    "closureCommit": "ed745e466cc3fee064a359ba28f33a50b0f67e28",
+    "workflowRunId": 33359245264,
+    "workflowHeadSha": "afe69ad54fde20bd62ea2527c757a6416b027249",
+    "aggregateArtifactId": 9746153192,
+    "aggregateArtifactDigest": "sha256:57b745f6c5abda572cf06cd2fd56e067f80c2a3a668ff959fb86ba665227a15b",
+    "aggregateJsonSha256": "3a08ec790636bc239757567eed5c265c9cf369c30e526c518fdbb00a2377f41f",
+    "replicatedCandidates": ["V24_M16_C42", "V1_M4_C42", "V1_M16_C42"],
+    "primaryCandidateId": "V24_M16_C42",
+    "primarySelectionRetuningAuthorized": false
+  },
+  "candidatePanel": [
+    { "id": "V1_M1_C42", "role": "CANONICAL_CONTROL", "control": true, "V": 1, "M": 1, "W": "C42" },
+    { "id": "V24_M16_C42", "role": "FROZEN_STAGE2_PRIMARY", "control": false, "V": 24, "M": 16, "W": "C42" }
+  ],
+  "execution": {
+    "validationSeeds": [
+      { "case": "long-G", "seed": "ECON-RV08-LONG-G", "priorUse": "NONE_BEFORE_S3" },
+      { "case": "long-H", "seed": "ECON-RV08-LONG-H", "priorUse": "NONE_BEFORE_S3" }
+    ],
+    "months": 36,
+    "shockMonth": 13,
+    "windows": [
+      { "id": "FULL_36", "startMonth": 1, "endMonth": 36, "role": "FULL_HORIZON" },
+      { "id": "TERMINAL_12", "startMonth": 25, "endMonth": 36, "role": "POST_STRESS_PERSISTENCE_AND_RECOVERY" }
+    ],
+    "scenarios": [
+      {
+        "id": "BASELINE_36",
+        "role": "UNSHOCKED_LONG_HORIZON",
+        "schedule": []
+      },
+      {
+        "id": "SUPPLY_SHOCK_M13",
+        "role": "ADVERSE_REAL_PRODUCTIVITY_STRESS",
+        "schedule": [
+          {
+            "id": "B6S3-SUPPLY-075-M13",
+            "month": 13,
+            "countryId": "*",
+            "kind": "productivity_shock",
+            "factor": 0.75
+          }
+        ]
+      },
+      {
+        "id": "FINANCIAL_CONFIDENCE_STRESS_M13",
+        "role": "COMPOUND_CONFIDENCE_AND_BANK_RISK_STRESS",
+        "schedule": [
+          {
+            "id": "B6S3-CONFIDENCE-N035-M13",
+            "month": 13,
+            "countryId": "*",
+            "kind": "confidence_shock",
+            "delta": -0.35,
+            "agentKinds": ["household", "firm", "bank"]
+          },
+          {
+            "id": "B6S3-BANK-RISK-P035-M13",
+            "month": 13,
+            "countryId": "*",
+            "kind": "bank_risk_shock",
+            "delta": 0.35
+          }
+        ]
+      }
+    ],
+    "candidateJobs": 2,
+    "seedJobs": 2,
+    "scenarioJobs": 3,
+    "candidateSeedScenarioJobs": 12,
+    "scaleProfile": "baseline",
+    "exactReplayRequired": true,
+    "hardAccountingHealthRequired": true,
+    "aggregateAfterAllJobs": true
+  },
+  "empiricalShadowScoringBands": {
+    "labourIncomeShare": [0.521557, 0.607117],
+    "realizedConsumptionShare": [0.883763, 0.979344],
+    "role": "EXTERNAL_VALIDATION_ONLY",
+    "directCanonicalTarget": false
+  },
+  "eligibility": {
+    "requiresEveryValidationSeed": true,
+    "requiresEveryScenario": true,
+    "requiresEveryWindow": true,
+    "labourDistanceStrictlyImprovesVsControl": true,
+    "consumptionDistanceStrictlyImprovesVsControl": true,
+    "maximumMedianInputShortageRatioVsControl": 1.0,
+    "minimumMedianActiveFirmRatioVsControl": 0.5,
+    "minimumMedianPurchasingPowerRatioVsControl": 0.8,
+    "positiveGvaRowsRequired": true,
+    "positiveIncomeRowsRequired": true,
+    "strictImprovementEpsilon": 0,
+    "exactReplayRequired": true,
+    "accountingHealthRequired": true,
+    "protectedSurfaceRequired": true,
+    "scenarioScheduleIdentityRequired": true,
+    "scenarioEventReplayRequired": true,
+    "noPassDecision": "LONG_HORIZON_OR_STRESS_VALIDATION_FAILED_NO_RETUNING"
+  },
+  "stressApplicationContract": {
+    "sameScheduleAppliedToPairedControlAndPrimary": true,
+    "scheduleInstalledBeforeMonthOne": true,
+    "shockAppliedImmediatelyBeforeFrozenShockMonth": true,
+    "eventKindsRestrictedToExistingExperimentSystem": [
+      "productivity_shock",
+      "confidence_shock",
+      "bank_risk_shock"
+    ],
+    "scenarioValuesAreCalibratedParameters": false,
+    "postExecutionScenarioMutationAuthorized": false,
+    "postExecutionCandidateMutationAuthorized": false
+  },
+  "ranking": {
+    "candidateRankingPerformed": false,
+    "primaryAlreadyFrozenByStage2": true,
+    "postHocGateRelaxationAuthorized": false,
+    "failedPanelSuppressionAuthorized": false
+  },
+  "blockedMutations": [
+    "candidate identity",
+    "V24 value-productivity factor",
+    "M16 material-efficiency divisor",
+    "C42 procurement cash-budget share",
+    "prices",
+    "wages",
+    "opening cash or wealth",
+    "desiredConsumptionBudget",
+    "tax rates",
+    "goods-market rules",
+    "canonical bank underwriting",
+    "trade-credit rules",
+    "validation seeds",
+    "scenario schedules",
+    "36-month horizon",
+    "full and terminal measurement windows"
+  ],
+  "nextFrontIfPass": "R4-CU-D3D-B6-S4 canonical-change preregistration and safety review",
+  "nextFrontIfFail": "R4-CU-D3D-B7 demand-inventory topology and value-transformation diagnosis"
+}

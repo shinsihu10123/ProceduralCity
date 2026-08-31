@@ -1,0 +1,159 @@
+name: Economic Lab RV08 R4-CU-D3D-B6-S3 Long-Horizon Stress Validation
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b6-s3-long-horizon-stress-contract.json'
+      - 'economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B6_S3_LONG_HORIZON_STRESS_PREREGISTRATION_v0.1.md'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b6-s3-contract-compat-runner.mjs'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b6-s3-relabel-result.mjs'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b6-s3-aggregate.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3d-b6-s3-long-horizon-stress.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preregistration-gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax gates
+        run: |
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b6-s3-contract-compat-runner.mjs
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b6-s3-relabel-result.mjs
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b6-s3-aggregate.mjs
+      - name: Validate frozen S3 contract
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          const path = 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b6-s3-long-horizon-stress-contract.json';
+          const x = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const ids = x.candidatePanel.map(entry => entry.id);
+          const seeds = x.execution.validationSeeds.map(entry => entry.seed);
+          const scenarios = new Map(x.execution.scenarios.map(entry => [entry.id, entry]));
+          assert.equal(x.schemaVersion, '1.0');
+          assert.equal(x.front, 'R4-CU-D3D-B6-S3');
+          assert.equal(x.status, 'FROZEN_BEFORE_LONG_HORIZON_STRESS_EXECUTION');
+          assert.equal(x.sourceStage2.closureCommit, 'ed745e466cc3fee064a359ba28f33a50b0f67e28');
+          assert.equal(x.sourceStage2.primaryCandidateId, 'V24_M16_C42');
+          assert.deepEqual(ids, ['V1_M1_C42', 'V24_M16_C42']);
+          assert.deepEqual(seeds, ['ECON-RV08-LONG-G', 'ECON-RV08-LONG-H']);
+          assert.equal(x.execution.months, 36);
+          assert.equal(x.execution.shockMonth, 13);
+          assert.equal(x.execution.candidateSeedScenarioJobs, 12);
+          assert.equal(x.execution.windows.length, 2);
+          assert.equal(scenarios.get('BASELINE_36').schedule.length, 0);
+          assert.deepEqual(scenarios.get('SUPPLY_SHOCK_M13').schedule, [{ id: 'B6S3-SUPPLY-075-M13', month: 13, countryId: '*', kind: 'productivity_shock', factor: 0.75 }]);
+          assert.equal(scenarios.get('FINANCIAL_CONFIDENCE_STRESS_M13').schedule.length, 2);
+          assert.equal(scenarios.get('FINANCIAL_CONFIDENCE_STRESS_M13').schedule[0].kind, 'confidence_shock');
+          assert.equal(scenarios.get('FINANCIAL_CONFIDENCE_STRESS_M13').schedule[1].kind, 'bank_risk_shock');
+          assert.equal(x.ranking.primaryAlreadyFrozenByStage2, true);
+          assert.equal(x.ranking.postHocGateRelaxationAuthorized, false);
+          assert.equal(x.stressApplicationContract.postExecutionScenarioMutationAuthorized, false);
+          assert.equal(x.canonicalMutationAuthorized, false);
+          assert.equal(x.directParameterCalibrationAuthorized, false);
+          console.log('WP_RV08_R4_CU_D3D_B6_S3_PREREGISTRATION', JSON.stringify({ candidates: ids, seeds, scenarios: [...scenarios.keys()], months: 36, jobs: 12 }));
+          NODE
+
+  candidate-screen:
+    needs: preregistration-gate
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        candidate:
+          - V1_M1_C42
+          - V24_M16_C42
+        case:
+          - long-G__ECON-RV08-LONG-G
+          - long-H__ECON-RV08-LONG-H
+        scenario:
+          - BASELINE_36
+          - SUPPLY_SHOCK_M13
+          - FINANCIAL_CONFIDENCE_STRESS_M13
+    name: B6-S3 ${{ matrix.candidate }} / ${{ matrix.case }} / ${{ matrix.scenario }}
+    runs-on: ubuntu-24.04
+    env:
+      NODE_OPTIONS: --max-old-space-size=7168
+      CANDIDATE: ${{ matrix.candidate }}
+      CASE: ${{ matrix.case }}
+      S3_SCENARIO_ID: ${{ matrix.scenario }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run frozen 36-month long-horizon stress job
+        shell: bash
+        run: |
+          set -euo pipefail
+          LABEL="${CASE%%__*}"
+          SEED="${CASE#*__}"
+          BASE="r4-cu-d3d-b6-s3-${CANDIDATE}-${LABEL}-${S3_SCENARIO_ID}"
+          SOURCE_JSON="economic-lab/performance-results/${BASE}-source.json"
+          RESULT_JSON="economic-lab/performance-results/${BASE}.json"
+          LOG="economic-lab/performance-results/${BASE}.log"
+          mkdir -p economic-lab/performance-results
+          {
+            DIAG_SEED="$SEED" DIAG_MONTHS=36 CANDIDATE="$CANDIDATE" S3_SCENARIO_ID="$S3_SCENARIO_ID" \
+            OUTPUT_JSON="$SOURCE_JSON" \
+            node economic-lab/scripts/rv08-r4-cu-d3d-b6-s3-contract-compat-runner.mjs \
+              economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs
+            S3_SCENARIO_ID="$S3_SCENARIO_ID" \
+            node economic-lab/scripts/rv08-r4-cu-d3d-b6-s3-relabel-result.mjs "$SOURCE_JSON" "$RESULT_JSON"
+            rm -f "$SOURCE_JSON"
+          } 2>&1 | tee "$LOG"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-cu-d3d-b6-s3-${{ matrix.candidate }}-${{ matrix.case }}-${{ matrix.scenario }}
+          path: |
+            economic-lab/performance-results/r4-cu-d3d-b6-s3-${{ matrix.candidate }}-*.json
+            economic-lab/performance-results/r4-cu-d3d-b6-s3-${{ matrix.candidate }}-*.log
+          retention-days: 90
+
+  aggregate:
+    needs: candidate-screen
+    if: needs.candidate-screen.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r4-cu-d3d-b6-s3-*
+          path: downloaded-b6-s3
+          merge-multiple: false
+      - name: Aggregate frozen 12-job S3 matrix
+        run: |
+          mkdir -p economic-lab/performance-results
+          INPUT_ROOT=downloaded-b6-s3 \
+          OUTPUT_JSON=economic-lab/performance-results/r4-cu-d3d-b6-s3-aggregate.json \
+          OUTPUT_MD=economic-lab/performance-results/r4-cu-d3d-b6-s3-summary.md \
+          node economic-lab/scripts/rv08-r4-cu-d3d-b6-s3-aggregate.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r4-cu-d3d-b6-s3-authoritative-aggregate
+          path: |
+            economic-lab/performance-results/r4-cu-d3d-b6-s3-aggregate.json
+            economic-lab/performance-results/r4-cu-d3d-b6-s3-summary.md
+          retention-days: 90
+
+  final-beacon:
+    needs: aggregate
+    if: always() && needs.aggregate.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CU-D3D-B6-S3 12-job long-horizon stress validation completed'
