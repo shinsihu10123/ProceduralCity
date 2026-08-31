@@ -10,27 +10,24 @@ assert.ok(target, 'Usage: node rv08-r4-cu-d3d-b6-s3-scenario-axis-runner.mjs <si
 const originalApplyEvent = ExperimentSystem.prototype.applyEvent;
 const FACTOR_FIELD = '__r4CuD3dB6S3ExpectedProductivityFactor';
 
-ExperimentSystem.prototype.applyEvent = function patchedS3ApplyEvent(world, event) {
+ExperimentSystem.prototype.applyEvent = function patchedS3ApplyEvent(country, event) {
   if (event?.kind === 'productivity_shock') {
     const factor = Number(event.factor ?? 1);
     assert.ok(Number.isFinite(factor) && factor > 0, `Invalid S3 productivity shock factor ${event.factor}`);
-    const targets = event.countryId === '*'
-      ? world.countries
-      : world.countries.filter((country) => country.id === event.countryId);
 
-    for (const country of targets) {
-      for (const firm of country.firms) {
-        const previous = Number(firm[FACTOR_FIELD] ?? 1);
-        Object.defineProperty(firm, FACTOR_FIELD, {
-          value: previous * factor,
-          enumerable: false,
-          configurable: true,
-          writable: true
-        });
-      }
+    for (const firm of country.firms || []) {
+      if (firm.active === false) continue;
+      if (event.industryId && firm.industryId !== event.industryId) continue;
+      const previous = Number(firm[FACTOR_FIELD] ?? 1);
+      Object.defineProperty(firm, FACTOR_FIELD, {
+        value: previous * factor,
+        enumerable: false,
+        configurable: true,
+        writable: true
+      });
     }
   }
-  return originalApplyEvent.call(this, world, event);
+  return originalApplyEvent.call(this, country, event);
 };
 
 try {
