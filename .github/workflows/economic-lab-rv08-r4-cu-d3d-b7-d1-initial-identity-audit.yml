@@ -1,0 +1,106 @@
+name: Economic Lab RV08 R4-CU-D3D-B7-D1 Initial Identity Audit
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3d-b7-d1-initial-identity-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  compare-pair:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_RUN_ID: '33383734358'
+      PAIR_ARTIFACT_ID: '9754791583'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download frozen successful D1 pair
+        run: |
+          mkdir -p pair
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${PAIR_ARTIFACT_ID}/zip" > pair.zip
+          unzip -q pair.zip -d pair
+          find pair -type f -maxdepth 4 -print
+      - name: Compare O and T initial identity surfaces
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          import path from 'node:path';
+
+          function walk(root) {
+            return fs.readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+              const full = path.join(root, entry.name);
+              return entry.isDirectory() ? walk(full) : [full];
+            });
+          }
+
+          function firstDifferences(left, right, limit = 100) {
+            const queue = [{ path: '$', left, right }];
+            const output = [];
+            while (queue.length && output.length < limit) {
+              const current = queue.shift();
+              const a = current.left;
+              const b = current.right;
+              if (Object.is(a, b)) continue;
+              if (Array.isArray(a) && Array.isArray(b)) {
+                if (a.length !== b.length) {
+                  output.push({ path: `${current.path}.length`, observed: a.length, topology: b.length });
+                }
+                for (let index = 0; index < Math.min(a.length, b.length); index += 1) {
+                  queue.push({ path: `${current.path}[${index}]`, left: a[index], right: b[index] });
+                }
+                continue;
+              }
+              if (a && b && typeof a === 'object' && typeof b === 'object' && !Array.isArray(a) && !Array.isArray(b)) {
+                const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].sort();
+                for (const key of keys) {
+                  if (!(key in a) || !(key in b)) {
+                    output.push({
+                      path: `${current.path}.${key}`,
+                      observed: key in a ? a[key] : '__MISSING__',
+                      topology: key in b ? b[key] : '__MISSING__'
+                    });
+                  } else {
+                    queue.push({ path: `${current.path}.${key}`, left: a[key], right: b[key] });
+                  }
+                }
+                continue;
+              }
+              output.push({ path: current.path, observed: a, topology: b });
+            }
+            return output;
+          }
+
+          const records = walk('pair')
+            .filter((file) => file.endsWith('.json'))
+            .map((file) => ({ file, value: JSON.parse(fs.readFileSync(file, 'utf8')) }))
+            .filter((entry) => entry.value.schemaVersion === 'r4-cu-d3d-b7-d1-cell-result-v0.1');
+          const cells = new Map(records.map((entry) => [entry.value.cell.id, entry]));
+          assert.ok(cells.has('O') && cells.has('T'), 'O/T cell envelopes not both present');
+          const O = cells.get('O').value;
+          const T = cells.get('T').value;
+          const diffs = firstDifferences(O.initialPanelIdentity.rows, T.initialPanelIdentity.rows);
+          console.log('WP_RV08_R4_CU_D3D_B7_D1_INITIAL_IDENTITY_AUDIT', JSON.stringify({
+            sourceRunId: process.env.SOURCE_RUN_ID,
+            artifactId: process.env.PAIR_ARTIFACT_ID,
+            observedFile: cells.get('O').file,
+            topologyFile: cells.get('T').file,
+            observedSha256: O.initialPanelIdentity.sha256,
+            topologySha256: T.initialPanelIdentity.sha256,
+            observedRows: O.initialPanelIdentity.rowCount,
+            topologyRows: T.initialPanelIdentity.rowCount,
+            differenceCountReported: diffs.length,
+            differences: diffs
+          }, null, 2));
+          assert.ok(diffs.length > 0, 'Expected the frozen pair to reproduce the known mismatch');
+          NODE
