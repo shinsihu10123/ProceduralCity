@@ -1,0 +1,201 @@
+# WP-RV08 R4-CU-D3D-B7-D1 Closure v0.1
+
+## Decision
+
+**TOPOLOGY NONCAUSAL / PROCEED TO D6 OVER O AND T TRACES / CANONICAL MUTATION NOT AUTHORIZED**
+
+## Authoritative execution
+
+- Source workflow run ID: `33384855277`
+- Source workflow head SHA: `1f92a1c15a93498b9472648afc4593b43fe0b9f8`
+- Source workflow URL: `https://github.com/shinsihu10123/ProceduralCity/actions/runs/33384855277`
+- Aggregate artifact ID: `9755324515`
+- Aggregate artifact digest: `sha256:7ea342dfa171319a7d2582aa1838486130cfc6259191655234b0fc1b7999ce66`
+- D1 contract SHA-256: `c4a89a873f39a81a58141012cd21cadb8ed51764fbf454a27817f0fdaefb481c`
+- Aggregate JSON SHA-256: `f89a49a44acefe6f289286140dd39eef102b2ce2d44890a7d3dd2aa535c89e08`
+- Closure generated at: `2026-08-31T11:07:16.616Z`
+- Technical status: `PASS_TECHNICAL_D1_CAUSAL_AGGREGATION`
+- Technical gates passed: **YES**
+- Causal decision: `TOPOLOGY_NONCAUSAL`
+- Detail label: `NO_REPLICATED_TOPOLOGY_EFFECT`
+- Routing: `Close D1 as TOPOLOGY_CAUSAL or TOPOLOGY_NONCAUSAL, then proceed to R4-CU-D3D-B7-D6 over both O and T traces`
+
+## Frozen dependency
+
+- D0 closure commit: `223cf7cc588f20c7ed581eedc15ae1c9a7ae7b39`
+- D0 workflow run: `33379687459`
+- D0 decision: `SEQUENCED_MIXED_CAUSAL_PREREGISTRATION_PASSED`
+- B7 closure commit: `53275393b6906e203640c4db60f00dbd67bd30c8`
+- B7 diagnostic decision: `MIXED`
+- B7 primary topology prevalence: 0.750000
+- B7 control topology prevalence: 0.500000
+- Candidate retuning: prohibited
+
+## Frozen execution panel
+
+- Candidates: `V1_M1_C42`, `V24_M16_C42`
+- Seeds: `ECON-RV08-LONG-G`, `ECON-RV08-LONG-H`
+- Scenarios: `BASELINE_36`, `SUPPLY_SHOCK_M13`, `FINANCIAL_CONFIDENCE_STRESS_M13`
+- Horizon: 36 months
+- Cells: `O` exact observed path, `T` exhaustive topology-neutral shadow
+- Jobs: 12
+- Cell results: 24/24
+- Exact model replay states: 48
+
+## Effect summary
+
+| Surface | Qualifying panels | Total panels | Frequency |
+|---|---:|---:|---:|
+| Failed-primary topology effect | 0 | 24 | 0.000000 |
+| Control topology effect | 0 | 24 | 0.000000 |
+| Primary-specific differential | 7 | 24 | 0.291667 |
+| Failed-primary value-index reduction | 1 | 24 | 0.041667 |
+
+- Failed-primary opposite-sign frequency: 0.458333
+- Both seeds represented among qualifying topology panels: **NO**
+- All T search-residual gates passed: **NO**
+- All active-firm preservation gates passed: **NO**
+- All purchasing-power preservation gates passed: **YES**
+
+## Causal classification conditions
+
+| Condition | Result |
+|---|---:|
+| minimumReplicatedPanelFrequency | FAIL |
+| maximumOppositeSignPanelFrequency | FAIL |
+| bothValidationSeedsRequired | FAIL |
+| maximumSearchExecutionResidualShareT | FAIL |
+| minimumActiveFirmRatio | FAIL |
+| minimumPurchasingPowerRatio | PASS |
+
+## O versus T estimands
+
+| Candidate | Seed | Scenario | Window | O shortage | T shortage | Absolute effect | Relative effect | T search residual | Active-firm ratio | Purchasing-power ratio | Value-index effect | Effect thresholds |
+|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| V1_M1_C42 | ECON-RV08-LONG-G | BASELINE_36 | FULL_36 | 0.561223 | 0.594884 | -0.033661 | -0.059978 | 0.002953907 | 0.995429 | 0.990027 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-G | BASELINE_36 | PRE_SHOCK_12 | 0.463181 | 0.488612 | -0.025430 | -0.054904 | 0.001057115 | 0.997811 | 0.991735 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-G | BASELINE_36 | TRANSITION_12 | 0.912534 | 0.978363 | -0.065828 | -0.072138 | 0.011125727 | 0.986379 | 0.918764 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-G | BASELINE_36 | TERMINAL_12 | 0.998828 | 0.999005 | -0.000177 | -0.000177 | 0.000000000 | 1.000000 | 1.037446 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-G | SUPPLY_SHOCK_M13 | FULL_36 | 0.545630 | 0.576848 | -0.031218 | -0.057215 | 0.002580098 | 0.995429 | 0.989063 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-G | SUPPLY_SHOCK_M13 | PRE_SHOCK_12 | 0.463181 | 0.488612 | -0.025430 | -0.054904 | 0.001057115 | 0.997811 | 0.991735 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-G | SUPPLY_SHOCK_M13 | TRANSITION_12 | 0.939528 | 0.974553 | -0.035025 | -0.037279 | 0.010841618 | 0.986379 | 0.917268 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-G | SUPPLY_SHOCK_M13 | TERMINAL_12 | 1.000000 | 1.000000 | 0.000000 | 0.000000 | 0.000000000 | 1.000000 | 1.015440 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-G | FINANCIAL_CONFIDENCE_STRESS_M13 | FULL_36 | 0.561212 | 0.595031 | -0.033819 | -0.060260 | 0.002952747 | 0.995429 | 0.989624 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-G | FINANCIAL_CONFIDENCE_STRESS_M13 | PRE_SHOCK_12 | 0.463181 | 0.488612 | -0.025430 | -0.054904 | 0.001057115 | 0.997811 | 0.991735 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-G | FINANCIAL_CONFIDENCE_STRESS_M13 | TRANSITION_12 | 0.911732 | 0.978378 | -0.066646 | -0.073098 | 0.011117994 | 0.986379 | 0.917804 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-G | FINANCIAL_CONFIDENCE_STRESS_M13 | TERMINAL_12 | 0.998655 | 1.000000 | -0.001345 | -0.001346 | 0.000000000 | 1.000000 | 1.028797 | 2.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-H | BASELINE_36 | FULL_36 | 0.524029 | 0.619960 | -0.095932 | -0.183066 | 0.001002617 | 1.009553 | 0.974939 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-H | BASELINE_36 | PRE_SHOCK_12 | 0.364899 | 0.520481 | -0.155583 | -0.426372 | 0.000910493 | 1.005534 | 0.976422 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-H | BASELINE_36 | TRANSITION_12 | 0.974845 | 0.982966 | -0.008121 | -0.008330 | 0.002056130 | 1.013158 | 0.919645 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-H | BASELINE_36 | TERMINAL_12 | 0.998604 | 0.999700 | -0.001097 | -0.001098 | 0.000000000 | 1.014286 | 1.014113 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-H | SUPPLY_SHOCK_M13 | FULL_36 | 0.496215 | 0.601230 | -0.105015 | -0.211633 | 0.000713140 | 1.010121 | 0.976373 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-H | SUPPLY_SHOCK_M13 | PRE_SHOCK_12 | 0.364899 | 0.520481 | -0.155583 | -0.426372 | 0.000910493 | 1.005534 | 0.976422 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-H | SUPPLY_SHOCK_M13 | TRANSITION_12 | 0.972611 | 0.985565 | -0.012954 | -0.013319 | 0.000377451 | 1.013158 | 0.928806 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-H | SUPPLY_SHOCK_M13 | TERMINAL_12 | 0.997209 | 0.995281 | 0.001928 | 0.001933 | 0.000000000 | 1.016706 | 1.032573 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-H | FINANCIAL_CONFIDENCE_STRESS_M13 | FULL_36 | 0.523296 | 0.619932 | -0.096636 | -0.184668 | 0.001110252 | 1.009837 | 0.975083 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-H | FINANCIAL_CONFIDENCE_STRESS_M13 | PRE_SHOCK_12 | 0.364899 | 0.520481 | -0.155583 | -0.426372 | 0.000910493 | 1.005534 | 0.976422 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-H | FINANCIAL_CONFIDENCE_STRESS_M13 | TRANSITION_12 | 0.973955 | 0.982966 | -0.009011 | -0.009252 | 0.002056099 | 1.014270 | 0.921615 | 0.000000 | NO |
+| V1_M1_C42 | ECON-RV08-LONG-H | FINANCIAL_CONFIDENCE_STRESS_M13 | TERMINAL_12 | 0.994715 | 0.999185 | -0.004470 | -0.004494 | 0.000748995 | 1.014286 | 1.014462 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-G | BASELINE_36 | FULL_36 | 0.822002 | 0.819613 | 0.002389 | 0.002906 | 0.000000000 | 1.003619 | 1.032404 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-G | BASELINE_36 | PRE_SHOCK_12 | 0.249290 | 0.249073 | 0.000217 | 0.000870 | 0.000000000 | 0.999478 | 1.029003 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-G | BASELINE_36 | TRANSITION_12 | 0.984960 | 0.985484 | -0.000524 | -0.000532 | 0.000000000 | 1.012942 | 1.093370 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-G | BASELINE_36 | TERMINAL_12 | 1.000000 | 1.000000 | 0.000000 | 0.000000 | 0.000000000 | 1.000000 | 1.005595 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-G | SUPPLY_SHOCK_M13 | FULL_36 | 0.787042 | 0.793351 | -0.006309 | -0.008017 | 0.007098740 | 0.997420 | 1.032450 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-G | SUPPLY_SHOCK_M13 | PRE_SHOCK_12 | 0.249290 | 0.249073 | 0.000217 | 0.000870 | 0.000000000 | 0.999478 | 1.029003 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-G | SUPPLY_SHOCK_M13 | TRANSITION_12 | 0.978922 | 0.979658 | -0.000736 | -0.000752 | 0.014047834 | 1.000000 | 1.061598 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-G | SUPPLY_SHOCK_M13 | TERMINAL_12 | 0.979935 | 1.000000 | -0.020065 | -0.020475 | 0.000000000 | 0.988708 | 1.060108 | 2.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-G | FINANCIAL_CONFIDENCE_STRESS_M13 | FULL_36 | 0.820559 | 0.820461 | 0.000098 | 0.000120 | 0.000000000 | 1.002586 | 1.031956 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-G | FINANCIAL_CONFIDENCE_STRESS_M13 | PRE_SHOCK_12 | 0.249290 | 0.249073 | 0.000217 | 0.000870 | 0.000000000 | 0.999478 | 1.029003 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-G | FINANCIAL_CONFIDENCE_STRESS_M13 | TRANSITION_12 | 0.984267 | 0.981156 | 0.003111 | 0.003160 | 0.000000000 | 1.009499 | 1.078138 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-G | FINANCIAL_CONFIDENCE_STRESS_M13 | TERMINAL_12 | 1.000000 | 1.000000 | 0.000000 | 0.000000 | 0.000000000 | 1.000000 | 1.019489 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-H | BASELINE_36 | FULL_36 | 0.805854 | 0.830044 | -0.024190 | -0.030017 | 0.000000000 | 0.976709 | 1.016975 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-H | BASELINE_36 | PRE_SHOCK_12 | 0.282873 | 0.255521 | 0.027352 | 0.096695 | 0.000000000 | 0.991605 | 0.998013 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-H | BASELINE_36 | TRANSITION_12 | 0.941110 | 0.986090 | -0.044980 | -0.047794 | 0.000000000 | 0.947899 | 1.207891 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-H | BASELINE_36 | TERMINAL_12 | 1.000000 | 0.999974 | 0.000026 | 0.000026 | 0.000000000 | 0.983607 | 1.043444 | -2.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-H | SUPPLY_SHOCK_M13 | FULL_36 | 0.782298 | 0.807268 | -0.024970 | -0.031919 | 0.000000000 | 0.974981 | 1.020472 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-H | SUPPLY_SHOCK_M13 | PRE_SHOCK_12 | 0.282873 | 0.255521 | 0.027352 | 0.096695 | 0.000000000 | 0.991605 | 0.998013 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-H | SUPPLY_SHOCK_M13 | TRANSITION_12 | 0.924450 | 0.984142 | -0.059692 | -0.064571 | 0.000000000 | 0.943933 | 1.214941 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-H | SUPPLY_SHOCK_M13 | TERMINAL_12 | 1.000000 | 0.999965 | 0.000035 | 0.000035 | 0.000000000 | 0.981308 | 1.110758 | -2.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-H | FINANCIAL_CONFIDENCE_STRESS_M13 | FULL_36 | 0.774036 | 0.828750 | -0.054714 | -0.070687 | 0.000000000 | 0.975215 | 1.023974 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-H | FINANCIAL_CONFIDENCE_STRESS_M13 | PRE_SHOCK_12 | 0.282873 | 0.255521 | 0.027352 | 0.096695 | 0.000000000 | 0.991605 | 0.998013 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-H | FINANCIAL_CONFIDENCE_STRESS_M13 | TRANSITION_12 | 0.945775 | 0.985977 | -0.040202 | -0.042507 | 0.000000000 | 0.943839 | 1.214367 | 0.000000 | NO |
+| V24_M16_C42 | ECON-RV08-LONG-H | FINANCIAL_CONFIDENCE_STRESS_M13 | TERMINAL_12 | 0.925149 | 0.997389 | -0.072240 | -0.078085 | 0.000000000 | 0.982456 | 1.203112 | 0.000000 | NO |
+
+## Primary-minus-control contrasts
+
+| Seed | Scenario | Window | Primary effect | Control effect | Differential | 0.05 threshold |
+|---|---|---|---:|---:|---:|---:|
+| ECON-RV08-LONG-G | BASELINE_36 | FULL_36 | 0.002389 | -0.033661 | 0.036049 | NO |
+| ECON-RV08-LONG-G | BASELINE_36 | PRE_SHOCK_12 | 0.000217 | -0.025430 | 0.025647 | NO |
+| ECON-RV08-LONG-G | BASELINE_36 | TRANSITION_12 | -0.000524 | -0.065828 | 0.065304 | YES |
+| ECON-RV08-LONG-G | BASELINE_36 | TERMINAL_12 | 0.000000 | -0.000177 | 0.000177 | NO |
+| ECON-RV08-LONG-G | SUPPLY_SHOCK_M13 | FULL_36 | -0.006309 | -0.031218 | 0.024909 | NO |
+| ECON-RV08-LONG-G | SUPPLY_SHOCK_M13 | PRE_SHOCK_12 | 0.000217 | -0.025430 | 0.025647 | NO |
+| ECON-RV08-LONG-G | SUPPLY_SHOCK_M13 | TRANSITION_12 | -0.000736 | -0.035025 | 0.034289 | NO |
+| ECON-RV08-LONG-G | SUPPLY_SHOCK_M13 | TERMINAL_12 | -0.020065 | 0.000000 | -0.020065 | NO |
+| ECON-RV08-LONG-G | FINANCIAL_CONFIDENCE_STRESS_M13 | FULL_36 | 0.000098 | -0.033819 | 0.033917 | NO |
+| ECON-RV08-LONG-G | FINANCIAL_CONFIDENCE_STRESS_M13 | PRE_SHOCK_12 | 0.000217 | -0.025430 | 0.025647 | NO |
+| ECON-RV08-LONG-G | FINANCIAL_CONFIDENCE_STRESS_M13 | TRANSITION_12 | 0.003111 | -0.066646 | 0.069756 | YES |
+| ECON-RV08-LONG-G | FINANCIAL_CONFIDENCE_STRESS_M13 | TERMINAL_12 | 0.000000 | -0.001345 | 0.001345 | NO |
+| ECON-RV08-LONG-H | BASELINE_36 | FULL_36 | -0.024190 | -0.095932 | 0.071742 | YES |
+| ECON-RV08-LONG-H | BASELINE_36 | PRE_SHOCK_12 | 0.027352 | -0.155583 | 0.182935 | YES |
+| ECON-RV08-LONG-H | BASELINE_36 | TRANSITION_12 | -0.044980 | -0.008121 | -0.036859 | NO |
+| ECON-RV08-LONG-H | BASELINE_36 | TERMINAL_12 | 0.000026 | -0.001097 | 0.001123 | NO |
+| ECON-RV08-LONG-H | SUPPLY_SHOCK_M13 | FULL_36 | -0.024970 | -0.105015 | 0.080045 | YES |
+| ECON-RV08-LONG-H | SUPPLY_SHOCK_M13 | PRE_SHOCK_12 | 0.027352 | -0.155583 | 0.182935 | YES |
+| ECON-RV08-LONG-H | SUPPLY_SHOCK_M13 | TRANSITION_12 | -0.059692 | -0.012954 | -0.046738 | NO |
+| ECON-RV08-LONG-H | SUPPLY_SHOCK_M13 | TERMINAL_12 | 0.000035 | 0.001928 | -0.001893 | NO |
+| ECON-RV08-LONG-H | FINANCIAL_CONFIDENCE_STRESS_M13 | FULL_36 | -0.054714 | -0.096636 | 0.041922 | NO |
+| ECON-RV08-LONG-H | FINANCIAL_CONFIDENCE_STRESS_M13 | PRE_SHOCK_12 | 0.027352 | -0.155583 | 0.182935 | YES |
+| ECON-RV08-LONG-H | FINANCIAL_CONFIDENCE_STRESS_M13 | TRANSITION_12 | -0.040202 | -0.009011 | -0.031191 | NO |
+| ECON-RV08-LONG-H | FINANCIAL_CONFIDENCE_STRESS_M13 | TERMINAL_12 | -0.072240 | -0.004470 | -0.067770 | NO |
+
+## Technical gates
+
+| Gate | Result |
+|---|---:|
+| contractExact | PASS |
+| sourceD0Passed | PASS |
+| candidatePanelExact | PASS |
+| validationSeedPanelExact | PASS |
+| scenarioPanelExact | PASS |
+| windowPanelExact | PASS |
+| cellPanelExact | PASS |
+| expectedJobAndCellCount | PASS |
+| completeCellResultCount | PASS |
+| noDuplicateCells | PASS |
+| noMissingCells | PASS |
+| noUnexpectedCells | PASS |
+| noInvalidJsonInputs | PASS |
+| allPairsPresent | PASS |
+| allCellEnvelopesPassed | PASS |
+| allSourceEngineIntegrityPassed | PASS |
+| allModelAndObserverReplaysExact | PASS |
+| allTopologyInterventionReplaysExact | PASS |
+| allScenarioSchedulesExact | PASS |
+| allAccountingHealthy | PASS |
+| allProtectedSurfacesExact | PASS |
+| allInitialPanelsIdentical | PASS |
+| allCountryMonthPanelsComplete | PASS |
+| allWindowPanelsComplete | PASS |
+| allDiagnosticRowsHashesValid | PASS |
+| allInterventionRowsHashesValid | PASS |
+| allBoundaryInvariantsExact | PASS |
+| allConservationIdentitiesExact | PASS |
+| allShortageAttributionsReconcile | PASS |
+| allGvaApproachesReconcile | PASS |
+| observedCellsRemainUnintervened | PASS |
+| topologyCellsUseFrozenIntervention | PASS |
+| failedJobsNotDropped | PASS |
+| thresholdsFrozen | PASS |
+| canonicalMutationLocked | PASS |
+
+## Interpretation
+
+D1 changes only supplier traversal inside disposable T-cell replays. It does not inject stock or cash, alter the 42% procurement budget, change prices or candidate axes, or mutate the canonical supply-chain source. A causal label means exhaustive compatible-supplier reachability materially reduces frozen input shortages under the preregistered rule; it is not a production policy recommendation.
+
+The required next front is R4-CU-D3D-B7-D6 over both O and T traces. D6 must determine whether value-transformation pathology is upstream, downstream or independent of the measured topology effect.
+
+## Canonical lock
+
+This closure does **not** authorize changing canonical procurement, suppliers, prices, wages, inventories, cash, input coefficients, candidate values, demand, accounting, settlement, banks, taxes, entry, exit, seeds, scenarios, horizon or classification thresholds.

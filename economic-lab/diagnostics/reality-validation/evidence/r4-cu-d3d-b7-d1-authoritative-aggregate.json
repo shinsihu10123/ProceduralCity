@@ -1,0 +1,4002 @@
+{
+  "schemaVersion": "r4-cu-d3d-b7-d1-aggregate-v0.1",
+  "front": "R4-CU-D3D-B7-D1",
+  "generatedAt": "2026-08-31T11:04:57.542Z",
+  "status": "PASS_TECHNICAL_D1_CAUSAL_AGGREGATION",
+  "decision": "TOPOLOGY_NONCAUSAL",
+  "detailLabel": "NO_REPLICATED_TOPOLOGY_EFFECT",
+  "routing": "Close D1 as TOPOLOGY_CAUSAL or TOPOLOGY_NONCAUSAL, then proceed to R4-CU-D3D-B7-D6 over both O and T traces",
+  "technicalGates": {
+    "contractExact": true,
+    "sourceD0Passed": true,
+    "candidatePanelExact": true,
+    "validationSeedPanelExact": true,
+    "scenarioPanelExact": true,
+    "windowPanelExact": true,
+    "cellPanelExact": true,
+    "expectedJobAndCellCount": true,
+    "completeCellResultCount": true,
+    "noDuplicateCells": true,
+    "noMissingCells": true,
+    "noUnexpectedCells": true,
+    "noInvalidJsonInputs": true,
+    "allPairsPresent": true,
+    "allCellEnvelopesPassed": true,
+    "allSourceEngineIntegrityPassed": true,
+    "allModelAndObserverReplaysExact": true,
+    "allTopologyInterventionReplaysExact": true,
+    "allScenarioSchedulesExact": true,
+    "allAccountingHealthy": true,
+    "allProtectedSurfacesExact": true,
+    "allInitialPanelsIdentical": true,
+    "allCountryMonthPanelsComplete": true,
+    "allWindowPanelsComplete": true,
+    "allDiagnosticRowsHashesValid": true,
+    "allInterventionRowsHashesValid": true,
+    "allBoundaryInvariantsExact": true,
+    "allConservationIdentitiesExact": true,
+    "allShortageAttributionsReconcile": true,
+    "allGvaApproachesReconcile": true,
+    "observedCellsRemainUnintervened": true,
+    "topologyCellsUseFrozenIntervention": true,
+    "failedJobsNotDropped": true,
+    "thresholdsFrozen": true,
+    "canonicalMutationLocked": true,
+    "ok": true
+  },
+  "causalConditions": {
+    "minimumReplicatedPanelFrequency": false,
+    "maximumOppositeSignPanelFrequency": false,
+    "bothValidationSeedsRequired": false,
+    "maximumSearchExecutionResidualShareT": false,
+    "minimumActiveFirmRatio": false,
+    "minimumPurchasingPowerRatio": true
+  },
+  "causalRulePassed": false,
+  "contract": {
+    "path": "economic-lab/diagnostics/reality-validation/r4-cu-d3d-b7-d1-supplier-topology-causal-contract.json",
+    "sha256": "c4a89a873f39a81a58141012cd21cadb8ed51764fbf454a27817f0fdaefb481c"
+  },
+  "sourceD0": {
+    "closurePath": "economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B7_D0_CLOSURE_v0.1.md",
+    "closureCommit": "223cf7cc588f20c7ed581eedc15ae1c9a7ae7b39",
+    "workflowRunId": 33379687459,
+    "workflowHeadSha": "843fc056846784feab1ad7fa0dac13065aecaf74",
+    "artifactId": 9753238862,
+    "artifactDigest": "sha256:ea4248e0feb98632a8118dae50a6130b10f4bf626d7ae7d1c9f9b00bc9be4390",
+    "d0ContractSha256": "d5e0780d389dfc7a7c6a18ba7a95d6b17ec7bee4c88a6f1eb88beab4de0bab69",
+    "d0GateReceiptSha256": "aff8d99490cc50bd939180b9fa9afa0d7e7e4cd4cd82459b0b04ba54148ce836",
+    "decision": "SEQUENCED_MIXED_CAUSAL_PREREGISTRATION_PASSED",
+    "nextAuthorizedFront": "R4-CU-D3D-B7-D1 supplier-topology and reachable-inventory causal isolation"
+  },
+  "sourceB7": {
+    "closureCommit": "53275393b6906e203640c4db60f00dbd67bd30c8",
+    "workflowRunId": 33371200438,
+    "decision": "MIXED",
+    "dominantMechanism": "INPUT_SUPPLIER_TOPOLOGY_BINDING",
+    "primaryQualifiedPanels": 18,
+    "primaryTotalPanels": 24,
+    "primaryPrevalence": 0.75,
+    "controlQualifiedPanels": 12,
+    "controlTotalPanels": 24,
+    "controlPrevalence": 0.5,
+    "primaryControlPrevalenceDelta": 0.25
+  },
+  "expected": {
+    "jobs": 12,
+    "cells": 24,
+    "modelReplayStates": 48,
+    "panelsPerCandidate": 24
+  },
+  "observed": {
+    "cellResults": 24,
+    "duplicateKeys": [],
+    "missingKeys": [],
+    "unexpectedKeys": [],
+    "invalidJsonFiles": []
+  },
+  "thresholds": {
+    "minimumAbsoluteTopologyEffect": 0.1,
+    "minimumRelativeTopologyEffect": 0.2,
+    "maximumSearchExecutionResidualShareT": 1e-7,
+    "minimumReplicatedPanelFrequency": 0.5,
+    "maximumOppositeSignPanelFrequency": 0.25,
+    "bothValidationSeedsRequired": true,
+    "minimumCandidateSpecificDifferential": 0.05,
+    "minimumActiveFirmRatio": 0.95,
+    "minimumPurchasingPowerRatio": 0.9,
+    "minimumNormalizedValueIndexReduction": 0.2,
+    "role": "CAUSAL_DIAGNOSTIC_CLASSIFICATION_ONLY_NOT_PARAMETER_CALIBRATION"
+  },
+  "effectSummary": {
+    "primary": {
+      "qualifyingPanels": 0,
+      "totalPanels": 24,
+      "replicatedPanelFrequency": 0,
+      "oppositeSignPanels": 11,
+      "oppositeSignPanelFrequency": 0.4583333333333333,
+      "bothSeedsRepresented": false,
+      "allSearchResidualsPassed": false,
+      "allActiveFirmGatesPassed": false,
+      "allPurchasingPowerGatesPassed": true,
+      "valueReductionPanels": 1,
+      "valueReductionFrequency": 0.041666666666666664
+    },
+    "control": {
+      "qualifyingPanels": 0,
+      "totalPanels": 24,
+      "replicatedPanelFrequency": 0
+    },
+    "candidateSpecific": {
+      "qualifyingPanels": 7,
+      "totalPanels": 24,
+      "replicatedPanelFrequency": 0.2916666666666667
+    }
+  },
+  "pairedContrasts": [
+    {
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "BASELINE_36",
+        "role": "UNSHOCKED_LONG_HORIZON"
+      },
+      "window": {
+        "id": "FULL_36",
+        "startMonth": 1,
+        "endMonth": 36
+      },
+      "primaryAbsoluteTopologyEffect": 0.0023885729200441297,
+      "controlAbsoluteTopologyEffect": -0.03366077491384478,
+      "candidateSpecificDifferential": 0.03604934783388891,
+      "thresholdPassed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "BASELINE_36",
+        "role": "UNSHOCKED_LONG_HORIZON"
+      },
+      "window": {
+        "id": "PRE_SHOCK_12",
+        "startMonth": 1,
+        "endMonth": 12
+      },
+      "primaryAbsoluteTopologyEffect": 0.00021692527930788907,
+      "controlAbsoluteTopologyEffect": -0.025430372928392897,
+      "candidateSpecificDifferential": 0.025647298207700786,
+      "thresholdPassed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "BASELINE_36",
+        "role": "UNSHOCKED_LONG_HORIZON"
+      },
+      "window": {
+        "id": "TRANSITION_12",
+        "startMonth": 13,
+        "endMonth": 24
+      },
+      "primaryAbsoluteTopologyEffect": -0.000524430828586997,
+      "controlAbsoluteTopologyEffect": -0.06582837127083363,
+      "candidateSpecificDifferential": 0.06530394044224663,
+      "thresholdPassed": true
+    },
+    {
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "BASELINE_36",
+        "role": "UNSHOCKED_LONG_HORIZON"
+      },
+      "window": {
+        "id": "TERMINAL_12",
+        "startMonth": 25,
+        "endMonth": 36
+      },
+      "primaryAbsoluteTopologyEffect": 0,
+      "controlAbsoluteTopologyEffect": -0.0001767336605844605,
+      "candidateSpecificDifferential": 0.0001767336605844605,
+      "thresholdPassed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "SUPPLY_SHOCK_M13",
+        "role": "ADVERSE_REAL_PRODUCTIVITY_STRESS"
+      },
+      "window": {
+        "id": "FULL_36",
+        "startMonth": 1,
+        "endMonth": 36
+      },
+      "primaryAbsoluteTopologyEffect": -0.006309325933683052,
+      "controlAbsoluteTopologyEffect": -0.03121800188033852,
+      "candidateSpecificDifferential": 0.024908675946655467,
+      "thresholdPassed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "SUPPLY_SHOCK_M13",
+        "role": "ADVERSE_REAL_PRODUCTIVITY_STRESS"
+      },
+      "window": {
+        "id": "PRE_SHOCK_12",
+        "startMonth": 1,
+        "endMonth": 12
+      },
+      "primaryAbsoluteTopologyEffect": 0.00021692527930788907,
+      "controlAbsoluteTopologyEffect": -0.025430372928392897,
+      "candidateSpecificDifferential": 0.025647298207700786,
+      "thresholdPassed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "SUPPLY_SHOCK_M13",
+        "role": "ADVERSE_REAL_PRODUCTIVITY_STRESS"
+      },
+      "window": {
+        "id": "TRANSITION_12",
+        "startMonth": 13,
+        "endMonth": 24
+      },
+      "primaryAbsoluteTopologyEffect": -0.000736322310833315,
+      "controlAbsoluteTopologyEffect": -0.03502505668414613,
+      "candidateSpecificDifferential": 0.03428873437331281,
+      "thresholdPassed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "SUPPLY_SHOCK_M13",
+        "role": "ADVERSE_REAL_PRODUCTIVITY_STRESS"
+      },
+      "window": {
+        "id": "TERMINAL_12",
+        "startMonth": 25,
+        "endMonth": 36
+      },
+      "primaryAbsoluteTopologyEffect": -0.0200645971148824,
+      "controlAbsoluteTopologyEffect": 0,
+      "candidateSpecificDifferential": -0.0200645971148824,
+      "thresholdPassed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "FINANCIAL_CONFIDENCE_STRESS_M13",
+        "role": "COMPOUND_CONFIDENCE_AND_BANK_RISK_STRESS"
+      },
+      "window": {
+        "id": "FULL_36",
+        "startMonth": 1,
+        "endMonth": 36
+      },
+      "primaryAbsoluteTopologyEffect": 0.00009831883135680286,
+      "controlAbsoluteTopologyEffect": -0.03381880848039498,
+      "candidateSpecificDifferential": 0.03391712731175178,
+      "thresholdPassed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "FINANCIAL_CONFIDENCE_STRESS_M13",
+        "role": "COMPOUND_CONFIDENCE_AND_BANK_RISK_STRESS"
+      },
+      "window": {
+        "id": "PRE_SHOCK_12",
+        "startMonth": 1,
+        "endMonth": 12
+      },
+      "primaryAbsoluteTopologyEffect": 0.00021692527930788907,
+      "controlAbsoluteTopologyEffect": -0.025430372928392897,
+      "candidateSpecificDifferential": 0.025647298207700786,
+      "thresholdPassed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "FINANCIAL_CONFIDENCE_STRESS_M13",
+        "role": "COMPOUND_CONFIDENCE_AND_BANK_RISK_STRESS"
+      },
+      "window": {
+        "id": "TRANSITION_12",
+        "startMonth": 13,
+        "endMonth": 24
+      },
+      "primaryAbsoluteTopologyEffect": 0.0031107078458444404,
+      "controlAbsoluteTopologyEffect": -0.06664565461605565,
+      "candidateSpecificDifferential": 0.06975636246190009,
+      "thresholdPassed": true
+    },
+    {
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "FINANCIAL_CONFIDENCE_STRESS_M13",
+        "role": "COMPOUND_CONFIDENCE_AND_BANK_RISK_STRESS"
+      },
+      "window": {
+        "id": "TERMINAL_12",
+        "startMonth": 25,
+        "endMonth": 36
+      },
+      "primaryAbsoluteTopologyEffect": 0,
+      "controlAbsoluteTopologyEffect": -0.0013446343647430803,
+      "candidateSpecificDifferential": 0.0013446343647430803,
+      "thresholdPassed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "BASELINE_36",
+        "role": "UNSHOCKED_LONG_HORIZON"
+      },
+      "window": {
+        "id": "FULL_36",
+        "startMonth": 1,
+        "endMonth": 36
+      },
+      "primaryAbsoluteTopologyEffect": -0.024189723612318192,
+      "controlAbsoluteTopologyEffect": -0.09593162709172431,
+      "candidateSpecificDifferential": 0.07174190347940612,
+      "thresholdPassed": true
+    },
+    {
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "BASELINE_36",
+        "role": "UNSHOCKED_LONG_HORIZON"
+      },
+      "window": {
+        "id": "PRE_SHOCK_12",
+        "startMonth": 1,
+        "endMonth": 12
+      },
+      "primaryAbsoluteTopologyEffect": 0.027352254692719846,
+      "controlAbsoluteTopologyEffect": -0.1555825488027751,
+      "candidateSpecificDifferential": 0.18293480349549496,
+      "thresholdPassed": true
+    },
+    {
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "BASELINE_36",
+        "role": "UNSHOCKED_LONG_HORIZON"
+      },
+      "window": {
+        "id": "TRANSITION_12",
+        "startMonth": 13,
+        "endMonth": 24
+      },
+      "primaryAbsoluteTopologyEffect": -0.04497978816691417,
+      "controlAbsoluteTopologyEffect": -0.008120875056677357,
+      "candidateSpecificDifferential": -0.03685891311023681,
+      "thresholdPassed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "BASELINE_36",
+        "role": "UNSHOCKED_LONG_HORIZON"
+      },
+      "window": {
+        "id": "TERMINAL_12",
+        "startMonth": 25,
+        "endMonth": 36
+      },
+      "primaryAbsoluteTopologyEffect": 0.000026274257203806606,
+      "controlAbsoluteTopologyEffect": -0.0010966949642461365,
+      "candidateSpecificDifferential": 0.0011229692214499432,
+      "thresholdPassed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "SUPPLY_SHOCK_M13",
+        "role": "ADVERSE_REAL_PRODUCTIVITY_STRESS"
+      },
+      "window": {
+        "id": "FULL_36",
+        "startMonth": 1,
+        "endMonth": 36
+      },
+      "primaryAbsoluteTopologyEffect": -0.024970224174115208,
+      "controlAbsoluteTopologyEffect": -0.1050152151537016,
+      "candidateSpecificDifferential": 0.0800449909795864,
+      "thresholdPassed": true
+    },
+    {
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "SUPPLY_SHOCK_M13",
+        "role": "ADVERSE_REAL_PRODUCTIVITY_STRESS"
+      },
+      "window": {
+        "id": "PRE_SHOCK_12",
+        "startMonth": 1,
+        "endMonth": 12
+      },
+      "primaryAbsoluteTopologyEffect": 0.027352254692719846,
+      "controlAbsoluteTopologyEffect": -0.1555825488027751,
+      "candidateSpecificDifferential": 0.18293480349549496,
+      "thresholdPassed": true
+    },
+    {
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "SUPPLY_SHOCK_M13",
+        "role": "ADVERSE_REAL_PRODUCTIVITY_STRESS"
+      },
+      "window": {
+        "id": "TRANSITION_12",
+        "startMonth": 13,
+        "endMonth": 24
+      },
+      "primaryAbsoluteTopologyEffect": -0.05969233082593195,
+      "controlAbsoluteTopologyEffect": -0.012954245226325822,
+      "candidateSpecificDifferential": -0.04673808559960613,
+      "thresholdPassed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "SUPPLY_SHOCK_M13",
+        "role": "ADVERSE_REAL_PRODUCTIVITY_STRESS"
+      },
+      "window": {
+        "id": "TERMINAL_12",
+        "startMonth": 25,
+        "endMonth": 36
+      },
+      "primaryAbsoluteTopologyEffect": 0.000035002151813956495,
+      "controlAbsoluteTopologyEffect": 0.0019276337132404509,
+      "candidateSpecificDifferential": -0.0018926315614264944,
+      "thresholdPassed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "FINANCIAL_CONFIDENCE_STRESS_M13",
+        "role": "COMPOUND_CONFIDENCE_AND_BANK_RISK_STRESS"
+      },
+      "window": {
+        "id": "FULL_36",
+        "startMonth": 1,
+        "endMonth": 36
+      },
+      "primaryAbsoluteTopologyEffect": -0.05471427884455882,
+      "controlAbsoluteTopologyEffect": -0.09663605188160884,
+      "candidateSpecificDifferential": 0.041921773037050025,
+      "thresholdPassed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "FINANCIAL_CONFIDENCE_STRESS_M13",
+        "role": "COMPOUND_CONFIDENCE_AND_BANK_RISK_STRESS"
+      },
+      "window": {
+        "id": "PRE_SHOCK_12",
+        "startMonth": 1,
+        "endMonth": 12
+      },
+      "primaryAbsoluteTopologyEffect": 0.027352254692719846,
+      "controlAbsoluteTopologyEffect": -0.1555825488027751,
+      "candidateSpecificDifferential": 0.18293480349549496,
+      "thresholdPassed": true
+    },
+    {
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "FINANCIAL_CONFIDENCE_STRESS_M13",
+        "role": "COMPOUND_CONFIDENCE_AND_BANK_RISK_STRESS"
+      },
+      "window": {
+        "id": "TRANSITION_12",
+        "startMonth": 13,
+        "endMonth": 24
+      },
+      "primaryAbsoluteTopologyEffect": -0.04020203370563613,
+      "controlAbsoluteTopologyEffect": -0.009011263623182608,
+      "candidateSpecificDifferential": -0.031190770082453523,
+      "thresholdPassed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "FINANCIAL_CONFIDENCE_STRESS_M13",
+        "role": "COMPOUND_CONFIDENCE_AND_BANK_RISK_STRESS"
+      },
+      "window": {
+        "id": "TERMINAL_12",
+        "startMonth": 25,
+        "endMonth": 36
+      },
+      "primaryAbsoluteTopologyEffect": -0.07224002414813702,
+      "controlAbsoluteTopologyEffect": -0.00447030430924622,
+      "candidateSpecificDifferential": -0.0677697198388908,
+      "thresholdPassed": false
+    }
+  ],
+  "pairEvaluations": [
+    {
+      "candidateId": "V1_M1_C42",
+      "control": true,
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "BASELINE_36",
+        "role": "UNSHOCKED_LONG_HORIZON"
+      },
+      "cellsPresent": true,
+      "initialIdentityExact": true,
+      "windows": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 4334.891697038263,
+            "purchasedInputUnits": 1902.051332955252,
+            "inputShortageUnits": 2432.840364083013,
+            "inputShortageRate": 0.561222871091614,
+            "topologyAttributedShortageUnits": 661.6242419386316,
+            "cashAttributedShortageUnits": 1764.0620811623317,
+            "searchExecutionAttributedShortageUnits": 7.154040982049079,
+            "topologyShareOfShortage": 0.27195546888585564,
+            "cashShareOfShortage": 0.7251039185332009,
+            "searchExecutionResidualShare": 0.0029406125809432557,
+            "activeFirmExposure": 3500,
+            "nominalPurchasingPower": 985905.5009778893,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 18902.370400792704,
+            "salesRevenueAtOrBelowBookCost": 18902.370400792704,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 4275.121985376915,
+            "purchasedInputUnits": 1731.9218315978005,
+            "inputShortageUnits": 2543.2001537791148,
+            "inputShortageRate": 0.5948836460054587,
+            "topologyAttributedShortageUnits": 774.309644680103,
+            "cashAttributedShortageUnits": 1761.3781319674847,
+            "searchExecutionAttributedShortageUnits": 7.512377131525519,
+            "topologyShareOfShortage": 0.30446272328566176,
+            "cashShareOfShortage": 0.6925833695590702,
+            "searchExecutionResidualShare": 0.0029539071552674946,
+            "activeFirmExposure": 3484,
+            "nominalPurchasingPower": 976072.8285587399,
+            "nonPositiveGvaCountryMonthShare": 0.006944444444444444,
+            "salesRevenueBook": 18626.002369148115,
+            "salesRevenueAtOrBelowBookCost": 18626.002369148115,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.03366077491384478,
+            "relativeTopologyEffect": -0.0599775537450433,
+            "searchExecutionResidualShareT": 0.0029539071552674946,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9954285714285714,
+            "purchasingPowerRatio": 0.990026759755984
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "PRE_SHOCK_12",
+            "startMonth": 1,
+            "endMonth": 12
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 3459.110141592389,
+            "purchasedInputUnits": 1856.9145695658249,
+            "inputShortageUnits": 1602.1955720265632,
+            "inputShortageRate": 0.4631814271427039,
+            "topologyAttributedShortageUnits": 47.86179330756092,
+            "cashAttributedShortageUnits": 1547.2155237249838,
+            "searchExecutionAttributedShortageUnits": 7.11825499401852,
+            "topologyShareOfShortage": 0.029872628624870154,
+            "cashShareOfShortage": 0.9656845585760563,
+            "searchExecutionResidualShare": 0.0044428127990735105,
+            "activeFirmExposure": 1827,
+            "nominalPurchasingPower": 896791.7179927925,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 18441.133650526215,
+            "salesRevenueAtOrBelowBookCost": 18441.133650526215,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 3363.5172381163607,
+            "purchasedInputUnits": 1720.0630258301612,
+            "inputShortageUnits": 1643.4542122861988,
+            "inputShortageRate": 0.4886118000710968,
+            "topologyAttributedShortageUnits": 97.37812061171232,
+            "cashAttributedShortageUnits": 1544.338771203054,
+            "searchExecutionAttributedShortageUnits": 1.7373204714326982,
+            "topologyShareOfShortage": 0.05925210442963923,
+            "cashShareOfShortage": 0.9396907803441229,
+            "searchExecutionResidualShare": 0.0010571152262379873,
+            "activeFirmExposure": 1823,
+            "nominalPurchasingPower": 889380.0013663862,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 18369.759951667675,
+            "salesRevenueAtOrBelowBookCost": 18369.759951667675,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.025430372928392897,
+            "relativeTopologyEffect": -0.05490369742428797,
+            "searchExecutionResidualShareT": 0.0010571152262379873,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9978106185002736,
+            "purchasingPowerRatio": 0.9917352976419148
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "TRANSITION_12",
+            "startMonth": 13,
+            "endMonth": 24
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 511.1672173252435,
+            "purchasedInputUnits": 44.709497617383086,
+            "inputShortageUnits": 466.45771970786046,
+            "inputShortageRate": 0.912534497319034,
+            "topologyAttributedShortageUnits": 301.6532700992042,
+            "cashAttributedShortageUnits": 164.76866362062555,
+            "searchExecutionAttributedShortageUnits": 0.03578598803055866,
+            "topologyShareOfShortage": 0.6466894154696973,
+            "cashShareOfShortage": 0.353233865919979,
+            "searchExecutionResidualShare": 0.00007671861032329188,
+            "activeFirmExposure": 881,
+            "nominalPurchasingPower": 48515.142317125756,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 459.4251563899486,
+            "salesRevenueAtOrBelowBookCost": 459.4251563899486,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 530.5519267889592,
+            "purchasedInputUnits": 11.47962175983164,
+            "inputShortageUnits": 519.0723050291276,
+            "inputShortageRate": 0.9783628685898677,
+            "topologyAttributedShortageUnits": 368.1741747737065,
+            "cashAttributedShortageUnits": 145.1230735953284,
+            "searchExecutionAttributedShortageUnits": 5.77505666009282,
+            "topologyShareOfShortage": 0.7092926577021799,
+            "cashShareOfShortage": 0.27958161548839494,
+            "searchExecutionResidualShare": 0.01112572680942543,
+            "activeFirmExposure": 869,
+            "nominalPurchasingPower": 44573.944700229295,
+            "nonPositiveGvaCountryMonthShare": 0.020833333333333332,
+            "salesRevenueBook": 256.05673269929946,
+            "salesRevenueAtOrBelowBookCost": 256.05673269929946,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.06582837127083363,
+            "relativeTopologyEffect": -0.0721379536491311,
+            "searchExecutionResidualShareT": 0.01112572680942543,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9863791146424518,
+            "purchasingPowerRatio": 0.9187635565173798
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 364.6143381206326,
+            "purchasedInputUnits": 0.42726577204419003,
+            "inputShortageUnits": 364.18707234858846,
+            "inputShortageRate": 0.9988281706796105,
+            "topologyAttributedShortageUnits": 312.1091785318664,
+            "cashAttributedShortageUnits": 52.077893816722,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.857002354639116,
+            "cashShareOfShortage": 0.14299764536088386,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 792,
+            "nominalPurchasingPower": 40598.64066797088,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 1.811593876537716,
+            "salesRevenueAtOrBelowBookCost": 1.811593876537716,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 381.05282047159517,
+            "purchasedInputUnits": 0.37918400780771855,
+            "inputShortageUnits": 380.67363646378743,
+            "inputShortageRate": 0.999004904340195,
+            "topologyAttributedShortageUnits": 308.75734929468393,
+            "cashAttributedShortageUnits": 71.91628716910344,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.8110815137156346,
+            "cashShareOfShortage": 0.18891848628436517,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 792,
+            "nominalPurchasingPower": 42118.8824921245,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 0.18568478114923084,
+            "salesRevenueAtOrBelowBookCost": 0.18568478114923084,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.0001767336605844605,
+            "relativeTopologyEffect": -0.0001769410052423827,
+            "searchExecutionResidualShareT": 0,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1,
+            "purchasingPowerRatio": 1.0374456336256836
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        }
+      ]
+    },
+    {
+      "candidateId": "V1_M1_C42",
+      "control": true,
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "SUPPLY_SHOCK_M13",
+        "role": "ADVERSE_REAL_PRODUCTIVITY_STRESS"
+      },
+      "cellsPresent": true,
+      "initialIdentityExact": true,
+      "windows": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 4137.231149182087,
+            "purchasedInputUnits": 1879.8326110619619,
+            "inputShortageUnits": 2257.3985381201246,
+            "inputShortageRate": 0.5456302673749333,
+            "topologyAttributedShortageUnits": 516.4322160072794,
+            "cashAttributedShortageUnits": 1733.6177319544558,
+            "searchExecutionAttributedShortageUnits": 7.34859015838844,
+            "topologyShareOfShortage": 0.22877316844430334,
+            "cashShareOfShortage": 0.7679714958078012,
+            "searchExecutionResidualShare": 0.0032553357478950374,
+            "activeFirmExposure": 3500,
+            "nominalPurchasingPower": 985833.0423591522,
+            "nonPositiveGvaCountryMonthShare": 0.006944444444444444,
+            "salesRevenueBook": 18820.610401107348,
+            "salesRevenueAtOrBelowBookCost": 18820.610401107348,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 4089.63971072759,
+            "purchasedInputUnits": 1730.5381217167474,
+            "inputShortageUnits": 2359.1015890108406,
+            "inputShortageRate": 0.5768482692552718,
+            "topologyAttributedShortageUnits": 613.0824247131654,
+            "cashAttributedShortageUnits": 1739.9324521166818,
+            "searchExecutionAttributedShortageUnits": 6.086712180993711,
+            "topologyShareOfShortage": 0.25987962009309984,
+            "cashShareOfShortage": 0.737540282377677,
+            "searchExecutionResidualShare": 0.002580097529223334,
+            "activeFirmExposure": 3484,
+            "nominalPurchasingPower": 975051.1851327168,
+            "nonPositiveGvaCountryMonthShare": 0.006944444444444444,
+            "salesRevenueBook": 18592.189184848005,
+            "salesRevenueAtOrBelowBookCost": 18592.189184848005,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.03121800188033852,
+            "relativeTopologyEffect": -0.0572145713809657,
+            "searchExecutionResidualShareT": 0.002580097529223334,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9954285714285714,
+            "purchasingPowerRatio": 0.9890632016141051
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "PRE_SHOCK_12",
+            "startMonth": 1,
+            "endMonth": 12
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 3459.110141592389,
+            "purchasedInputUnits": 1856.9145695658249,
+            "inputShortageUnits": 1602.1955720265632,
+            "inputShortageRate": 0.4631814271427039,
+            "topologyAttributedShortageUnits": 47.86179330756092,
+            "cashAttributedShortageUnits": 1547.2155237249838,
+            "searchExecutionAttributedShortageUnits": 7.11825499401852,
+            "topologyShareOfShortage": 0.029872628624870154,
+            "cashShareOfShortage": 0.9656845585760563,
+            "searchExecutionResidualShare": 0.0044428127990735105,
+            "activeFirmExposure": 1827,
+            "nominalPurchasingPower": 896791.7179927925,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 18441.133650526215,
+            "salesRevenueAtOrBelowBookCost": 18441.133650526215,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 3363.5172381163607,
+            "purchasedInputUnits": 1720.0630258301612,
+            "inputShortageUnits": 1643.4542122861988,
+            "inputShortageRate": 0.4886118000710968,
+            "topologyAttributedShortageUnits": 97.37812061171232,
+            "cashAttributedShortageUnits": 1544.338771203054,
+            "searchExecutionAttributedShortageUnits": 1.7373204714326982,
+            "topologyShareOfShortage": 0.05925210442963923,
+            "cashShareOfShortage": 0.9396907803441229,
+            "searchExecutionResidualShare": 0.0010571152262379873,
+            "activeFirmExposure": 1823,
+            "nominalPurchasingPower": 889380.0013663862,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 18369.759951667675,
+            "salesRevenueAtOrBelowBookCost": 18369.759951667675,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.025430372928392897,
+            "relativeTopologyEffect": -0.05490369742428797,
+            "searchExecutionResidualShareT": 0.0010571152262379873,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9978106185002736,
+            "purchasingPowerRatio": 0.9917352976419148
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "TRANSITION_12",
+            "startMonth": 13,
+            "endMonth": 24
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 378.98834713914056,
+            "purchasedInputUnits": 22.918041496136777,
+            "inputShortageUnits": 356.0703056430038,
+            "inputShortageRate": 0.9395283742385813,
+            "topologyAttributedShortageUnits": 220.69439540766558,
+            "cashAttributedShortageUnits": 135.14557507096822,
+            "searchExecutionAttributedShortageUnits": 0.23033516436991922,
+            "topologyShareOfShortage": 0.6198056729530652,
+            "cashShareOfShortage": 0.3795474459093627,
+            "searchExecutionResidualShare": 0.0006468811375718967,
+            "activeFirmExposure": 881,
+            "nominalPurchasingPower": 48333.24439291841,
+            "nonPositiveGvaCountryMonthShare": 0.020833333333333332,
+            "salesRevenueBook": 379.4767505811343,
+            "salesRevenueAtOrBelowBookCost": 379.4767505811343,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 411.65061799793034,
+            "purchasedInputUnits": 10.475095886586338,
+            "inputShortageUnits": 401.17552211134404,
+            "inputShortageRate": 0.9745534309227274,
+            "topologyAttributedShortageUnits": 273.54627702430207,
+            "cashAttributedShortageUnits": 123.27985337748099,
+            "searchExecutionAttributedShortageUnits": 4.3493917095610115,
+            "topologyShareOfShortage": 0.6818618334056304,
+            "cashShareOfShortage": 0.3072965487242897,
+            "searchExecutionResidualShare": 0.010841617870079975,
+            "activeFirmExposure": 869,
+            "nominalPurchasingPower": 44334.55663391893,
+            "nonPositiveGvaCountryMonthShare": 0.020833333333333332,
+            "salesRevenueBook": 222.42923318032896,
+            "salesRevenueAtOrBelowBookCost": 222.42923318032896,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.03502505668414613,
+            "relativeTopologyEffect": -0.03727940277751735,
+            "searchExecutionResidualShareT": 0.010841617870079975,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9863791146424518,
+            "purchasingPowerRatio": 0.9172683768858407
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 299.1326604505578,
+            "purchasedInputUnits": 0,
+            "inputShortageUnits": 299.1326604505578,
+            "inputShortageRate": 1,
+            "topologyAttributedShortageUnits": 247.87602729205295,
+            "cashAttributedShortageUnits": 51.25663315850482,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.8286491582654285,
+            "cashShareOfShortage": 0.1713508417345714,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 792,
+            "nominalPurchasingPower": 40708.079973440996,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 0,
+            "salesRevenueAtOrBelowBookCost": 0,
+            "belowCostRevenueShare": 0,
+            "normalizedValuePathologyIndex": 0
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 314.4718546132979,
+            "purchasedInputUnits": 0,
+            "inputShortageUnits": 314.4718546132979,
+            "inputShortageRate": 1,
+            "topologyAttributedShortageUnits": 242.15802707715085,
+            "cashAttributedShortageUnits": 72.31382753614712,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.7700467419411176,
+            "cashShareOfShortage": 0.22995325805888261,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 792,
+            "nominalPurchasingPower": 41336.627132411755,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 0,
+            "salesRevenueAtOrBelowBookCost": 0,
+            "belowCostRevenueShare": 0,
+            "normalizedValuePathologyIndex": 0
+          },
+          "estimands": {
+            "absoluteTopologyEffect": 0,
+            "relativeTopologyEffect": 0,
+            "searchExecutionResidualShareT": 0,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1,
+            "purchasingPowerRatio": 1.0154403538408305
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": false
+          }
+        }
+      ]
+    },
+    {
+      "candidateId": "V1_M1_C42",
+      "control": true,
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "FINANCIAL_CONFIDENCE_STRESS_M13",
+        "role": "COMPOUND_CONFIDENCE_AND_BANK_RISK_STRESS"
+      },
+      "cellsPresent": true,
+      "initialIdentityExact": true,
+      "windows": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 4335.880359962771,
+            "purchasedInputUnits": 1902.531160957718,
+            "inputShortageUnits": 2433.3491990050516,
+            "inputShortageRate": 0.5612122561024596,
+            "topologyAttributedShortageUnits": 662.2614658046353,
+            "cashAttributedShortageUnits": 1763.9361345982368,
+            "searchExecutionAttributedShortageUnits": 7.151598602177308,
+            "topologyShareOfShortage": 0.2721604716969603,
+            "cashShareOfShortage": 0.7249005343415057,
+            "searchExecutionResidualShare": 0.002938993961533123,
+            "activeFirmExposure": 3500,
+            "nominalPurchasingPower": 985835.7037505923,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 18902.618610214708,
+            "salesRevenueAtOrBelowBookCost": 18902.618610214708,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 4275.741905502913,
+            "purchasedInputUnits": 1731.5426475899924,
+            "inputShortageUnits": 2544.199257912922,
+            "inputShortageRate": 0.5950310645828546,
+            "topologyAttributedShortageUnits": 775.6608079814642,
+            "cashAttributedShortageUnits": 1761.0260727999353,
+            "searchExecutionAttributedShortageUnits": 7.512377131521252,
+            "topologyShareOfShortage": 0.30487423717659623,
+            "cashShareOfShortage": 0.6921730156640933,
+            "searchExecutionResidualShare": 0.0029527471593101032,
+            "activeFirmExposure": 3484,
+            "nominalPurchasingPower": 975606.7836013356,
+            "nonPositiveGvaCountryMonthShare": 0.006944444444444444,
+            "salesRevenueBook": 18625.816684358466,
+            "salesRevenueAtOrBelowBookCost": 18625.816684358466,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.03381880848039498,
+            "relativeTopologyEffect": -0.06026028140451148,
+            "searchExecutionResidualShareT": 0.0029527471593101032,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9954285714285714,
+            "purchasingPowerRatio": 0.9896241127093075
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "PRE_SHOCK_12",
+            "startMonth": 1,
+            "endMonth": 12
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 3459.110141592389,
+            "purchasedInputUnits": 1856.9145695658249,
+            "inputShortageUnits": 1602.1955720265632,
+            "inputShortageRate": 0.4631814271427039,
+            "topologyAttributedShortageUnits": 47.86179330756092,
+            "cashAttributedShortageUnits": 1547.2155237249838,
+            "searchExecutionAttributedShortageUnits": 7.11825499401852,
+            "topologyShareOfShortage": 0.029872628624870154,
+            "cashShareOfShortage": 0.9656845585760563,
+            "searchExecutionResidualShare": 0.0044428127990735105,
+            "activeFirmExposure": 1827,
+            "nominalPurchasingPower": 896791.7179927925,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 18441.133650526215,
+            "salesRevenueAtOrBelowBookCost": 18441.133650526215,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 3363.5172381163607,
+            "purchasedInputUnits": 1720.0630258301612,
+            "inputShortageUnits": 1643.4542122861988,
+            "inputShortageRate": 0.4886118000710968,
+            "topologyAttributedShortageUnits": 97.37812061171232,
+            "cashAttributedShortageUnits": 1544.338771203054,
+            "searchExecutionAttributedShortageUnits": 1.7373204714326982,
+            "topologyShareOfShortage": 0.05925210442963923,
+            "cashShareOfShortage": 0.9396907803441229,
+            "searchExecutionResidualShare": 0.0010571152262379873,
+            "activeFirmExposure": 1823,
+            "nominalPurchasingPower": 889380.0013663862,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 18369.759951667675,
+            "salesRevenueAtOrBelowBookCost": 18369.759951667675,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.025430372928392897,
+            "relativeTopologyEffect": -0.05490369742428797,
+            "searchExecutionResidualShareT": 0.0010571152262379873,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9978106185002736,
+            "purchasingPowerRatio": 0.9917352976419148
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "TRANSITION_12",
+            "startMonth": 13,
+            "endMonth": 24
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 511.2275415069772,
+            "purchasedInputUnits": 45.125070146802315,
+            "inputShortageUnits": 466.10247136017495,
+            "inputShortageRate": 0.9117319266215895,
+            "topologyAttributedShortageUnits": 301.71235022014577,
+            "cashAttributedShortageUnits": 164.3567775318707,
+            "searchExecutionAttributedShortageUnits": 0.03334360815878784,
+            "topologyShareOfShortage": 0.6473090548945004,
+            "cashShareOfShortage": 0.3526194080289826,
+            "searchExecutionResidualShare": 0.00007153707651771273,
+            "activeFirmExposure": 881,
+            "nominalPurchasingPower": 48484.31368787622,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 459.603702731372,
+            "salesRevenueAtOrBelowBookCost": 459.603702731372,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 530.9129328221753,
+            "purchasedInputUnits": 11.47962175983104,
+            "inputShortageUnits": 519.4333110623443,
+            "inputShortageRate": 0.9783775812376452,
+            "topologyAttributedShortageUnits": 368.6095820188371,
+            "cashAttributedShortageUnits": 145.04867238341876,
+            "searchExecutionAttributedShortageUnits": 5.775056660088553,
+            "topologyShareOfShortage": 0.7096379345886719,
+            "cashShareOfShortage": 0.2792440709795169,
+            "searchExecutionResidualShare": 0.011117994431811497,
+            "activeFirmExposure": 869,
+            "nominalPurchasingPower": 44499.09530024699,
+            "nonPositiveGvaCountryMonthShare": 0.020833333333333332,
+            "salesRevenueBook": 256.0567326907999,
+            "salesRevenueAtOrBelowBookCost": 256.0567326907999,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.06664565461605565,
+            "relativeTopologyEffect": -0.07309786206896388,
+            "searchExecutionResidualShareT": 0.011117994431811497,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9863791146424518,
+            "purchasingPowerRatio": 0.9178039641174551
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 365.54267686340165,
+            "purchasedInputUnits": 0.4915212450907676,
+            "inputShortageUnits": 365.05115561831093,
+            "inputShortageRate": 0.9986553656352569,
+            "topologyAttributedShortageUnits": 312.6873222769291,
+            "cashAttributedShortageUnits": 52.36383334138187,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.8565575467013936,
+            "cashShareOfShortage": 0.14344245329860641,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 792,
+            "nominalPurchasingPower": 40559.672069923516,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 1.88125695711315,
+            "salesRevenueAtOrBelowBookCost": 1.88125695711315,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 381.311734564379,
+            "purchasedInputUnits": 0,
+            "inputShortageUnits": 381.311734564379,
+            "inputShortageRate": 1,
+            "topologyAttributedShortageUnits": 309.6731053509153,
+            "cashAttributedShortageUnits": 71.63862921346357,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.8121258206351671,
+            "cashShareOfShortage": 0.18787417936483258,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 792,
+            "nominalPurchasingPower": 41727.68693470251,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 0,
+            "salesRevenueAtOrBelowBookCost": 0,
+            "belowCostRevenueShare": 0,
+            "normalizedValuePathologyIndex": 0
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.0013446343647430803,
+            "relativeTopologyEffect": -0.0013464448407461786,
+            "searchExecutionResidualShareT": 0,
+            "valueEffectOfTopology": 2,
+            "activeFirmRatio": 1,
+            "purchasingPowerRatio": 1.0287974434991827
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": true,
+            "oppositeSign": true
+          }
+        }
+      ]
+    },
+    {
+      "candidateId": "V1_M1_C42",
+      "control": true,
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "BASELINE_36",
+        "role": "UNSHOCKED_LONG_HORIZON"
+      },
+      "cellsPresent": true,
+      "initialIdentityExact": true,
+      "windows": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 4038.1188180718295,
+            "purchasedInputUnits": 1922.0282326166478,
+            "inputShortageUnits": 2116.090585455183,
+            "inputShortageRate": 0.5240288066772636,
+            "topologyAttributedShortageUnits": 895.4510260022428,
+            "cashAttributedShortageUnits": 1215.8869628512896,
+            "searchExecutionAttributedShortageUnits": 4.752596601649309,
+            "topologyShareOfShortage": 0.4231628986760159,
+            "cashShareOfShortage": 0.5745911688320968,
+            "searchExecutionResidualShare": 0.002245932491886683,
+            "activeFirmExposure": 3559,
+            "nominalPurchasingPower": 954500.8702172177,
+            "nonPositiveGvaCountryMonthShare": 0.006944444444444444,
+            "salesRevenueBook": 18898.741303845127,
+            "salesRevenueAtOrBelowBookCost": 18898.741303845127,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 4753.980743354737,
+            "purchasedInputUnits": 1806.700779575118,
+            "inputShortageUnits": 2947.2799637796184,
+            "inputShortageRate": 0.6199604337689879,
+            "topologyAttributedShortageUnits": 1030.9321869075893,
+            "cashAttributedShortageUnits": 1913.3927843028866,
+            "searchExecutionAttributedShortageUnits": 2.9549925691408516,
+            "topologyShareOfShortage": 0.34979106144552097,
+            "cashShareOfShortage": 0.6492063216991217,
+            "searchExecutionResidualShare": 0.0010026168553568093,
+            "activeFirmExposure": 3593,
+            "nominalPurchasingPower": 930580.0912683842,
+            "nonPositiveGvaCountryMonthShare": 0.006944444444444444,
+            "salesRevenueBook": 17540.498186694804,
+            "salesRevenueAtOrBelowBookCost": 17540.498186694804,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.09593162709172431,
+            "relativeTopologyEffect": -0.1830655602694877,
+            "searchExecutionResidualShareT": 0.0010026168553568093,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1.0095532452936218,
+            "purchasingPowerRatio": 0.974938965803782
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "PRE_SHOCK_12",
+            "startMonth": 1,
+            "endMonth": 12
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 3001.186595598606,
+            "purchasedInputUnits": 1906.0580946944685,
+            "inputShortageUnits": 1095.1285009041367,
+            "inputShortageRate": 0.3648985046481944,
+            "topologyAttributedShortageUnits": 40.16549999363935,
+            "cashAttributedShortageUnits": 1050.5012529437738,
+            "searchExecutionAttributedShortageUnits": 4.4617479667231255,
+            "topologyShareOfShortage": 0.03667651783373254,
+            "cashShareOfShortage": 0.9592493046035067,
+            "searchExecutionResidualShare": 0.0040741775627604546,
+            "activeFirmExposure": 1807,
+            "nominalPurchasingPower": 849240.4693625304,
+            "nonPositiveGvaCountryMonthShare": 0.020833333333333332,
+            "salesRevenueBook": 18742.3000131917,
+            "salesRevenueAtOrBelowBookCost": 18742.3000131917,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 3746.7409771387406,
+            "purchasedInputUnits": 1796.6332863496536,
+            "inputShortageUnits": 1950.1076907890867,
+            "inputShortageRate": 0.5204810534509695,
+            "topologyAttributedShortageUnits": 168.67817250682754,
+            "cashAttributedShortageUnits": 1779.6539588221813,
+            "searchExecutionAttributedShortageUnits": 1.7755594600782603,
+            "topologyShareOfShortage": 0.08649685004758584,
+            "cashShareOfShortage": 0.9125926569224834,
+            "searchExecutionResidualShare": 0.000910493029930979,
+            "activeFirmExposure": 1817,
+            "nominalPurchasingPower": 829217.3819833603,
+            "nonPositiveGvaCountryMonthShare": 0.020833333333333332,
+            "salesRevenueBook": 17374.64455716167,
+            "salesRevenueAtOrBelowBookCost": 17374.64455716167,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.1555825488027751,
+            "relativeTopologyEffect": -0.42637211942749725,
+            "searchExecutionResidualShareT": 0.000910493029930979,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1.0055340343110126,
+            "purchasingPowerRatio": 0.9764223584467187
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "TRANSITION_12",
+            "startMonth": 13,
+            "endMonth": 24
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 611.2336381379137,
+            "purchasedInputUnits": 15.375696385224987,
+            "inputShortageUnits": 595.8579417526886,
+            "inputShortageRate": 0.9748448131355038,
+            "topologyAttributedShortageUnits": 488.02233310591583,
+            "cashAttributedShortageUnits": 107.54566185079534,
+            "searchExecutionAttributedShortageUnits": 0.28994679597730055,
+            "topologyShareOfShortage": 0.8190246347483776,
+            "cashShareOfShortage": 0.18048876135552502,
+            "searchExecutionResidualShare": 0.00048660389609717287,
+            "activeFirmExposure": 912,
+            "nominalPurchasingPower": 56984.55626703653,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 156.1323388500135,
+            "salesRevenueAtOrBelowBookCost": 156.1323388500135,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 583.5585189271535,
+            "purchasedInputUnits": 9.940517769514123,
+            "inputShortageUnits": 573.6180011576394,
+            "inputShortageRate": 0.9829656881921811,
+            "topologyAttributedShortageUnits": 480.0771123817974,
+            "cashAttributedShortageUnits": 92.36145566677956,
+            "searchExecutionAttributedShortageUnits": 1.179433109062591,
+            "topologyShareOfShortage": 0.8369282543660351,
+            "cashShareOfShortage": 0.16101561575888754,
+            "searchExecutionResidualShare": 0.002056129875077724,
+            "activeFirmExposure": 924,
+            "nominalPurchasingPower": 52405.55900805869,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 165.78550078669647,
+            "salesRevenueAtOrBelowBookCost": 165.78550078669647,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.008120875056677357,
+            "relativeTopologyEffect": -0.008330428543346573,
+            "searchExecutionResidualShareT": 0.002056129875077724,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1.013157894736842,
+            "purchasingPowerRatio": 0.9196449431400306
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 425.69858433531203,
+            "purchasedInputUnits": 0.5944415369542501,
+            "inputShortageUnits": 425.1041427983579,
+            "inputShortageRate": 0.9986036093169482,
+            "topologyAttributedShortageUnits": 367.2631929026874,
+            "cashAttributedShortageUnits": 57.84004805672149,
+            "searchExecutionAttributedShortageUnits": 0.0009018389488828493,
+            "topologyShareOfShortage": 0.8639369884402502,
+            "cashShareOfShortage": 0.13606089010559724,
+            "searchExecutionResidualShare": 0.0000021214541522608117,
+            "activeFirmExposure": 840,
+            "nominalPurchasingPower": 48275.84458765086,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 0.30895180340152534,
+            "salesRevenueAtOrBelowBookCost": 0.30895180340152534,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 423.68124728884135,
+            "purchasedInputUnits": 0.12697545595067575,
+            "inputShortageUnits": 423.55427183289066,
+            "inputShortageRate": 0.9997003042811944,
+            "topologyAttributedShortageUnits": 382.1769020189649,
+            "cashAttributedShortageUnits": 41.37736981392598,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.9023091665800721,
+            "cashShareOfShortage": 0.09769083341992837,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 852,
+            "nominalPurchasingPower": 48957.15027696572,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 0.06812874643634231,
+            "salesRevenueAtOrBelowBookCost": 0.06812874643634231,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.0010966949642461365,
+            "relativeTopologyEffect": -0.0010982285203197729,
+            "searchExecutionResidualShareT": 0,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1.0142857142857142,
+            "purchasingPowerRatio": 1.0141127658176516
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        }
+      ]
+    },
+    {
+      "candidateId": "V1_M1_C42",
+      "control": true,
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "SUPPLY_SHOCK_M13",
+        "role": "ADVERSE_REAL_PRODUCTIVITY_STRESS"
+      },
+      "cellsPresent": true,
+      "initialIdentityExact": true,
+      "windows": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 3810.709506843233,
+            "purchasedInputUnits": 1919.7784073596363,
+            "inputShortageUnits": 1890.9310994835942,
+            "inputShortageRate": 0.496214968915337,
+            "topologyAttributedShortageUnits": 687.9994351076297,
+            "cashAttributedShortageUnits": 1198.4510841776737,
+            "searchExecutionAttributedShortageUnits": 4.480580198291211,
+            "topologyShareOfShortage": 0.3638416202978097,
+            "cashShareOfShortage": 0.6337888696764076,
+            "searchExecutionResidualShare": 0.0023695100257829804,
+            "activeFirmExposure": 3557,
+            "nominalPurchasingPower": 953598.5384919811,
+            "nonPositiveGvaCountryMonthShare": 0.013888888888888888,
+            "salesRevenueBook": 18883.94401703525,
+            "salesRevenueAtOrBelowBookCost": 18883.94401703525,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 4525.446814862398,
+            "purchasedInputUnits": 1804.6115933680355,
+            "inputShortageUnits": 2720.8352214943643,
+            "inputShortageRate": 0.6012301840690386,
+            "topologyAttributedShortageUnits": 823.2623118551769,
+            "cashAttributedShortageUnits": 1895.6325729389462,
+            "searchExecutionAttributedShortageUnits": 1.9403367002398455,
+            "topologyShareOfShortage": 0.3025770562478299,
+            "cashShareOfShortage": 0.6967098036527944,
+            "searchExecutionResidualShare": 0.0007131400993751302,
+            "activeFirmExposure": 3593,
+            "nominalPurchasingPower": 931068.0937451577,
+            "nonPositiveGvaCountryMonthShare": 0.013888888888888888,
+            "salesRevenueBook": 17519.241626718584,
+            "salesRevenueAtOrBelowBookCost": 17519.241626718584,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.1050152151537016,
+            "relativeTopologyEffect": -0.21163250150081434,
+            "searchExecutionResidualShareT": 0.0007131400993751302,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1.010120888389092,
+            "purchasingPowerRatio": 0.9763732390126636
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "PRE_SHOCK_12",
+            "startMonth": 1,
+            "endMonth": 12
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 3001.186595598606,
+            "purchasedInputUnits": 1906.0580946944685,
+            "inputShortageUnits": 1095.1285009041367,
+            "inputShortageRate": 0.3648985046481944,
+            "topologyAttributedShortageUnits": 40.16549999363935,
+            "cashAttributedShortageUnits": 1050.5012529437738,
+            "searchExecutionAttributedShortageUnits": 4.4617479667231255,
+            "topologyShareOfShortage": 0.03667651783373254,
+            "cashShareOfShortage": 0.9592493046035067,
+            "searchExecutionResidualShare": 0.0040741775627604546,
+            "activeFirmExposure": 1807,
+            "nominalPurchasingPower": 849240.4693625304,
+            "nonPositiveGvaCountryMonthShare": 0.020833333333333332,
+            "salesRevenueBook": 18742.3000131917,
+            "salesRevenueAtOrBelowBookCost": 18742.3000131917,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 3746.7409771387406,
+            "purchasedInputUnits": 1796.6332863496536,
+            "inputShortageUnits": 1950.1076907890867,
+            "inputShortageRate": 0.5204810534509695,
+            "topologyAttributedShortageUnits": 168.67817250682754,
+            "cashAttributedShortageUnits": 1779.6539588221813,
+            "searchExecutionAttributedShortageUnits": 1.7755594600782603,
+            "topologyShareOfShortage": 0.08649685004758584,
+            "cashShareOfShortage": 0.9125926569224834,
+            "searchExecutionResidualShare": 0.000910493029930979,
+            "activeFirmExposure": 1817,
+            "nominalPurchasingPower": 829217.3819833603,
+            "nonPositiveGvaCountryMonthShare": 0.020833333333333332,
+            "salesRevenueBook": 17374.64455716167,
+            "salesRevenueAtOrBelowBookCost": 17374.64455716167,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.1555825488027751,
+            "relativeTopologyEffect": -0.42637211942749725,
+            "searchExecutionResidualShareT": 0.000910493029930979,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1.0055340343110126,
+            "purchasingPowerRatio": 0.9764223584467187
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "TRANSITION_12",
+            "startMonth": 13,
+            "endMonth": 24
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 465.922648221735,
+            "purchasedInputUnits": 12.761310256647524,
+            "inputShortageUnits": 453.16133796508745,
+            "inputShortageRate": 0.9726106676604946,
+            "topologyAttributedShortageUnits": 363.341569587797,
+            "cashAttributedShortageUnits": 89.80093614572229,
+            "searchExecutionAttributedShortageUnits": 0.01883223156808489,
+            "topologyShareOfShortage": 0.8017929579327653,
+            "cashShareOfShortage": 0.19816548461298955,
+            "searchExecutionResidualShare": 0.000041557454244995116,
+            "activeFirmExposure": 912,
+            "nominalPurchasingPower": 56921.48827868014,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 140.89862126980043,
+            "salesRevenueAtOrBelowBookCost": 140.89862126980043,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 442.94615220080294,
+            "purchasedInputUnits": 6.393966293466223,
+            "inputShortageUnits": 436.55218590733665,
+            "inputShortageRate": 0.9855649128868205,
+            "topologyAttributedShortageUnits": 359.92077286967606,
+            "cashAttributedShortageUnits": 76.4666357974991,
+            "searchExecutionAttributedShortageUnits": 0.16477724016158524,
+            "topologyShareOfShortage": 0.8244621937274493,
+            "cashShareOfShortage": 0.17516035485784978,
+            "searchExecutionResidualShare": 0.0003774514147011078,
+            "activeFirmExposure": 924,
+            "nominalPurchasingPower": 52868.99554613115,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 141.4563370490998,
+            "salesRevenueAtOrBelowBookCost": 141.4563370490998,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.012954245226325822,
+            "relativeTopologyEffect": -0.013319044975607557,
+            "searchExecutionResidualShareT": 0.0003774514147011078,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1.013157894736842,
+            "purchasingPowerRatio": 0.9288055731658224
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 343.6002630228921,
+            "purchasedInputUnits": 0.9590024085201905,
+            "inputShortageUnits": 342.64126061437196,
+            "inputShortageRate": 0.9972089590383805,
+            "topologyAttributedShortageUnits": 284.4923655261932,
+            "cashAttributedShortageUnits": 58.148895088178655,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.8302921983653836,
+            "cashShareOfShortage": 0.16970780163461616,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 838,
+            "nominalPurchasingPower": 47436.58085077011,
+            "nonPositiveGvaCountryMonthShare": 0.020833333333333332,
+            "salesRevenueBook": 0.7453825737474767,
+            "salesRevenueAtOrBelowBookCost": 0.7453825737474767,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 335.75968552285656,
+            "purchasedInputUnits": 1.5843407249157078,
+            "inputShortageUnits": 334.1753447979409,
+            "inputShortageRate": 0.99528132532514,
+            "topologyAttributedShortageUnits": 294.66336647867337,
+            "cashAttributedShortageUnits": 39.51197831926746,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.88176273643659,
+            "cashShareOfShortage": 0.11823726356340973,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 852,
+            "nominalPurchasingPower": 48981.716215665794,
+            "nonPositiveGvaCountryMonthShare": 0.020833333333333332,
+            "salesRevenueBook": 3.14073250781162,
+            "salesRevenueAtOrBelowBookCost": 3.14073250781162,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": 0.0019276337132404509,
+            "relativeTopologyEffect": 0.0019330288760133975,
+            "searchExecutionResidualShareT": 0,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1.0167064439140812,
+            "purchasingPowerRatio": 1.0325726546303264
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": false
+          }
+        }
+      ]
+    },
+    {
+      "candidateId": "V1_M1_C42",
+      "control": true,
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "FINANCIAL_CONFIDENCE_STRESS_M13",
+        "role": "COMPOUND_CONFIDENCE_AND_BANK_RISK_STRESS"
+      },
+      "cellsPresent": true,
+      "initialIdentityExact": true,
+      "windows": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 4036.346345998384,
+            "purchasedInputUnits": 1924.1416679148315,
+            "inputShortageUnits": 2112.2046780835526,
+            "inputShortageRate": 0.5232961933946979,
+            "topologyAttributedShortageUnits": 898.3133765434206,
+            "cashAttributedShortageUnits": 1209.1329626593906,
+            "searchExecutionAttributedShortageUnits": 4.758338880742225,
+            "topologyShareOfShortage": 0.42529655665684785,
+            "cashShareOfShortage": 0.5724506603008105,
+            "searchExecutionResidualShare": 0.0022527830423420734,
+            "activeFirmExposure": 3558,
+            "nominalPurchasingPower": 954324.8069555091,
+            "nonPositiveGvaCountryMonthShare": 0.006944444444444444,
+            "salesRevenueBook": 18904.37813143824,
+            "salesRevenueAtOrBelowBookCost": 18904.37813143824,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 4754.202986409987,
+            "purchasedInputUnits": 1806.9192545455178,
+            "inputShortageUnits": 2947.283731864466,
+            "inputShortageRate": 0.6199322452763067,
+            "topologyAttributedShortageUnits": 1030.085303776394,
+            "cashAttributedShortageUnits": 1913.926199255971,
+            "searchExecutionAttributedShortageUnits": 3.2722288321013084,
+            "topologyShareOfShortage": 0.3495032706351475,
+            "cashShareOfShortage": 0.6493864769664411,
+            "searchExecutionResidualShare": 0.0011102523984113605,
+            "activeFirmExposure": 3593,
+            "nominalPurchasingPower": 930546.0265760971,
+            "nonPositiveGvaCountryMonthShare": 0.013888888888888888,
+            "salesRevenueBook": 17540.735738033505,
+            "salesRevenueAtOrBelowBookCost": 17540.735738033505,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.09663605188160884,
+            "relativeTopologyEffect": -0.1846679817307992,
+            "searchExecutionResidualShareT": 0.0011102523984113605,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1.0098369870713884,
+            "purchasingPowerRatio": 0.975083137097451
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "PRE_SHOCK_12",
+            "startMonth": 1,
+            "endMonth": 12
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 3001.186595598606,
+            "purchasedInputUnits": 1906.0580946944685,
+            "inputShortageUnits": 1095.1285009041367,
+            "inputShortageRate": 0.3648985046481944,
+            "topologyAttributedShortageUnits": 40.16549999363935,
+            "cashAttributedShortageUnits": 1050.5012529437738,
+            "searchExecutionAttributedShortageUnits": 4.4617479667231255,
+            "topologyShareOfShortage": 0.03667651783373254,
+            "cashShareOfShortage": 0.9592493046035067,
+            "searchExecutionResidualShare": 0.0040741775627604546,
+            "activeFirmExposure": 1807,
+            "nominalPurchasingPower": 849240.4693625304,
+            "nonPositiveGvaCountryMonthShare": 0.020833333333333332,
+            "salesRevenueBook": 18742.3000131917,
+            "salesRevenueAtOrBelowBookCost": 18742.3000131917,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 3746.7409771387406,
+            "purchasedInputUnits": 1796.6332863496536,
+            "inputShortageUnits": 1950.1076907890867,
+            "inputShortageRate": 0.5204810534509695,
+            "topologyAttributedShortageUnits": 168.67817250682754,
+            "cashAttributedShortageUnits": 1779.6539588221813,
+            "searchExecutionAttributedShortageUnits": 1.7755594600782603,
+            "topologyShareOfShortage": 0.08649685004758584,
+            "cashShareOfShortage": 0.9125926569224834,
+            "searchExecutionResidualShare": 0.000910493029930979,
+            "activeFirmExposure": 1817,
+            "nominalPurchasingPower": 829217.3819833603,
+            "nonPositiveGvaCountryMonthShare": 0.020833333333333332,
+            "salesRevenueBook": 17374.64455716167,
+            "salesRevenueAtOrBelowBookCost": 17374.64455716167,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.1555825488027751,
+            "relativeTopologyEffect": -0.42637211942749725,
+            "searchExecutionResidualShareT": 0.000910493029930979,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1.0055340343110126,
+            "purchasingPowerRatio": 0.9764223584467187
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "TRANSITION_12",
+            "startMonth": 13,
+            "endMonth": 24
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 607.53618087794,
+            "purchasedInputUnits": 15.823476633066813,
+            "inputShortageUnits": 591.7127042448732,
+            "inputShortageRate": 0.9739546760652171,
+            "topologyAttributedShortageUnits": 484.879261273579,
+            "cashAttributedShortageUnits": 106.54111662809652,
+            "searchExecutionAttributedShortageUnits": 0.2923263431976544,
+            "topologyShareOfShortage": 0.8194504829710696,
+            "cashShareOfShortage": 0.1800554827770028,
+            "searchExecutionResidualShare": 0.0004940342519275683,
+            "activeFirmExposure": 911,
+            "nominalPurchasingPower": 56818.63334243151,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 156.32735531786918,
+            "salesRevenueAtOrBelowBookCost": 156.32735531786918,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 583.5671348213183,
+            "purchasedInputUnits": 9.940517770414129,
+            "inputShortageUnits": 573.6266170509042,
+            "inputShortageRate": 0.9829659396883997,
+            "topologyAttributedShortageUnits": 480.085728275062,
+            "cashAttributedShortageUnits": 92.36145566677956,
+            "searchExecutionAttributedShortageUnits": 1.179433109062591,
+            "topologyShareOfShortage": 0.8369307037097595,
+            "cashShareOfShortage": 0.16101319729831037,
+            "searchExecutionResidualShare": 0.0020560989919300187,
+            "activeFirmExposure": 924,
+            "nominalPurchasingPower": 52364.89840162473,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 165.78550078514655,
+            "salesRevenueAtOrBelowBookCost": 165.78550078514655,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.009011263623182608,
+            "relativeTopologyEffect": -0.009252241243492118,
+            "searchExecutionResidualShareT": 0.0020560989919300187,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1.0142700329308452,
+            "purchasingPowerRatio": 0.9216148879547094
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 427.6235695218392,
+            "purchasedInputUnits": 2.260096587296118,
+            "inputShortageUnits": 425.36347293454315,
+            "inputShortageRate": 0.9947147520661145,
+            "topologyAttributedShortageUnits": 373.2686152762025,
+            "cashAttributedShortageUnits": 52.090593087519196,
+            "searchExecutionAttributedShortageUnits": 0.004264570821444852,
+            "topologyShareOfShortage": 0.8775286055971308,
+            "cashShareOfShortage": 0.12246136869287583,
+            "searchExecutionResidualShare": 0.000010025709993441546,
+            "activeFirmExposure": 840,
+            "nominalPurchasingPower": 48265.70425054696,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 5.750762928672712,
+            "salesRevenueAtOrBelowBookCost": 5.750762928672712,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 423.89487444992494,
+            "purchasedInputUnits": 0.3454504254502772,
+            "inputShortageUnits": 423.5494240244747,
+            "inputShortageRate": 0.9991850563753607,
+            "topologyAttributedShortageUnits": 381.3214029945044,
+            "cashAttributedShortageUnits": 41.910784767009915,
+            "searchExecutionAttributedShortageUnits": 0.31723626296045687,
+            "topologyShareOfShortage": 0.9002996613034464,
+            "cashShareOfShortage": 0.09895134402210427,
+            "searchExecutionResidualShare": 0.0007489946744494343,
+            "activeFirmExposure": 852,
+            "nominalPurchasingPower": 48963.74619111295,
+            "nonPositiveGvaCountryMonthShare": 0.020833333333333332,
+            "salesRevenueBook": 0.3056800866839275,
+            "salesRevenueAtOrBelowBookCost": 0.3056800866839275,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.00447030430924622,
+            "relativeTopologyEffect": -0.004494056512141783,
+            "searchExecutionResidualShareT": 0.0007489946744494343,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1.0142857142857142,
+            "purchasingPowerRatio": 1.0144624832767892
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        }
+      ]
+    },
+    {
+      "candidateId": "V24_M16_C42",
+      "control": false,
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "BASELINE_36",
+        "role": "UNSHOCKED_LONG_HORIZON"
+      },
+      "cellsPresent": true,
+      "initialIdentityExact": true,
+      "windows": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 1909.9854336756473,
+            "purchasedInputUnits": 339.9742824956595,
+            "inputShortageUnits": 1570.0111511799885,
+            "inputShortageRate": 0.8220016359803333,
+            "topologyAttributedShortageUnits": 1225.0223945182875,
+            "cashAttributedShortageUnits": 341.74245659034824,
+            "searchExecutionAttributedShortageUnits": 3.2463000713528967,
+            "topologyShareOfShortage": 0.780263499146223,
+            "cashShareOfShortage": 0.21766880848808084,
+            "searchExecutionResidualShare": 0.002067692365696284,
+            "activeFirmExposure": 3869,
+            "nominalPurchasingPower": 1007014.4663082553,
+            "nonPositiveGvaCountryMonthShare": 0.013888888888888888,
+            "salesRevenueBook": 105206.56469374946,
+            "salesRevenueAtOrBelowBookCost": 105206.56469374946,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 1840.0989840729408,
+            "purchasedInputUnits": 331.92981940279145,
+            "inputShortageUnits": 1508.1691646701493,
+            "inputShortageRate": 0.8196130630602891,
+            "topologyAttributedShortageUnits": 1167.5962991502015,
+            "cashAttributedShortageUnits": 340.57286551994747,
+            "searchExecutionAttributedShortageUnits": 3.0194488402635056e-15,
+            "topologyShareOfShortage": 0.7741812566533713,
+            "cashShareOfShortage": 0.22581874334662846,
+            "searchExecutionResidualShare": 2.0020624416650816e-18,
+            "activeFirmExposure": 3883,
+            "nominalPurchasingPower": 1039645.5323259992,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 111186.07244891117,
+            "salesRevenueAtOrBelowBookCost": 111186.07244891117,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": 0.0023885729200441297,
+            "relativeTopologyEffect": 0.002905800688821594,
+            "searchExecutionResidualShareT": 2.0020624416650816e-18,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1.003618506073921,
+            "purchasingPowerRatio": 1.0324037708587945
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": false
+          }
+        },
+        {
+          "window": {
+            "id": "PRE_SHOCK_12",
+            "startMonth": 1,
+            "endMonth": 12
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 436.33120966594095,
+            "purchasedInputUnits": 327.5582141553595,
+            "inputShortageUnits": 108.7729955105813,
+            "inputShortageRate": 0.2492899730776968,
+            "topologyAttributedShortageUnits": 0,
+            "cashAttributedShortageUnits": 108.7729955105813,
+            "searchExecutionAttributedShortageUnits": 2.5003870501860703e-15,
+            "topologyShareOfShortage": 0,
+            "cashShareOfShortage": 1,
+            "searchExecutionResidualShare": 2.29872041166949e-17,
+            "activeFirmExposure": 1915,
+            "nominalPurchasingPower": 897064.559205981,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 75989.49736816683,
+            "salesRevenueAtOrBelowBookCost": 75989.49736816683,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 427.2378218265688,
+            "purchasedInputUnits": 320.8243954094803,
+            "inputShortageUnits": 106.41342641708853,
+            "inputShortageRate": 0.2490730477983889,
+            "topologyAttributedShortageUnits": 0,
+            "cashAttributedShortageUnits": 106.41342641708853,
+            "searchExecutionAttributedShortageUnits": 2.9033849976989323e-15,
+            "topologyShareOfShortage": 0,
+            "cashShareOfShortage": 1,
+            "searchExecutionResidualShare": 2.7284010067668386e-17,
+            "activeFirmExposure": 1914,
+            "nominalPurchasingPower": 923082.4789972706,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 76097.04266189715,
+            "salesRevenueAtOrBelowBookCost": 76097.04266189715,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": 0.00021692527930788907,
+            "relativeTopologyEffect": 0.0008701725008421396,
+            "searchExecutionResidualShareT": 2.7284010067668386e-17,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9994778067885117,
+            "purchasingPowerRatio": 1.0290033972742372
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": false
+          }
+        },
+        {
+          "window": {
+            "id": "TRANSITION_12",
+            "startMonth": 13,
+            "endMonth": 24
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 825.5368960488211,
+            "purchasedInputUnits": 12.416068340300038,
+            "inputShortageUnits": 813.1208277085211,
+            "inputShortageRate": 0.9849600079660574,
+            "topologyAttributedShortageUnits": 648.0203499191346,
+            "cashAttributedShortageUnits": 161.85417771803336,
+            "searchExecutionAttributedShortageUnits": 3.246300071352894,
+            "topologyShareOfShortage": 0.7969545580886658,
+            "cashShareOfShortage": 0.19905304624179804,
+            "searchExecutionResidualShare": 0.003992395669535836,
+            "activeFirmExposure": 1159,
+            "nominalPurchasingPower": 68333.91349612546,
+            "nonPositiveGvaCountryMonthShare": 0.041666666666666664,
+            "salesRevenueBook": 29217.06732558266,
+            "salesRevenueAtOrBelowBookCost": 29217.06732558266,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 765.0702467648198,
+            "purchasedInputUnits": 11.105423993311138,
+            "inputShortageUnits": 753.9648227715086,
+            "inputShortageRate": 0.9854844387946444,
+            "topologyAttributedShortageUnits": 613.8157433325133,
+            "cashAttributedShortageUnits": 140.1490794389954,
+            "searchExecutionAttributedShortageUnits": 1.1606384256457325e-16,
+            "topologyShareOfShortage": 0.8141172171351184,
+            "cashShareOfShortage": 0.18588278286488175,
+            "searchExecutionResidualShare": 1.539380075292276e-19,
+            "activeFirmExposure": 1174,
+            "nominalPurchasingPower": 74714.21897880996,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 35089.02978701401,
+            "salesRevenueAtOrBelowBookCost": 35089.02978701401,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.000524430828586997,
+            "relativeTopologyEffect": -0.0005324387024301085,
+            "searchExecutionResidualShareT": 1.539380075292276e-19,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1.0129421915444348,
+            "purchasingPowerRatio": 1.0933695314120457
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 648.1173279608861,
+            "purchasedInputUnits": 0,
+            "inputShortageUnits": 648.1173279608861,
+            "inputShortageRate": 1,
+            "topologyAttributedShortageUnits": 577.0020445991529,
+            "cashAttributedShortageUnits": 71.11528336173342,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.890274059504817,
+            "cashShareOfShortage": 0.10972594049518335,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 795,
+            "nominalPurchasingPower": 41615.99360614906,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 0,
+            "salesRevenueAtOrBelowBookCost": 0,
+            "belowCostRevenueShare": 0,
+            "normalizedValuePathologyIndex": 0
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 647.7909154815518,
+            "purchasedInputUnits": 0,
+            "inputShortageUnits": 647.7909154815518,
+            "inputShortageRate": 1,
+            "topologyAttributedShortageUnits": 553.780555817688,
+            "cashAttributedShortageUnits": 94.01035966386367,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.8548754583969754,
+            "cashShareOfShortage": 0.14512454160302432,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 795,
+            "nominalPurchasingPower": 41848.83434991831,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 0,
+            "salesRevenueAtOrBelowBookCost": 0,
+            "belowCostRevenueShare": 0,
+            "normalizedValuePathologyIndex": 0
+          },
+          "estimands": {
+            "absoluteTopologyEffect": 0,
+            "relativeTopologyEffect": 0,
+            "searchExecutionResidualShareT": 0,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1,
+            "purchasingPowerRatio": 1.0055949822073897
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": false
+          }
+        }
+      ]
+    },
+    {
+      "candidateId": "V24_M16_C42",
+      "control": false,
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "SUPPLY_SHOCK_M13",
+        "role": "ADVERSE_REAL_PRODUCTIVITY_STRESS"
+      },
+      "cellsPresent": true,
+      "initialIdentityExact": true,
+      "windows": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 1656.5731764987154,
+            "purchasedInputUnits": 352.7803126848729,
+            "inputShortageUnits": 1303.7928638138426,
+            "inputShortageRate": 0.7870421194248123,
+            "topologyAttributedShortageUnits": 938.6983366914759,
+            "cashAttributedShortageUnits": 359.2240770136357,
+            "searchExecutionAttributedShortageUnits": 5.870450108731459,
+            "topologyShareOfShortage": 0.7199750533574822,
+            "cashShareOfShortage": 0.2755223525022501,
+            "searchExecutionResidualShare": 0.004502594140268013,
+            "activeFirmExposure": 3876,
+            "nominalPurchasingPower": 1005161.6946828039,
+            "nonPositiveGvaCountryMonthShare": 0.05555555555555555,
+            "salesRevenueBook": 106547.81102241264,
+            "salesRevenueAtOrBelowBookCost": 106547.81102241264,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 1617.6776435626132,
+            "purchasedInputUnits": 334.2907469180889,
+            "inputShortageUnits": 1283.386896644524,
+            "inputShortageRate": 0.7933514453584953,
+            "topologyAttributedShortageUnits": 933.6744979555068,
+            "cashAttributedShortageUnits": 340.60196926846396,
+            "searchExecutionAttributedShortageUnits": 9.110429420552974,
+            "topologyShareOfShortage": 0.7275082053561892,
+            "cashShareOfShortage": 0.26539305501636645,
+            "searchExecutionResidualShare": 0.007098739627444089,
+            "activeFirmExposure": 3866,
+            "nominalPurchasingPower": 1037779.4849788984,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 109848.92920569587,
+            "salesRevenueAtOrBelowBookCost": 109848.92920569587,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.006309325933683052,
+            "relativeTopologyEffect": -0.008016503536423244,
+            "searchExecutionResidualShareT": 0.007098739627444089,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9974200206398349,
+            "purchasingPowerRatio": 1.032450291797468
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "PRE_SHOCK_12",
+            "startMonth": 1,
+            "endMonth": 12
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 436.33120966594095,
+            "purchasedInputUnits": 327.5582141553595,
+            "inputShortageUnits": 108.7729955105813,
+            "inputShortageRate": 0.2492899730776968,
+            "topologyAttributedShortageUnits": 0,
+            "cashAttributedShortageUnits": 108.7729955105813,
+            "searchExecutionAttributedShortageUnits": 2.5003870501860703e-15,
+            "topologyShareOfShortage": 0,
+            "cashShareOfShortage": 1,
+            "searchExecutionResidualShare": 2.29872041166949e-17,
+            "activeFirmExposure": 1915,
+            "nominalPurchasingPower": 897064.559205981,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 75989.49736816683,
+            "salesRevenueAtOrBelowBookCost": 75989.49736816683,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 427.2378218265688,
+            "purchasedInputUnits": 320.8243954094803,
+            "inputShortageUnits": 106.41342641708853,
+            "inputShortageRate": 0.2490730477983889,
+            "topologyAttributedShortageUnits": 0,
+            "cashAttributedShortageUnits": 106.41342641708853,
+            "searchExecutionAttributedShortageUnits": 2.9033849976989323e-15,
+            "topologyShareOfShortage": 0,
+            "cashShareOfShortage": 1,
+            "searchExecutionResidualShare": 2.7284010067668386e-17,
+            "activeFirmExposure": 1914,
+            "nominalPurchasingPower": 923082.4789972706,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 76097.04266189715,
+            "salesRevenueAtOrBelowBookCost": 76097.04266189715,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": 0.00021692527930788907,
+            "relativeTopologyEffect": 0.0008701725008421396,
+            "searchExecutionResidualShareT": 2.7284010067668386e-17,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9994778067885117,
+            "purchasingPowerRatio": 1.0290033972742372
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": false
+          }
+        },
+        {
+          "window": {
+            "id": "TRANSITION_12",
+            "startMonth": 13,
+            "endMonth": 24
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 728.3945110177541,
+            "purchasedInputUnits": 15.35337748660515,
+            "inputShortageUnits": 713.041133531149,
+            "inputShortageRate": 0.9789216183615215,
+            "topologyAttributedShortageUnits": 536.7881991917501,
+            "cashAttributedShortageUnits": 170.38248423066761,
+            "searchExecutionAttributedShortageUnits": 5.870450108731456,
+            "topologyShareOfShortage": 0.7528151938913363,
+            "cashShareOfShortage": 0.23895183071261697,
+            "searchExecutionResidualShare": 0.00823297539604706,
+            "activeFirmExposure": 1164,
+            "nominalPurchasingPower": 68687.0120507337,
+            "nonPositiveGvaCountryMonthShare": 0.08333333333333333,
+            "salesRevenueBook": 29145.12155814874,
+            "salesRevenueAtOrBelowBookCost": 29145.12155814874,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 661.9954888395957,
+            "purchasedInputUnits": 13.466351508608625,
+            "inputShortageUnits": 648.5291373309872,
+            "inputShortageRate": 0.9796579406723548,
+            "topologyAttributedShortageUnits": 491.6275254568628,
+            "cashAttributedShortageUnits": 147.7911824535714,
+            "searchExecutionAttributedShortageUnits": 9.11042942055297,
+            "topologyShareOfShortage": 0.758065439403616,
+            "cashShareOfShortage": 0.227886726973909,
+            "searchExecutionResidualShare": 0.014047833622475034,
+            "activeFirmExposure": 1164,
+            "nominalPurchasingPower": 72918.01576134867,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 33751.886543798704,
+            "salesRevenueAtOrBelowBookCost": 33751.886543798704,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.000736322310833315,
+            "relativeTopologyEffect": -0.000752176984369536,
+            "searchExecutionResidualShareT": 0.014047833622475034,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1,
+            "purchasingPowerRatio": 1.0615983078065743
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": false,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 491.84745581502057,
+            "purchasedInputUnits": 9.868721042908161,
+            "inputShortageUnits": 481.97873477211226,
+            "inputShortageRate": 0.9799354028851176,
+            "topologyAttributedShortageUnits": 401.91013749972575,
+            "cashAttributedShortageUnits": 80.06859727238671,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.8338752490600144,
+            "cashShareOfShortage": 0.166124750939986,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 797,
+            "nominalPurchasingPower": 39410.12342608874,
+            "nonPositiveGvaCountryMonthShare": 0.08333333333333333,
+            "salesRevenueBook": 1413.1920960970947,
+            "salesRevenueAtOrBelowBookCost": 1413.1920960970947,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 528.4443328964483,
+            "purchasedInputUnits": 0,
+            "inputShortageUnits": 528.4443328964483,
+            "inputShortageRate": 1,
+            "topologyAttributedShortageUnits": 442.0469724986439,
+            "cashAttributedShortageUnits": 86.3973603978042,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.8365062220948551,
+            "cashShareOfShortage": 0.1634937779051446,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 788,
+            "nominalPurchasingPower": 41778.990220278996,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 0,
+            "salesRevenueAtOrBelowBookCost": 0,
+            "belowCostRevenueShare": 0,
+            "normalizedValuePathologyIndex": 0
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.0200645971148824,
+            "relativeTopologyEffect": -0.020475428335182483,
+            "searchExecutionResidualShareT": 0,
+            "valueEffectOfTopology": 2,
+            "activeFirmRatio": 0.9887076537013801,
+            "purchasingPowerRatio": 1.0601080785406043
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": true,
+            "oppositeSign": true
+          }
+        }
+      ]
+    },
+    {
+      "candidateId": "V24_M16_C42",
+      "control": false,
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "FINANCIAL_CONFIDENCE_STRESS_M13",
+        "role": "COMPOUND_CONFIDENCE_AND_BANK_RISK_STRESS"
+      },
+      "cellsPresent": true,
+      "initialIdentityExact": true,
+      "windows": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 1897.4314927376329,
+            "purchasedInputUnits": 340.47663955218303,
+            "inputShortageUnits": 1556.9548531854496,
+            "inputShortageRate": 0.8205591923316609,
+            "topologyAttributedShortageUnits": 1188.6919998976457,
+            "cashAttributedShortageUnits": 363.9417205993136,
+            "searchExecutionAttributedShortageUnits": 4.321132688490344,
+            "topologyShareOfShortage": 0.7634723623910116,
+            "cashShareOfShortage": 0.23375226317879902,
+            "searchExecutionResidualShare": 0.0027753744301895005,
+            "activeFirmExposure": 3867,
+            "nominalPurchasingPower": 1006396.099103513,
+            "nonPositiveGvaCountryMonthShare": 0.013888888888888888,
+            "salesRevenueBook": 105205.5011869196,
+            "salesRevenueAtOrBelowBookCost": 105205.5011869196,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 1868.4863002367463,
+            "purchasedInputUnits": 335.4663982211547,
+            "inputShortageUnits": 1533.0199020155922,
+            "inputShortageRate": 0.820460873500304,
+            "topologyAttributedShortageUnits": 1198.2041199691148,
+            "cashAttributedShortageUnits": 334.8157820464764,
+            "searchExecutionAttributedShortageUnits": 2.9184011977878566e-15,
+            "topologyShareOfShortage": 0.78159723718768,
+            "cashShareOfShortage": 0.21840276281231932,
+            "searchExecutionResidualShare": 1.9036942664284954e-18,
+            "activeFirmExposure": 3877,
+            "nominalPurchasingPower": 1038556.2478804966,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 110101.49832996809,
+            "salesRevenueAtOrBelowBookCost": 110101.49832996809,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": 0.00009831883135680286,
+            "relativeTopologyEffect": 0.00011981930404974793,
+            "searchExecutionResidualShareT": 1.9036942664284954e-18,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1.0025859839668994,
+            "purchasingPowerRatio": 1.0319557565909003
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": false
+          }
+        },
+        {
+          "window": {
+            "id": "PRE_SHOCK_12",
+            "startMonth": 1,
+            "endMonth": 12
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 436.33120966594095,
+            "purchasedInputUnits": 327.5582141553595,
+            "inputShortageUnits": 108.7729955105813,
+            "inputShortageRate": 0.2492899730776968,
+            "topologyAttributedShortageUnits": 0,
+            "cashAttributedShortageUnits": 108.7729955105813,
+            "searchExecutionAttributedShortageUnits": 2.5003870501860703e-15,
+            "topologyShareOfShortage": 0,
+            "cashShareOfShortage": 1,
+            "searchExecutionResidualShare": 2.29872041166949e-17,
+            "activeFirmExposure": 1915,
+            "nominalPurchasingPower": 897064.559205981,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 75989.49736816683,
+            "salesRevenueAtOrBelowBookCost": 75989.49736816683,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 427.2378218265688,
+            "purchasedInputUnits": 320.8243954094803,
+            "inputShortageUnits": 106.41342641708853,
+            "inputShortageRate": 0.2490730477983889,
+            "topologyAttributedShortageUnits": 0,
+            "cashAttributedShortageUnits": 106.41342641708853,
+            "searchExecutionAttributedShortageUnits": 2.9033849976989323e-15,
+            "topologyShareOfShortage": 0,
+            "cashShareOfShortage": 1,
+            "searchExecutionResidualShare": 2.7284010067668386e-17,
+            "activeFirmExposure": 1914,
+            "nominalPurchasingPower": 923082.4789972706,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 76097.04266189715,
+            "salesRevenueAtOrBelowBookCost": 76097.04266189715,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": 0.00021692527930788907,
+            "relativeTopologyEffect": 0.0008701725008421396,
+            "searchExecutionResidualShareT": 2.7284010067668386e-17,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9994778067885117,
+            "purchasingPowerRatio": 1.0290033972742372
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": false
+          }
+        },
+        {
+          "window": {
+            "id": "TRANSITION_12",
+            "startMonth": 13,
+            "endMonth": 24
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 821.113935976679,
+            "purchasedInputUnits": 12.918425396823551,
+            "inputShortageUnits": 808.1955105798555,
+            "inputShortageRate": 0.9842671950495425,
+            "topologyAttributedShortageUnits": 648.5290701132826,
+            "cashAttributedShortageUnits": 155.34530777808268,
+            "searchExecutionAttributedShortageUnits": 4.321132688490342,
+            "topologyShareOfShortage": 0.8024408223302093,
+            "cashShareOfShortage": 0.19221253489347792,
+            "searchExecutionResidualShare": 0.005346642776312951,
+            "activeFirmExposure": 1158,
+            "nominalPurchasingPower": 68397.55418448424,
+            "nonPositiveGvaCountryMonthShare": 0.041666666666666664,
+            "salesRevenueBook": 29216.00381875275,
+            "salesRevenueAtOrBelowBookCost": 29216.00381875275,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 777.0314892957718,
+            "purchasedInputUnits": 14.64200281167435,
+            "inputShortageUnits": 762.3894864840975,
+            "inputShortageRate": 0.9811564872036981,
+            "topologyAttributedShortageUnits": 616.8664278656595,
+            "cashAttributedShortageUnits": 145.52305861843814,
+            "searchExecutionAttributedShortageUnits": 1.5016200088924236e-17,
+            "topologyShareOfShortage": 0.809122422071237,
+            "cashShareOfShortage": 0.19087757792876328,
+            "searchExecutionResidualShare": 1.969623185410684e-20,
+            "activeFirmExposure": 1169,
+            "nominalPurchasingPower": 73742.02726495011,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 34004.4556680709,
+            "salesRevenueAtOrBelowBookCost": 34004.4556680709,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": 0.0031107078458444404,
+            "relativeTopologyEffect": 0.003160430278983203,
+            "searchExecutionResidualShareT": 1.969623185410684e-20,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1.0094991364421417,
+            "purchasingPowerRatio": 1.0781383653873147
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": false
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 639.9863470950129,
+            "purchasedInputUnits": 0,
+            "inputShortageUnits": 639.9863470950129,
+            "inputShortageRate": 1,
+            "topologyAttributedShortageUnits": 540.1629297843633,
+            "cashAttributedShortageUnits": 99.82341731064959,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.8440225830382758,
+            "cashShareOfShortage": 0.15597741696172424,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 794,
+            "nominalPurchasingPower": 40933.985713047965,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 0,
+            "salesRevenueAtOrBelowBookCost": 0,
+            "belowCostRevenueShare": 0,
+            "normalizedValuePathologyIndex": 0
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 664.216989114405,
+            "purchasedInputUnits": 0,
+            "inputShortageUnits": 664.216989114405,
+            "inputShortageRate": 1,
+            "topologyAttributedShortageUnits": 581.3376921034555,
+            "cashAttributedShortageUnits": 82.87929701094967,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.8752225577345564,
+            "cashShareOfShortage": 0.12477744226544393,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 794,
+            "nominalPurchasingPower": 41731.74161827561,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 0,
+            "salesRevenueAtOrBelowBookCost": 0,
+            "belowCostRevenueShare": 0,
+            "normalizedValuePathologyIndex": 0
+          },
+          "estimands": {
+            "absoluteTopologyEffect": 0,
+            "relativeTopologyEffect": 0,
+            "searchExecutionResidualShareT": 0,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 1,
+            "purchasingPowerRatio": 1.019488840173542
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": false
+          }
+        }
+      ]
+    },
+    {
+      "candidateId": "V24_M16_C42",
+      "control": false,
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "BASELINE_36",
+        "role": "UNSHOCKED_LONG_HORIZON"
+      },
+      "cellsPresent": true,
+      "initialIdentityExact": true,
+      "windows": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 1860.3273376684738,
+            "purchasedInputUnits": 361.17462269198865,
+            "inputShortageUnits": 1499.1527149764859,
+            "inputShortageRate": 0.8058542626457106,
+            "topologyAttributedShortageUnits": 1234.080687940763,
+            "cashAttributedShortageUnits": 246.51312955390728,
+            "searchExecutionAttributedShortageUnits": 18.558897481815038,
+            "topologyShareOfShortage": 0.8231854404240061,
+            "cashShareOfShortage": 0.1644349685600735,
+            "searchExecutionResidualShare": 0.012379591015920038,
+            "activeFirmExposure": 3950,
+            "nominalPurchasingPower": 971944.9179436304,
+            "nonPositiveGvaCountryMonthShare": 0.006944444444444444,
+            "salesRevenueBook": 105465.77416401159,
+            "salesRevenueAtOrBelowBookCost": 105465.77416401159,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 1978.897693286279,
+            "purchasedInputUnits": 336.325563554118,
+            "inputShortageUnits": 1642.572129732161,
+            "inputShortageRate": 0.8300439862580288,
+            "topologyAttributedShortageUnits": 1388.64893028135,
+            "cashAttributedShortageUnits": 253.9231994508109,
+            "searchExecutionAttributedShortageUnits": 2.518655856792451e-15,
+            "topologyShareOfShortage": 0.8454112334828084,
+            "cashShareOfShortage": 0.15458876651719142,
+            "searchExecutionResidualShare": 1.5333608863819847e-18,
+            "activeFirmExposure": 3858,
+            "nominalPurchasingPower": 988444.0669002419,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 94250.33339779529,
+            "salesRevenueAtOrBelowBookCost": 94250.33339779529,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.024189723612318192,
+            "relativeTopologyEffect": -0.030017491665180994,
+            "searchExecutionResidualShareT": 1.5333608863819847e-18,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9767088607594937,
+            "purchasingPowerRatio": 1.0169753950579001
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "PRE_SHOCK_12",
+            "startMonth": 1,
+            "endMonth": 12
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 440.9122094189477,
+            "purchasedInputUnits": 316.19011637063636,
+            "inputShortageUnits": 124.72209304831163,
+            "inputShortageRate": 0.28287284947875574,
+            "topologyAttributedShortageUnits": 0,
+            "cashAttributedShortageUnits": 124.72209304831163,
+            "searchExecutionAttributedShortageUnits": 3.2810668244842578e-15,
+            "topologyShareOfShortage": 0,
+            "cashShareOfShortage": 1,
+            "searchExecutionResidualShare": 2.6307021829831886e-17,
+            "activeFirmExposure": 1906,
+            "nominalPurchasingPower": 847438.0683847737,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 73760.12492875771,
+            "salesRevenueAtOrBelowBookCost": 73760.12492875771,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 435.3362837940629,
+            "purchasedInputUnits": 324.09889762706155,
+            "inputShortageUnits": 111.23738616700147,
+            "inputShortageRate": 0.2555205947860359,
+            "topologyAttributedShortageUnits": 0,
+            "cashAttributedShortageUnits": 111.23738616700147,
+            "searchExecutionAttributedShortageUnits": 2.2879376344875357e-15,
+            "topologyShareOfShortage": 0,
+            "cashShareOfShortage": 1,
+            "searchExecutionResidualShare": 2.0568063609950693e-17,
+            "activeFirmExposure": 1890,
+            "nominalPurchasingPower": 845754.3171647936,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 73445.23913855443,
+            "salesRevenueAtOrBelowBookCost": 73445.23913855443,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": 0.027352254692719846,
+            "relativeTopologyEffect": 0.09669452102993027,
+            "searchExecutionResidualShareT": 2.0568063609950693e-17,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9916054564533053,
+            "purchasingPowerRatio": 0.9980131277047899
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": false
+          }
+        },
+        {
+          "window": {
+            "id": "TRANSITION_12",
+            "startMonth": 13,
+            "endMonth": 24
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 763.8707402802029,
+            "purchasedInputUnits": 44.98450632135227,
+            "inputShortageUnits": 718.8862339588505,
+            "inputShortageRate": 0.9411097926007074,
+            "topologyAttributedShortageUnits": 616.3718768003183,
+            "cashAttributedShortageUnits": 83.9554596767171,
+            "searchExecutionAttributedShortageUnits": 18.558897481815038,
+            "topologyShareOfShortage": 0.8573983582993464,
+            "cashShareOfShortage": 0.11678546021723203,
+            "searchExecutionResidualShare": 0.02581618148342142,
+            "activeFirmExposure": 1190,
+            "nominalPurchasingPower": 77677.33389665445,
+            "nonPositiveGvaCountryMonthShare": 0.020833333333333332,
+            "salesRevenueBook": 31705.64923525393,
+            "salesRevenueAtOrBelowBookCost": 31705.64923525393,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 877.6997085065532,
+            "purchasedInputUnits": 12.209170905462631,
+            "inputShortageUnits": 865.4905376010906,
+            "inputShortageRate": 0.9860895807676215,
+            "topologyAttributedShortageUnits": 781.3124458813055,
+            "cashAttributedShortageUnits": 84.1780917197849,
+            "searchExecutionAttributedShortageUnits": 2.3071822230491534e-16,
+            "topologyShareOfShortage": 0.9027394430526018,
+            "cashShareOfShortage": 0.09726055694739791,
+            "searchExecutionResidualShare": 2.665750950257698e-19,
+            "activeFirmExposure": 1128,
+            "nominalPurchasingPower": 93825.7536522272,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 20805.08416961548,
+            "salesRevenueAtOrBelowBookCost": 20805.08416961548,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.04497978816691417,
+            "relativeTopologyEffect": -0.04779441093967888,
+            "searchExecutionResidualShareT": 2.665750950257698e-19,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9478991596638655,
+            "purchasingPowerRatio": 1.2078910146048183
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": false,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 655.5443879693233,
+            "purchasedInputUnits": 0,
+            "inputShortageUnits": 655.5443879693233,
+            "inputShortageRate": 1,
+            "topologyAttributedShortageUnits": 617.7088111404449,
+            "cashAttributedShortageUnits": 37.835576828878494,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.9422837300978482,
+            "cashShareOfShortage": 0.05771626990215198,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 854,
+            "nominalPurchasingPower": 46829.51566220219,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 0,
+            "salesRevenueAtOrBelowBookCost": 0,
+            "belowCostRevenueShare": 0,
+            "normalizedValuePathologyIndex": 0
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 665.8617009856623,
+            "purchasedInputUnits": 0.01749502159390208,
+            "inputShortageUnits": 665.8442059640685,
+            "inputShortageRate": 0.9999737257427962,
+            "topologyAttributedShortageUnits": 607.3364844000438,
+            "cashAttributedShortageUnits": 58.507721564024614,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.9121300132373878,
+            "cashShareOfShortage": 0.08786998676261203,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 840,
+            "nominalPurchasingPower": 48863.9960832203,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 0.010089625377254122,
+            "salesRevenueAtOrBelowBookCost": 0.010089625377254122,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": 0.000026274257203806606,
+            "relativeTopologyEffect": 0.000026274257203806606,
+            "searchExecutionResidualShareT": 0,
+            "valueEffectOfTopology": -2,
+            "activeFirmRatio": 0.9836065573770492,
+            "purchasingPowerRatio": 1.0434444045010745
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": false
+          }
+        }
+      ]
+    },
+    {
+      "candidateId": "V24_M16_C42",
+      "control": false,
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "SUPPLY_SHOCK_M13",
+        "role": "ADVERSE_REAL_PRODUCTIVITY_STRESS"
+      },
+      "cellsPresent": true,
+      "initialIdentityExact": true,
+      "windows": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 1686.0715603616613,
+            "purchasedInputUnits": 367.06157569711195,
+            "inputShortageUnits": 1319.0099846645498,
+            "inputShortageRate": 0.7822977480158808,
+            "topologyAttributedShortageUnits": 1057.201452773908,
+            "cashAttributedShortageUnits": 258.59235795406846,
+            "searchExecutionAttributedShortageUnits": 3.21617393657322,
+            "topologyShareOfShortage": 0.8015113343078862,
+            "cashShareOfShortage": 0.19605034151415737,
+            "searchExecutionResidualShare": 0.0024383241779562088,
+            "activeFirmExposure": 3957,
+            "nominalPurchasingPower": 968849.9498188802,
+            "nonPositiveGvaCountryMonthShare": 0.013888888888888888,
+            "salesRevenueBook": 104817.43927238483,
+            "salesRevenueAtOrBelowBookCost": 104817.43927238483,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 1744.8073880865973,
+            "purchasedInputUnits": 336.2802660438069,
+            "inputShortageUnits": 1408.5271220427908,
+            "inputShortageRate": 0.807267972189996,
+            "topologyAttributedShortageUnits": 1169.3896544640834,
+            "cashAttributedShortageUnits": 239.13746757870786,
+            "searchExecutionAttributedShortageUnits": 2.289726568072137e-15,
+            "topologyShareOfShortage": 0.8302216096258866,
+            "cashShareOfShortage": 0.1697783903741137,
+            "searchExecutionResidualShare": 1.6256176627620348e-18,
+            "activeFirmExposure": 3858,
+            "nominalPurchasingPower": 988684.4191543212,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 93210.61252622184,
+            "salesRevenueAtOrBelowBookCost": 93210.61252622184,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.024970224174115208,
+            "relativeTopologyEffect": -0.03191907970775382,
+            "searchExecutionResidualShareT": 1.6256176627620348e-18,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.974981046247157,
+            "purchasingPowerRatio": 1.0204721787302038
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "PRE_SHOCK_12",
+            "startMonth": 1,
+            "endMonth": 12
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 440.9122094189477,
+            "purchasedInputUnits": 316.19011637063636,
+            "inputShortageUnits": 124.72209304831163,
+            "inputShortageRate": 0.28287284947875574,
+            "topologyAttributedShortageUnits": 0,
+            "cashAttributedShortageUnits": 124.72209304831163,
+            "searchExecutionAttributedShortageUnits": 3.2810668244842578e-15,
+            "topologyShareOfShortage": 0,
+            "cashShareOfShortage": 1,
+            "searchExecutionResidualShare": 2.6307021829831886e-17,
+            "activeFirmExposure": 1906,
+            "nominalPurchasingPower": 847438.0683847737,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 73760.12492875771,
+            "salesRevenueAtOrBelowBookCost": 73760.12492875771,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 435.3362837940629,
+            "purchasedInputUnits": 324.09889762706155,
+            "inputShortageUnits": 111.23738616700147,
+            "inputShortageRate": 0.2555205947860359,
+            "topologyAttributedShortageUnits": 0,
+            "cashAttributedShortageUnits": 111.23738616700147,
+            "searchExecutionAttributedShortageUnits": 2.2879376344875357e-15,
+            "topologyShareOfShortage": 0,
+            "cashShareOfShortage": 1,
+            "searchExecutionResidualShare": 2.0568063609950693e-17,
+            "activeFirmExposure": 1890,
+            "nominalPurchasingPower": 845754.3171647936,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 73445.23913855443,
+            "salesRevenueAtOrBelowBookCost": 73445.23913855443,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": 0.027352254692719846,
+            "relativeTopologyEffect": 0.09669452102993027,
+            "searchExecutionResidualShareT": 2.0568063609950693e-17,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9916054564533053,
+            "purchasingPowerRatio": 0.9980131277047899
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": false
+          }
+        },
+        {
+          "window": {
+            "id": "TRANSITION_12",
+            "startMonth": 13,
+            "endMonth": 24
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 673.3485228624814,
+            "purchasedInputUnits": 50.8714593264756,
+            "inputShortageUnits": 622.4770635360056,
+            "inputShortageRate": 0.9244500320425217,
+            "topologyAttributedShortageUnits": 530.7846390116143,
+            "cashAttributedShortageUnits": 88.4762505878183,
+            "searchExecutionAttributedShortageUnits": 3.2161739365732167,
+            "topologyShareOfShortage": 0.8526975050236729,
+            "cashShareOfShortage": 0.1421357601278117,
+            "searchExecutionResidualShare": 0.005166734848515724,
+            "activeFirmExposure": 1195,
+            "nominalPurchasingPower": 77468.21436877812,
+            "nonPositiveGvaCountryMonthShare": 0.041666666666666664,
+            "salesRevenueBook": 31057.314343627102,
+            "salesRevenueAtOrBelowBookCost": 31057.314343627102,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 766.9730184575325,
+            "purchasedInputUnits": 12.162379816386231,
+            "inputShortageUnits": 754.8106386411462,
+            "inputShortageRate": 0.9841423628684537,
+            "topologyAttributedShortageUnits": 678.4851994481003,
+            "cashAttributedShortageUnits": 76.32543919304605,
+            "searchExecutionAttributedShortageUnits": 1.7889335846010823e-18,
+            "topologyShareOfShortage": 0.8988813415104332,
+            "cashShareOfShortage": 0.10111865848956704,
+            "searchExecutionResidualShare": 2.3700428862815504e-21,
+            "activeFirmExposure": 1128,
+            "nominalPurchasingPower": 94119.32290908582,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 19765.363585023406,
+            "salesRevenueAtOrBelowBookCost": 19765.363585023406,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.05969233082593195,
+            "relativeTopologyEffect": -0.06457064065868981,
+            "searchExecutionResidualShareT": 2.3700428862815504e-21,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9439330543933054,
+            "purchasingPowerRatio": 1.214941168787525
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": false,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 571.8108280802326,
+            "purchasedInputUnits": 0,
+            "inputShortageUnits": 571.8108280802326,
+            "inputShortageRate": 1,
+            "topologyAttributedShortageUnits": 526.4168137622937,
+            "cashAttributedShortageUnits": 45.39401431793861,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.9206135804207445,
+            "cashShareOfShortage": 0.07938641957925505,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 856,
+            "nominalPurchasingPower": 43943.667065328504,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 0,
+            "salesRevenueAtOrBelowBookCost": 0,
+            "belowCostRevenueShare": 0,
+            "normalizedValuePathologyIndex": 0
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 542.4980858350023,
+            "purchasedInputUnits": 0.018988600359134095,
+            "inputShortageUnits": 542.4790972346431,
+            "inputShortageRate": 0.999964997848186,
+            "topologyAttributedShortageUnits": 490.9044550159824,
+            "cashAttributedShortageUnits": 51.57464221866025,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.9049278719095925,
+            "cashShareOfShortage": 0.09507212809040684,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 840,
+            "nominalPurchasingPower": 48810.77908044211,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 0.009802644003730421,
+            "salesRevenueAtOrBelowBookCost": 0.009802644003730421,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": 0.000035002151813956495,
+            "relativeTopologyEffect": 0.000035002151813956495,
+            "searchExecutionResidualShareT": 0,
+            "valueEffectOfTopology": -2,
+            "activeFirmRatio": 0.9813084112149533,
+            "purchasingPowerRatio": 1.1107579849419018
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": false
+          }
+        }
+      ]
+    },
+    {
+      "candidateId": "V24_M16_C42",
+      "control": false,
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "FINANCIAL_CONFIDENCE_STRESS_M13",
+        "role": "COMPOUND_CONFIDENCE_AND_BANK_RISK_STRESS"
+      },
+      "cellsPresent": true,
+      "initialIdentityExact": true,
+      "windows": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 1771.6296315547042,
+            "purchasedInputUnits": 400.32447405977996,
+            "inputShortageUnits": 1371.3051574949247,
+            "inputShortageRate": 0.7740360248386271,
+            "topologyAttributedShortageUnits": 1097.5560577412996,
+            "cashAttributedShortageUnits": 250.71424527323956,
+            "searchExecutionAttributedShortageUnits": 23.034854480384556,
+            "topologyShareOfShortage": 0.8003733171588846,
+            "cashShareOfShortage": 0.18282892316341884,
+            "searchExecutionResidualShare": 0.016797759677695815,
+            "activeFirmExposure": 3954,
+            "nominalPurchasingPower": 965392.1814375321,
+            "nonPositiveGvaCountryMonthShare": 0.05555555555555555,
+            "salesRevenueBook": 112356.75678963498,
+            "salesRevenueAtOrBelowBookCost": 112356.75678963498,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 144,
+            "expectedRows": 144,
+            "complete": true,
+            "plannedInputNeedUnits": 1974.3200694333843,
+            "purchasedInputUnits": 338.1017123226582,
+            "inputShortageUnits": 1636.218357110726,
+            "inputShortageRate": 0.8287503036831859,
+            "topologyAttributedShortageUnits": 1362.2381253527992,
+            "cashAttributedShortageUnits": 273.9802317579262,
+            "searchExecutionAttributedShortageUnits": 2.3516887222296834e-15,
+            "topologyShareOfShortage": 0.8325527698871881,
+            "cashShareOfShortage": 0.16744723011281157,
+            "searchExecutionResidualShare": 1.4372707114607566e-18,
+            "activeFirmExposure": 3856,
+            "nominalPurchasingPower": 988536.5810773228,
+            "nonPositiveGvaCountryMonthShare": 0.006944444444444444,
+            "salesRevenueBook": 94329.62523382374,
+            "salesRevenueAtOrBelowBookCost": 94329.62523382374,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.05471427884455882,
+            "relativeTopologyEffect": -0.07068699270937136,
+            "searchExecutionResidualShareT": 1.4372707114607566e-18,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9752149721800708,
+            "purchasingPowerRatio": 1.0239740906181023
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "PRE_SHOCK_12",
+            "startMonth": 1,
+            "endMonth": 12
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 440.9122094189477,
+            "purchasedInputUnits": 316.19011637063636,
+            "inputShortageUnits": 124.72209304831163,
+            "inputShortageRate": 0.28287284947875574,
+            "topologyAttributedShortageUnits": 0,
+            "cashAttributedShortageUnits": 124.72209304831163,
+            "searchExecutionAttributedShortageUnits": 3.2810668244842578e-15,
+            "topologyShareOfShortage": 0,
+            "cashShareOfShortage": 1,
+            "searchExecutionResidualShare": 2.6307021829831886e-17,
+            "activeFirmExposure": 1906,
+            "nominalPurchasingPower": 847438.0683847737,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 73760.12492875771,
+            "salesRevenueAtOrBelowBookCost": 73760.12492875771,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 435.3362837940629,
+            "purchasedInputUnits": 324.09889762706155,
+            "inputShortageUnits": 111.23738616700147,
+            "inputShortageRate": 0.2555205947860359,
+            "topologyAttributedShortageUnits": 0,
+            "cashAttributedShortageUnits": 111.23738616700147,
+            "searchExecutionAttributedShortageUnits": 2.2879376344875357e-15,
+            "topologyShareOfShortage": 0,
+            "cashShareOfShortage": 1,
+            "searchExecutionResidualShare": 2.0568063609950693e-17,
+            "activeFirmExposure": 1890,
+            "nominalPurchasingPower": 845754.3171647936,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 73445.23913855443,
+            "salesRevenueAtOrBelowBookCost": 73445.23913855443,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": 0.027352254692719846,
+            "relativeTopologyEffect": 0.09669452102993027,
+            "searchExecutionResidualShareT": 2.0568063609950693e-17,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9916054564533053,
+            "purchasingPowerRatio": 0.9980131277047899
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": false
+          }
+        },
+        {
+          "window": {
+            "id": "TRANSITION_12",
+            "startMonth": 13,
+            "endMonth": 24
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 750.0711112634552,
+            "purchasedInputUnits": 40.6726671082138,
+            "inputShortageUnits": 709.3984441552414,
+            "inputShortageRate": 0.9457749185411195,
+            "topologyAttributedShortageUnits": 602.687793291881,
+            "cashAttributedShortageUnits": 88.14828332993471,
+            "searchExecutionAttributedShortageUnits": 18.562367533425586,
+            "topologyShareOfShortage": 0.8495758600225964,
+            "cashShareOfShortage": 0.12425779060581751,
+            "searchExecutionResidualShare": 0.026166349371586,
+            "activeFirmExposure": 1193,
+            "nominalPurchasingPower": 77321.56740767698,
+            "nonPositiveGvaCountryMonthShare": 0.041666666666666664,
+            "salesRevenueBook": 32711.92589470363,
+            "salesRevenueAtOrBelowBookCost": 32711.92589470363,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 874.9392733650245,
+            "purchasedInputUnits": 12.269315211586642,
+            "inputShortageUnits": 862.6699581534378,
+            "inputShortageRate": 0.9859769522467556,
+            "topologyAttributedShortageUnits": 771.3558404677244,
+            "cashAttributedShortageUnits": 91.3141176857135,
+            "searchExecutionAttributedShortageUnits": 6.375108774214766e-17,
+            "topologyShareOfShortage": 0.89414941737258,
+            "cashShareOfShortage": 0.10585058262742009,
+            "searchExecutionResidualShare": 7.389974246768501e-20,
+            "activeFirmExposure": 1126,
+            "nominalPurchasingPower": 93896.7728412561,
+            "nonPositiveGvaCountryMonthShare": 0.020833333333333332,
+            "salesRevenueBook": 20883.361841627833,
+            "salesRevenueAtOrBelowBookCost": 20883.361841627833,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.04020203370563613,
+            "relativeTopologyEffect": -0.042506978053138404,
+            "searchExecutionResidualShareT": 7.389974246768501e-20,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9438390611902766,
+            "purchasingPowerRatio": 1.2143671680397599
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": false,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36
+          },
+          "complete": true,
+          "initialIdentityExact": true,
+          "O": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 580.6463108723003,
+            "purchasedInputUnits": 43.461690580929776,
+            "inputShortageUnits": 537.1846202913707,
+            "inputShortageRate": 0.925149458857945,
+            "topologyAttributedShortageUnits": 494.86826444941846,
+            "cashAttributedShortageUnits": 37.84386889499332,
+            "searchExecutionAttributedShortageUnits": 4.472486946958969,
+            "topologyShareOfShortage": 0.9212256750407342,
+            "cashShareOfShortage": 0.07044853382895937,
+            "searchExecutionResidualShare": 0.008325791130306518,
+            "activeFirmExposure": 855,
+            "nominalPurchasingPower": 40632.545645081715,
+            "nonPositiveGvaCountryMonthShare": 0.125,
+            "salesRevenueBook": 5884.70596617359,
+            "salesRevenueAtOrBelowBookCost": 5884.70596617359,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "T": {
+            "rowCount": 48,
+            "expectedRows": 48,
+            "complete": true,
+            "plannedInputNeedUnits": 664.0445122742964,
+            "purchasedInputUnits": 1.7334994840100573,
+            "inputShortageUnits": 662.3110127902863,
+            "inputShortageRate": 0.997389483006082,
+            "topologyAttributedShortageUnits": 590.8822848850748,
+            "cashAttributedShortageUnits": 71.42872790521147,
+            "searchExecutionAttributedShortageUnits": 0,
+            "topologyShareOfShortage": 0.8921522871795752,
+            "cashShareOfShortage": 0.10784771282042477,
+            "searchExecutionResidualShare": 0,
+            "activeFirmExposure": 840,
+            "nominalPurchasingPower": 48885.491071272714,
+            "nonPositiveGvaCountryMonthShare": 0,
+            "salesRevenueBook": 1.0242536414382677,
+            "salesRevenueAtOrBelowBookCost": 1.0242536414382677,
+            "belowCostRevenueShare": 1,
+            "normalizedValuePathologyIndex": 2
+          },
+          "estimands": {
+            "absoluteTopologyEffect": -0.07224002414813702,
+            "relativeTopologyEffect": -0.07808470669951431,
+            "searchExecutionResidualShareT": 0,
+            "valueEffectOfTopology": 0,
+            "activeFirmRatio": 0.9824561403508771,
+            "purchasingPowerRatio": 1.203111700120368
+          },
+          "conditions": {
+            "effectThresholdsPassed": false,
+            "searchResidualPassed": true,
+            "activeFirmPreserved": true,
+            "purchasingPowerPreserved": true,
+            "valueReductionPassed": false,
+            "oppositeSign": true
+          }
+        }
+      ]
+    }
+  ],
+  "interpretation": {
+    "purpose": "SUPPLIER_TOPOLOGY_CAUSAL_ISOLATION_ONLY",
+    "observedCellRemainsCanonicalPath": true,
+    "topologyCellIsDisposableCounterfactual": true,
+    "valueSentinelIsDownstreamEvidenceOnly": true,
+    "candidateRetuningAuthorized": false,
+    "thresholdRelaxationAuthorized": false,
+    "canonicalMutationAuthorized": false,
+    "nextFrontAfterTechnicalPass": "R4-CU-D3D-B7-D6 over both O and T traces"
+  }
+}
