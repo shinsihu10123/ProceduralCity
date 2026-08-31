@@ -102,15 +102,40 @@ jobs:
           SOURCE_JSON="economic-lab/performance-results/${BASE}-source.json"
           RESULT_JSON="economic-lab/performance-results/${BASE}.json"
           LOG="economic-lab/performance-results/${BASE}.log"
+          SOURCE_SCRIPT="economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs"
+          SIGNED_SCRIPT="${SOURCE_SCRIPT}.s3-signed-${GITHUB_RUN_ID}-${CANDIDATE}-${LABEL}-${S3_SCENARIO_ID}.mjs"
+          export SOURCE_SCRIPT SIGNED_SCRIPT
           mkdir -p economic-lab/performance-results
           {
+            node --input-type=module <<'NODE'
+            import assert from 'node:assert/strict';
+            import fs from 'node:fs';
+            const sourcePath = process.env.SOURCE_SCRIPT;
+            const signedPath = process.env.SIGNED_SCRIPT;
+            const replacements = [
+              ["Math.max(0, world.accounting.gl.naturalBalance(firm.id, 'inventory'))", "world.accounting.gl.naturalBalance(firm.id, 'inventory')"],
+              ["Math.max(0, world.accounting.gl.naturalBalance(firm.id, 'input_inventory'))", "world.accounting.gl.naturalBalance(firm.id, 'input_inventory')"],
+              ["Math.max(0, world.accounting.gl.naturalBalance(firm.id, 'wages_payable'))", "world.accounting.gl.naturalBalance(firm.id, 'wages_payable')"],
+              ["Math.max(0, world.accounting.gl.naturalBalance(household.id, 'wage_receivable'))", "world.accounting.gl.naturalBalance(household.id, 'wage_receivable')"]
+            ];
+            let source = fs.readFileSync(sourcePath, 'utf8');
+            let count = 0;
+            for (const [from, to] of replacements) {
+              const occurrences = source.split(from).length - 1;
+              assert.equal(occurrences, 2, `Expected exactly two signed-stock replacements for ${from}; got ${occurrences}`);
+              source = source.replaceAll(from, to);
+              count += occurrences;
+            }
+            assert.equal(count, 8);
+            fs.writeFileSync(signedPath, source, 'utf8');
+            console.log('WP_RV08_R4_CU_D3D_B6_S3_SIGNED_STOCK_VIEW', JSON.stringify({ replacements: count, sourcePath, signedPath }));
+            NODE
             DIAG_SEED="$SEED" DIAG_MONTHS=36 CANDIDATE="$CANDIDATE" S3_SCENARIO_ID="$S3_SCENARIO_ID" \
             OUTPUT_JSON="$SOURCE_JSON" \
-            node economic-lab/scripts/rv08-r4-cu-d3d-b6-s3-contract-compat-runner.mjs \
-              economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs
+            node economic-lab/scripts/rv08-r4-cu-d3d-b6-s3-contract-compat-runner.mjs "$SIGNED_SCRIPT"
             S3_SCENARIO_ID="$S3_SCENARIO_ID" \
             node economic-lab/scripts/rv08-r4-cu-d3d-b6-s3-relabel-result.mjs "$SOURCE_JSON" "$RESULT_JSON"
-            rm -f "$SOURCE_JSON"
+            rm -f "$SOURCE_JSON" "$SIGNED_SCRIPT"
           } 2>&1 | tee "$LOG"
       - uses: actions/upload-artifact@v4
         if: always()
