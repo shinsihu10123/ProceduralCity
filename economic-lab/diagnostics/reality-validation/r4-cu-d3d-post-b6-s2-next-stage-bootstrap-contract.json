@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3D-POST-B6-S2-BOOTSTRAP",
+  "status": "FROZEN_PRE_EXECUTION",
+  "canonicalMutationAuthorized": false,
+  "resultDependentRetuningAuthorized": false,
+  "source": {
+    "requiredFront": "R4-CU-D3D-B6-S2",
+    "technicalAggregatePassRequired": true,
+    "repositoryAggregateCandidates": [
+      "economic-lab/performance-results/r4-cu-d3d-b6-s2-authoritative-aggregate.json",
+      "economic-lab/performance-results/r4-cu-d3d-b6-s2-aggregate.json"
+    ],
+    "artifactFallbackWorkflow": "economic-lab-rv08-r4-cu-d3d-b6-s2-heldout-replication.yml",
+    "artifactFallbackName": "r4-cu-d3d-b6-s2-authoritative-aggregate"
+  },
+  "routing": {
+    "replicatedCandidatePresent": "R4-CU-D3D-B6-S3-LONG-HORIZON-BOOTSTRAP",
+    "noReplicatedCandidate": "R4-CU-D3D-B7-STRUCTURAL-BASELINE-BOOTSTRAP",
+    "missingOrAmbiguousAggregate": "FAIL_CLOSED"
+  },
+  "s3": {
+    "controlCandidateId": "V1_M1_C42",
+    "primaryCandidateSource": "B6-S2 frozen aggregate primary selection",
+    "seeds": ["ECON-RV08-LONGRUN-G", "ECON-RV08-LONGRUN-H"],
+    "months": 36,
+    "candidateSeedJobs": 4,
+    "economicAdmissionDecisionAuthorized": false,
+    "requiredGates": [
+      "exactCanonicalReplay",
+      "exactDiagnosticReplay",
+      "hardAccountingHealthy",
+      "protectedSurfaceExact",
+      "productionApproachesReconcile",
+      "inventoryBridgesReconcile",
+      "settlementBridgesReconcile",
+      "macroFlowFieldsReconcile"
+    ]
+  },
+  "b7": {
+    "candidateId": "V1_M1_C42",
+    "seeds": ["ECON-RV08-LONGRUN-G", "ECON-RV08-LONGRUN-H"],
+    "months": 36,
+    "candidateSeedJobs": 2,
+    "role": "CANONICAL_LONG_HORIZON_STRUCTURAL_DIAGNOSIS_BASELINE",
+    "b6CandidateRetuningAuthorized": false,
+    "requiredGates": [
+      "exactCanonicalReplay",
+      "exactDiagnosticReplay",
+      "hardAccountingHealthy",
+      "controlCanonicalEquivalence",
+      "productionApproachesReconcile",
+      "inventoryBridgesReconcile",
+      "settlementBridgesReconcile",
+      "macroFlowFieldsReconcile"
+    ]
+  },
+  "blockedMutations": [
+    "canonical productivity persistence",
+    "canonical input coefficient persistence",
+    "prices",
+    "wages",
+    "opening cash or wealth",
+    "desiredConsumptionBudget",
+    "tax rates",
+    "goods-market rules",
+    "canonical bank underwriting",
+    "canonical procurement coefficient",
+    "trade-credit rules",
+    "country or industry seed configuration",
+    "B6-S2 result reinterpretation",
+    "B6-S2 threshold relaxation"
+  ]
+}
