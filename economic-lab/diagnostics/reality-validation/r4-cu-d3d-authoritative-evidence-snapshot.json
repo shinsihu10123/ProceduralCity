@@ -1,0 +1,142 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3D",
+  "canonicalMutationAuthorized": false,
+  "numericCalibrationRangesAuthorized": false,
+  "purpose": "Independently rehydrate and validate the immutable R4-CU-D3C official extraction artifact before expanding the empirical anchor set.",
+  "authoritativeArtifact": {
+    "repository": "shinsihu10123/ProceduralCity",
+    "workflowRunId": 33349300802,
+    "headSha": "d1c56dfb7e944cde7e5ff1ddf15a487bad3eba17",
+    "artifactId": 9743045393,
+    "artifactName": "r4-cu-d3c-official-reference-extraction",
+    "artifactZipSha256": "af0f1fb5d15e5e4babf3a53c859774f1775dd144284ccf8d311cea4aac614d93",
+    "expiresAt": "2026-09-30T02:00:33Z",
+    "expectedResultFile": "r4-cu-d3c-manufacturing-gva-reference-bands.json",
+    "expectedRawFile": "r4-cu-d3c-oecd-manufacturing-gva-raw.csv",
+    "expectedSummaryFile": "r4-cu-d3c-summary.md"
+  },
+  "expectedSource": {
+    "publisher": "OECD",
+    "dataset": "OECD.SDD.NAD,DSD_NAAG_IV@DF_NAAG_IV,1.0",
+    "requestedYears": [2021, 2022, 2023, 2024],
+    "primaryBalancedYears": [2021, 2022, 2023],
+    "metric": "manufacturing gross value added as percentage of total gross value added"
+  },
+  "expectedClassResults": [
+    {
+      "id": "REF-ADV-DIV",
+      "admissionStatus": "ADMITTED_PROVISIONAL_REFERENCE_BAND",
+      "completePrimaryEconomies": 8,
+      "missingShare": 0.05555555555555558,
+      "statistics": {
+        "min": 5.673265070054231,
+        "p25": 10.23975897392014,
+        "median": 11.223490998891334,
+        "p75": 15.132416131113594,
+        "max": 20.615671913955367,
+        "iqr": 4.8926571571934545,
+        "mean": 12.384147054326773
+      }
+    },
+    {
+      "id": "REF-MFG",
+      "admissionStatus": "ADMITTED_PROVISIONAL_REFERENCE_BAND",
+      "completePrimaryEconomies": 6,
+      "missingShare": 0,
+      "statistics": {
+        "min": 18.83670343321683,
+        "p25": 19.760222026198768,
+        "median": 21.157360892978602,
+        "p75": 22.27668178853473,
+        "max": 28.274665971724602,
+        "iqr": 2.5164597623359626,
+        "mean": 21.89506483587071
+      }
+    },
+    {
+      "id": "REF-RESOURCE",
+      "admissionStatus": "BLOCKED_INSUFFICIENT_COMPLETE_ECONOMIES",
+      "completePrimaryEconomies": 4,
+      "missingShare": 0.15000000000000002,
+      "statisticsRole": "DESCRIPTIVE_ONLY_BLOCKED",
+      "statistics": {
+        "min": 5.673265070054231,
+        "p25": 5.771848509536958,
+        "median": 7.60910799913534,
+        "p75": 9.62997961706288,
+        "max": 10.27939944153308,
+        "iqr": 3.8581311075259217,
+        "mean": 7.792720127464498
+      }
+    },
+    {
+      "id": "REF-HIGHSAVE",
+      "admissionStatus": "ADMITTED_PROVISIONAL_REFERENCE_BAND",
+      "completePrimaryEconomies": 5,
+      "missingShare": 0,
+      "statistics": {
+        "min": 11.776089234383067,
+        "p25": 14.993007537759402,
+        "median": 20.529537026098897,
+        "p75": 20.615671913955367,
+        "max": 28.274665971724602,
+        "iqr": 5.622664376195965,
+        "mean": 19.23779433678427
+      }
+    }
+  ],
+  "coverageRemediationPolicy": {
+    "postOutcomeMembershipSubstitutionAllowed": false,
+    "postOutcomeThresholdReductionAllowed": false,
+    "resourceClassCurrentBandStatus": "BLOCKED",
+    "admissibleFutureRoutes": [
+      "obtain the semantically identical official metric for the same frozen members and primary window",
+      "pre-register a supplemental resource-exposure cohort using independent resource-exposure criteria before extracting the target indicator"
+    ],
+    "inadmissibleFutureRoutes": [
+      "replace CAN because its result is missing",
+      "select a new country using observed manufacturing-share values",
+      "publish the four-economy descriptor as an admitted five-economy band"
+    ]
+  },
+  "expansionQueue": [
+    {
+      "id": "LABOUR-INCOME-SHARE",
+      "sourceFamily": "ILO/ILOSTAT",
+      "semanticRole": "dimensionless labour-compensation anchor",
+      "status": "SOURCE_EXTRACTION_SPECIFICATION_NEXT"
+    },
+    {
+      "id": "HOUSEHOLD-SAVING-AND-REALIZED-CONSUMPTION-SHARE",
+      "sourceFamily": "OECD national accounts / Eurostat sector accounts",
+      "semanticRole": "realized household flow constraint; not desiredConsumptionBudget",
+      "status": "SOURCE_EXTRACTION_SPECIFICATION_NEXT"
+    },
+    {
+      "id": "SECTOR-RELATIVE-VALUE-AND-COMPENSATION",
+      "sourceFamily": "OECD STAN plus OECD Supply-Use Tables",
+      "semanticRole": "sector-relative value, labour input and compensation through frozen use-classification bridge",
+      "status": "BRIDGE_WEIGHT_EXTRACTION_REQUIRED"
+    },
+    {
+      "id": "FIRM-LIQUIDITY-AND-WORKING-CAPITAL",
+      "sourceFamily": "official central-bank/statistical-office/OECD firm-finance sources",
+      "semanticRole": "cash, AR, AP, inventory, short-term debt and undrawn-credit coverage",
+      "status": "SOURCE_ACQUISITION_ACTIVE"
+    }
+  ],
+  "hardGates": [
+    "artifact ZIP digest exact",
+    "artifact result and raw CSV present",
+    "raw CSV hash matches result provenance",
+    "authoritative source identity exact",
+    "class statistics exact within floating tolerance",
+    "three classes admitted and resource class blocked",
+    "frozen membership unchanged",
+    "no post-outcome substitution or threshold reduction",
+    "no calibration target promotion",
+    "canonical mutation remains locked"
+  ],
+  "nextFront": "R4-CU-D3D-B multi-indicator official extraction specifications and source acquisition"
+}
