@@ -12,7 +12,7 @@
 - Aggregate artifact ID: `9747330570`
 - Aggregate artifact digest: `sha256:ea997b5aa212c7957719afe56502c1c2fc31e3a8a20c039120cdae0a1c2d4805`
 - Aggregate JSON SHA-256: `c3f0e122f09f6aa99c393ce75bbaa601e5160df51466a0204cd5ebe4c3c5b567`
-- Closure generated at: `2026-08-31T06:09:51.581Z`
+- Closure generated at: `2026-08-31T06:11:28.622Z`
 - Technical status: `PASS_TECHNICAL_LONG_HORIZON_STRESS_AGGREGATION`
 - Economic decision: `LONG_HORIZON_OR_STRESS_VALIDATION_FAILED_NO_RETUNING`
 - Observed jobs: `12/12`
