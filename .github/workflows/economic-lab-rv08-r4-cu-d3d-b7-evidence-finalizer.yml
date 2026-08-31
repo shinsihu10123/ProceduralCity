@@ -42,10 +42,14 @@ jobs:
           assert.equal(x.status, 'FROZEN_BEFORE_DIAGNOSTIC_EXECUTION');
           assert.equal(x.sourceStage3.decision, 'LONG_HORIZON_OR_STRESS_VALIDATION_FAILED_NO_RETUNING');
           assert.equal(x.sourceStage3.primaryCandidateId, 'V24_M16_C42');
+          assert.equal(x.sourceStage3.candidateRetuningAuthorized, false);
+          assert.equal(x.sourceStage3.thresholdRelaxationAuthorized, false);
           assert.equal(x.execution.candidateSeedScenarioJobs, 12);
           assert.equal(x.execution.months, 36);
-          assert.equal(x.diagnosticContract.candidateRetuningAuthorized, false);
           assert.equal(x.diagnosticContract.worldStateMutationAuthorized, false);
+          assert.equal(x.diagnosticContract.canonicalSourceMutationAuthorized, false);
+          assert.equal(x.diagnosticContract.candidateValueMutationAuthorized, false);
+          assert.equal(x.diagnosticContract.scenarioMutationAuthorized, false);
           assert.equal(x.canonicalMutationAuthorized, false);
           assert.equal(x.directParameterCalibrationAuthorized, false);
           NODE
