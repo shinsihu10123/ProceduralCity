@@ -1,0 +1,104 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3D-B4",
+  "decision": "PASS_SEVERE_TWO_AXIS_EMPIRICAL_GAP_CONFIRMED",
+  "referenceBandsAdmittedForShadowScoringOnly": true,
+  "directCanonicalTargetsAuthorized": false,
+  "canonicalMutationAuthorized": false,
+  "authoritativeEvidence": {
+    "branch": "scratch/new-project-2026-08-12",
+    "head": "72fd011f6204f93aaf876009811d1737ce9028c7",
+    "runId": 33355587385,
+    "jobId": 99376992874,
+    "artifactId": 9745056061,
+    "artifactZipSha256": "0bb72384b714da718dcc3ecae5c9b5be531a94859103c8d1a2522efe9feba347",
+    "conclusion": "success",
+    "finalBeacon": "success"
+  },
+  "coverage": {
+    "seeds": 4,
+    "totalCountryMonths": 384,
+    "positiveGvaCountryMonths": 377,
+    "nonPositiveGvaCountryMonths": 7,
+    "nonPositiveGvaShare": 0.018229166666666668,
+    "positiveDisposableIncomeCountryMonths": 384
+  },
+  "empiricalShadowScoringBands": {
+    "labourIncomeShareOuterIqr": [0.521557, 0.607117],
+    "labourIncomeShareMedianRange": [0.531190, 0.589613],
+    "realizedConsumptionShareOuterIqr": [0.883763, 0.979344],
+    "realizedConsumptionShareMedianRange": [0.914839, 0.929494],
+    "status": "ADMITTED_FOR_SHADOW_SCORING_ONLY"
+  },
+  "aggregateModelGap": {
+    "positiveGvaEmployeeCompensationMedianRangeAcrossSeeds": [2.044331008950818, 2.89602592177493],
+    "minimumLabourMedianToEmpiricalUpperFactor": 3.3672768328852887,
+    "realizedConsumptionMedianRangeAcrossSeeds": [0.0012365447210301171, 0.00190356654601629],
+    "realizedConsumptionMaximumRangeAcrossSeeds": [0.013196585125231395, 0.02026458329503442],
+    "minimumEmpiricalLowerToModelConsumptionMedianFactor": 464.26693190711126,
+    "minimumEmpiricalLowerToModelConsumptionMaximumFactor": 43.6112101163489
+  },
+  "caseSummaries": [
+    {
+      "case": "original-A",
+      "seed": "ECON-RV02-A",
+      "positiveGvaCountryMonths": 93,
+      "nonPositiveGvaCountryMonths": 3,
+      "labourP25": 1.000000000000007,
+      "labourMedian": 2.200985998829367,
+      "labourMedianToEmpiricalUpperFactor": 3.62530780529843,
+      "realizedConsumptionMedian": 0.0012365447210301171,
+      "realizedConsumptionMaximum": 0.015185268999537342,
+      "empiricalLowerToConsumptionMedianFactor": 714.7036293711816,
+      "netSavingMedian": 0.9987634552789699
+    },
+    {
+      "case": "original-C",
+      "seed": "ECON-RV02-C",
+      "positiveGvaCountryMonths": 95,
+      "nonPositiveGvaCountryMonths": 1,
+      "labourP25": 1.1678955453819566,
+      "labourMedian": 2.332361792733352,
+      "labourMedianToEmpiricalUpperFactor": 3.8417006816369033,
+      "realizedConsumptionMedian": 0.00190356654601629,
+      "realizedConsumptionMaximum": 0.02026458329503442,
+      "empiricalLowerToConsumptionMedianFactor": 464.26693190711126,
+      "netSavingMedian": 0.9980964334539837
+    },
+    {
+      "case": "heldout-E",
+      "seed": "ECON-RV08-HOLDOUT-E",
+      "positiveGvaCountryMonths": 96,
+      "nonPositiveGvaCountryMonths": 0,
+      "labourP25": 1.0000000000000129,
+      "labourMedian": 2.044331008950818,
+      "labourMedianToEmpiricalUpperFactor": 3.3672768328852887,
+      "realizedConsumptionMedian": 0.0014242923875926981,
+      "realizedConsumptionMaximum": 0.013524349665388156,
+      "empiricalLowerToConsumptionMedianFactor": 620.4926795218735,
+      "netSavingMedian": 0.9985757076124073
+    },
+    {
+      "case": "heldout-F",
+      "seed": "ECON-RV08-HOLDOUT-F",
+      "positiveGvaCountryMonths": 93,
+      "nonPositiveGvaCountryMonths": 3,
+      "labourP25": 1.0622621926763764,
+      "labourMedian": 2.89602592177493,
+      "labourMedianToEmpiricalUpperFactor": 4.770128198971417,
+      "realizedConsumptionMedian": 0.0018485727355174357,
+      "realizedConsumptionMaximum": 0.013196585125231395,
+      "empiricalLowerToConsumptionMedianFactor": 478.0785646244128,
+      "netSavingMedian": 0.9981514272644825
+    }
+  ],
+  "semanticStatus": {
+    "labourComparator": "PARTIAL_EMPLOYEE_COMPENSATION_ONLY",
+    "householdComparator": "PARTIAL_CASH_FLOW_WITHOUT_PENSION_ADJUSTMENT",
+    "nonPositiveGvaEvidenceRetained": true,
+    "desiredConsumptionBudgetMappingAuthorized": false,
+    "gapFactorParameterUseAuthorized": false,
+    "fictionalCountryClassAssignmentAuthorized": false
+  },
+  "nextFront": "R4-CU-D3D-B5 empirically constrained two-axis shadow-repair family preregistration"
+}
