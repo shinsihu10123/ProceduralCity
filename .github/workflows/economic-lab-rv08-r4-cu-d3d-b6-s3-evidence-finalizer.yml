@@ -1,4 +1,5 @@
 name: Economic Lab RV08 R4-CU-D3D-B6-S3 Evidence Finalizer
+# Evidence poll trigger: authoritative S3 run 33362894408
 
 on:
   push:
