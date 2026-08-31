@@ -36,17 +36,23 @@ jobs:
           import fs from 'node:fs';
           const path = 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b6-input-output-working-capital-contract.json';
           const contract = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const seeds = contract.stage1Execution.seeds.map(entry => entry.seed);
+          const control = contract.candidates.find(entry => entry.control === true);
+          assert.equal(contract.schemaVersion, '1.0');
           assert.equal(contract.front, 'R4-CU-D3D-B6-S1');
-          assert.equal(contract.status, 'FROZEN_PRE_IMPLEMENTATION');
-          assert.equal(contract.factorial.candidates.length, 18);
-          assert.equal(contract.stage1Execution.originalSeeds.length, 2);
-          assert.equal(contract.stage1Execution.candidateJobs, 18);
+          assert.equal(contract.candidates.length, 18);
+          assert.equal(seeds.length, 2);
+          assert.deepEqual(seeds, ['ECON-RV02-A', 'ECON-RV02-C']);
           assert.equal(contract.stage1Execution.candidateSeedJobs, 36);
-          assert.equal(contract.factorial.candidates.filter(x => x.control === true).length, 1);
-          assert.equal(new Set(contract.factorial.candidates.map(x => x.id)).size, 18);
+          assert.equal(contract.candidates.filter(entry => entry.control === true).length, 1);
+          assert.equal(new Set(contract.candidates.map(entry => entry.id)).size, 18);
+          assert.ok(control?.id);
+          assert.equal(contract.axes.V.grid.length * contract.axes.M.grid.length * contract.axes.W.grid.length, 18);
           assert.equal(contract.canonicalMutationAuthorized, false);
-          assert.equal(contract.canonicalCalibrationAuthorized, false);
-          console.log('WP_RV08_R4_CU_D3D_B6_S1_PREREGISTRATION', JSON.stringify({ candidates: 18, seeds: 2, jobs: 36, control: contract.factorial.controlCandidateId }));
+          assert.equal(contract.directParameterCalibrationAuthorized, false);
+          assert.equal(contract.dependencies.failedB5GridRetuningAuthorized, false);
+          assert.equal(contract.eligibility.postHocGateRelaxationAuthorized ?? contract.ranking.postHocGateRelaxationAuthorized, false);
+          console.log('WP_RV08_R4_CU_D3D_B6_S1_PREREGISTRATION', JSON.stringify({ candidates: 18, seeds: 2, jobs: 36, control: control.id }));
           NODE
 
   candidate-screen:
