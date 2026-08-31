@@ -92,7 +92,8 @@ async function officialCsv(url) {
       const response = await fetch(url, {
         signal: controller.signal,
         headers: {
-          accept: 'application/vnd.sdmx.data+csv;version=2.0.0, text/csv;q=0.9',
+          accept: 'text/csv',
+          'accept-language': 'en',
           'user-agent': 'ProceduralCity-R4-CU-D3C/1.0',
         },
       });
@@ -126,7 +127,7 @@ invariant(!contract.canonicalMutationAuthorized && !contract.numericCalibrationR
 
 const areas = [...new Set(membership.referenceClasses.flatMap((entry) => entry.members))].sort();
 const series = `A.${areas.join('+')}.B1G.C.PT_B1G.`;
-const url = `https://sdmx.oecd.org/public/rest/data/${DATASET}/${series}?startPeriod=2021&endPeriod=2024&dimensionAtObservation=AllDimensions`;
+const url = `https://sdmx.oecd.org/public/rest/data/${DATASET}/${series}?startPeriod=2021&endPeriod=2024&dimensionAtObservation=AllDimensions&format=csvfile`;
 const retrievedAt = new Date().toISOString();
 const response = await officialCsv(url);
 const table = csvRows(response.body);
