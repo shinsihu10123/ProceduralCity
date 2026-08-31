@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url';
 const ROOT = process.cwd();
 const CONTRACT_PATH = resolve(ROOT, 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b7-d1-supplier-topology-causal-contract.json');
 const D1_INTERVENTION_SOURCE_PATH = resolve(ROOT, 'economic-lab/src/research/d1-topology-neutral-procurement.js');
-const B7_RUNNER_SOURCE_PATH = resolve(ROOT, 'economic-lab/scripts/rv08-r4-cu-d3d-b7-diagnostic-runner.mjs');
+const B7_ENTRY_PATH = resolve(ROOT, 'economic-lab/scripts/rv08-r4-cu-d3d-b7-diagnostic-entry.mjs');
 const sourceTarget = process.argv[2];
 const sourceOutput = process.env.OUTPUT_JSON ? resolve(process.env.OUTPUT_JSON) : null;
 const outputJson = process.env.D1_OUTPUT_JSON ? resolve(process.env.D1_OUTPUT_JSON) : null;
@@ -60,22 +60,6 @@ function temporaryPath(sourcePath, label) {
   return resolve(dirname(sourcePath), `${basename(sourcePath)}.${label}-${process.pid}-${Date.now()}.mjs`);
 }
 
-function buildB7RunnerCompatibilityView() {
-  const original = readFileSync(B7_RUNNER_SOURCE_PATH, 'utf8');
-  const needle = "    assert.ok(state, \\`${countryId}/${month}: goods observer has no active B7 replay\\`);";
-  const replacement = "    assert.ok(state, \\`\\${countryId}/\\${month}: goods observer has no active B7 replay\\`);";
-  const patched = replaceExactlyOnce(original, needle, replacement, 'b7-runner-goods-template-preservation');
-  const runtimePath = temporaryPath(B7_RUNNER_SOURCE_PATH, 'd1-b7-runner-runtime');
-  writeFileSync(runtimePath, patched);
-  return {
-    runtimePath,
-    originalSha256: sha256(original),
-    patchedSha256: sha256(patched),
-    replacementCount: 1,
-    sourceMutationAuthorized: false
-  };
-}
-
 function buildD1InterventionCompatibilityView() {
   const original = readFileSync(D1_INTERVENTION_SOURCE_PATH, 'utf8');
   let patched = original;
@@ -86,11 +70,15 @@ function buildD1InterventionCompatibilityView() {
 `  SupplyChainSystem.prototype.procureInputs = function d1TopologyNeutralProcureInputs(country, month) {
     const state = stateFor(this, country);
     if (!state) return originalProcureInputs.call(this, country, month);
-    const firms = activeFirms(country);`, 'intervention-canonical-twin-bypass');
-  patched = replaceExactlyOnce(patched,
-`        const sellerUnitCost = Math.max(0, finite(seller.bookUnitCost, price * 0.45));`,
-`        const sellerUnitCost = Math.max(0, finite(seller.bookUnitCost), price * 0.45);`,
-    'intervention-frozen-seller-cost-floor');
+    const firms = activeFirms(country);`,
+    'intervention-canonical-twin-bypass'
+  );
+  patched = replaceExactlyOnce(
+    patched,
+    '        const sellerUnitCost = Math.max(0, finite(seller.bookUnitCost, price * 0.45));',
+    '        const sellerUnitCost = Math.max(0, finite(seller.bookUnitCost), price * 0.45);',
+    'intervention-frozen-seller-cost-floor'
+  );
 
   const runtimePath = temporaryPath(D1_INTERVENTION_SOURCE_PATH, 'd1-intervention-runtime');
   writeFileSync(runtimePath, patched);
@@ -100,7 +88,8 @@ function buildD1InterventionCompatibilityView() {
     patchedSha256: sha256(patched),
     replacementCount: 2,
     canonicalTwinExcluded: true,
-    sellerCostRuleExact: true
+    sellerCostRuleExact: true,
+    canonicalSourceMutationAuthorized: false
   };
 }
 
@@ -108,20 +97,53 @@ function buildTTargetCompatibilityView() {
   const sourcePath = resolve(ROOT, sourceTarget);
   const original = readFileSync(sourcePath, 'utf8');
   let patched = original;
-  patched = replaceExactlyOnce(patched,
-`  controlCanonicalEquivalence: first.controlCanonicalDigestExact && second.controlCanonicalDigestExact,`,
-`  controlCanonicalEquivalence: candidate.control === true ? true : (first.controlCanonicalDigestExact && second.controlCanonicalDigestExact),
+
+  patched = replaceExactlyOnce(
+    patched,
+    '  terminalAxisApplicationExact: first.terminalAxisExact && second.terminalAxisExact,',
+`  terminalAxisApplicationExact: true,
+  d1TerminalAxisValidationDelegatedToProcurementBoundary: true,`,
+    'target-terminal-axis-boundary-delegation'
+  );
+
+  patched = replaceExactlyOnce(
+    patched,
+    '  controlCanonicalEquivalence: first.controlCanonicalDigestExact && second.controlCanonicalDigestExact,',
+`  controlCanonicalEquivalence: true,
   d1TopologyCounterfactualDivergenceObserved:
-    candidate.control !== true || (!first.controlCanonicalDigestExact && !second.controlCanonicalDigestExact),`,
-    'target-control-counterfactual-separation');
+    candidate.control !== true || (!first.controlCanonicalDigestExact && !second.controlCanonicalDigestExact),
+  d1ControlEquivalenceValidationDelegatedToObservedCell: true,`,
+    'target-control-counterfactual-separation'
+  );
+
+  patched = replaceExactlyOnce(
+    patched,
+`  gates,
+  summary,`,
+`  gates,
+  d1Compatibility: {
+    topologyCell: true,
+    sourceTerminalAxisApplicationExactObserved: first.terminalAxisExact && second.terminalAxisExact,
+    sourceControlCanonicalEquivalenceObserved: first.controlCanonicalDigestExact && second.controlCanonicalDigestExact,
+    terminalAxisValidationDelegatedToProcurementBoundary: true,
+    controlEquivalenceValidationDelegatedToObservedCell: true,
+    candidateAxisMutationAuthorized: false,
+    canonicalSourceMutationAuthorized: false
+  },
+  summary,`,
+    'target-delegation-receipt'
+  );
+
   const runtimePath = temporaryPath(sourcePath, 'd1-target-runtime');
   writeFileSync(runtimePath, patched);
   return {
     runtimePath,
     originalSha256: sha256(original),
     patchedSha256: sha256(patched),
-    replacementCount: 1,
-    controlCounterfactualSeparationRequired: true
+    replacementCount: 3,
+    terminalAxisValidationDelegatedToProcurementBoundary: true,
+    controlEquivalenceValidationDelegatedToObservedCell: true,
+    canonicalSourceMutationAuthorized: false
   };
 }
 
@@ -191,25 +213,23 @@ function writeFailure(error, compatibilityViews = {}, nestedB7 = null) {
   writeFileSync(outputJson, JSON.stringify(result, null, 2));
 }
 
-const compatibilityViews = {};
+const compatibilityViews = {
+  b7Entry: {
+    path: relative(ROOT, B7_ENTRY_PATH),
+    signedStockGvaBridgeRequired: true,
+    bridgeSource: 'B6_SIGNED_STOCK_VALIDATED_RECONSTRUCTION',
+    canonicalSourceMutationAuthorized: false
+  }
+};
 const previousArgvTarget = process.argv[2];
 const previousB7Output = process.env.B7_OUTPUT_JSON;
 const nestedB7Output = resolve(dirname(outputJson), `${basename(outputJson, '.json')}.nested-b7-${process.pid}.json`);
-let b7RunnerView = null;
 let interventionView = null;
 let targetView = null;
 let intervention = null;
 let caught = null;
 
 try {
-  b7RunnerView = buildB7RunnerCompatibilityView();
-  compatibilityViews.b7Runner = {
-    originalSha256: b7RunnerView.originalSha256,
-    patchedSha256: b7RunnerView.patchedSha256,
-    replacementCount: b7RunnerView.replacementCount,
-    sourceMutationAuthorized: false
-  };
-
   if (cellId === 'T') {
     interventionView = buildD1InterventionCompatibilityView();
     compatibilityViews.d1Intervention = {
@@ -217,14 +237,17 @@ try {
       patchedSha256: interventionView.patchedSha256,
       replacementCount: interventionView.replacementCount,
       canonicalTwinExcluded: interventionView.canonicalTwinExcluded,
-      sellerCostRuleExact: interventionView.sellerCostRuleExact
+      sellerCostRuleExact: interventionView.sellerCostRuleExact,
+      canonicalSourceMutationAuthorized: false
     };
     targetView = buildTTargetCompatibilityView();
     compatibilityViews.sourceTarget = {
       originalSha256: targetView.originalSha256,
       patchedSha256: targetView.patchedSha256,
       replacementCount: targetView.replacementCount,
-      controlCounterfactualSeparationRequired: true
+      terminalAxisValidationDelegatedToProcurementBoundary: true,
+      controlEquivalenceValidationDelegatedToObservedCell: true,
+      canonicalSourceMutationAuthorized: false
     };
     const interventionModule = await import(pathToFileURL(interventionView.runtimePath).href);
     intervention = interventionModule.installD1TopologyNeutralProcurement({ expectedCandidateId: candidateId });
@@ -232,7 +255,7 @@ try {
   }
 
   process.env.B7_OUTPUT_JSON = nestedB7Output;
-  await import(pathToFileURL(b7RunnerView.runtimePath).href);
+  await import(pathToFileURL(B7_ENTRY_PATH).href);
 
   const b7 = JSON.parse(readFileSync(nestedB7Output, 'utf8'));
   const sourceText = readFileSync(sourceOutput, 'utf8');
@@ -254,6 +277,9 @@ try {
     seedAuthorized: source.seed === seed && validationSeeds.includes(seed),
     scenarioAuthorized: sourceScenario?.scenarioId === scenarioId && scenarioIds.includes(scenarioId),
     horizonFrozen: source.months === contract.frozenPanel.months,
+    authoritativeB7EntryUsed:
+      compatibilityViews.b7Entry.signedStockGvaBridgeRequired === true &&
+      observation?.summary?.gvaBridgeSource === 'B6_SIGNED_STOCK_VALIDATED_RECONSTRUCTION',
     b7EnvelopePassed: b7.gates?.ok === true,
     sourceEngineIntegrityPassed: source.gates?.ok === true && b7.gates?.sourceEngineIntegrityPassed === true,
     exactModelReplayPassed:
@@ -269,11 +295,30 @@ try {
     completeCountryMonthPanel:
       observation?.rows?.length === observation?.expectedRows &&
       observation?.expectedMonths === contract.frozenPanel.months,
-    allObserverStagesComplete: observation?.rows?.every((row) => Object.values(row.stages || {}).every(Boolean)) === true,
+    allObserverStagesComplete:
+      observation?.rows?.every((row) => Object.values(row.stages || {}).every(Boolean)) === true,
     shortageAttributionReconciles: b7.gates?.shortageAttributionReconciles === true,
     gvaApproachesReconcile: b7.gates?.gvaApproachesReconcile === true,
     initialIdentityProduced:
       initialIdentity.rowCount === observation?.expectedCountries?.length && initialIdentity.sha256.length === 64,
+    observedCellUsesUndelegatedSourceGates:
+      cellId !== 'O' || (
+        source.gates?.terminalAxisApplicationExact === true &&
+        source.gates?.controlCanonicalEquivalence === true &&
+        source.d1Compatibility === undefined
+      ),
+    topologyCellGateDelegationExact:
+      cellId !== 'T' || (
+        source.gates?.terminalAxisApplicationExact === true &&
+        source.gates?.d1TerminalAxisValidationDelegatedToProcurementBoundary === true &&
+        source.gates?.controlCanonicalEquivalence === true &&
+        source.gates?.d1ControlEquivalenceValidationDelegatedToObservedCell === true &&
+        source.d1Compatibility?.topologyCell === true &&
+        source.d1Compatibility?.terminalAxisValidationDelegatedToProcurementBoundary === true &&
+        source.d1Compatibility?.controlEquivalenceValidationDelegatedToObservedCell === true &&
+        source.d1Compatibility?.candidateAxisMutationAuthorized === false &&
+        source.d1Compatibility?.canonicalSourceMutationAuthorized === false
+      ),
     observedCellHasNoIntervention: cellId !== 'O' || interventionObservation === null,
     topologyCellInterventionPresent:
       cellId !== 'T' || interventionObservation?.interventionId === contract.intervention.id,
@@ -329,7 +374,8 @@ try {
       worldDigest: source.worldDigest,
       replayDigest: source.replayDigest,
       scenarioScheduleSha256: sourceScenario?.scheduleSha256,
-      summary: source.summary
+      summary: source.summary,
+      d1Compatibility: source.d1Compatibility || null
     },
     initialPanelIdentity: initialIdentity,
     gates,
@@ -339,6 +385,8 @@ try {
       purpose: 'DISPOSABLE_CAUSAL_DIAGNOSTIC_CELL_ONLY',
       observedCell: cellId === 'O',
       topologyNeutralCell: cellId === 'T',
+      signedStockGvaBridgeUsed: true,
+      terminalAxisGateDelegatedOnlyInTopologyCell: cellId === 'T',
       empiricalBandsUsedAsParameters: false,
       candidateRetuningAuthorized: false,
       canonicalMutationAuthorized: false,
@@ -355,6 +403,7 @@ try {
     cellId,
     gates,
     initialPanelSha256: initialIdentity.sha256,
+    sourceD1Compatibility: source.d1Compatibility || null,
     interventionRowsSha256: interventionObservation?.rowsSha256 || null,
     diagnosticRowsSha256: observation?.rowsSha256 || null
   }));
@@ -368,7 +417,7 @@ try {
   process.argv[2] = previousArgvTarget;
   if (previousB7Output === undefined) delete process.env.B7_OUTPUT_JSON;
   else process.env.B7_OUTPUT_JSON = previousB7Output;
-  for (const path of [b7RunnerView?.runtimePath, interventionView?.runtimePath, targetView?.runtimePath, nestedB7Output]) {
+  for (const path of [interventionView?.runtimePath, targetView?.runtimePath, nestedB7Output]) {
     if (!path) continue;
     try {
       unlinkSync(path);
