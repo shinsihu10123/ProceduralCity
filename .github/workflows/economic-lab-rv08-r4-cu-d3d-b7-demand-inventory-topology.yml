@@ -1,0 +1,159 @@
+name: Economic Lab RV08 R4-CU-D3D-B7 Demand-Inventory Topology Diagnosis
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b7-demand-inventory-topology-contract.json'
+      - 'economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B7_DEMAND_INVENTORY_TOPOLOGY_PREREGISTRATION_v0.1.md'
+      - 'economic-lab/src/research/b7-demand-inventory-topology-observer.js'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b7-diagnostic-runner.mjs'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b7-aggregate.mjs'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b7-closure.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3d-b7-demand-inventory-topology.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preregistration-gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax gates
+        run: |
+          node --check economic-lab/src/research/b7-demand-inventory-topology-observer.js
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b7-diagnostic-runner.mjs
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b7-aggregate.mjs
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b7-closure.mjs
+      - name: Validate frozen B7 diagnostic contract
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          const path = 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b7-demand-inventory-topology-contract.json';
+          const x = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const ids = x.candidatePanel.map((entry) => entry.id);
+          const seeds = x.execution.validationSeeds.map((entry) => entry.seed);
+          const scenarios = x.execution.scenarios.map((entry) => entry.id);
+          const windows = x.execution.windows.map((entry) => entry.id);
+          assert.equal(x.schemaVersion, '1.0');
+          assert.equal(x.front, 'R4-CU-D3D-B7');
+          assert.equal(x.status, 'FROZEN_BEFORE_DIAGNOSTIC_EXECUTION');
+          assert.equal(x.sourceStage3.closureCommit, 'ab50c676947a6215a7d58acce9302cda5fb02611');
+          assert.equal(x.sourceStage3.decision, 'LONG_HORIZON_OR_STRESS_VALIDATION_FAILED_NO_RETUNING');
+          assert.deepEqual(ids, ['V1_M1_C42', 'V24_M16_C42']);
+          assert.deepEqual(seeds, ['ECON-RV08-LONG-G', 'ECON-RV08-LONG-H']);
+          assert.deepEqual(scenarios, ['BASELINE_36', 'SUPPLY_SHOCK_M13', 'FINANCIAL_CONFIDENCE_STRESS_M13']);
+          assert.deepEqual(windows, ['FULL_36', 'PRE_SHOCK_12', 'TRANSITION_12', 'TERMINAL_12']);
+          assert.equal(x.execution.months, 36);
+          assert.equal(x.execution.candidateSeedScenarioJobs, 12);
+          assert.equal(x.mechanismLabels.length, 7);
+          assert.equal(x.diagnosticThresholds.role, 'DIAGNOSTIC_CLASSIFICATION_ONLY_NOT_CALIBRATION');
+          assert.equal(x.diagnosticContract.worldStateMutationAuthorized, false);
+          assert.equal(x.diagnosticContract.sourceRuleMutationAuthorized, false);
+          assert.equal(x.diagnosticContract.candidateRetuningAuthorized, false);
+          assert.equal(x.canonicalMutationAuthorized, false);
+          assert.equal(x.directParameterCalibrationAuthorized, false);
+          console.log('WP_RV08_R4_CU_D3D_B7_PREREGISTRATION', JSON.stringify({ ids, seeds, scenarios, windows, months: x.execution.months, jobs: x.execution.candidateSeedScenarioJobs }));
+          NODE
+
+  diagnostic-panel:
+    needs: preregistration-gate
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        candidate:
+          - V1_M1_C42
+          - V24_M16_C42
+        case:
+          - long-G__ECON-RV08-LONG-G
+          - long-H__ECON-RV08-LONG-H
+        scenario:
+          - BASELINE_36
+          - SUPPLY_SHOCK_M13
+          - FINANCIAL_CONFIDENCE_STRESS_M13
+    name: B7 ${{ matrix.candidate }} / ${{ matrix.case }} / ${{ matrix.scenario }}
+    runs-on: ubuntu-24.04
+    env:
+      NODE_OPTIONS: --max-old-space-size=7168
+      CANDIDATE: ${{ matrix.candidate }}
+      CASE: ${{ matrix.case }}
+      S3_SCENARIO_ID: ${{ matrix.scenario }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run frozen 36-month B7 read-only diagnosis
+        shell: bash
+        run: |
+          set -euo pipefail
+          LABEL="${CASE%%__*}"
+          SEED="${CASE#*__}"
+          BASE="r4-cu-d3d-b7-${CANDIDATE}-${LABEL}-${S3_SCENARIO_ID}"
+          SOURCE_JSON="economic-lab/performance-results/${BASE}-source.json"
+          RESULT_JSON="economic-lab/performance-results/${BASE}.json"
+          LOG="economic-lab/performance-results/${BASE}.log"
+          SOURCE_SCRIPT="economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs"
+          SIGNED_SCRIPT="${SOURCE_SCRIPT}.b7-signed-${GITHUB_RUN_ID}-${CANDIDATE}-${LABEL}-${S3_SCENARIO_ID}.mjs"
+          mkdir -p economic-lab/performance-results
+          {
+            node economic-lab/scripts/rv08-r4-cu-d3d-b6-signed-stock-view.mjs "$SOURCE_SCRIPT" "$SIGNED_SCRIPT"
+            DIAG_SEED="$SEED" DIAG_MONTHS=36 CANDIDATE="$CANDIDATE" S3_SCENARIO_ID="$S3_SCENARIO_ID" \
+            OUTPUT_JSON="$SOURCE_JSON" B7_OUTPUT_JSON="$RESULT_JSON" \
+            node economic-lab/scripts/rv08-r4-cu-d3d-b7-diagnostic-runner.mjs "$SIGNED_SCRIPT"
+            rm -f "$SOURCE_JSON" "$SIGNED_SCRIPT"
+          } 2>&1 | tee "$LOG"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-cu-d3d-b7-${{ matrix.candidate }}-${{ matrix.case }}-${{ matrix.scenario }}
+          path: |
+            economic-lab/performance-results/r4-cu-d3d-b7-${{ matrix.candidate }}-*.json
+            economic-lab/performance-results/r4-cu-d3d-b7-${{ matrix.candidate }}-*.log
+          retention-days: 90
+
+  aggregate:
+    needs: diagnostic-panel
+    if: needs.diagnostic-panel.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r4-cu-d3d-b7-*
+          path: downloaded-b7
+          merge-multiple: false
+      - name: Aggregate frozen 12-job B7 diagnostic panel
+        run: |
+          mkdir -p economic-lab/performance-results
+          INPUT_ROOT=downloaded-b7 \
+          OUTPUT_JSON=economic-lab/performance-results/r4-cu-d3d-b7-aggregate.json \
+          OUTPUT_MD=economic-lab/performance-results/r4-cu-d3d-b7-summary.md \
+          node economic-lab/scripts/rv08-r4-cu-d3d-b7-aggregate.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r4-cu-d3d-b7-authoritative-aggregate
+          path: |
+            economic-lab/performance-results/r4-cu-d3d-b7-aggregate.json
+            economic-lab/performance-results/r4-cu-d3d-b7-summary.md
+          retention-days: 90
+
+  final-beacon:
+    needs: aggregate
+    if: always() && needs.aggregate.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CU-D3D-B7 12-job demand-inventory topology diagnosis completed'
