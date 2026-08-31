@@ -1,0 +1,189 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3D-B6-S1",
+  "canonicalMutationAuthorized": false,
+  "directParameterCalibrationAuthorized": false,
+  "purpose": "Screen a separate labour-productivity, material-efficiency and dynamically serviced working-capital factorial after the B5 productivity-only family failed.",
+  "dependencies": {
+    "b5Closure": "WP-RV08_R4_CU_D3D_B5_S1_SHADOW_FAMILY_CLOSURE_v0.1.md",
+    "b5Summary": "r4-cu-d3d-b5-s1-authoritative-summary.json",
+    "priorProcurementEvidence": [
+      "R4_CF_B_INPUT_LIQUIDITY_DECOMPOSITION_CLOSURE.md",
+      "WP-RV08-R4-CF-C-CLOSURE-2026-08-26.md",
+      "WP-RV08-R4-CF-D-CLOSURE-2026-08-26.md",
+      "WP-RV08-R4-CF-E-CLOSURE-2026-08-27.md",
+      "WP-RV08-R4-CG-CLOSURE-2026-08-28.md"
+    ],
+    "failedB5GridRetuningAuthorized": false,
+    "bestFailedB5CandidatePromotionAuthorized": false
+  },
+  "empiricalShadowScoringBands": {
+    "labourIncomeShare": [0.521557, 0.607117],
+    "realizedConsumptionShare": [0.883763, 0.979344],
+    "role": "SHADOW_SCORING_ONLY",
+    "directCanonicalTarget": false
+  },
+  "axes": {
+    "V": {
+      "kind": "LABOUR_SIDE_REAL_PRODUCTIVITY_INTERACTION_PROBE",
+      "grid": [1, 24],
+      "sectorShape": {
+        "RESOURCE": 2.0,
+        "MATERIALS": 1.4,
+        "CAPITAL": 0.65,
+        "CONSUMER": 1.0
+      },
+      "v24Role": "lowest frozen B5 level retained as a fixed interaction probe, not a promoted winner"
+    },
+    "M": {
+      "kind": "MATERIAL_EFFICIENCY_DIVISOR",
+      "grid": [1, 4, 16],
+      "formula": "shadow inputPerOutput = canonical inputPerOutput / M",
+      "physicalAndBookConsumptionStillRecorded": true
+    },
+    "W": {
+      "kind": "PROCUREMENT_SETTLEMENT_ARCHITECTURE",
+      "grid": ["C42", "FULL", "LINE1"],
+      "modes": {
+        "C42": {
+          "cashBudgetShare": 0.42,
+          "creditFacility": false
+        },
+        "FULL": {
+          "cashBudgetShare": 1.0,
+          "creditFacility": false
+        },
+        "LINE1": {
+          "cashBudgetShare": 1.0,
+          "creditFacility": true,
+          "lineLimitFormula": "one month estimated payroll plus planned input purchase cost minus active B6 facility debt",
+          "requestedDrawFormula": "estimated planned-input purchase-cost shortfall after current cash",
+          "termMonths": 12,
+          "annualRateSpread": 0.01,
+          "bankCapitalCapRequired": true,
+          "canonicalDebtServiceAndDefaultLogicRequired": true,
+          "householdUseAuthorized": false,
+          "sellerTradeCreditCreated": false
+        }
+      }
+    }
+  },
+  "candidates": [
+    { "id": "V1_M1_C42", "control": true, "V": 1, "M": 1, "W": "C42" },
+    { "id": "V1_M1_FULL", "control": false, "V": 1, "M": 1, "W": "FULL" },
+    { "id": "V1_M1_LINE1", "control": false, "V": 1, "M": 1, "W": "LINE1" },
+    { "id": "V1_M4_C42", "control": false, "V": 1, "M": 4, "W": "C42" },
+    { "id": "V1_M4_FULL", "control": false, "V": 1, "M": 4, "W": "FULL" },
+    { "id": "V1_M4_LINE1", "control": false, "V": 1, "M": 4, "W": "LINE1" },
+    { "id": "V1_M16_C42", "control": false, "V": 1, "M": 16, "W": "C42" },
+    { "id": "V1_M16_FULL", "control": false, "V": 1, "M": 16, "W": "FULL" },
+    { "id": "V1_M16_LINE1", "control": false, "V": 1, "M": 16, "W": "LINE1" },
+    { "id": "V24_M1_C42", "control": false, "V": 24, "M": 1, "W": "C42" },
+    { "id": "V24_M1_FULL", "control": false, "V": 24, "M": 1, "W": "FULL" },
+    { "id": "V24_M1_LINE1", "control": false, "V": 24, "M": 1, "W": "LINE1" },
+    { "id": "V24_M4_C42", "control": false, "V": 24, "M": 4, "W": "C42" },
+    { "id": "V24_M4_FULL", "control": false, "V": 24, "M": 4, "W": "FULL" },
+    { "id": "V24_M4_LINE1", "control": false, "V": 24, "M": 4, "W": "LINE1" },
+    { "id": "V24_M16_C42", "control": false, "V": 24, "M": 16, "W": "C42" },
+    { "id": "V24_M16_FULL", "control": false, "V": 24, "M": 16, "W": "FULL" },
+    { "id": "V24_M16_LINE1", "control": false, "V": 24, "M": 16, "W": "LINE1" }
+  ],
+  "applicationContract": {
+    "initialFirmsAppliedAfterCanonicalConstruction": true,
+    "replacementEntrantsAppliedExactlyOnce": true,
+    "provenanceTagsRequired": true,
+    "controlCanonicalEquivalenceRequired": true,
+    "canonicalSourceModified": false,
+    "allowedWorldStateChangesBeforeMonthOne": [
+      "firm productivity for V24 candidates",
+      "firm inputPerOutput for M4 and M16 candidates",
+      "B6 provenance tags on non-control candidates"
+    ]
+  },
+  "protectedSurface": {
+    "mustMatchPairedCanonicalWorldBeforeSimulation": [
+      "agent identities and industries",
+      "prices and wages",
+      "opening settlement-ledger balances",
+      "firm cash and safe cash",
+      "household wealth",
+      "desired consumption budgets",
+      "inventory units and book values",
+      "capital stock",
+      "fiscal and country demand parameters",
+      "bank opening balance sheet",
+      "canonical goods-market and decision rules"
+    ],
+    "candidateSpecificAllowedDifferences": [
+      "firm productivity",
+      "firm inputPerOutput",
+      "non-control provenance tags"
+    ]
+  },
+  "stage1Execution": {
+    "seeds": [
+      { "case": "original-A", "seed": "ECON-RV02-A" },
+      { "case": "original-C", "seed": "ECON-RV02-C" }
+    ],
+    "heldoutSeedsReserved": ["ECON-RV08-HOLDOUT-E", "ECON-RV08-HOLDOUT-F"],
+    "months": 12,
+    "scaleProfile": "baseline",
+    "candidateSeedJobs": 36,
+    "exactReplayRequired": true,
+    "hardAccountingHealthRequired": true,
+    "aggregateAfterAllJobs": true
+  },
+  "eligibility": {
+    "requiresBothOriginalSeeds": true,
+    "labourDistanceImprovesVsControl": true,
+    "consumptionDistanceImprovesVsControl": true,
+    "maximumMedianInputShortageRatioVsControl": 1.0,
+    "minimumMedianActiveFirmRatioVsControl": 0.5,
+    "minimumMedianPurchasingPowerRatioVsControl": 0.8,
+    "lineCandidates": {
+      "minimumObservedDraw": 1e-8,
+      "maximumTerminalArrearsRatio": 0.5,
+      "maximumCumulativeChargeOffShareOfOriginations": 0.25,
+      "maximumTerminalDebtMonthsOfFirmSales": 2.0
+    },
+    "exactReplayRequired": true,
+    "accountingHealthRequired": true,
+    "protectedSurfaceRequired": true,
+    "maximumFinalists": 3,
+    "finalistDiversity": "at most one finalist per V-M pair",
+    "noEligibleDecision": "FAMILY_INSUFFICIENT_NO_RETUNING"
+  },
+  "ranking": {
+    "primary": "lowest worst-seed sum of labour and consumption log distance",
+    "tieBreakers": [
+      "lower worst-seed input-shortage ratio",
+      "lower pooled non-positive-GVA share",
+      "lower facility loss and arrears burden",
+      "higher active-firm retention"
+    ],
+    "failedCasesRetained": true,
+    "postHocGateRelaxationAuthorized": false
+  },
+  "factorialContrasts": [
+    "V24 minus V1 at fixed M and W",
+    "M4 and M16 minus M1 at fixed V and W",
+    "FULL minus C42 at fixed V and M",
+    "LINE1 minus FULL at fixed V and M"
+  ],
+  "blockedMutations": [
+    "canonical productivity persistence",
+    "canonical input coefficient persistence",
+    "prices",
+    "wages",
+    "opening cash or wealth",
+    "desiredConsumptionBudget",
+    "tax rates",
+    "goods-market rules",
+    "canonical bank underwriting",
+    "canonical procurement coefficient",
+    "trade-credit rules",
+    "country or industry seed configuration"
+  ],
+  "nextFrontIfEligible": "R4-CU-D3D-B6-S2 heldout replication",
+  "nextFrontIfNone": "R4-CU-D3D-B7 demand-inventory topology and value-transformation diagnosis"
+}
