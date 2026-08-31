@@ -1,0 +1,117 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3D-B3",
+  "decision": "PASS_AS_INTERNALLY_RECONCILED_MODEL_SIDE_COMPARATOR",
+  "canonicalMutationAuthorized": false,
+  "numericCalibrationRangesAuthorized": false,
+  "authoritativeEvidence": {
+    "branch": "scratch/new-project-2026-08-12",
+    "head": "039014ec511bfbd9d836ab6e7bb385c313d98b39",
+    "runId": 33355197080,
+    "status": "completed",
+    "conclusion": "success",
+    "monthsPerSeed": 24,
+    "countriesPerSeed": 4,
+    "countryMonthsPerSeed": 96,
+    "finalBeacon": "success"
+  },
+  "artifacts": [
+    {
+      "case": "original-A",
+      "seed": "ECON-RV02-A",
+      "artifactId": 9744907149,
+      "zipSha256": "9b29c382a244d0758ccba51c85b5deb551bae8114edf14f95d72be67227b4e65",
+      "worldDigest": "0bf0d86e263882d30fd55ae8b38754397c4e295bc120efee61e658c31da4fd7e"
+    },
+    {
+      "case": "original-C",
+      "seed": "ECON-RV02-C",
+      "artifactId": 9744905232,
+      "zipSha256": "947a923d12d08fa9fbc8269149e49875ba4bd82d0a3f5a59201d63e7f9ba2694",
+      "worldDigest": "f37c2fbc9373457db63b0dc5428b7a6c82be9964c040787cbb7cccb951b0d535"
+    },
+    {
+      "case": "heldout-E",
+      "seed": "ECON-RV08-HOLDOUT-E",
+      "artifactId": 9744905859,
+      "zipSha256": "cca7bb6cd3229ce58fbf71a78ae83027d56a96cb726d9df3df27bcb59ed99ded",
+      "worldDigest": "4a47b40388b78e8a3ac1673ad6de73c7639165381870deebbe9b68f18e5b9d23"
+    },
+    {
+      "case": "heldout-F",
+      "seed": "ECON-RV08-HOLDOUT-F",
+      "artifactId": 9744911079,
+      "zipSha256": "a1de101161cd2f8a048c5dac748241203d5482b4172fad328b7ca6b5420dbfe0",
+      "worldDigest": "e31a3ce97bff25ea51b279317bb7cac656136385a278268ac7a794b063f59826"
+    }
+  ],
+  "seedSummaries": [
+    {
+      "case": "original-A",
+      "seed": "ECON-RV02-A",
+      "maxScaledIdentityResidual": 7.01842009316095e-13,
+      "employeeCompensationShareOfGvaMedian": 2.1854279187880428,
+      "employeeCompensationShareOfMarketGdpMedian": 2.1850280562785294,
+      "labourShareAboveOne": 0.7708333333333334,
+      "realizedConsumptionShareOfCashDisposableIncomeMedian": 0.0012365447210301171,
+      "netSavingShareOfCashDisposableIncomeMedian": 0.9987634552789699,
+      "canonicalMacroGdpToReconstructedMarketGdpMedian": 0.9999494876338141,
+      "nonPositiveGvaCountryMonthShare": 0.03125
+    },
+    {
+      "case": "original-C",
+      "seed": "ECON-RV02-C",
+      "maxScaledIdentityResidual": 5.083665212581177e-13,
+      "employeeCompensationShareOfGvaMedian": 2.299968432025141,
+      "employeeCompensationShareOfMarketGdpMedian": 2.2993545474744357,
+      "labourShareAboveOne": 0.8645833333333334,
+      "realizedConsumptionShareOfCashDisposableIncomeMedian": 0.00190356654601629,
+      "netSavingShareOfCashDisposableIncomeMedian": 0.9980964334539837,
+      "canonicalMacroGdpToReconstructedMarketGdpMedian": 0.9999316101040645,
+      "nonPositiveGvaCountryMonthShare": 0.010416666666666666
+    },
+    {
+      "case": "heldout-E",
+      "seed": "ECON-RV08-HOLDOUT-E",
+      "maxScaledIdentityResidual": 4.856734430555619e-13,
+      "employeeCompensationShareOfGvaMedian": 2.044331008950818,
+      "employeeCompensationShareOfMarketGdpMedian": 2.043944412987209,
+      "labourShareAboveOne": 0.8125,
+      "realizedConsumptionShareOfCashDisposableIncomeMedian": 0.0014242923875926981,
+      "netSavingShareOfCashDisposableIncomeMedian": 0.9985757076124073,
+      "canonicalMacroGdpToReconstructedMarketGdpMedian": 0.9999440598564344,
+      "nonPositiveGvaCountryMonthShare": 0
+    },
+    {
+      "case": "heldout-F",
+      "seed": "ECON-RV08-HOLDOUT-F",
+      "maxScaledIdentityResidual": 4.596197624352383e-13,
+      "employeeCompensationShareOfGvaMedian": 2.6963781169429795,
+      "employeeCompensationShareOfMarketGdpMedian": 2.694906624524179,
+      "labourShareAboveOne": 0.8854166666666666,
+      "realizedConsumptionShareOfCashDisposableIncomeMedian": 0.0018485727355174357,
+      "netSavingShareOfCashDisposableIncomeMedian": 0.9981514272644825,
+      "canonicalMacroGdpToReconstructedMarketGdpMedian": 0.9999244135032661,
+      "nonPositiveGvaCountryMonthShare": 0.03125
+    }
+  ],
+  "globalGates": {
+    "allFourSeedsPassed": true,
+    "exactCanonicalReplay": true,
+    "exactDiagnosticReplay": true,
+    "hardAccountingHealthy": true,
+    "reconstructionIdentitiesHold": true,
+    "semanticGapRegisterComplete": true,
+    "desiredBudgetDirectMappingBlocked": true,
+    "empiricalBandPromotionBlocked": true,
+    "canonicalMutationLocked": true
+  },
+  "interpretation": {
+    "labourShareComparatorStatus": "PARTIAL_SEMANTIC_MATCH_EMPLOYEE_COMPENSATION_ONLY",
+    "householdSavingComparatorStatus": "PARTIAL_SEMANTIC_MATCH_CASH_FLOW_WITHOUT_PENSION_ADJUSTMENT",
+    "headlineFinding": "Model employee compensation exceeds reconstructed value added in most country-months while realized household purchaser outlay is near zero relative to cash disposable income.",
+    "denominatorSensitivityRequired": true,
+    "directCanonicalCalibrationAuthorized": false
+  },
+  "nextFront": "R4-CU-D3D-B4 empirical-versus-model dimensionless gap and admissibility gate"
+}
