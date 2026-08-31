@@ -1,0 +1,150 @@
+name: Economic Lab RV08 Post-B6-S2 Next-Stage Evidence Finalizer
+
+on:
+  workflow_run:
+    workflows:
+      - Economic Lab RV08 Post-B6-S2 Next-Stage Bootstrap
+    types:
+      - completed
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-post-b6-s2-bootstrap-closure.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3d-post-b6-s2-finalize.yml'
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Optional successful next-stage bootstrap run ID to finalize
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: economic-lab-rv08-post-b6-s2-finalizer
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: scratch/new-project-2026-08-12
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Resolve authoritative bootstrap run
+        id: run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
+          EVENT_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_RUN_ID: ${{ inputs.run_id }}
+        run: |
+          set -euo pipefail
+          RUN_ID="${INPUT_RUN_ID:-}"
+          HEAD_SHA="${EVENT_HEAD_SHA:-}"
+          if [[ -z "$RUN_ID" && "${GITHUB_EVENT_NAME}" == 'workflow_run' ]]; then
+            RUN_ID="${EVENT_RUN_ID:-}"
+          fi
+          if [[ -z "$RUN_ID" ]]; then
+            for i in $(seq 1 120); do
+              RUN_ID="$(gh run list \
+                --workflow economic-lab-rv08-r4-cu-d3d-post-b6-s2-next-stage.yml \
+                --branch scratch/new-project-2026-08-12 \
+                --status success \
+                --limit 1 \
+                --json databaseId \
+                --jq '.[0].databaseId // empty')"
+              [[ -n "$RUN_ID" ]] && break
+              sleep 5
+            done
+          fi
+          test -n "$RUN_ID"
+          if [[ -z "$HEAD_SHA" ]]; then
+            HEAD_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" --jq '.head_sha')"
+          fi
+          CONCLUSION="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" --jq '.conclusion')"
+          test "$CONCLUSION" = 'success'
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+      - name: Download route and authoritative aggregate artifacts
+        id: evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.run.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/route /tmp/aggregate
+          gh run download "$RUN_ID" --name r4-cu-d3d-post-b6-s2-route --dir /tmp/route
+          ROUTE_JSON="$(find /tmp/route -type f -name '*.json' | head -n 1)"
+          ROUTE="$(node -e "const x=require(process.argv[1]); console.log(x.route)" "$ROUTE_JSON")"
+          if [[ "$ROUTE" == 'S3' ]]; then
+            ARTIFACT_NAME='r4-cu-d3d-b6-s3-bootstrap-authoritative'
+          elif [[ "$ROUTE" == 'B7' ]]; then
+            ARTIFACT_NAME='r4-cu-d3d-b7-baseline-bootstrap-authoritative'
+          else
+            echo "Unexpected route: $ROUTE" >&2
+            exit 1
+          fi
+          gh run download "$RUN_ID" --name "$ARTIFACT_NAME" --dir /tmp/aggregate
+          AGGREGATE_JSON="$(find /tmp/aggregate -type f -name '*aggregate.json' | head -n 1)"
+          SUMMARY_MD="$(find /tmp/aggregate -type f -name '*summary.md' | head -n 1)"
+          ARTIFACT_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts?name=${ARTIFACT_NAME}" --jq '.artifacts[0].id')"
+          ARTIFACT_DIGEST="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts?name=${ARTIFACT_NAME}" --jq '.artifacts[0].digest')"
+          test -f "$ROUTE_JSON"
+          test -f "$AGGREGATE_JSON"
+          test -f "$SUMMARY_MD"
+          echo "route=$ROUTE" >> "$GITHUB_OUTPUT"
+          echo "route_json=$ROUTE_JSON" >> "$GITHUB_OUTPUT"
+          echo "aggregate_json=$AGGREGATE_JSON" >> "$GITHUB_OUTPUT"
+          echo "summary_md=$SUMMARY_MD" >> "$GITHUB_OUTPUT"
+          echo "artifact_id=$ARTIFACT_ID" >> "$GITHUB_OUTPUT"
+          echo "artifact_digest=$ARTIFACT_DIGEST" >> "$GITHUB_OUTPUT"
+      - name: Freeze authoritative evidence in repository
+        shell: bash
+        env:
+          ROUTE: ${{ steps.evidence.outputs.route }}
+          ROUTE_JSON: ${{ steps.evidence.outputs.route_json }}
+          AGGREGATE_JSON: ${{ steps.evidence.outputs.aggregate_json }}
+          SUMMARY_MD: ${{ steps.evidence.outputs.summary_md }}
+          AUTHORITATIVE_RUN_ID: ${{ steps.run.outputs.run_id }}
+          AUTHORITATIVE_HEAD_SHA: ${{ steps.run.outputs.head_sha }}
+          AUTHORITATIVE_ARTIFACT_ID: ${{ steps.evidence.outputs.artifact_id }}
+          AUTHORITATIVE_ARTIFACT_DIGEST: ${{ steps.evidence.outputs.artifact_digest }}
+        run: |
+          set -euo pipefail
+          mkdir -p economic-lab/performance-results
+          if [[ "$ROUTE" == 'S3' ]]; then
+            cp "$AGGREGATE_JSON" economic-lab/performance-results/r4-cu-d3d-b6-s3-bootstrap-authoritative-aggregate.json
+            cp "$SUMMARY_MD" economic-lab/performance-results/r4-cu-d3d-b6-s3-bootstrap-authoritative-summary.md
+            CLOSURE_MD=economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B6_S3_LONG_HORIZON_BOOTSTRAP_CLOSURE_v0.1.md \
+            node economic-lab/scripts/rv08-r4-cu-d3d-post-b6-s2-bootstrap-closure.mjs
+          else
+            cp "$AGGREGATE_JSON" economic-lab/performance-results/r4-cu-d3d-b7-baseline-bootstrap-authoritative-aggregate.json
+            cp "$SUMMARY_MD" economic-lab/performance-results/r4-cu-d3d-b7-baseline-bootstrap-authoritative-summary.md
+            CLOSURE_MD=economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B7_STRUCTURAL_BASELINE_BOOTSTRAP_CLOSURE_v0.1.md \
+            node economic-lab/scripts/rv08-r4-cu-d3d-post-b6-s2-bootstrap-closure.mjs
+          fi
+      - name: Commit frozen evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add economic-lab/performance-results economic-lab/diagnostics/reality-validation
+          if git diff --cached --quiet; then
+            echo 'No new next-stage evidence to commit.'
+            exit 0
+          fi
+          git commit -m 'docs(econ): freeze post-B6-S2 next-stage bootstrap evidence'
+          git pull --rebase origin scratch/new-project-2026-08-12
+          git push origin HEAD:scratch/new-project-2026-08-12
