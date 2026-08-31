@@ -19,8 +19,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       SOURCE_BRANCH: scratch/new-project-2026-08-12
-      SOURCE_RUN_ID: '33383734358'
-      SOURCE_HEAD_SHA: f88d7d309caf36300c55b24c5e8ebe01ec674555
+      SOURCE_RUN_ID: '33384855277'
+      SOURCE_HEAD_SHA: 1f92a1c15a93498b9472648afc4593b43fe0b9f8
       SOURCE_WORKFLOW_PATH: .github/workflows/economic-lab-rv08-r4-cu-d3d-b7-d1-supplier-topology-causal.yml
       ARTIFACT_NAME: r4-cu-d3d-b7-d1-authoritative-aggregate
     steps:
