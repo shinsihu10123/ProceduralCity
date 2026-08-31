@@ -1,0 +1,62 @@
+name: Economic Lab RV08 R4-CU-D3D Authoritative Evidence Gate
+
+on:
+  push:
+    branches: [scratch/new-project-2026-08-12]
+    paths:
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3b-reference-membership-register.json'
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3c-official-extraction-contract.json'
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-authoritative-evidence-snapshot.json'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-authoritative-evidence-gate.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3d-authoritative-evidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  authoritative-evidence-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SOURCE_ARTIFACT_ID: '9743045393'
+      SOURCE_ARTIFACT_SHA256: 'af0f1fb5d15e5e4babf3a53c859774f1775dd144284ccf8d311cea4aac614d93'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax gate
+        run: node --check economic-lab/scripts/rv08-r4-cu-d3d-authoritative-evidence-gate.mjs
+      - name: Download and verify immutable D3C artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/r4-cu-d3d/source
+          curl --fail-with-body --location \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${SOURCE_ARTIFACT_ID}/zip" \
+            --output artifacts/r4-cu-d3d/source-artifact.zip
+          echo "${SOURCE_ARTIFACT_SHA256}  artifacts/r4-cu-d3d/source-artifact.zip" | sha256sum --check --strict
+          unzip -q artifacts/r4-cu-d3d/source-artifact.zip -d artifacts/r4-cu-d3d/source
+      - name: Rehydrate and validate authoritative evidence
+        run: node economic-lab/scripts/rv08-r4-cu-d3d-authoritative-evidence-gate.mjs
+      - name: Upload D3D validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r4-cu-d3d-authoritative-evidence-validation
+          path: |
+            artifacts/r4-cu-d3d/r4-cu-d3d-authoritative-evidence-validation.json
+            artifacts/r4-cu-d3d/r4-cu-d3d-summary.md
+          if-no-files-found: warn
+          retention-days: 30
+  final-beacon:
+    needs: authoritative-evidence-gate
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CU-D3D authoritative D3C artifact rehydrated; calibration remains locked'
