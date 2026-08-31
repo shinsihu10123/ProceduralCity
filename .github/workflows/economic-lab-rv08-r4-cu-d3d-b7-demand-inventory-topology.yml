@@ -8,6 +8,7 @@ on:
       - 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b7-demand-inventory-topology-contract.json'
       - 'economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B7_DEMAND_INVENTORY_TOPOLOGY_PREREGISTRATION_v0.1.md'
       - 'economic-lab/src/research/b7-demand-inventory-topology-observer.js'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b7-diagnostic-entry.mjs'
       - 'economic-lab/scripts/rv08-r4-cu-d3d-b7-diagnostic-runner.mjs'
       - 'economic-lab/scripts/rv08-r4-cu-d3d-b7-aggregate.mjs'
       - 'economic-lab/scripts/rv08-r4-cu-d3d-b7-closure.mjs'
@@ -28,6 +29,7 @@ jobs:
       - name: Syntax gates
         run: |
           node --check economic-lab/src/research/b7-demand-inventory-topology-observer.js
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b7-diagnostic-entry.mjs
           node --check economic-lab/scripts/rv08-r4-cu-d3d-b7-diagnostic-runner.mjs
           node --check economic-lab/scripts/rv08-r4-cu-d3d-b7-aggregate.mjs
           node --check economic-lab/scripts/rv08-r4-cu-d3d-b7-closure.mjs
@@ -114,7 +116,7 @@ jobs:
             node economic-lab/scripts/rv08-r4-cu-d3d-b6-signed-stock-view.mjs "$SOURCE_SCRIPT" "$SIGNED_SCRIPT"
             DIAG_SEED="$SEED" DIAG_MONTHS=36 CANDIDATE="$CANDIDATE" S3_SCENARIO_ID="$S3_SCENARIO_ID" \
             OUTPUT_JSON="$SOURCE_JSON" B7_OUTPUT_JSON="$RESULT_JSON" \
-            node economic-lab/scripts/rv08-r4-cu-d3d-b7-diagnostic-runner.mjs "$SIGNED_SCRIPT"
+            node economic-lab/scripts/rv08-r4-cu-d3d-b7-diagnostic-entry.mjs "$SIGNED_SCRIPT"
             rm -f "$SOURCE_JSON" "$SIGNED_SCRIPT"
           } 2>&1 | tee "$LOG"
       - uses: actions/upload-artifact@v4
