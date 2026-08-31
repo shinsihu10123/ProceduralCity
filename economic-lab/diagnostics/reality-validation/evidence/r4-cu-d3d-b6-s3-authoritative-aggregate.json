@@ -1,0 +1,1039 @@
+{
+  "schemaVersion": "r4-cu-d3d-b6-s3-aggregate-v0.1",
+  "front": "R4-CU-D3D-B6-S3",
+  "generatedAt": "2026-08-31T06:09:34.838Z",
+  "status": "PASS_TECHNICAL_LONG_HORIZON_STRESS_AGGREGATION",
+  "decision": "LONG_HORIZON_OR_STRESS_VALIDATION_FAILED_NO_RETUNING",
+  "routing": "R4-CU-D3D-B7 demand-inventory topology and value-transformation diagnosis",
+  "technicalGates": {
+    "contractExact": true,
+    "sourceStage2PrimaryFrozen": true,
+    "candidatePanelExact": true,
+    "validationSeedPanelExact": true,
+    "scenarioPanelExact": true,
+    "frozenHorizonAndWindowsExact": true,
+    "expectedJobCount": true,
+    "completeResultCount": true,
+    "noDuplicateJobs": true,
+    "noMissingJobs": true,
+    "noUnexpectedJobs": true,
+    "allS3EnvelopesPassed": true,
+    "allSourceEngineIntegrityPassed": true,
+    "allExactReplayPassed": true,
+    "allAccountingHealthy": true,
+    "allScenarioSchedulesAppliedExactly": true,
+    "allPayloadHashesValid": true,
+    "allRowsCoverFrozenHorizon": true,
+    "controlPresentEveryPanel": true,
+    "primaryPresentEveryPanel": true,
+    "noFacilityDrawInC42Panel": true,
+    "allPanelsEvaluated": true,
+    "postHocRelaxationLocked": true,
+    "canonicalMutationLocked": true,
+    "ok": true
+  },
+  "sourceStage2": {
+    "closure": "economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B6_S2_CLOSURE_v0.1.md",
+    "closureCommit": "ed745e466cc3fee064a359ba28f33a50b0f67e28",
+    "workflowRunId": 33359245264,
+    "workflowHeadSha": "afe69ad54fde20bd62ea2527c757a6416b027249",
+    "aggregateArtifactId": 9746153192,
+    "aggregateArtifactDigest": "sha256:57b745f6c5abda572cf06cd2fd56e067f80c2a3a668ff959fb86ba665227a15b",
+    "aggregateJsonSha256": "3a08ec790636bc239757567eed5c265c9cf369c30e526c518fdbb00a2377f41f",
+    "replicatedCandidates": [
+      "V24_M16_C42",
+      "V1_M4_C42",
+      "V1_M16_C42"
+    ],
+    "primaryCandidateId": "V24_M16_C42",
+    "primarySelectionRetuningAuthorized": false
+  },
+  "expected": {
+    "candidates": 2,
+    "seeds": 2,
+    "scenarios": 3,
+    "windows": 2,
+    "jobs": 12
+  },
+  "observed": {
+    "jobs": 12,
+    "duplicateKeys": [],
+    "missingKeys": [],
+    "unexpectedKeys": []
+  },
+  "primaryCandidate": {
+    "id": "V24_M16_C42",
+    "role": "FROZEN_STAGE2_PRIMARY",
+    "control": false,
+    "V": 24,
+    "M": 16,
+    "W": "C42"
+  },
+  "allPanelsPassed": false,
+  "panelEvaluations": [
+    {
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "BASELINE_36",
+        "role": "UNSHOCKED_LONG_HORIZON",
+        "schedule": []
+      },
+      "integrityPassed": true,
+      "scenarioIdentityPassed": true,
+      "windowEvaluations": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36,
+            "role": "FULL_HORIZON"
+          },
+          "conditions": {
+            "integrityPassed": true,
+            "scenarioIdentityPassed": true,
+            "completeWindowPanel": true,
+            "positiveGvaRowsPresent": true,
+            "positiveIncomeRowsPresent": true,
+            "labourDistanceStrictlyImproved": true,
+            "consumptionDistanceStrictlyImproved": true,
+            "inputShortageNotWorse": false,
+            "activeFirmsPreserved": true,
+            "purchasingPowerPreserved": true
+          },
+          "passed": false,
+          "distances": {
+            "labour": 0.7439619184960582,
+            "controlLabour": 0.788980329240976,
+            "consumption": 4.529592594399256,
+            "controlConsumption": 9007199254740991,
+            "combined": 5.2735545128953145,
+            "controlCombined": 9007199254740992
+          },
+          "ratios": {
+            "inputShortageRatio": 1.1791738057698793,
+            "activeFirmRatio": 1.2,
+            "purchasingPowerRatio": 1.2942057639063027
+          },
+          "metrics": {
+            "rowCount": 144,
+            "expectedRowCount": 144,
+            "positiveGvaRows": 142,
+            "positiveIncomeRows": 144,
+            "nonPositiveGvaShare": 0.013888888888888888,
+            "labourShareMedian": 1.2775295363192036,
+            "consumptionShareMedian": 0.009531445001248348,
+            "inputShortageMedian": 10.144434752305346,
+            "totalInputShortageUnits": 1570.0111511799885,
+            "activeFirmsMedian": 24,
+            "purchasingPowerMedian": 1556.2168478759875,
+            "goodsFulfillmentMedian": 0.0014124722328128893,
+            "payrollSettlementMedian": 0.2975405189069503,
+            "unemploymentMedian": 0.8038461538461539,
+            "wageArrearsMedian": 225228.2340712294
+          },
+          "controlMetrics": {
+            "rowCount": 144,
+            "expectedRowCount": 144,
+            "positiveGvaRows": 144,
+            "positiveIncomeRows": 144,
+            "nonPositiveGvaShare": 0,
+            "labourShareMedian": 1.336356089930762,
+            "consumptionShareMedian": 0,
+            "inputShortageMedian": 8.603002121203051,
+            "totalInputShortageUnits": 2432.840364083013,
+            "activeFirmsMedian": 20,
+            "purchasingPowerMedian": 1202.449325506677,
+            "goodsFulfillmentMedian": 0,
+            "payrollSettlementMedian": 0.3651511304692294,
+            "unemploymentMedian": 0.9611111111111111,
+            "wageArrearsMedian": 184117.02042420913
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36,
+            "role": "POST_STRESS_PERSISTENCE_AND_RECOVERY"
+          },
+          "conditions": {
+            "integrityPassed": true,
+            "scenarioIdentityPassed": true,
+            "completeWindowPanel": true,
+            "positiveGvaRowsPresent": true,
+            "positiveIncomeRowsPresent": true,
+            "labourDistanceStrictlyImproved": true,
+            "consumptionDistanceStrictlyImproved": false,
+            "inputShortageNotWorse": false,
+            "activeFirmsPreserved": true,
+            "purchasingPowerPreserved": true
+          },
+          "passed": false,
+          "distances": {
+            "labour": 0.49903375526118543,
+            "controlLabour": 0.49903375526118626,
+            "consumption": 9007199254740991,
+            "controlConsumption": 9007199254740991,
+            "combined": 9007199254740991,
+            "controlCombined": 9007199254740991
+          },
+          "ratios": {
+            "inputShortageRatio": 1.7213050922722641,
+            "activeFirmRatio": 1.032258064516129,
+            "purchasingPowerRatio": 0.9974944778642683
+          },
+          "metrics": {
+            "rowCount": 48,
+            "expectedRowCount": 48,
+            "positiveGvaRows": 48,
+            "positiveIncomeRows": 48,
+            "nonPositiveGvaShare": 0,
+            "labourShareMedian": 0.9999999999999989,
+            "consumptionShareMedian": 0,
+            "inputShortageMedian": 13.319801420452901,
+            "totalInputShortageUnits": 648.1173279608861,
+            "activeFirmsMedian": 16,
+            "purchasingPowerMedian": 819.0600545566522,
+            "goodsFulfillmentMedian": 0,
+            "payrollSettlementMedian": 0.3995575811186421,
+            "unemploymentMedian": 0.9653846153846154,
+            "wageArrearsMedian": 306132.91366952885
+          },
+          "controlMetrics": {
+            "rowCount": 48,
+            "expectedRowCount": 48,
+            "positiveGvaRows": 48,
+            "positiveIncomeRows": 48,
+            "nonPositiveGvaShare": 0,
+            "labourShareMedian": 0.9999999999999997,
+            "consumptionShareMedian": 0,
+            "inputShortageMedian": 7.738199044580568,
+            "totalInputShortageUnits": 364.18707234858846,
+            "activeFirmsMedian": 15.5,
+            "purchasingPowerMedian": 821.1173823341244,
+            "goodsFulfillmentMedian": 0,
+            "payrollSettlementMedian": 0.39033088006836336,
+            "unemploymentMedian": 0.9677986906710311,
+            "wageArrearsMedian": 209172.7941866177
+          }
+        }
+      ],
+      "passed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "SUPPLY_SHOCK_M13",
+        "role": "ADVERSE_REAL_PRODUCTIVITY_STRESS",
+        "schedule": [
+          {
+            "id": "B6S3-SUPPLY-075-M13",
+            "month": 13,
+            "countryId": "*",
+            "kind": "productivity_shock",
+            "factor": 0.75
+          }
+        ]
+      },
+      "integrityPassed": true,
+      "scenarioIdentityPassed": true,
+      "windowEvaluations": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36,
+            "role": "FULL_HORIZON"
+          },
+          "conditions": {
+            "integrityPassed": true,
+            "scenarioIdentityPassed": true,
+            "completeWindowPanel": true,
+            "positiveGvaRowsPresent": true,
+            "positiveIncomeRowsPresent": true,
+            "labourDistanceStrictlyImproved": false,
+            "consumptionDistanceStrictlyImproved": true,
+            "inputShortageNotWorse": false,
+            "activeFirmsPreserved": true,
+            "purchasingPowerPreserved": true
+          },
+          "passed": false,
+          "distances": {
+            "labour": 1.0834357619010366,
+            "controlLabour": 0.7050286858905652,
+            "consumption": 3.4647515420305113,
+            "controlConsumption": 9007199254740991,
+            "combined": 4.548187303931548,
+            "controlCombined": 9007199254740992
+          },
+          "ratios": {
+            "inputShortageRatio": 1.0687928764629637,
+            "activeFirmRatio": 1.2,
+            "purchasingPowerRatio": 1.3255383703927488
+          },
+          "metrics": {
+            "rowCount": 144,
+            "expectedRowCount": 144,
+            "positiveGvaRows": 136,
+            "positiveIncomeRows": 144,
+            "nonPositiveGvaShare": 0.05555555555555555,
+            "labourShareMedian": 1.7939179138258456,
+            "consumptionShareMedian": 0.02764479281047542,
+            "inputShortageMedian": 7.564340317978732,
+            "totalInputShortageUnits": 1303.7928638138426,
+            "activeFirmsMedian": 24,
+            "purchasingPowerMedian": 1593.4920720760106,
+            "goodsFulfillmentMedian": 0.012729237894122742,
+            "payrollSettlementMedian": 0.29600073196662813,
+            "unemploymentMedian": 0.8038461538461539,
+            "wageArrearsMedian": 225187.36528513965
+          },
+          "controlMetrics": {
+            "rowCount": 144,
+            "expectedRowCount": 144,
+            "positiveGvaRows": 143,
+            "positiveIncomeRows": 144,
+            "nonPositiveGvaShare": 0.006944444444444444,
+            "labourShareMedian": 1.2287469750057074,
+            "consumptionShareMedian": 0,
+            "inputShortageMedian": 7.077461390846811,
+            "totalInputShortageUnits": 2257.3985381201246,
+            "activeFirmsMedian": 20,
+            "purchasingPowerMedian": 1202.1470729692032,
+            "goodsFulfillmentMedian": 0,
+            "payrollSettlementMedian": 0.36891059714979824,
+            "unemploymentMedian": 0.9611111111111111,
+            "wageArrearsMedian": 184037.8529171877
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36,
+            "role": "POST_STRESS_PERSISTENCE_AND_RECOVERY"
+          },
+          "conditions": {
+            "integrityPassed": true,
+            "scenarioIdentityPassed": true,
+            "completeWindowPanel": true,
+            "positiveGvaRowsPresent": true,
+            "positiveIncomeRowsPresent": true,
+            "labourDistanceStrictlyImproved": false,
+            "consumptionDistanceStrictlyImproved": false,
+            "inputShortageNotWorse": false,
+            "activeFirmsPreserved": true,
+            "purchasingPowerPreserved": true
+          },
+          "passed": false,
+          "distances": {
+            "labour": 0.4990337552612293,
+            "controlLabour": 0.49903375526118365,
+            "consumption": 9007199254740991,
+            "controlConsumption": 9007199254740991,
+            "combined": 9007199254740991,
+            "controlCombined": 9007199254740991
+          },
+          "ratios": {
+            "inputShortageRatio": 1.5772758312168695,
+            "activeFirmRatio": 1.032258064516129,
+            "purchasingPowerRatio": 0.9486898464097101
+          },
+          "metrics": {
+            "rowCount": 48,
+            "expectedRowCount": 48,
+            "positiveGvaRows": 44,
+            "positiveIncomeRows": 48,
+            "nonPositiveGvaShare": 0.08333333333333333,
+            "labourShareMedian": 1.0000000000000426,
+            "consumptionShareMedian": 0,
+            "inputShortageMedian": 10.106684692857215,
+            "totalInputShortageUnits": 481.97873477211226,
+            "activeFirmsMedian": 16,
+            "purchasingPowerMedian": 779.8193726974741,
+            "goodsFulfillmentMedian": 0,
+            "payrollSettlementMedian": 0.3983532591164954,
+            "unemploymentMedian": 0.9653846153846154,
+            "wageArrearsMedian": 310128.3193040049
+          },
+          "controlMetrics": {
+            "rowCount": 48,
+            "expectedRowCount": 48,
+            "positiveGvaRows": 48,
+            "positiveIncomeRows": 48,
+            "nonPositiveGvaShare": 0,
+            "labourShareMedian": 0.9999999999999971,
+            "consumptionShareMedian": 0,
+            "inputShortageMedian": 6.40768373725723,
+            "totalInputShortageUnits": 299.1326604505578,
+            "activeFirmsMedian": 15.5,
+            "purchasingPowerMedian": 821.9961198580111,
+            "goodsFulfillmentMedian": 0,
+            "payrollSettlementMedian": 0.3901120405493733,
+            "unemploymentMedian": 0.9677986906710311,
+            "wageArrearsMedian": 209037.35851748096
+          }
+        }
+      ],
+      "passed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-G",
+      "scenario": {
+        "id": "FINANCIAL_CONFIDENCE_STRESS_M13",
+        "role": "COMPOUND_CONFIDENCE_AND_BANK_RISK_STRESS",
+        "schedule": [
+          {
+            "id": "B6S3-CONFIDENCE-N035-M13",
+            "month": 13,
+            "countryId": "*",
+            "kind": "confidence_shock",
+            "delta": -0.35,
+            "agentKinds": [
+              "household",
+              "firm",
+              "bank"
+            ]
+          },
+          {
+            "id": "B6S3-BANK-RISK-P035-M13",
+            "month": 13,
+            "countryId": "*",
+            "kind": "bank_risk_shock",
+            "delta": 0.35
+          }
+        ]
+      },
+      "integrityPassed": true,
+      "scenarioIdentityPassed": true,
+      "windowEvaluations": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36,
+            "role": "FULL_HORIZON"
+          },
+          "conditions": {
+            "integrityPassed": true,
+            "scenarioIdentityPassed": true,
+            "completeWindowPanel": true,
+            "positiveGvaRowsPresent": true,
+            "positiveIncomeRowsPresent": true,
+            "labourDistanceStrictlyImproved": true,
+            "consumptionDistanceStrictlyImproved": true,
+            "inputShortageNotWorse": false,
+            "activeFirmsPreserved": true,
+            "purchasingPowerPreserved": true
+          },
+          "passed": false,
+          "distances": {
+            "labour": 0.6653711349140038,
+            "controlLabour": 0.7889803287738641,
+            "consumption": 4.36293305042472,
+            "controlConsumption": 9007199254740991,
+            "combined": 5.028304185338724,
+            "controlCombined": 9007199254740992
+          },
+          "ratios": {
+            "inputShortageRatio": 1.1829979260513792,
+            "activeFirmRatio": 1.2,
+            "purchasingPowerRatio": 1.2792276514771364
+          },
+          "metrics": {
+            "rowCount": 144,
+            "expectedRowCount": 144,
+            "positiveGvaRows": 142,
+            "positiveIncomeRows": 144,
+            "nonPositiveGvaShare": 0.013888888888888888,
+            "labourShareMedian": 1.180971470263402,
+            "consumptionShareMedian": 0.011259991600141756,
+            "inputShortageMedian": 10.182715834502488,
+            "totalInputShortageUnits": 1556.9548531854496,
+            "activeFirmsMedian": 24,
+            "purchasingPowerMedian": 1537.358156855581,
+            "goodsFulfillmentMedian": 0.001434674566303115,
+            "payrollSettlementMedian": 0.3471696447085869,
+            "unemploymentMedian": 0.8038461538461539,
+            "wageArrearsMedian": 225228.23407246632
+          },
+          "controlMetrics": {
+            "rowCount": 144,
+            "expectedRowCount": 144,
+            "positiveGvaRows": 144,
+            "positiveIncomeRows": 144,
+            "nonPositiveGvaShare": 0,
+            "labourShareMedian": 1.336356089306534,
+            "consumptionShareMedian": 0,
+            "inputShortageMedian": 8.60755172115174,
+            "totalInputShortageUnits": 2433.3491990050516,
+            "activeFirmsMedian": 20,
+            "purchasingPowerMedian": 1201.786214580633,
+            "goodsFulfillmentMedian": 0,
+            "payrollSettlementMedian": 0.3572464651843085,
+            "unemploymentMedian": 0.9611111111111111,
+            "wageArrearsMedian": 184165.08125020046
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36,
+            "role": "POST_STRESS_PERSISTENCE_AND_RECOVERY"
+          },
+          "conditions": {
+            "integrityPassed": true,
+            "scenarioIdentityPassed": true,
+            "completeWindowPanel": true,
+            "positiveGvaRowsPresent": true,
+            "positiveIncomeRowsPresent": true,
+            "labourDistanceStrictlyImproved": false,
+            "consumptionDistanceStrictlyImproved": false,
+            "inputShortageNotWorse": false,
+            "activeFirmsPreserved": true,
+            "purchasingPowerPreserved": true
+          },
+          "passed": false,
+          "distances": {
+            "labour": 0.4990337552611884,
+            "controlLabour": 0.49903375526118343,
+            "consumption": 9007199254740991,
+            "controlConsumption": 9007199254740991,
+            "combined": 9007199254740991,
+            "controlCombined": 9007199254740991
+          },
+          "ratios": {
+            "inputShortageRatio": 1.6406868839195876,
+            "activeFirmRatio": 1.032258064516129,
+            "purchasingPowerRatio": 0.9346990403848363
+          },
+          "metrics": {
+            "rowCount": 48,
+            "expectedRowCount": 48,
+            "positiveGvaRows": 48,
+            "positiveIncomeRows": 48,
+            "nonPositiveGvaShare": 0,
+            "labourShareMedian": 1.0000000000000018,
+            "consumptionShareMedian": 0,
+            "inputShortageMedian": 12.823472148522985,
+            "totalInputShortageUnits": 639.9863470950129,
+            "activeFirmsMedian": 16,
+            "purchasingPowerMedian": 763.1290446304099,
+            "goodsFulfillmentMedian": 0,
+            "payrollSettlementMedian": 0.401464472226999,
+            "unemploymentMedian": 0.9653846153846154,
+            "wageArrearsMedian": 305695.1354114441
+          },
+          "controlMetrics": {
+            "rowCount": 48,
+            "expectedRowCount": 48,
+            "positiveGvaRows": 48,
+            "positiveIncomeRows": 48,
+            "nonPositiveGvaShare": 0,
+            "labourShareMedian": 0.9999999999999968,
+            "consumptionShareMedian": 0,
+            "inputShortageMedian": 7.815916781078797,
+            "totalInputShortageUnits": 365.05115561831093,
+            "activeFirmsMedian": 15.5,
+            "purchasingPowerMedian": 816.4435948454732,
+            "goodsFulfillmentMedian": 0,
+            "payrollSettlementMedian": 0.3873634266971592,
+            "unemploymentMedian": 0.9677986906710311,
+            "wageArrearsMedian": 209166.14122355153
+          }
+        }
+      ],
+      "passed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "BASELINE_36",
+        "role": "UNSHOCKED_LONG_HORIZON",
+        "schedule": []
+      },
+      "integrityPassed": true,
+      "scenarioIdentityPassed": true,
+      "windowEvaluations": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36,
+            "role": "FULL_HORIZON"
+          },
+          "conditions": {
+            "integrityPassed": true,
+            "scenarioIdentityPassed": true,
+            "completeWindowPanel": true,
+            "positiveGvaRowsPresent": true,
+            "positiveIncomeRowsPresent": true,
+            "labourDistanceStrictlyImproved": false,
+            "consumptionDistanceStrictlyImproved": true,
+            "inputShortageNotWorse": true,
+            "activeFirmsPreserved": true,
+            "purchasingPowerPreserved": true
+          },
+          "passed": false,
+          "distances": {
+            "labour": 0.9347484087641169,
+            "controlLabour": 0.49903375526121696,
+            "consumption": 4.095794394232543,
+            "controlConsumption": 9007199254740991,
+            "combined": 5.03054280299666,
+            "controlCombined": 9007199254740991
+          },
+          "ratios": {
+            "inputShortageRatio": 0.7947064857693903,
+            "activeFirmRatio": 1.1666666666666667,
+            "purchasingPowerRatio": 0.9857385933130475
+          },
+          "metrics": {
+            "rowCount": 144,
+            "expectedRowCount": 144,
+            "positiveGvaRows": 143,
+            "positiveIncomeRows": 144,
+            "nonPositiveGvaShare": 0.006944444444444444,
+            "labourShareMedian": 1.5460675668365218,
+            "consumptionShareMedian": 0.014708043675080417,
+            "inputShortageMedian": 7.4679851098119805,
+            "totalInputShortageUnits": 1499.1527149764859,
+            "activeFirmsMedian": 24.5,
+            "purchasingPowerMedian": 1528.2942984300382,
+            "goodsFulfillmentMedian": 0.013774189593193771,
+            "payrollSettlementMedian": 0.32696283753133204,
+            "unemploymentMedian": 0.8309210526315789,
+            "wageArrearsMedian": 219633.99422371935
+          },
+          "controlMetrics": {
+            "rowCount": 144,
+            "expectedRowCount": 144,
+            "positiveGvaRows": 143,
+            "positiveIncomeRows": 144,
+            "nonPositiveGvaShare": 0.006944444444444444,
+            "labourShareMedian": 1.0000000000000304,
+            "consumptionShareMedian": 0,
+            "inputShortageMedian": 9.397161396741208,
+            "totalInputShortageUnits": 2116.090585455183,
+            "activeFirmsMedian": 21,
+            "purchasingPowerMedian": 1550.4052583489422,
+            "goodsFulfillmentMedian": 0,
+            "payrollSettlementMedian": 0.3665433198640725,
+            "unemploymentMedian": 0.9416666666666667,
+            "wageArrearsMedian": 189221.2563267839
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36,
+            "role": "POST_STRESS_PERSISTENCE_AND_RECOVERY"
+          },
+          "conditions": {
+            "integrityPassed": true,
+            "scenarioIdentityPassed": true,
+            "completeWindowPanel": true,
+            "positiveGvaRowsPresent": true,
+            "positiveIncomeRowsPresent": true,
+            "labourDistanceStrictlyImproved": false,
+            "consumptionDistanceStrictlyImproved": false,
+            "inputShortageNotWorse": false,
+            "activeFirmsPreserved": true,
+            "purchasingPowerPreserved": true
+          },
+          "passed": false,
+          "distances": {
+            "labour": 0.4990337552611926,
+            "controlLabour": 0.4990337552611879,
+            "consumption": 9007199254740991,
+            "controlConsumption": 9007199254740991,
+            "combined": 9007199254740991,
+            "controlCombined": 9007199254740991
+          },
+          "ratios": {
+            "inputShortageRatio": 1.6035509409405102,
+            "activeFirmRatio": 1.0285714285714285,
+            "purchasingPowerRatio": 0.9872168867267272
+          },
+          "metrics": {
+            "rowCount": 48,
+            "expectedRowCount": 48,
+            "positiveGvaRows": 48,
+            "positiveIncomeRows": 48,
+            "nonPositiveGvaShare": 0,
+            "labourShareMedian": 1.000000000000006,
+            "consumptionShareMedian": 0,
+            "inputShortageMedian": 13.434607946734115,
+            "totalInputShortageUnits": 655.5443879693233,
+            "activeFirmsMedian": 18,
+            "purchasingPowerMedian": 973.430030498527,
+            "goodsFulfillmentMedian": 0,
+            "payrollSettlementMedian": 0.43723801979169497,
+            "unemploymentMedian": 0.9676963993453356,
+            "wageArrearsMedian": 284806.87590214063
+          },
+          "controlMetrics": {
+            "rowCount": 48,
+            "expectedRowCount": 48,
+            "positiveGvaRows": 48,
+            "positiveIncomeRows": 48,
+            "nonPositiveGvaShare": 0,
+            "labourShareMedian": 1.0000000000000013,
+            "consumptionShareMedian": 0,
+            "inputShortageMedian": 8.378036271709888,
+            "totalInputShortageUnits": 425.1041427983579,
+            "activeFirmsMedian": 17.5,
+            "purchasingPowerMedian": 986.0346227728005,
+            "goodsFulfillmentMedian": 0,
+            "payrollSettlementMedian": 0.47373101708461457,
+            "unemploymentMedian": 0.9676963993453356,
+            "wageArrearsMedian": 212149.20329309502
+          }
+        }
+      ],
+      "passed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "SUPPLY_SHOCK_M13",
+        "role": "ADVERSE_REAL_PRODUCTIVITY_STRESS",
+        "schedule": [
+          {
+            "id": "B6S3-SUPPLY-075-M13",
+            "month": 13,
+            "countryId": "*",
+            "kind": "productivity_shock",
+            "factor": 0.75
+          }
+        ]
+      },
+      "integrityPassed": true,
+      "scenarioIdentityPassed": true,
+      "windowEvaluations": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36,
+            "role": "FULL_HORIZON"
+          },
+          "conditions": {
+            "integrityPassed": true,
+            "scenarioIdentityPassed": true,
+            "completeWindowPanel": true,
+            "positiveGvaRowsPresent": true,
+            "positiveIncomeRowsPresent": true,
+            "labourDistanceStrictlyImproved": false,
+            "consumptionDistanceStrictlyImproved": true,
+            "inputShortageNotWorse": true,
+            "activeFirmsPreserved": true,
+            "purchasingPowerPreserved": true
+          },
+          "passed": false,
+          "distances": {
+            "labour": 1.0113099854522078,
+            "controlLabour": 0.4990337552612444,
+            "consumption": 3.9528865907856185,
+            "controlConsumption": 9007199254740991,
+            "combined": 4.964196576237827,
+            "controlCombined": 9007199254740991
+          },
+          "ratios": {
+            "inputShortageRatio": 0.821883143664606,
+            "activeFirmRatio": 1.225,
+            "purchasingPowerRatio": 0.9814139573717646
+          },
+          "metrics": {
+            "rowCount": 144,
+            "expectedRowCount": 144,
+            "positiveGvaRows": 142,
+            "positiveIncomeRows": 144,
+            "nonPositiveGvaShare": 0.013888888888888888,
+            "labourShareMedian": 1.6690860984390956,
+            "consumptionShareMedian": 0.01696754389096864,
+            "inputShortageMedian": 6.4743623285705825,
+            "totalInputShortageUnits": 1319.0099846645498,
+            "activeFirmsMedian": 24.5,
+            "purchasingPowerMedian": 1476.5030178882562,
+            "goodsFulfillmentMedian": 0.013711030660773673,
+            "payrollSettlementMedian": 0.26430954697538056,
+            "unemploymentMedian": 0.8236111111111111,
+            "wageArrearsMedian": 219548.0381749657
+          },
+          "controlMetrics": {
+            "rowCount": 144,
+            "expectedRowCount": 144,
+            "positiveGvaRows": 142,
+            "positiveIncomeRows": 144,
+            "nonPositiveGvaShare": 0.013888888888888888,
+            "labourShareMedian": 1.0000000000000577,
+            "consumptionShareMedian": 0,
+            "inputShortageMedian": 7.8774730671598245,
+            "totalInputShortageUnits": 1890.9310994835942,
+            "activeFirmsMedian": 20,
+            "purchasingPowerMedian": 1504.4650698084063,
+            "goodsFulfillmentMedian": 0,
+            "payrollSettlementMedian": 0.3657467960886012,
+            "unemploymentMedian": 0.9416666666666667,
+            "wageArrearsMedian": 189451.17668036552
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36,
+            "role": "POST_STRESS_PERSISTENCE_AND_RECOVERY"
+          },
+          "conditions": {
+            "integrityPassed": true,
+            "scenarioIdentityPassed": true,
+            "completeWindowPanel": true,
+            "positiveGvaRowsPresent": true,
+            "positiveIncomeRowsPresent": true,
+            "labourDistanceStrictlyImproved": false,
+            "consumptionDistanceStrictlyImproved": false,
+            "inputShortageNotWorse": false,
+            "activeFirmsPreserved": true,
+            "purchasingPowerPreserved": true
+          },
+          "passed": false,
+          "distances": {
+            "labour": 0.4990337552611892,
+            "controlLabour": 0.49903375526118343,
+            "consumption": 9007199254740991,
+            "controlConsumption": 9007199254740991,
+            "combined": 9007199254740991,
+            "controlCombined": 9007199254740991
+          },
+          "ratios": {
+            "inputShortageRatio": 1.6037759463953782,
+            "activeFirmRatio": 1.0285714285714285,
+            "purchasingPowerRatio": 0.9200349194733309
+          },
+          "metrics": {
+            "rowCount": 48,
+            "expectedRowCount": 48,
+            "positiveGvaRows": 48,
+            "positiveIncomeRows": 48,
+            "nonPositiveGvaShare": 0,
+            "labourShareMedian": 1.0000000000000027,
+            "consumptionShareMedian": 0,
+            "inputShortageMedian": 10.889501118763194,
+            "totalInputShortageUnits": 571.8108280802326,
+            "activeFirmsMedian": 18,
+            "purchasingPowerMedian": 910.5967290758688,
+            "goodsFulfillmentMedian": 0,
+            "payrollSettlementMedian": 0.44548408097544745,
+            "unemploymentMedian": 0.9676963993453356,
+            "wageArrearsMedian": 287972.0248894788
+          },
+          "controlMetrics": {
+            "rowCount": 48,
+            "expectedRowCount": 48,
+            "positiveGvaRows": 47,
+            "positiveIncomeRows": 48,
+            "nonPositiveGvaShare": 0.020833333333333332,
+            "labourShareMedian": 0.9999999999999969,
+            "consumptionShareMedian": 0,
+            "inputShortageMedian": 6.789914229127994,
+            "totalInputShortageUnits": 342.64126061437196,
+            "activeFirmsMedian": 17.5,
+            "purchasingPowerMedian": 989.7414867656709,
+            "goodsFulfillmentMedian": 0,
+            "payrollSettlementMedian": 0.4732948108971707,
+            "unemploymentMedian": 0.9676963993453356,
+            "wageArrearsMedian": 212411.86618656298
+          }
+        }
+      ],
+      "passed": false
+    },
+    {
+      "seed": "ECON-RV08-LONG-H",
+      "scenario": {
+        "id": "FINANCIAL_CONFIDENCE_STRESS_M13",
+        "role": "COMPOUND_CONFIDENCE_AND_BANK_RISK_STRESS",
+        "schedule": [
+          {
+            "id": "B6S3-CONFIDENCE-N035-M13",
+            "month": 13,
+            "countryId": "*",
+            "kind": "confidence_shock",
+            "delta": -0.35,
+            "agentKinds": [
+              "household",
+              "firm",
+              "bank"
+            ]
+          },
+          {
+            "id": "B6S3-BANK-RISK-P035-M13",
+            "month": 13,
+            "countryId": "*",
+            "kind": "bank_risk_shock",
+            "delta": 0.35
+          }
+        ]
+      },
+      "integrityPassed": true,
+      "scenarioIdentityPassed": true,
+      "windowEvaluations": [
+        {
+          "window": {
+            "id": "FULL_36",
+            "startMonth": 1,
+            "endMonth": 36,
+            "role": "FULL_HORIZON"
+          },
+          "conditions": {
+            "integrityPassed": true,
+            "scenarioIdentityPassed": true,
+            "completeWindowPanel": true,
+            "positiveGvaRowsPresent": true,
+            "positiveIncomeRowsPresent": true,
+            "labourDistanceStrictlyImproved": false,
+            "consumptionDistanceStrictlyImproved": true,
+            "inputShortageNotWorse": true,
+            "activeFirmsPreserved": true,
+            "purchasingPowerPreserved": true
+          },
+          "passed": false,
+          "distances": {
+            "labour": 1.0869925922995356,
+            "controlLabour": 0.5649843258619102,
+            "consumption": 2.8030828015670113,
+            "controlConsumption": 9007199254740991,
+            "combined": 3.890075393866547,
+            "controlCombined": 9007199254740992
+          },
+          "ratios": {
+            "inputShortageRatio": 0.5186128682071235,
+            "activeFirmRatio": 1.1904761904761905,
+            "purchasingPowerRatio": 0.9710295261151235
+          },
+          "metrics": {
+            "rowCount": 144,
+            "expectedRowCount": 144,
+            "positiveGvaRows": 136,
+            "positiveIncomeRows": 144,
+            "nonPositiveGvaShare": 0.05555555555555555,
+            "labourShareMedian": 1.8003099365256654,
+            "consumptionShareMedian": 0.05357626353939901,
+            "inputShortageMedian": 4.810582718182372,
+            "totalInputShortageUnits": 1371.3051574949247,
+            "activeFirmsMedian": 25,
+            "purchasingPowerMedian": 1505.4519075560079,
+            "goodsFulfillmentMedian": 0.017796071036430078,
+            "payrollSettlementMedian": 0.3093654143693696,
+            "unemploymentMedian": 0.8236111111111111,
+            "wageArrearsMedian": 219571.63247272716
+          },
+          "controlMetrics": {
+            "rowCount": 144,
+            "expectedRowCount": 144,
+            "positiveGvaRows": 143,
+            "positiveIncomeRows": 144,
+            "nonPositiveGvaShare": 0.006944444444444444,
+            "labourShareMedian": 1.068173916666032,
+            "consumptionShareMedian": 0,
+            "inputShortageMedian": 9.275864547697886,
+            "totalInputShortageUnits": 2112.2046780835526,
+            "activeFirmsMedian": 21,
+            "purchasingPowerMedian": 1550.3667675060215,
+            "goodsFulfillmentMedian": 0,
+            "payrollSettlementMedian": 0.38310359252140097,
+            "unemploymentMedian": 0.9416666666666667,
+            "wageArrearsMedian": 189052.55808355357
+          }
+        },
+        {
+          "window": {
+            "id": "TERMINAL_12",
+            "startMonth": 25,
+            "endMonth": 36,
+            "role": "POST_STRESS_PERSISTENCE_AND_RECOVERY"
+          },
+          "conditions": {
+            "integrityPassed": true,
+            "scenarioIdentityPassed": true,
+            "completeWindowPanel": true,
+            "positiveGvaRowsPresent": true,
+            "positiveIncomeRowsPresent": true,
+            "labourDistanceStrictlyImproved": false,
+            "consumptionDistanceStrictlyImproved": true,
+            "inputShortageNotWorse": false,
+            "activeFirmsPreserved": true,
+            "purchasingPowerPreserved": true
+          },
+          "passed": false,
+          "distances": {
+            "labour": 0.7253006761375116,
+            "controlLabour": 0.4990337552611884,
+            "consumption": 3.937326644968656,
+            "controlConsumption": 9007199254740991,
+            "combined": 4.662627321106168,
+            "controlCombined": 9007199254740991
+          },
+          "ratios": {
+            "inputShortageRatio": 1.3601386743012602,
+            "activeFirmRatio": 1.0285714285714285,
+            "purchasingPowerRatio": 0.8625180539686699
+          },
+          "metrics": {
+            "rowCount": 48,
+            "expectedRowCount": 48,
+            "positiveGvaRows": 42,
+            "positiveIncomeRows": 48,
+            "nonPositiveGvaShare": 0.125,
+            "labourShareMedian": 1.2539103154538749,
+            "consumptionShareMedian": 0.017233622671884177,
+            "inputShortageMedian": 11.424139480017796,
+            "totalInputShortageUnits": 537.1846202913707,
+            "activeFirmsMedian": 18,
+            "purchasingPowerMedian": 843.5210377890419,
+            "goodsFulfillmentMedian": 0.0009260618391993235,
+            "payrollSettlementMedian": 0.46116169657052186,
+            "unemploymentMedian": 0.9676963993453356,
+            "wageArrearsMedian": 285496.6826941337
+          },
+          "controlMetrics": {
+            "rowCount": 48,
+            "expectedRowCount": 48,
+            "positiveGvaRows": 48,
+            "positiveIncomeRows": 48,
+            "nonPositiveGvaShare": 0,
+            "labourShareMedian": 1.0000000000000018,
+            "consumptionShareMedian": 0,
+            "inputShortageMedian": 8.399246117964173,
+            "totalInputShortageUnits": 425.36347293454315,
+            "activeFirmsMedian": 17.5,
+            "purchasingPowerMedian": 977.9749350263246,
+            "goodsFulfillmentMedian": 0,
+            "payrollSettlementMedian": 0.4746956087508661,
+            "unemploymentMedian": 0.9676963993453356,
+            "wageArrearsMedian": 212001.60274166957
+          }
+        }
+      ],
+      "passed": false
+    }
+  ],
+  "worstCase": {
+    "combinedHeadlineDistance": 9007199254740991,
+    "inputShortageRatio": 1.7213050922722641,
+    "minimumActiveFirmRatio": 1.0285714285714285,
+    "minimumPurchasingPowerRatio": 0.8625180539686699
+  },
+  "interpretation": {
+    "role": "LONG_HORIZON_AND_STRESS_CAUSAL_VALIDATION_ONLY",
+    "empiricalBands": "EXTERNAL_VALIDATION_ONLY",
+    "stressMagnitudesAreCalibrationRecommendations": false,
+    "directParameterRecommendation": false,
+    "canonicalMutationAuthorized": false,
+    "noRetuningAllowed": true
+  }
+}
