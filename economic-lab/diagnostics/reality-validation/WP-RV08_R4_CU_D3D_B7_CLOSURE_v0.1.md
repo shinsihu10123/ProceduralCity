@@ -12,7 +12,7 @@
 - Aggregate artifact ID: `9750222167`
 - Aggregate artifact digest: `sha256:a77cc56408882ecb5318a2c2dd116a3f5772ff520579bee68dd1b3b63ed381b2`
 - Aggregate JSON SHA-256: `8618beb8a8de76f87fc553e008be107b19bb332d6d26f5e60e604f0223ccd03c`
-- Closure generated at: `2026-08-31T08:09:07.289Z`
+- Closure generated at: `2026-08-31T08:10:37.129Z`
 - Technical status: `PASS_TECHNICAL_B7_DIAGNOSTIC_AGGREGATION`
 - Diagnostic decision: `MIXED`
 - Dependency-safe route: `R4-CU-D3D-B7-D0 sequenced multi-mechanism causal preregistration`
