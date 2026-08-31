@@ -1,14 +1,13 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
-import { dirname, relative, resolve } from 'node:path';
+import { basename, dirname, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const ROOT = process.cwd();
 const CONTRACT_PATH = resolve(ROOT, 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b7-d1-supplier-topology-causal-contract.json');
-const B7_OBSERVER_SOURCE_PATH = resolve(ROOT, 'economic-lab/src/research/b7-demand-inventory-topology-observer.js');
 const D1_INTERVENTION_SOURCE_PATH = resolve(ROOT, 'economic-lab/src/research/d1-topology-neutral-procurement.js');
-const SCENARIO_RUNNER_PATH = resolve(ROOT, 'economic-lab/scripts/rv08-r4-cu-d3d-b6-s3-scenario-axis-runner.mjs');
+const B7_RUNNER_PATH = resolve(ROOT, 'economic-lab/scripts/rv08-r4-cu-d3d-b7-diagnostic-runner.mjs');
 const sourceTarget = process.argv[2];
 const sourceOutput = process.env.OUTPUT_JSON ? resolve(process.env.OUTPUT_JSON) : null;
 const outputJson = process.env.D1_OUTPUT_JSON ? resolve(process.env.D1_OUTPUT_JSON) : null;
@@ -58,123 +57,7 @@ function replaceExactlyOnce(source, needle, replacement, label) {
 }
 
 function temporaryPath(sourcePath, label) {
-  return resolve(dirname(sourcePath), `${sourcePath.split('/').at(-1)}.${label}-${process.pid}-${Date.now()}.mjs`);
-}
-
-function buildB7ObserverCompatibilityView() {
-  const original = readFileSync(B7_OBSERVER_SOURCE_PATH, 'utf8');
-  let patched = original;
-
-  patched = replaceExactlyOnce(patched,
-`  function stateFor(supply, country) {
-    let state = stateBySupply.get(supply);
-    if (!state) {
-      state = {
-        candidateId: candidateIdFromCountry(country),
-        rows: new Map(),
-        countries: new Set()
-      };
-      if (expectedCandidateId) assert.equal(state.candidateId, expectedCandidateId, 'B7 observer candidate mismatch');
-      stateBySupply.set(supply, state);
-      states.push(state);
-    }
-    const observedCandidate = candidateIdFromCountry(country);
-    if (observedCandidate) {
-      if (state.candidateId === null) state.candidateId = observedCandidate;
-      assert.equal(observedCandidate, state.candidateId, 'B7 observer candidate changed inside a replay');
-    }
-    state.countries.add(country.id);
-    return state;
-  }`,
-`  function stateFor(supply, country) {
-    const observedCandidate = candidateIdFromCountry(country);
-    if (!observedCandidate) return null;
-    let state = stateBySupply.get(supply);
-    if (!state) {
-      state = {
-        candidateId: observedCandidate,
-        rows: new Map(),
-        countries: new Set()
-      };
-      if (expectedCandidateId) assert.equal(state.candidateId, expectedCandidateId, 'B7 observer candidate mismatch');
-      stateBySupply.set(supply, state);
-      states.push(state);
-    }
-    assert.equal(observedCandidate, state.candidateId, 'B7 observer candidate changed inside a replay');
-    state.countries.add(country.id);
-    return state;
-  }`, 'observer-state-tag-filter');
-
-  patched = replaceExactlyOnce(patched,
-`  SupplyChainSystem.prototype.beginMonth = function b7BeginMonth(country, ...args) {
-    const result = originals.beginMonth.call(this, country, ...args);
-    const state = stateFor(this, country);
-    const month = derivedMonth(country);`,
-`  SupplyChainSystem.prototype.beginMonth = function b7BeginMonth(country, ...args) {
-    const result = originals.beginMonth.call(this, country, ...args);
-    const state = stateFor(this, country);
-    if (!state) {
-      latestStateByCountry.delete(country.id);
-      return result;
-    }
-    const month = derivedMonth(country);`, 'observer-begin-canonical-bypass');
-
-  patched = replaceExactlyOnce(patched,
-`  SupplyChainSystem.prototype.planProduction = function b7PlanProduction(country, ...args) {
-    const result = originals.planProduction.call(this, country, ...args);
-    const state = stateFor(this, country);
-    const month = derivedMonth(country);`,
-`  SupplyChainSystem.prototype.planProduction = function b7PlanProduction(country, ...args) {
-    const result = originals.planProduction.call(this, country, ...args);
-    const state = stateFor(this, country);
-    if (!state) return result;
-    const month = derivedMonth(country);`, 'observer-plan-canonical-bypass');
-
-  patched = replaceExactlyOnce(patched,
-`  SupplyChainSystem.prototype.procureInputs = function b7ProcureInputs(country, month, ...args) {
-    const state = stateFor(this, country);
-    const row = rowFor(state, country, month);`,
-`  SupplyChainSystem.prototype.procureInputs = function b7ProcureInputs(country, month, ...args) {
-    const state = stateFor(this, country);
-    if (!state) return originals.procureInputs.call(this, country, month, ...args);
-    const row = rowFor(state, country, month);`, 'observer-procurement-canonical-bypass');
-
-  patched = replaceExactlyOnce(patched,
-`  SupplyChainSystem.prototype.produce = function b7Produce(country, month, metrics, ...args) {
-    const state = stateFor(this, country);
-    const row = rowFor(state, country, month);`,
-`  SupplyChainSystem.prototype.produce = function b7Produce(country, month, metrics, ...args) {
-    const state = stateFor(this, country);
-    if (!state) return originals.produce.call(this, country, month, metrics, ...args);
-    const row = rowFor(state, country, month);`, 'observer-production-canonical-bypass');
-
-  patched = replaceExactlyOnce(patched,
-`  setGoodsMarketDiagnosticObserver(({ countryId, month, result, diagnostics }) => {
-    const state = latestStateByCountry.get(countryId);
-    assert.ok(state, \`${countryId}/${month}: goods observer has no active B7 replay\`);`,
-`  setGoodsMarketDiagnosticObserver(({ countryId, month, result, diagnostics }) => {
-    const state = latestStateByCountry.get(countryId);
-    if (!state) return;`, 'observer-goods-canonical-bypass');
-
-  patched = replaceExactlyOnce(patched,
-`  SupplyChainSystem.prototype.finalizeMetrics = function b7FinalizeMetrics(country, metrics, ...args) {
-    const result = originals.finalizeMetrics.call(this, country, metrics, ...args);
-    const state = stateFor(this, country);
-    const month = derivedMonth(country);`,
-`  SupplyChainSystem.prototype.finalizeMetrics = function b7FinalizeMetrics(country, metrics, ...args) {
-    const result = originals.finalizeMetrics.call(this, country, metrics, ...args);
-    const state = stateFor(this, country);
-    if (!state) return result;
-    const month = derivedMonth(country);`, 'observer-finalize-canonical-bypass');
-
-  const runtimePath = temporaryPath(B7_OBSERVER_SOURCE_PATH, 'd1-observer-runtime');
-  writeFileSync(runtimePath, patched);
-  return {
-    runtimePath,
-    originalSha256: sha256(original),
-    patchedSha256: sha256(patched),
-    replacementCount: 7
-  };
+  return resolve(dirname(sourcePath), `${basename(sourcePath)}.${label}-${process.pid}-${Date.now()}.mjs`);
 }
 
 function buildD1InterventionCompatibilityView() {
@@ -227,7 +110,7 @@ function buildTTargetCompatibilityView() {
 }
 
 function initialPanelIdentity(observation) {
-  const rows = (observation.rows || [])
+  const rows = (observation?.rows || [])
     .filter((row) => Number(row.month) === 1)
     .sort((left, right) => left.countryId.localeCompare(right.countryId))
     .map((row) => ({
@@ -245,7 +128,19 @@ function initialPanelIdentity(observation) {
   };
 }
 
-function writeFailure(error, compatibilityViews = {}) {
+function readJsonOrNull(path) {
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function readableOutputExists(path) {
+  return readJsonOrNull(path) !== null;
+}
+
+function writeFailure(error, compatibilityViews = {}, nestedB7 = null) {
   const result = {
     schemaVersion: 'r4-cu-d3d-b7-d1-cell-result-v0.1',
     front: contract.front,
@@ -258,6 +153,11 @@ function writeFailure(error, compatibilityViews = {}) {
     months: contract.frozenPanel.months,
     contract: { path: relative(ROOT, CONTRACT_PATH), sha256: sha256(contractText) },
     compatibilityViews,
+    nestedB7Failure: nestedB7 ? {
+      status: nestedB7.status,
+      gates: nestedB7.gates,
+      observerCompatibilityView: nestedB7.observerCompatibilityView
+    } : null,
     gates: { runnerCompleted: false, ok: false },
     error: {
       name: error?.name || 'Error',
@@ -276,22 +176,15 @@ function writeFailure(error, compatibilityViews = {}) {
 }
 
 const compatibilityViews = {};
-let observerView = null;
+const previousArgvTarget = process.argv[2];
+const previousB7Output = process.env.B7_OUTPUT_JSON;
+const nestedB7Output = resolve(dirname(outputJson), `${basename(outputJson, '.json')}.nested-b7-${process.pid}.json`);
 let interventionView = null;
 let targetView = null;
-let observer = null;
 let intervention = null;
 let caught = null;
 
 try {
-  observerView = buildB7ObserverCompatibilityView();
-  compatibilityViews.b7Observer = {
-    originalSha256: observerView.originalSha256,
-    patchedSha256: observerView.patchedSha256,
-    replacementCount: observerView.replacementCount,
-    canonicalTwinExcluded: true
-  };
-
   if (cellId === 'T') {
     interventionView = buildD1InterventionCompatibilityView();
     compatibilityViews.d1Intervention = {
@@ -313,16 +206,17 @@ try {
     process.argv[2] = targetView.runtimePath;
   }
 
-  const observerModule = await import(pathToFileURL(observerView.runtimePath).href);
-  observer = observerModule.installB7DemandInventoryTopologyObserver({ expectedCandidateId: candidateId });
-  await import(pathToFileURL(SCENARIO_RUNNER_PATH).href);
+  process.env.B7_OUTPUT_JSON = nestedB7Output;
+  await import(pathToFileURL(B7_RUNNER_PATH).href);
 
+  const b7 = JSON.parse(readFileSync(nestedB7Output, 'utf8'));
   const sourceText = readFileSync(sourceOutput, 'utf8');
   const source = JSON.parse(sourceText);
-  const observation = observer.finish(source);
+  const observation = b7.diagnostics;
   const interventionObservation = intervention ? intervention.finish(source) : null;
   const sourceScenario = source.s3ScenarioValidation;
   const initialIdentity = initialPanelIdentity(observation);
+  compatibilityViews.b7Observer = b7.observerCompatibilityView;
 
   const gates = {
     runnerCompleted: true,
@@ -335,39 +229,29 @@ try {
     seedAuthorized: source.seed === seed && validationSeeds.includes(seed),
     scenarioAuthorized: sourceScenario?.scenarioId === scenarioId && scenarioIds.includes(scenarioId),
     horizonFrozen: source.months === contract.frozenPanel.months,
-    sourceEngineIntegrityPassed: source.gates?.ok === true,
+    b7EnvelopePassed: b7.gates?.ok === true,
+    sourceEngineIntegrityPassed: source.gates?.ok === true && b7.gates?.sourceEngineIntegrityPassed === true,
     exactModelReplayPassed:
       source.gates?.exactCanonicalReplay === true && source.gates?.exactDiagnosticReplay === true,
-    hardAccountingHealthy: source.gates?.hardAccountingHealthy === true,
-    protectedSurfaceExact: source.gates?.protectedSurfaceExact === true,
+    hardAccountingHealthy: source.gates?.hardAccountingHealthy === true && b7.gates?.hardAccountingHealthy === true,
+    protectedSurfaceExact: source.gates?.protectedSurfaceExact === true && b7.gates?.protectedSurfaceExact === true,
     scenarioScheduleExact:
       sourceScenario?.scheduleSha256 === sha256(JSON.stringify(scenario.schedule)) &&
-      JSON.stringify(sourceScenario?.schedule) === JSON.stringify(scenario.schedule),
-    observerReplayStateCountExact: observation.replayStateCount === 2,
-    observerReplayExact: observation.replayExact === true,
+      JSON.stringify(sourceScenario?.schedule) === JSON.stringify(scenario.schedule) &&
+      b7.gates?.scenarioScheduleExact === true,
+    observerReplayStateCountExact: observation?.replayStateCount === 2,
+    observerReplayExact: observation?.replayExact === true,
     completeCountryMonthPanel:
-      observation.rows.length === observation.expectedRows &&
-      observation.expectedMonths === contract.frozenPanel.months,
-    allObserverStagesComplete: observation.rows.every((row) => Object.values(row.stages || {}).every(Boolean)),
-    shortageAttributionReconciles: observation.rows.every((row) => {
-      const procurement = row.procurement || {};
-      const attributed =
-        Number(procurement.topologyAttributedShortageUnits || 0) +
-        Number(procurement.cashAttributedShortageUnits || 0) +
-        Number(procurement.searchExecutionAttributedShortageUnits || 0);
-      return Math.abs(attributed - Number(procurement.inputShortageUnits || 0)) <=
-        1e-7 * Math.max(1, Math.abs(Number(procurement.inputShortageUnits || 0)));
-    }),
-    gvaApproachesReconcile: observation.rows.every((row) =>
-      Math.abs(Number(row.closing?.gvaApproachResidual || 0)) <= 1e-7 * Math.max(
-        1,
-        Math.abs(Number(row.closing?.gvaBasicProduction || 0)),
-        Math.abs(Number(row.closing?.gvaBasicIncome || 0))
-      )
-    ),
-    initialIdentityProduced: initialIdentity.rowCount === observation.expectedCountries.length && initialIdentity.sha256.length === 64,
+      observation?.rows?.length === observation?.expectedRows &&
+      observation?.expectedMonths === contract.frozenPanel.months,
+    allObserverStagesComplete: observation?.rows?.every((row) => Object.values(row.stages || {}).every(Boolean)) === true,
+    shortageAttributionReconciles: b7.gates?.shortageAttributionReconciles === true,
+    gvaApproachesReconcile: b7.gates?.gvaApproachesReconcile === true,
+    initialIdentityProduced:
+      initialIdentity.rowCount === observation?.expectedCountries?.length && initialIdentity.sha256.length === 64,
     observedCellHasNoIntervention: cellId !== 'O' || interventionObservation === null,
-    topologyCellInterventionPresent: cellId !== 'T' || interventionObservation?.interventionId === contract.intervention.id,
+    topologyCellInterventionPresent:
+      cellId !== 'T' || interventionObservation?.interventionId === contract.intervention.id,
     interventionConfigHashValid:
       cellId !== 'T' || (
         interventionObservation?.interventionConfigSha256 === sha256(JSON.stringify(interventionObservation?.interventionConfig)) &&
@@ -395,7 +279,8 @@ try {
     canonicalMutationLocked:
       contract.canonicalMutationAuthorized === false &&
       contract.directParameterCalibrationAuthorized === false &&
-      contract.candidateRetuningAuthorized === false
+      contract.candidateRetuningAuthorized === false &&
+      b7.interpretation?.canonicalMutationAuthorized === false
   };
   gates.ok = Object.values(gates).every(Boolean);
 
@@ -412,8 +297,7 @@ try {
     contract: { path: relative(ROOT, CONTRACT_PATH), sha256: sha256(contractText) },
     compatibilityViews,
     sourceStage3: {
-      schemaVersion: source.schemaVersion,
-      front: source.front,
+      ...b7.sourceStage3,
       resultSha256: sha256(sourceText),
       rowsSha256: sha256(JSON.stringify(source.rows || [])),
       gatesSha256: sha256(JSON.stringify(source.gates || {})),
@@ -447,31 +331,25 @@ try {
     gates,
     initialPanelSha256: initialIdentity.sha256,
     interventionRowsSha256: interventionObservation?.rowsSha256 || null,
-    diagnosticRowsSha256: observation.rowsSha256
+    diagnosticRowsSha256: observation?.rowsSha256 || null
   }));
   assert.equal(gates.ok, true, `${candidateId}/${seed}/${scenarioId}/${cellId}: D1 technical cell gate failed`);
 } catch (error) {
   caught = error;
-  if (!outputJson || !readableOutputExists(outputJson)) writeFailure(error, compatibilityViews);
+  const nestedB7 = readJsonOrNull(nestedB7Output);
+  if (!readableOutputExists(outputJson)) writeFailure(error, compatibilityViews, nestedB7);
 } finally {
-  if (observer) observer.restore();
   if (intervention) intervention.restore();
-  for (const path of [observerView?.runtimePath, interventionView?.runtimePath, targetView?.runtimePath]) {
+  process.argv[2] = previousArgvTarget;
+  if (previousB7Output === undefined) delete process.env.B7_OUTPUT_JSON;
+  else process.env.B7_OUTPUT_JSON = previousB7Output;
+  for (const path of [interventionView?.runtimePath, targetView?.runtimePath, nestedB7Output]) {
     if (!path) continue;
     try {
       unlinkSync(path);
     } catch {
-      // Temporary disposable compatibility views are removed best-effort.
+      // Temporary disposable compatibility views and nested envelopes are removed best-effort.
     }
-  }
-}
-
-function readableOutputExists(path) {
-  try {
-    JSON.parse(readFileSync(path, 'utf8'));
-    return true;
-  } catch {
-    return false;
   }
 }
 
