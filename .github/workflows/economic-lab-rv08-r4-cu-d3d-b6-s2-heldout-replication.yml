@@ -1,0 +1,152 @@
+name: Economic Lab RV08 R4-CU-D3D-B6-S2 Heldout Replication
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B6_S1_CLOSURE_v0.1.md'
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b6-input-output-working-capital-contract.json'
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b6-s2-heldout-replication-contract.json'
+      - 'economic-lab/src/research/b6-input-output-working-capital-shadow.js'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b6-s2-contract-compat-runner.mjs'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b6-s2-relabel-result.mjs'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b6-s2-aggregate.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3d-b6-s2-heldout-replication.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preregistration-gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax gates
+        run: |
+          node --check economic-lab/src/research/b6-input-output-working-capital-shadow.js
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b6-s2-contract-compat-runner.mjs
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b6-s2-relabel-result.mjs
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b6-s2-aggregate.mjs
+      - name: Validate frozen heldout protocol
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          const path = 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b6-s2-heldout-replication-contract.json';
+          const protocol = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const candidateIds = protocol.candidatePanel.map(entry => entry.id);
+          const seeds = protocol.execution.heldoutSeeds.map(entry => entry.seed);
+          assert.equal(protocol.schemaVersion, '1.0');
+          assert.equal(protocol.front, 'R4-CU-D3D-B6-S2');
+          assert.equal(protocol.status, 'FROZEN_BEFORE_HELDOUT_EXECUTION');
+          assert.equal(protocol.sourceStage1.workflowRunId, 33358631295);
+          assert.equal(protocol.sourceStage1.headSha, '32c4753ee062e62f09789cb7a7492f2c6fdae354');
+          assert.equal(protocol.sourceStage1.aggregateArtifactId, 9745969839);
+          assert.equal(protocol.sourceStage1.aggregateArtifactZipSha256, '2048535126ade399b10133f74592bed193135da2d558ab02b07c691aa29f7aa7');
+          assert.deepEqual(protocol.sourceStage1.frozenFinalists, ['V1_M16_C42', 'V1_M4_C42', 'V24_M16_C42']);
+          assert.deepEqual(candidateIds, ['V1_M1_C42', 'V1_M16_C42', 'V1_M4_C42', 'V24_M16_C42']);
+          assert.equal(new Set(candidateIds).size, 4);
+          assert.ok(protocol.candidatePanel.every(entry => entry.W === 'C42'));
+          assert.deepEqual(seeds, ['ECON-RV08-HOLDOUT-E', 'ECON-RV08-HOLDOUT-F']);
+          assert.equal(protocol.execution.months, 12);
+          assert.equal(protocol.execution.candidateSeedJobs, 8);
+          assert.equal(protocol.replicationEligibility.maximumMedianInputShortageRatioVsControl, 1.0);
+          assert.equal(protocol.replicationEligibility.minimumMedianActiveFirmRatioVsControl, 0.5);
+          assert.equal(protocol.replicationEligibility.minimumMedianPurchasingPowerRatioVsControl, 0.8);
+          assert.equal(protocol.replicationEligibility.postHocGateRelaxationAuthorized, false);
+          assert.equal(protocol.canonicalMutationAuthorized, false);
+          assert.equal(protocol.directParameterCalibrationAuthorized, false);
+          console.log('WP_RV08_R4_CU_D3D_B6_S2_PREREGISTRATION', JSON.stringify({ candidates: candidateIds, seeds, jobs: 8, months: 12 }));
+          NODE
+
+  heldout-screen:
+    needs: preregistration-gate
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        candidate:
+          - V1_M1_C42
+          - V1_M16_C42
+          - V1_M4_C42
+          - V24_M16_C42
+        case:
+          - heldout-E__ECON-RV08-HOLDOUT-E
+          - heldout-F__ECON-RV08-HOLDOUT-F
+    name: B6-S2 ${{ matrix.candidate }} / ${{ matrix.case }}
+    runs-on: ubuntu-24.04
+    env:
+      NODE_OPTIONS: --max-old-space-size=7168
+      CANDIDATE: ${{ matrix.candidate }}
+      CASE: ${{ matrix.case }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run frozen 12-month heldout replication
+        shell: bash
+        run: |
+          set -o pipefail
+          LABEL="${CASE%%__*}"
+          SEED="${CASE#*__}"
+          BASE="economic-lab/performance-results/r4-cu-d3d-b6-s2-${CANDIDATE}-${LABEL}"
+          mkdir -p economic-lab/performance-results
+          {
+            DIAG_SEED="$SEED" DIAG_MONTHS=12 CANDIDATE="$CANDIDATE" \
+            OUTPUT_JSON="${BASE}.engine.json" \
+            node economic-lab/scripts/rv08-r4-cu-d3d-b6-s2-contract-compat-runner.mjs \
+              economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs
+            node economic-lab/scripts/rv08-r4-cu-d3d-b6-s2-relabel-result.mjs \
+              "${BASE}.engine.json" "${BASE}.json"
+          } 2>&1 | tee "${BASE}.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-cu-d3d-b6-s2-${{ matrix.candidate }}-${{ matrix.case }}
+          path: economic-lab/performance-results/r4-cu-d3d-b6-s2-${{ matrix.candidate }}-*
+          retention-days: 90
+
+  aggregate:
+    needs: heldout-screen
+    if: needs.heldout-screen.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r4-cu-d3d-b6-s2-*
+          path: downloaded-b6-s2
+          merge-multiple: false
+      - name: Aggregate frozen eight-job heldout panel
+        run: |
+          mkdir -p economic-lab/performance-results
+          INPUT_ROOT=downloaded-b6-s2 \
+          OUTPUT_JSON=economic-lab/performance-results/r4-cu-d3d-b6-s2-aggregate.json \
+          OUTPUT_MD=economic-lab/performance-results/r4-cu-d3d-b6-s2-summary.md \
+          node economic-lab/scripts/rv08-r4-cu-d3d-b6-s2-aggregate.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r4-cu-d3d-b6-s2-authoritative-aggregate
+          path: |
+            economic-lab/performance-results/r4-cu-d3d-b6-s2-aggregate.json
+            economic-lab/performance-results/r4-cu-d3d-b6-s2-summary.md
+          retention-days: 90
+
+  final-beacon:
+    needs: aggregate
+    if: always() && needs.aggregate.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CU-D3D-B6-S2 frozen heldout replication completed'
