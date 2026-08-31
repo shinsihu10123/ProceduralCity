@@ -53,14 +53,16 @@ jobs:
           assert.deepEqual(windows, ['FULL_36', 'PRE_SHOCK_12', 'TRANSITION_12', 'TERMINAL_12']);
           assert.equal(x.execution.months, 36);
           assert.equal(x.execution.candidateSeedScenarioJobs, 12);
-          assert.equal(x.mechanismLabels.length, 7);
+          assert.equal(x.mechanismLabels.length, 6);
+          assert.equal(Object.keys(x.routing).length, 7);
+          assert.equal(x.routing.MIXED, 'R4-CU-D3D-B7-D0 sequenced multi-mechanism causal preregistration');
           assert.equal(x.diagnosticThresholds.role, 'DIAGNOSTIC_CLASSIFICATION_ONLY_NOT_CALIBRATION');
           assert.equal(x.diagnosticContract.worldStateMutationAuthorized, false);
           assert.equal(x.diagnosticContract.sourceRuleMutationAuthorized, false);
           assert.equal(x.diagnosticContract.candidateRetuningAuthorized, false);
           assert.equal(x.canonicalMutationAuthorized, false);
           assert.equal(x.directParameterCalibrationAuthorized, false);
-          console.log('WP_RV08_R4_CU_D3D_B7_PREREGISTRATION', JSON.stringify({ ids, seeds, scenarios, windows, months: x.execution.months, jobs: x.execution.candidateSeedScenarioJobs }));
+          console.log('WP_RV08_R4_CU_D3D_B7_PREREGISTRATION', JSON.stringify({ ids, seeds, scenarios, windows, mechanismLabels: x.mechanismLabels, routes: Object.keys(x.routing), months: x.execution.months, jobs: x.execution.candidateSeedScenarioJobs }));
           NODE
 
   diagnostic-panel:
