@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3D-B5",
+  "activationRequiresB4Pass": true,
+  "canonicalMutationAuthorized": false,
+  "directParameterCalibrationAuthorized": false,
+  "postHocRetuningAuthorized": false,
+  "purpose": "Preregister a two-axis shadow-repair family that separates sectoral value-production coherence from household consumption-realization mechanics and ranks candidates under accounting, purchasing-power, supply-chain, firm-survival and multi-seed stability gates.",
+  "dependencies": {
+    "b4Front": "R4-CU-D3D-B4",
+    "requiredB4Decision": "PASS_SEVERE_TWO_AXIS_EMPIRICAL_GAP_CONFIRMED",
+    "requiredB4ShadowBandAdmission": true,
+    "b3ExactReplayRequired": true,
+    "b3HardAccountingHealthRequired": true
+  },
+  "shadowScoringBands": {
+    "labourValue": {
+      "source": "B1 via B4",
+      "outerIqrEnvelope": [0.521557, 0.607117],
+      "directTargetAuthorized": false
+    },
+    "realizedHouseholdConsumptionFlow": {
+      "source": "B2 via B4",
+      "outerIqrEnvelope": [0.883763, 0.979344],
+      "desiredConsumptionBudgetMappingAuthorized": false,
+      "directTargetAuthorized": false
+    }
+  },
+  "axes": {
+    "valueProduction": {
+      "id": "V",
+      "sectorBlindScalarAuthorized": false,
+      "families": [
+        "V-PRODUCTIVITY",
+        "V-BUNDLE",
+        "V-RELATIVE-VALUE",
+        "V-HYBRID"
+      ],
+      "sectors": ["RESOURCE", "MATERIALS", "CAPITAL", "CONSUMER"],
+      "gapFactorAsMultiplierAuthorized": false
+    },
+    "householdRealization": {
+      "id": "H",
+      "families": [
+        "H-BUDGET-FORMATION",
+        "H-MARKET-EXECUTION",
+        "H-BUFFER-SAVING",
+        "H-HYBRID"
+      ],
+      "empiricalFlowAsDesiredBudgetParameterAuthorized": false,
+      "cashInjectionToMeetBandAuthorized": false
+    }
+  },
+  "candidateGridPolicy": {
+    "baselineCandidateId": "B5-BASELINE",
+    "candidateIdPattern": "B5-V{value-family}-{level}__H{household-family}-{level}",
+    "sameGridAcrossSeeds": true,
+    "countrySpecificRetuningAuthorized": false,
+    "seedSpecificRetuningAuthorized": false,
+    "numericLevelSourcesAllowed": [
+      "semantic-engineering bounds",
+      "broad preregistered log-spaced sensitivity design"
+    ],
+    "numericLevelSourcesBlocked": [
+      "B4 empirical/model gap factor",
+      "post-outcome fitted value",
+      "selected reference-country median"
+    ]
+  },
+  "execution": {
+    "monthsPerSeed": 24,
+    "scaleProfile": "baseline",
+    "seeds": [
+      { "case": "original-A", "seed": "ECON-RV02-A" },
+      { "case": "original-C", "seed": "ECON-RV02-C" },
+      { "case": "heldout-E", "seed": "ECON-RV08-HOLDOUT-E" },
+      { "case": "heldout-F", "seed": "ECON-RV08-HOLDOUT-F" }
+    ],
+    "baselineRerunRequired": true,
+    "sourceHashRetentionRequired": true,
+    "candidateArtifactRetentionRequired": true,
+    "aggregateParetoTableRequired": true
+  },
+  "mandatoryDiagnostics": [
+    "positive-GVA employee-compensation-share distribution",
+    "positive-disposable-income realized-consumption-share distribution",
+    "denominator pathology shares",
+    "firm revenue/payroll recovery",
+    "firm operating-cash recovery",
+    "firm exit and entry survival",
+    "household nominal and real purchasing power",
+    "desired versus realized consumption and unmet demand",
+    "input-constrained firm share and procurement realization",
+    "AP/AR/arrears when credit mechanics are touched",
+    "employment unemployment and wage settlement",
+    "ledger accounting fiscal and international health",
+    "exact deterministic replay",
+    "sector-level diagnostics"
+  ],
+  "hardReject": [
+    "accounting or ledger health failure",
+    "deterministic replay failure",
+    "hidden transfer or conservation break",
+    "unexplained denominator-pathology deterioration",
+    "household purchasing-power collapse caused by blind repricing",
+    "supply-chain improvement financed only by unpayable arrears",
+    "firm survival created only by persistent subsidy or credit loss",
+    "material deterioration on one empirical axis while improving the other"
+  ],
+  "nonDominatedAdmission": {
+    "requiresBothAxisImprovementVersusBaseline": true,
+    "requiresOriginalAndHeldoutReplication": true,
+    "requiresNoHardReject": true,
+    "insideEmpiricalBandRequired": false
+  },
+  "allowedDecisions": [
+    "PASS_NONDOMINATED_TWO_AXIS_SHADOW_FAMILY_FOUND",
+    "PASS_DIRECTIONAL_IMPROVEMENT_BUT_NO_EMPIRICAL_BAND_ENTRY",
+    "FAIL_VALUE_AXIS_ONLY",
+    "FAIL_HOUSEHOLD_AXIS_ONLY",
+    "FAIL_REAL_ECONOMY_SIDE_EFFECTS",
+    "FAIL_NO_ROBUST_TWO_AXIS_IMPROVEMENT"
+  ],
+  "nextFront": "R4-CU-D3D-B6 longer-horizon and stress validation of surviving shadow family"
+}
