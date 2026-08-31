@@ -1,0 +1,81 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3D-B5-S1",
+  "decision": "FAMILY_INSUFFICIENT",
+  "familySufficient": false,
+  "eligibleCandidateCount": 0,
+  "finalists": [],
+  "heldoutPromotionAuthorized": false,
+  "canonicalMutationAuthorized": false,
+  "authoritativeEvidence": {
+    "branch": "scratch/new-project-2026-08-12",
+    "head": "f94265a9dec1ce4bac107a78efa636541c70d2a5",
+    "runId": 33356281009,
+    "aggregateJobId": 99379236705,
+    "artifactId": 9745255852,
+    "artifactZipSha256": "fd3376f54eb7647b172870499072f450e8df02219a089e4c4f1e3e1e11901f18",
+    "conclusion": "success",
+    "finalBeacon": "success"
+  },
+  "execution": {
+    "candidateCount": 16,
+    "shadowCandidateCount": 15,
+    "stage1Seeds": ["ECON-RV02-A", "ECON-RV02-C"],
+    "monthsPerCandidateSeed": 12,
+    "matrixJobs": 32,
+    "heldoutSeedsUsed": false
+  },
+  "integrityGates": {
+    "allPerJobIntegrityGatesPassed": true,
+    "allExactReplayPassed": true,
+    "allAccountingHealthy": true,
+    "allProtectedNominalSurfacesExact": true,
+    "allEntrantsTagged": true,
+    "allSourceHashesRetained": true,
+    "failedCasesRetained": true
+  },
+  "familyFinding": {
+    "everyCandidateImprovedConsumptionDistanceOnBothSeeds": true,
+    "everyCandidateFailedLabourDistanceOnAtLeastOneSeed": true,
+    "firmRetentionSafeguardsPassedForAllCandidates": true,
+    "purchasingPowerSafeguardsPassedForAllCandidates": true,
+    "inputShortageAmplificationRangeVsControl": [11.102791223876618, 15.85357638678297],
+    "pooledNonPositiveGvaShareRange": [0.052083333333333336, 0.11458333333333333],
+    "interpretation": "Labour-productivity and consumer-yield scaling alone amplify material procurement constraints and do not reliably improve accrued employee compensation relative to realized GVA."
+  },
+  "bestFailedCandidate": {
+    "candidateId": "V24_C2",
+    "status": "NOT_ELIGIBLE",
+    "worstSeedTwoAxisDistance": 5.18070871392677,
+    "pooledNonPositiveGvaShare": 0.0625,
+    "minimumActiveFirmRatio": 1,
+    "minimumPurchasingPowerRatio": 0.989677357487159,
+    "maximumInputShortageRatio": 13.967260312194728,
+    "failedRules": ["original-A:labour-distance"],
+    "originalA": {
+      "employeeCompensationShareOfPositiveGvaMedian": 3.7917668312731876,
+      "realizedConsumptionShareOfCashDisposableIncomeMedian": 0.03104215319604743,
+      "goodsFulfillmentMedian": 0.022897224793946885,
+      "payrollSettlementMedian": 0.21630615143645449,
+      "totalInputShortageUnits": 17131.687112620024,
+      "nonPositiveGvaShare": 0.041666666666666664
+    },
+    "originalC": {
+      "employeeCompensationShareOfPositiveGvaMedian": 2.553806857127678,
+      "realizedConsumptionShareOfCashDisposableIncomeMedian": 0.02416297682521883,
+      "goodsFulfillmentMedian": 0.01931596014429926,
+      "payrollSettlementMedian": 0.25227031997345195,
+      "totalInputShortageUnits": 19696.365640895896,
+      "nonPositiveGvaShare": 0.08333333333333333
+    }
+  },
+  "antiTuningLocks": {
+    "failedGridRetuningAuthorized": false,
+    "bestFailedCandidatePromotionAuthorized": false,
+    "wageOrPriceRepairAuthorized": false,
+    "desiredBudgetRepairAuthorized": false,
+    "eligibilityRelaxationAuthorized": false,
+    "canonicalMutationAuthorized": false
+  },
+  "nextFront": "R4-CU-D3D-B6 input-output and working-capital shadow family"
+}
