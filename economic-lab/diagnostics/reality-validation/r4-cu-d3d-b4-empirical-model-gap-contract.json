@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3D-B4",
+  "canonicalMutationAuthorized": false,
+  "directParameterCalibrationAuthorized": false,
+  "shadowScoringBandAdmissionPossible": true,
+  "purpose": "Compare internally reconciled model-side dimensionless distributions with admitted official empirical descriptors and decide whether broad bands may constrain shadow-candidate scoring without becoming canonical targets.",
+  "dependencies": {
+    "b1Closure": "WP-RV08_R4_CU_D3D_B1_ILOSTAT_LABOUR_SHARE_CLOSURE_v0.1.md",
+    "b2Closure": "WP-RV08_R4_CU_D3D_B2_OECD_HOUSEHOLD_SAVING_CLOSURE_v0.1.md",
+    "b3Closure": "WP-RV08_R4_CU_D3D_B3_MODEL_SIDE_NATIONAL_ACCOUNTS_CLOSURE_v0.1.md",
+    "b3AuthoritativeSummary": "r4-cu-d3d-b3-authoritative-summary.json",
+    "b3Script": "economic-lab/scripts/rv08-r4-cu-d3d-b3-model-side-national-accounts.mjs",
+    "noPriorExtractionRetuning": true
+  },
+  "empiricalEvidence": {
+    "labourIncomeShare": {
+      "publisher": "ILO",
+      "dataset": "SDG_1041_NOC_RT_A",
+      "unit": "fraction of GDP",
+      "coverageStatus": "ALL_FOUR_CLASSES_ADMITTED",
+      "classDescriptors": [
+        { "classId": "REF-ADV-DIV", "p25": 0.563193, "median": 0.564913, "p75": 0.589613 },
+        { "classId": "REF-MFG", "p25": 0.543503, "median": 0.569007, "p75": 0.593648 },
+        { "classId": "REF-RESOURCE", "p25": 0.521557, "median": 0.531190, "p75": 0.564750 },
+        { "classId": "REF-HIGHSAVE", "p25": 0.581723, "median": 0.589613, "p75": 0.607117 }
+      ],
+      "outerIqrEnvelope": [0.521557, 0.607117],
+      "classMedianRange": [0.531190, 0.589613],
+      "modelComparator": "employee compensation accrued divided by reconstructed GVA basic-price proxy",
+      "semanticMatch": "PARTIAL_EMPLOYEE_COMPENSATION_ONLY",
+      "directTargetAuthorized": false
+    },
+    "realizedHouseholdConsumptionShare": {
+      "publisher": "OECD",
+      "dataset": "OECD.SDD.NAD,DSD_NAAG@DF_NAAG_V,1.0",
+      "sourceMeasure": "B8NS1M net household and NPISH saving rate",
+      "transformation": "1 minus net saving rate",
+      "unit": "fraction of compatible net disposable income",
+      "coverageStatus": "TWO_CLASSES_ADMITTED_TWO_CLASSES_BLOCKED",
+      "admittedClassDescriptors": [
+        { "classId": "REF-ADV-DIV", "p25": 0.883763, "median": 0.929494, "p75": 0.942645 },
+        { "classId": "REF-MFG", "p25": 0.883763, "median": 0.914839, "p75": 0.979344 }
+      ],
+      "outerIqrEnvelope": [0.883763, 0.979344],
+      "classMedianRange": [0.914839, 0.929494],
+      "modelComparator": "realized household purchaser outlay divided by cash disposable household income",
+      "semanticMatch": "PARTIAL_CASH_FLOW_WITHOUT_PENSION_ADJUSTMENT",
+      "desiredConsumptionBudgetMappingAuthorized": false,
+      "directTargetAuthorized": false
+    }
+  },
+  "severeGapCriteria": {
+    "labourAxis": "positive-GVA model P25 exceeds 0.607117 in every seed",
+    "householdFlowAxis": "positive-disposable-income model maximum realized-consumption share is below 0.883763 in every seed",
+    "requiresOriginalAndHeldoutReplication": true,
+    "gapFactorMayNotBeUsedAsParameterMultiplier": true
+  },
+  "execution": {
+    "monthsPerSeed": 24,
+    "scaleProfile": "baseline",
+    "seeds": [
+      { "case": "original-A", "seed": "ECON-RV02-A" },
+      { "case": "original-C", "seed": "ECON-RV02-C" },
+      { "case": "heldout-E", "seed": "ECON-RV08-HOLDOUT-E" },
+      { "case": "heldout-F", "seed": "ECON-RV08-HOLDOUT-F" }
+    ],
+    "positiveDenominatorSensitivityRequired": true,
+    "sourceHashRetentionRequired": true,
+    "b3ExactReplayRequired": true,
+    "b3HardAccountingHealthRequired": true,
+    "fictionalCountryClassAssignmentAuthorized": false
+  },
+  "admissionPolicy": {
+    "admissibleObject": "broad dimensionless reference band for shadow-candidate scoring",
+    "directCanonicalTarget": false,
+    "allowedUse": [
+      "rank shadow candidates by direction and distance",
+      "reject candidates that leave order-of-magnitude gaps unchanged",
+      "require simultaneous improvement on labour-value and household-flow axes"
+    ],
+    "blockedUse": [
+      "direct wage multiplier",
+      "direct price multiplier",
+      "direct productivity multiplier",
+      "desiredConsumptionBudget calibration",
+      "fictional-country direct copying",
+      "canonical mutation"
+    ]
+  },
+  "interpretation": {
+    "nonPositiveGvaRowsMustRemainReported": true,
+    "partialSemanticMatchMustRemainVisible": true,
+    "semanticGapsMayNotBeImputed": true,
+    "canonicalMutationAuthorized": false
+  },
+  "nextFront": "R4-CU-D3D-B5 empirically constrained two-axis shadow-repair family preregistration"
+}
