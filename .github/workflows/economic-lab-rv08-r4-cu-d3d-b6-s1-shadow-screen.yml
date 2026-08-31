@@ -6,6 +6,7 @@ on:
       - scratch/new-project-2026-08-12
     paths:
       - 'economic-lab/src/research/b6-input-output-working-capital-shadow.js'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b6-contract-compat-runner.mjs'
       - 'economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs'
       - 'economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-aggregate.mjs'
       - 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b6-input-output-working-capital-contract.json'
@@ -27,6 +28,7 @@ jobs:
       - name: Syntax gates
         run: |
           node --check economic-lab/src/research/b6-input-output-working-capital-shadow.js
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b6-contract-compat-runner.mjs
           node --check economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs
           node --check economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-aggregate.mjs
       - name: Validate frozen factorial contract
@@ -104,7 +106,8 @@ jobs:
           mkdir -p economic-lab/performance-results
           DIAG_SEED="$SEED" DIAG_MONTHS=12 CANDIDATE="$CANDIDATE" \
           OUTPUT_JSON="economic-lab/performance-results/r4-cu-d3d-b6-s1-${CANDIDATE}-${LABEL}.json" \
-          node economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs \
+          node economic-lab/scripts/rv08-r4-cu-d3d-b6-contract-compat-runner.mjs \
+          economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs \
           2>&1 | tee "economic-lab/performance-results/r4-cu-d3d-b6-s1-${CANDIDATE}-${LABEL}.log"
       - uses: actions/upload-artifact@v4
         if: always()
@@ -133,7 +136,8 @@ jobs:
           INPUT_ROOT=downloaded-b6-s1 \
           OUTPUT_JSON=economic-lab/performance-results/r4-cu-d3d-b6-s1-aggregate.json \
           OUTPUT_MD=economic-lab/performance-results/r4-cu-d3d-b6-s1-summary.md \
-          node economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-aggregate.mjs
+          node economic-lab/scripts/rv08-r4-cu-d3d-b6-contract-compat-runner.mjs \
+          economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-aggregate.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: r4-cu-d3d-b6-s1-authoritative-aggregate
