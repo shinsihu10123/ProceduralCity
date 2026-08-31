@@ -1,0 +1,144 @@
+name: Economic Lab RV08 R4-CU-D3D-B6-S1 Shadow Screen
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/src/research/b6-input-output-working-capital-shadow.js'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-aggregate.mjs'
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b6-input-output-working-capital-contract.json'
+      - 'economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B6_VALUE_MATERIAL_WORKING_CAPITAL_FACTORIAL_DESIGN_v0.1.md'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3d-b6-s1-shadow-screen.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preregistration-gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax gates
+        run: |
+          node --check economic-lab/src/research/b6-input-output-working-capital-shadow.js
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-aggregate.mjs
+      - name: Validate frozen factorial contract
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          const path = 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b6-input-output-working-capital-contract.json';
+          const contract = JSON.parse(fs.readFileSync(path, 'utf8'));
+          assert.equal(contract.front, 'R4-CU-D3D-B6-S1');
+          assert.equal(contract.status, 'FROZEN_PRE_IMPLEMENTATION');
+          assert.equal(contract.factorial.candidates.length, 18);
+          assert.equal(contract.stage1Execution.originalSeeds.length, 2);
+          assert.equal(contract.stage1Execution.candidateJobs, 18);
+          assert.equal(contract.stage1Execution.candidateSeedJobs, 36);
+          assert.equal(contract.factorial.candidates.filter(x => x.control === true).length, 1);
+          assert.equal(new Set(contract.factorial.candidates.map(x => x.id)).size, 18);
+          assert.equal(contract.canonicalMutationAuthorized, false);
+          assert.equal(contract.canonicalCalibrationAuthorized, false);
+          console.log('WP_RV08_R4_CU_D3D_B6_S1_PREREGISTRATION', JSON.stringify({ candidates: 18, seeds: 2, jobs: 36, control: contract.factorial.controlCandidateId }));
+          NODE
+
+  candidate-screen:
+    needs: preregistration-gate
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 18
+      matrix:
+        candidate:
+          - V1_M1_C42
+          - V1_M1_FULL
+          - V1_M1_LINE1
+          - V1_M4_C42
+          - V1_M4_FULL
+          - V1_M4_LINE1
+          - V1_M16_C42
+          - V1_M16_FULL
+          - V1_M16_LINE1
+          - V24_M1_C42
+          - V24_M1_FULL
+          - V24_M1_LINE1
+          - V24_M4_C42
+          - V24_M4_FULL
+          - V24_M4_LINE1
+          - V24_M16_C42
+          - V24_M16_FULL
+          - V24_M16_LINE1
+        case:
+          - original-A__ECON-RV02-A
+          - original-C__ECON-RV02-C
+    name: B6-S1 ${{ matrix.candidate }} / ${{ matrix.case }}
+    runs-on: ubuntu-24.04
+    env:
+      NODE_OPTIONS: --max-old-space-size=7168
+      CANDIDATE: ${{ matrix.candidate }}
+      CASE: ${{ matrix.case }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run frozen 12-month causal shadow screen
+        shell: bash
+        run: |
+          set -o pipefail
+          LABEL="${CASE%%__*}"
+          SEED="${CASE#*__}"
+          mkdir -p economic-lab/performance-results
+          DIAG_SEED="$SEED" DIAG_MONTHS=12 CANDIDATE="$CANDIDATE" \
+          OUTPUT_JSON="economic-lab/performance-results/r4-cu-d3d-b6-s1-${CANDIDATE}-${LABEL}.json" \
+          node economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs \
+          2>&1 | tee "economic-lab/performance-results/r4-cu-d3d-b6-s1-${CANDIDATE}-${LABEL}.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-cu-d3d-b6-s1-${{ matrix.candidate }}-${{ matrix.case }}
+          path: economic-lab/performance-results/r4-cu-d3d-b6-s1-${{ matrix.candidate }}-*
+          retention-days: 90
+
+  aggregate:
+    needs: candidate-screen
+    if: needs.candidate-screen.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r4-cu-d3d-b6-s1-*
+          path: downloaded-b6-s1
+          merge-multiple: false
+      - name: Aggregate frozen 36-job matrix
+        run: |
+          mkdir -p economic-lab/performance-results
+          INPUT_ROOT=downloaded-b6-s1 \
+          OUTPUT_JSON=economic-lab/performance-results/r4-cu-d3d-b6-s1-aggregate.json \
+          OUTPUT_MD=economic-lab/performance-results/r4-cu-d3d-b6-s1-summary.md \
+          node economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-aggregate.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r4-cu-d3d-b6-s1-authoritative-aggregate
+          path: |
+            economic-lab/performance-results/r4-cu-d3d-b6-s1-aggregate.json
+            economic-lab/performance-results/r4-cu-d3d-b6-s1-summary.md
+          retention-days: 90
+
+  final-beacon:
+    needs: aggregate
+    if: always() && needs.aggregate.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CU-D3D-B6-S1 36-job causal shadow matrix completed'
