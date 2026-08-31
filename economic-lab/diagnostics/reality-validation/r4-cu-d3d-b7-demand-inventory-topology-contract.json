@@ -1,0 +1,179 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3D-B7",
+  "status": "FROZEN_BEFORE_DIAGNOSTIC_EXECUTION",
+  "canonicalMutationAuthorized": false,
+  "directParameterCalibrationAuthorized": false,
+  "purpose": "Diagnose the demand-forecast, inventory-target, supplier-topology, procurement-affordability, seller-matching and price-cost/value-added sequence behind the B6-S3 long-horizon failure without retuning candidates or changing canonical state.",
+  "sourceStage3": {
+    "closure": "economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B6_S3_CLOSURE_v0.1.md",
+    "closureCommit": "ab50c676947a6215a7d58acce9302cda5fb02611",
+    "workflowRunId": 33362894408,
+    "workflowHeadSha": "e39f96ff3585d7c5913551a22fdbe4be5ace4169",
+    "aggregateArtifactId": 9747330570,
+    "aggregateArtifactDigest": "sha256:ea997b5aa212c7957719afe56502c1c2fc31e3a8a20c039120cdae0a1c2d4805",
+    "decision": "LONG_HORIZON_OR_STRESS_VALIDATION_FAILED_NO_RETUNING",
+    "primaryCandidateId": "V24_M16_C42",
+    "candidateRetuningAuthorized": false,
+    "thresholdRelaxationAuthorized": false
+  },
+  "candidatePanel": [
+    { "id": "V1_M1_C42", "role": "CANONICAL_CONTROL", "control": true, "V": 1, "M": 1, "W": "C42" },
+    { "id": "V24_M16_C42", "role": "FAILED_LONG_HORIZON_PRIMARY_DIAGNOSTIC_PROBE", "control": false, "V": 24, "M": 16, "W": "C42" }
+  ],
+  "execution": {
+    "validationSeeds": [
+      { "case": "long-G", "seed": "ECON-RV08-LONG-G" },
+      { "case": "long-H", "seed": "ECON-RV08-LONG-H" }
+    ],
+    "months": 36,
+    "shockMonth": 13,
+    "windows": [
+      { "id": "FULL_36", "startMonth": 1, "endMonth": 36 },
+      { "id": "PRE_SHOCK_12", "startMonth": 1, "endMonth": 12 },
+      { "id": "TRANSITION_12", "startMonth": 13, "endMonth": 24 },
+      { "id": "TERMINAL_12", "startMonth": 25, "endMonth": 36 }
+    ],
+    "scenarios": [
+      { "id": "BASELINE_36", "role": "UNSHOCKED_LONG_HORIZON", "schedule": [] },
+      {
+        "id": "SUPPLY_SHOCK_M13",
+        "role": "ADVERSE_REAL_PRODUCTIVITY_STRESS",
+        "schedule": [
+          { "id": "B6S3-SUPPLY-075-M13", "month": 13, "countryId": "*", "kind": "productivity_shock", "factor": 0.75 }
+        ]
+      },
+      {
+        "id": "FINANCIAL_CONFIDENCE_STRESS_M13",
+        "role": "COMPOUND_CONFIDENCE_AND_BANK_RISK_STRESS",
+        "schedule": [
+          { "id": "B6S3-CONFIDENCE-N035-M13", "month": 13, "countryId": "*", "kind": "confidence_shock", "delta": -0.35, "agentKinds": ["household", "firm", "bank"] },
+          { "id": "B6S3-BANK-RISK-P035-M13", "month": 13, "countryId": "*", "kind": "bank_risk_shock", "delta": 0.35 }
+        ]
+      }
+    ],
+    "candidateSeedScenarioJobs": 12,
+    "scaleProfile": "baseline",
+    "exactReplayRequired": true,
+    "hardAccountingHealthRequired": true,
+    "aggregateAfterAllJobs": true
+  },
+  "diagnosticContract": {
+    "worldStateMutationAuthorized": false,
+    "canonicalSourceMutationAuthorized": false,
+    "candidateValueMutationAuthorized": false,
+    "scenarioMutationAuthorized": false,
+    "observerStorage": "PROCESS_LOCAL_AND_RESULT_ONLY",
+    "goodsMarketObserverReadOnly": true,
+    "supplyChainPrototypeWrapperReadOnly": true,
+    "sourceB6S3IntegrityGatesRequired": true,
+    "observerExactReplayRequired": true,
+    "shortageAttributionIdentityRequired": true,
+    "gvaApproachReconciliationRequired": true
+  },
+  "measurementSurface": {
+    "demandInventory": [
+      "previous sales",
+      "target inventory",
+      "demand anchor",
+      "expected demand",
+      "replenishment",
+      "desired production",
+      "capacity",
+      "actual output",
+      "sales",
+      "opening and closing finished inventory",
+      "inventory above target"
+    ],
+    "supplierTopology": [
+      "compatible supplier count",
+      "compatible supplier inventory",
+      "supplier inventory HHI",
+      "top supplier inventory share",
+      "cheapest supplier price",
+      "supplier stock coverage",
+      "distinct realized supplier links"
+    ],
+    "procurementDecomposition": [
+      "planned input need",
+      "purchased input units",
+      "observed input shortage",
+      "topology-attributed shortage",
+      "cash-budget-attributed shortage",
+      "search-or-execution-attributed shortage",
+      "procurement cash coverage",
+      "procurement budget utilization"
+    ],
+    "goodsMatching": [
+      "desired household budget",
+      "nominal consumption",
+      "unmet budget",
+      "eligible sellers",
+      "consumer inventory before and after clearing",
+      "no-seller stops",
+      "round-limit stops",
+      "settlement-failure stops"
+    ],
+    "valueTransformation": [
+      "sales revenue",
+      "COGS",
+      "intermediate input consumption",
+      "labour compensation accrual",
+      "finished inventory book change",
+      "production and income GVA approaches",
+      "price to book-unit-cost ratio",
+      "below-cost firm and revenue shares"
+    ]
+  },
+  "diagnosticThresholds": {
+    "minimumInputShortageRateForBindingClassification": 0.1,
+    "dominantAttributedShortageShare": 0.5,
+    "lowSalesToPlanRatio": 0.5,
+    "highInventoryAboveTargetRatio": 0.25,
+    "maximumInputShortageRateForDemandInventoryClassification": 0.25,
+    "highGoodsUnmetShare": 0.5,
+    "minimumUnmetBudgetWithInventoryShare": 0.5,
+    "highNonPositiveGvaCountryMonthShare": 0.25,
+    "highBelowCostRevenueShare": 0.5,
+    "sustainedOnsetMonths": 2,
+    "dominantPanelFrequency": 0.5,
+    "role": "DIAGNOSTIC_CLASSIFICATION_ONLY_NOT_CALIBRATION"
+  },
+  "mechanismLabels": [
+    "INPUT_SUPPLIER_TOPOLOGY_BINDING",
+    "INPUT_CASH_BUDGET_BINDING",
+    "INPUT_SEARCH_EXECUTION_BINDING",
+    "DEMAND_INVENTORY_MISMATCH",
+    "GOODS_MARKET_MATCHING_BINDING",
+    "VALUE_TRANSFORMATION_BINDING"
+  ],
+  "blockedMutations": [
+    "candidate identity",
+    "V24 productivity factor",
+    "M16 material-efficiency divisor",
+    "C42 procurement share",
+    "prices",
+    "wages",
+    "opening cash or wealth",
+    "desired consumption budgets",
+    "tax rates",
+    "goods-market rules",
+    "supplier sampling rules",
+    "inventory targets",
+    "bank underwriting",
+    "trade-credit rules",
+    "validation seeds",
+    "scenario schedules",
+    "36-month horizon",
+    "diagnostic thresholds after observation"
+  ],
+  "routing": {
+    "INPUT_SUPPLIER_TOPOLOGY_BINDING": "R4-CU-D3D-B7-D1 supplier-topology and reachable-inventory causal isolation",
+    "INPUT_CASH_BUDGET_BINDING": "R4-CU-D3D-B7-D2 procurement-affordability sequencing audit",
+    "INPUT_SEARCH_EXECUTION_BINDING": "R4-CU-D3D-B7-D3 supplier-sampling and procurement-execution causal isolation",
+    "DEMAND_INVENTORY_MISMATCH": "R4-CU-D3D-B7-D4 demand-forecast and inventory-target causal isolation",
+    "GOODS_MARKET_MATCHING_BINDING": "R4-CU-D3D-B7-D5 goods-seller sampling and round-limit causal isolation",
+    "VALUE_TRANSFORMATION_BINDING": "R4-CU-D3D-B7-D6 price-cost and value-added transformation audit",
+    "MIXED": "R4-CU-D3D-B7-D0 sequenced multi-mechanism causal preregistration"
+  }
+}
