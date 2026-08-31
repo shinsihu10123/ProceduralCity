@@ -1,0 +1,33 @@
+name: Economic Lab RV08 R4-CU-D3D-B5 Preregistration Gate
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B5_TWO_AXIS_SHADOW_REPAIR_FAMILY_DESIGN_v0.1.md'
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b5-two-axis-shadow-repair-contract.json'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b5-contract-gate.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3d-b5-contract-gate.yml'
+  workflow_dispatch:
+
+jobs:
+  preregistration-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax gate
+        run: node --check economic-lab/scripts/rv08-r4-cu-d3d-b5-contract-gate.mjs
+      - name: Validate B5 preregistration
+        run: node economic-lab/scripts/rv08-r4-cu-d3d-b5-contract-gate.mjs
+
+  final-beacon:
+    needs: preregistration-gate
+    if: always() && needs.preregistration-gate.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CU-D3D-B5 preregistration contract frozen; execution still requires B4 PASS'
