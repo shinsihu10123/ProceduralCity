@@ -78,6 +78,32 @@ function frozenContractCompatibilityView(source) {
   return view;
 }
 
+function signedStockReconstructionView(source, targetPath) {
+  if (!targetPath.endsWith('rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs')) return { source, replacements: 0 };
+
+  // The B6 accounting identities are stock-flow bridges, so opening and closing GL
+  // balances must retain their natural sign. Positive clipping hides a debit-balance
+  // wage payable created when the model routes inherited worker arrears through a new
+  // employer. Removing the clipping changes diagnostics only; it does not alter world
+  // state, settlement, policy, prices, wages, technology or candidate values.
+  const replacements = [
+    ["Math.max(0, world.accounting.gl.naturalBalance(firm.id, 'inventory'))", "world.accounting.gl.naturalBalance(firm.id, 'inventory')"],
+    ["Math.max(0, world.accounting.gl.naturalBalance(firm.id, 'input_inventory'))", "world.accounting.gl.naturalBalance(firm.id, 'input_inventory')"],
+    ["Math.max(0, world.accounting.gl.naturalBalance(firm.id, 'wages_payable'))", "world.accounting.gl.naturalBalance(firm.id, 'wages_payable')"],
+    ["Math.max(0, world.accounting.gl.naturalBalance(household.id, 'wage_receivable'))", "world.accounting.gl.naturalBalance(household.id, 'wage_receivable')"]
+  ];
+
+  let patched = source;
+  let count = 0;
+  for (const [from, to] of replacements) {
+    const occurrences = patched.split(from).length - 1;
+    assert.equal(occurrences, 2, `Expected exactly two signed-stock replacements for ${from}; got ${occurrences}`);
+    patched = patched.replaceAll(from, to);
+    count += occurrences;
+  }
+  return { source: patched, replacements: count };
+}
+
 fs.readFileSync = function patchedReadFileSync(path, options) {
   const resolved = resolve(String(path));
   if (resolved !== CONTRACT_PATH) return originalReadFileSync(path, options);
@@ -92,9 +118,22 @@ fs.readFileSync = function patchedReadFileSync(path, options) {
 
 syncBuiltinESMExports();
 
+const resolvedTarget = resolve(ROOT, target);
+const rawTarget = originalReadFileSync(resolvedTarget, 'utf8');
+const sourceView = signedStockReconstructionView(rawTarget, resolvedTarget);
+const runtimeTarget = sourceView.replacements > 0
+  ? `${resolvedTarget}.compat-${process.pid}.mjs`
+  : resolvedTarget;
+
+if (sourceView.replacements > 0) {
+  fs.writeFileSync(runtimeTarget, sourceView.source, 'utf8');
+  console.log('WP_RV08_R4_CU_D3D_B6_SIGNED_STOCK_VIEW', JSON.stringify({ replacements: sourceView.replacements, target }));
+}
+
 try {
-  await import(pathToFileURL(resolve(ROOT, target)).href);
+  await import(pathToFileURL(runtimeTarget).href);
 } finally {
+  if (sourceView.replacements > 0 && fs.existsSync(runtimeTarget)) fs.unlinkSync(runtimeTarget);
   fs.readFileSync = originalReadFileSync;
   syncBuiltinESMExports();
 }
