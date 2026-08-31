@@ -1,0 +1,168 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3D-B3",
+  "canonicalMutationAuthorized": false,
+  "numericCalibrationRangesAuthorized": false,
+  "purpose": "Reconstruct internally reconciled model-side national labour compensation, gross value added, household disposable cash income, realized household consumption and net saving before empirical comparison.",
+  "dependencies": {
+    "labourShareClosure": "WP-RV08_R4_CU_D3D_B1_ILOSTAT_LABOUR_SHARE_CLOSURE_v0.1.md",
+    "householdSavingClosure": "WP-RV08_R4_CU_D3D_B2_OECD_HOUSEHOLD_SAVING_CLOSURE_v0.1.md",
+    "labourShareRole": "provisional national distribution evidence only",
+    "householdSavingRole": "provisional realized household-flow evidence only",
+    "priorExtractionMayNotBeRepeatedOrRetuned": true
+  },
+  "modelSource": {
+    "worldRevision": "economic-lab v0.10",
+    "worldModule": "economic-lab/src/core/world-v10.js",
+    "settlementLedger": "economic-lab/src/core/ledger.js",
+    "generalLedger": "economic-lab/src/accounting/general-ledger.js",
+    "accountingSystem": "economic-lab/src/accounting/accounting-system.js",
+    "frequency": "monthly",
+    "currencyBasis": "each fictional country's local nominal currency"
+  },
+  "measurementBoundaries": {
+    "employeeCompensationAccrued": {
+      "source": "firm production_labor_accrual journals",
+      "formula": "credit to wages_payable",
+      "crossCheck": "household wage_accrual credit to wage_income",
+      "notEquivalentTo": [
+        "cash wages settled",
+        "ILOSTAT total labour income including self-employed labour income",
+        "firm payroll proxy workers times current wage"
+      ]
+    },
+    "wagesSettled": {
+      "source": "settlement-ledger wage entries",
+      "formula": "sum of settled wage transfers",
+      "stockFlowBridge": "closing wages payable = opening wages payable + accrued employee compensation - settled wages"
+    },
+    "gvaBasicPriceProxy": {
+      "productionFormula": "sales revenue + change in finished-inventory book value - intermediate input consumption at book value",
+      "incomeFormula": "employee compensation accrued + sales revenue - cost of goods sold",
+      "requiredReconciliation": true,
+      "valuationWarning": "transaction sales use realized prices while unsold finished inventory is retained at book cost"
+    },
+    "gdpMarketPriceProxy": {
+      "formula": "GVA basic-price proxy + consumption taxes + import tariffs",
+      "subsidiesRepresented": false,
+      "notEquivalentTo": [
+        "complete SNA GDP at market prices",
+        "canonical macro.gdp before reconciliation",
+        "gross firm sales"
+      ]
+    },
+    "cashDisposableHouseholdIncome": {
+      "formula": "cash wages settled + unemployment transfers - income taxes paid",
+      "source": "settlement ledger",
+      "requiredCrossChecks": [
+        "aggregate household disposableIncome",
+        "canonical macro.disposableIncome"
+      ],
+      "notEquivalentTo": [
+        "gross wage accrual",
+        "deposit change",
+        "SNA disposable income with all property income, social contributions and pension adjustments"
+      ]
+    },
+    "realizedHouseholdConsumptionPurchaserOutlay": {
+      "formula": "household consumption_expense debit + domestic consumption taxes paid",
+      "consumptionExpenseComposition": "domestic goods purchases + consumer-import base payment + consumer-import tariff",
+      "notEquivalentTo": [
+        "desiredConsumptionBudget",
+        "domestic goods purchases alone",
+        "median-household propensity to consume"
+      ]
+    },
+    "netHouseholdSavingFlowProxy": {
+      "formula": "cash disposable household income - realized household consumption purchaser outlay",
+      "depositChangeEquivalenceAuthorized": false,
+      "financingResidual": "household cash change - net household saving flow proxy"
+    }
+  },
+  "semanticGaps": [
+    {
+      "id": "EMPLOYER_SOCIAL_CONTRIBUTIONS",
+      "externalRole": "part of compensation of employees",
+      "modelStatus": "not explicitly represented",
+      "imputationAuthorized": false
+    },
+    {
+      "id": "SELF_EMPLOYED_MIXED_INCOME",
+      "externalRole": "labour-income component imputed for self-employed workers in the ILO labour-income-share concept",
+      "modelStatus": "no self-employed household-enterprise ontology",
+      "imputationAuthorized": false
+    },
+    {
+      "id": "PENSION_ENTITLEMENT_ADJUSTMENT",
+      "externalRole": "SNA adjustment linking household disposable income, consumption and net saving",
+      "modelStatus": "no pension-entitlement account",
+      "imputationAuthorized": false
+    },
+    {
+      "id": "PROPERTY_INCOME_AND_TRANSFERS_IN_KIND",
+      "externalRole": "components of internationally comparable household disposable or adjusted disposable income",
+      "modelStatus": "not comprehensively represented on the household income boundary",
+      "imputationAuthorized": false
+    },
+    {
+      "id": "BANK_FISIM_AND_NONMARKET_OUTPUT",
+      "externalRole": "financial-intermediation and government non-market value added",
+      "modelStatus": "not reconstructed as output in the firm GVA proxy",
+      "imputationAuthorized": false
+    },
+    {
+      "id": "CONSUMPTION_OF_FIXED_CAPITAL",
+      "externalRole": "gross-to-net national-account conversion",
+      "modelStatus": "no explicit monthly depreciation flow in the reconstruction",
+      "imputationAuthorized": false
+    }
+  ],
+  "execution": {
+    "scaleProfile": "baseline",
+    "monthsPerSeed": 24,
+    "seeds": [
+      "ECON-RV02-A",
+      "ECON-RV02-C",
+      "ECON-RV08-HOLDOUT-E",
+      "ECON-RV08-HOLDOUT-F"
+    ],
+    "exactCanonicalReplayRequired": true,
+    "exactDiagnosticReplayRequired": true,
+    "relativeTolerance": 1e-8,
+    "fullCountryMonthRowsRequired": true
+  },
+  "interpretation": {
+    "labourShareComparatorStatus": "PARTIAL_SEMANTIC_MATCH_EMPLOYEE_COMPENSATION_ONLY",
+    "householdSavingComparatorStatus": "PARTIAL_SEMANTIC_MATCH_CASH_FLOW_WITHOUT_PENSION_ADJUSTMENT",
+    "desiredConsumptionBudgetMappingAuthorized": false,
+    "empiricalBandPromotionAuthorized": false,
+    "fictionalCountryDirectCopyAuthorized": false,
+    "canonicalParameterMutationAuthorized": false,
+    "allowedUse": [
+      "internal stock-flow reconstruction",
+      "dimensionless model-side distribution measurement",
+      "future empirical gap comparison with explicit semantic flags"
+    ],
+    "blockedUse": [
+      "direct wage calibration",
+      "direct productivity calibration",
+      "direct desiredConsumptionBudget calibration",
+      "canonical economic mutation"
+    ]
+  },
+  "executionHardGates": [
+    "firm and household labour accruals reconcile",
+    "wage payable and receivable stock-flow bridges reconcile",
+    "finished- and input-inventory stock-flow bridges reconcile",
+    "production- and income-side GVA proxies reconcile",
+    "household cash change reconciles to settlement postings",
+    "cash disposable income reconciles to household and macro fields",
+    "realized consumption reconciles across settlement and general ledger",
+    "product taxes reconcile to fiscal and international subsystems",
+    "all semantic gaps explicitly registered without imputation",
+    "exact replay and hard accounting health pass",
+    "no empirical descriptor promoted to a target",
+    "canonical mutation remains locked"
+  ],
+  "nextFront": "R4-CU-D3D-B4 empirical-versus-model dimensionless gap and admissibility gate"
+}
