@@ -29,7 +29,7 @@ assert.equal(aggregate.status, 'PASS_TECHNICAL_B7_DIAGNOSTIC_AGGREGATION');
 assert.equal(aggregate.technicalGates?.ok, true, 'Cannot close B7: technical aggregation failed');
 assert.equal(aggregate.expected?.jobs, contract.execution.candidateSeedScenarioJobs);
 assert.equal(aggregate.observed?.jobs, contract.execution.candidateSeedScenarioJobs);
-assert.ok(contract.mechanismLabels.includes(aggregate.decision), `Unknown B7 decision ${aggregate.decision}`);
+assert.ok(Object.hasOwn(contract.routing, aggregate.decision), `Unknown B7 decision ${aggregate.decision}`);
 assert.equal(aggregate.routing, contract.routing[aggregate.decision]);
 assert.equal(aggregate.interpretation?.canonicalMutationAuthorized, false);
 assert.equal(aggregate.interpretation?.candidateRetuningAuthorized, false);
