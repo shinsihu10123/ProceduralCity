@@ -176,6 +176,13 @@ const classResults = membership.referenceClasses.map((referenceClass) => {
   const observedCount = countryCoverage.reduce((sum, entry) => sum + entry.observedYears.length, 0);
   const expectedCount = referenceClass.members.length * YEARS.length;
   const missingShare = 1 - observedCount / expectedCount;
+  const meetsMinimum = countryMeans.length >= contract.extractionRules.minimumIndependentEconomiesPerClass;
+  const meetsMissingness = missingShare <= contract.extractionRules.maximumCountryYearMissingShare;
+  const admissionStatus = !meetsMinimum
+    ? contract.coveragePolicy.classBelowMinimumStatus
+    : !meetsMissingness
+      ? contract.coveragePolicy.classAboveMissingnessLimitStatus
+      : 'ADMITTED_PROVISIONAL_REFERENCE_BAND';
   const latestValues = referenceClass.members.map((country) => lookup.get(`${country}:2024`)).filter(Number.isFinite);
   return {
     id: referenceClass.id,
@@ -189,8 +196,9 @@ const classResults = membership.referenceClasses.map((referenceClass) => {
       latest2024Economies: latestValues.length,
       countryCoverage,
     },
-    primaryBand2021_2023: {
-      status: 'PROVISIONAL_REFERENCE_BAND_NOT_CALIBRATION_TARGET',
+    bandAdmission: { status: admissionStatus, meetsMinimumIndependentEconomies: meetsMinimum, meetsMissingnessLimit: meetsMissingness },
+    primaryWindow2021_2023: {
+      role: admissionStatus === 'ADMITTED_PROVISIONAL_REFERENCE_BAND' ? 'PROVISIONAL_REFERENCE_BAND' : 'DESCRIPTIVE_ONLY_BLOCKED',
       method: 'unweighted distribution of complete-country 2021-2023 arithmetic means',
       countryMeans,
       statistics: statistics(countryMeans.map((entry) => entry.mean2021_2023)),
@@ -199,25 +207,32 @@ const classResults = membership.referenceClasses.map((referenceClass) => {
   };
 });
 
-const gates = {
+const blockedClasses = classResults.filter((entry) => entry.bandAdmission.status !== 'ADMITTED_PROVISIONAL_REFERENCE_BAND');
+const executionGates = {
   officialDatasetIdentifierExact: contract.source.dataset === DATASET,
   frozenMembershipUsedWithoutSubstitution: classResults.every((entry) => JSON.stringify(entry.frozenMembers) === JSON.stringify(membership.referenceClasses.find((source) => source.id === entry.id).members)),
   rawPanelRetained: panel.length > 0,
   noNumericTransformationBeyondPercentParsing: true,
   allValuesWithinPercentBounds: panel.every((row) => row.value >= 0 && row.value <= 100),
-  minimumIndependentEconomiesPerClass: classResults.every((entry) => entry.coverage.completePrimaryEconomies >= 5),
-  missingnessWithinLimit: classResults.every((entry) => entry.coverage.missingShare <= 0.25),
+  everyClassExplicitlyClassified: classResults.every((entry) => Boolean(entry.bandAdmission.status)),
+  insufficientClassesRemainBlocked: classResults.every((entry) => entry.bandAdmission.meetsMinimumIndependentEconomies || entry.bandAdmission.status === contract.coveragePolicy.classBelowMinimumStatus),
+  excessiveMissingnessClassesRemainBlocked: classResults.every((entry) => entry.bandAdmission.meetsMissingnessLimit || entry.bandAdmission.status === contract.coveragePolicy.classAboveMissingnessLimitStatus),
   manufacturingDescriptorNotMappedToModelSector: true,
   provisionalBandsNotCalibrationTargets: !contract.numericCalibrationRangesAuthorized,
   canonicalMutationLocked: !contract.canonicalMutationAuthorized,
 };
-gates.ok = Object.values(gates).every(Boolean);
+executionGates.ok = Object.values(executionGates).every(Boolean);
 
+const status = !executionGates.ok
+  ? 'FAIL'
+  : blockedClasses.length
+    ? 'PASS_WITH_BLOCKED_REFERENCE_BANDS'
+    : 'PASS_AS_PROVISIONAL_REFERENCE_EVIDENCE';
 const result = {
-  schemaVersion: 'r4-cu-d3c-official-reference-extraction-v0.1',
+  schemaVersion: 'r4-cu-d3c-official-reference-extraction-v0.2',
   front: 'R4-CU-D3C',
   generatedAt: retrievedAt,
-  status: gates.ok ? 'PASS_AS_PROVISIONAL_REFERENCE_EVIDENCE' : 'FAIL',
+  status,
   source: {
     publisher: 'OECD', dataset: DATASET, series, url,
     requestedYears: YEARS, primaryBalancedYears: PRIMARY,
@@ -228,10 +243,12 @@ const result = {
     observedMetric: 'manufacturing gross value added as percentage of total gross value added',
     allowedUse: 'reference-class characterization and dispersion only',
     blockedUse: ['direct model-sector calibration', 'fictional-country direct copying', 'canonical parameter mutation'],
+    admittedClasses: classResults.filter((entry) => entry.bandAdmission.status === 'ADMITTED_PROVISIONAL_REFERENCE_BAND').map((entry) => entry.id),
+    blockedClasses: blockedClasses.map((entry) => ({ id: entry.id, status: entry.bandAdmission.status })),
   },
   rawPanel: panel,
   classResults,
-  gates,
+  executionGates,
 };
 
 await mkdir(OUT, { recursive: true });
@@ -242,12 +259,12 @@ const summary = [
   `- Status: **${result.status}**`,
   `- Raw observations retained: ${panel.length}`,
   `- Raw CSV SHA-256: \`${result.source.rawCsvSha256}\``, '',
-  '| Class | Complete economies | Median | IQR | Missing |',
-  '|---|---:|---:|---:|---:|',
-  ...classResults.map((entry) => `| ${entry.id} | ${entry.coverage.completePrimaryEconomies} | ${entry.primaryBand2021_2023.statistics.median?.toFixed(3) ?? 'n/a'} | ${entry.primaryBand2021_2023.statistics.iqr?.toFixed(3) ?? 'n/a'} | ${(entry.coverage.missingShare * 100).toFixed(1)}% |`),
-  '', '> Provisional reference descriptors only; no canonical calibration target is authorized.', '',
+  '| Class | Admission | Complete economies | Median | IQR | Missing |',
+  '|---|---|---:|---:|---:|---:|',
+  ...classResults.map((entry) => `| ${entry.id} | ${entry.bandAdmission.status} | ${entry.coverage.completePrimaryEconomies} | ${entry.primaryWindow2021_2023.statistics.median?.toFixed(3) ?? 'n/a'} | ${entry.primaryWindow2021_2023.statistics.iqr?.toFixed(3) ?? 'n/a'} | ${(entry.coverage.missingShare * 100).toFixed(1)}% |`),
+  '', '> A blocked cohort remains descriptive only. Membership and the five-economy threshold were not changed after observing the data.', '',
 ].join('\n');
 await writeFile(path.join(OUT, 'r4-cu-d3c-summary.md'), summary);
 if (process.env.GITHUB_STEP_SUMMARY) await writeFile(process.env.GITHUB_STEP_SUMMARY, summary, { flag: 'a' });
-console.log(JSON.stringify({ status: result.status, gates, classResults: classResults.map((entry) => ({ id: entry.id, coverage: entry.coverage, statistics: entry.primaryBand2021_2023.statistics })) }, null, 2));
-if (!gates.ok) process.exitCode = 1;
+console.log(JSON.stringify({ status: result.status, executionGates, classResults: classResults.map((entry) => ({ id: entry.id, admission: entry.bandAdmission, coverage: entry.coverage, statistics: entry.primaryWindow2021_2023.statistics })) }, null, 2));
+if (!executionGates.ok) process.exitCode = 1;
