@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3D-B2",
+  "canonicalMutationAuthorized": false,
+  "numericCalibrationRangesAuthorized": false,
+  "purpose": "Extract OECD net household saving-rate evidence for the frozen reference cohorts and derive a realized-consumption counterpart under the same national-accounts identity.",
+  "source": {
+    "publisher": "OECD",
+    "dataset": "OECD.SDD.NAD,DSD_NAAG@DF_NAAG_V,1.0",
+    "datasetLabel": "NAAG Chapter 5: Households",
+    "measure": "B8NS1M",
+    "measureLabel": "Net saving of households and NPISH",
+    "expectedCombinedUnit": "PT_B6N_S1M",
+    "unitMeaning": "percentage of household and NPISH net disposable income",
+    "frequency": "A",
+    "requestedYears": [2021, 2022, 2023, 2024],
+    "primaryBalancedYears": [2021, 2022, 2023]
+  },
+  "semanticContract": {
+    "externalSavingConcept": "household and NPISH net saving under the 2008 System of National Accounts",
+    "externalFormula": "net disposable income plus adjustment for change in pension entitlements minus household final consumption expenditure",
+    "derivedRealizedConsumptionCounterpart": "100 minus the net saving rate, retained under the same OECD national-accounts denominator",
+    "modelRole": "dimensionless realized household-flow plausibility anchor",
+    "notEquivalentTo": [
+      "desiredConsumptionBudget",
+      "a representative household propensity to consume",
+      "cash expenditure of a median household",
+      "household saving from deposits alone",
+      "a direct canonical consumption multiplier"
+    ],
+    "translationDependency": "the simulation must reconstruct realized household final consumption and compatible disposable income including taxes, transfers and pension-equivalent adjustments before comparison"
+  },
+  "extractionRules": {
+    "membershipSource": "r4-cu-d3b-reference-membership-register.json",
+    "membershipSubstitutionAllowed": false,
+    "rawCountryYearPanelRequired": true,
+    "rawResponseHashRequired": true,
+    "sourceMetadataRequired": true,
+    "countryYearUniquenessRequired": true,
+    "savingRateBoundsPercent": [-100, 100],
+    "derivedConsumptionFormula": "100 - savingRatePercent",
+    "countryLevelAggregation": "arithmetic mean over complete 2021-2023 observations",
+    "crossCountryAggregation": "unweighted distribution of complete-country means",
+    "minimumIndependentEconomiesPerClass": 5,
+    "maximumCountryYearMissingShare": 0.25,
+    "outlierExclusionAllowed": false,
+    "numericTransformation": "parse official percentage and derive 100 minus saving rate only"
+  },
+  "coveragePolicy": {
+    "thresholdMayNotBeLoweredAfterObservation": true,
+    "missingMemberMayNotBeSubstitutedAfterObservation": true,
+    "classBelowMinimumStatus": "BLOCKED_INSUFFICIENT_COMPLETE_ECONOMIES",
+    "classAboveMissingnessLimitStatus": "BLOCKED_EXCESSIVE_MISSINGNESS",
+    "blockedClassMayRemainDescriptive": true,
+    "blockedClassMayNotPublishProvisionalDescriptor": true,
+    "blockedClassDoesNotInvalidateSuccessfulOfficialExtraction": true
+  },
+  "interpretation": {
+    "status": "PROVISIONAL_REFERENCE_DESCRIPTOR_ONLY",
+    "allowedUse": [
+      "reference-class household saving and realized-consumption-flow characterization",
+      "coverage and dispersion assessment",
+      "plausibility constraint after model-side realized-income reconstruction"
+    ],
+    "blockedUse": [
+      "direct desiredConsumptionBudget calibration",
+      "direct household cash-spending calibration",
+      "fictional-country direct copying",
+      "canonical parameter mutation"
+    ]
+  },
+  "executionHardGates": [
+    "official OECD dataset, measure and unit exact",
+    "frozen membership unchanged",
+    "raw response retained and hashed",
+    "country-year observations unique",
+    "saving rates within pre-registered bounds",
+    "derived consumption counterpart exactly equals 100 minus saving rate",
+    "every class explicitly admitted or blocked",
+    "no descriptor promoted to a canonical target",
+    "canonical mutation remains locked"
+  ],
+  "nextFront": "R4-CU-D3D-B3 model-side national labour-share and realized-consumption measurement contract"
+}
