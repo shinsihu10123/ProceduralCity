@@ -1,0 +1,169 @@
+name: Economic Lab RV08 R4-CU-D3D-B7-D1 Evidence Finalizer
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3d-b7-d1-evidence-finalizer.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  persist-authoritative-evidence:
+    timeout-minutes: 150
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_BRANCH: scratch/new-project-2026-08-12
+      SOURCE_RUN_ID: '33382635786'
+      SOURCE_HEAD_SHA: a63315fe785792871b03764a000e3fa739d178bc
+      SOURCE_WORKFLOW_PATH: .github/workflows/economic-lab-rv08-r4-cu-d3d-b7-d1-supplier-topology-causal.yml
+      ARTIFACT_NAME: r4-cu-d3d-b7-d1-authoritative-aggregate
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: scratch/new-project-2026-08-12
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate frozen D1 dependency and scripts
+        run: |
+          node --check economic-lab/src/research/d1-topology-neutral-procurement.js
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b7-d1-cell-runner.mjs
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b7-d1-aggregate.mjs
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b7-d1-closure.mjs
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          const x = JSON.parse(fs.readFileSync('economic-lab/diagnostics/reality-validation/r4-cu-d3d-b7-d1-supplier-topology-causal-contract.json', 'utf8'));
+          assert.equal(x.schemaVersion, '1.0');
+          assert.equal(x.front, 'R4-CU-D3D-B7-D1');
+          assert.equal(x.status, 'FROZEN_BEFORE_TOPOLOGY_COUNTERFACTUAL_EXECUTION');
+          assert.equal(x.sourceD0.decision, 'SEQUENCED_MIXED_CAUSAL_PREREGISTRATION_PASSED');
+          assert.deepEqual(x.frozenPanel.candidates.map((entry) => entry.id), ['V1_M1_C42', 'V24_M16_C42']);
+          assert.deepEqual(x.frozenPanel.validationSeeds.map((entry) => entry.seed), ['ECON-RV08-LONG-G', 'ECON-RV08-LONG-H']);
+          assert.deepEqual(x.frozenPanel.scenarios.map((entry) => entry.id), ['BASELINE_36', 'SUPPLY_SHOCK_M13', 'FINANCIAL_CONFIDENCE_STRESS_M13']);
+          assert.deepEqual(x.frozenPanel.windows.map((entry) => entry.id), ['FULL_36', 'PRE_SHOCK_12', 'TRANSITION_12', 'TERMINAL_12']);
+          assert.deepEqual(x.cells.map((entry) => entry.id), ['O', 'T']);
+          assert.equal(x.frozenPanel.months, 36);
+          assert.equal(x.frozenPanel.jobs, 12);
+          assert.equal(x.frozenPanel.cellsPerJob, 2);
+          assert.equal(x.frozenPanel.totalModelReplayStates, 48);
+          assert.equal(x.intervention.id, 'D1-TOPOLOGY-REACHABILITY-EXHAUSTIVE-V1');
+          assert.equal(x.intervention.inventoryCreationAuthorized, false);
+          assert.equal(x.intervention.cashCreationAuthorized, false);
+          assert.equal(x.technicalEvidenceContract.failedJobMayNotBeDropped, true);
+          assert.equal(x.canonicalMutationAuthorized, false);
+          assert.equal(x.directParameterCalibrationAuthorized, false);
+          assert.equal(x.candidateRetuningAuthorized, false);
+          NODE
+      - name: Wait for and verify authoritative D1 run
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_JSON=''
+          for attempt in $(seq 1 720); do
+            RUN_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${SOURCE_RUN_ID}")"
+            STATUS="$(jq -r '.status' <<<"$RUN_JSON")"
+            CONCLUSION="$(jq -r '.conclusion // "PENDING"' <<<"$RUN_JSON")"
+            echo "D1 source run ${SOURCE_RUN_ID}: ${STATUS}/${CONCLUSION}; attempt ${attempt}/720"
+            if [ "$STATUS" = 'completed' ]; then
+              break
+            fi
+            sleep 10
+          done
+          test -n "$RUN_JSON"
+          test "$(jq -r '.status' <<<"$RUN_JSON")" = 'completed'
+          test "$(jq -r '.conclusion' <<<"$RUN_JSON")" = 'success'
+          test "$(jq -r '.head_sha' <<<"$RUN_JSON")" = "$SOURCE_HEAD_SHA"
+          test "$(jq -r '.path' <<<"$RUN_JSON")" = "$SOURCE_WORKFLOW_PATH"
+          RUN_URL="$(jq -r '.html_url' <<<"$RUN_JSON")"
+          echo "run_url=$RUN_URL" >> "$GITHUB_OUTPUT"
+      - name: Download authoritative D1 aggregate
+        id: artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARTIFACT_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${SOURCE_RUN_ID}/artifacts")"
+          ARTIFACT_ID="$(jq -r --arg name "$ARTIFACT_NAME" '.artifacts[] | select(.name == $name and .expired == false) | .id' <<<"$ARTIFACT_JSON" | head -n 1)"
+          ARTIFACT_DIGEST="$(jq -r --arg name "$ARTIFACT_NAME" '.artifacts[] | select(.name == $name and .expired == false) | (.digest // "UNKNOWN")' <<<"$ARTIFACT_JSON" | head -n 1)"
+          test -n "$ARTIFACT_ID"
+          mkdir -p downloaded-d1/unpacked economic-lab/diagnostics/reality-validation/evidence
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > downloaded-d1/aggregate.zip
+          unzip -q downloaded-d1/aggregate.zip -d downloaded-d1/unpacked
+          AGGREGATE="$(find downloaded-d1/unpacked -type f -name 'r4-cu-d3d-b7-d1-aggregate.json' | head -n 1)"
+          SUMMARY="$(find downloaded-d1/unpacked -type f -name 'r4-cu-d3d-b7-d1-summary.md' | head -n 1)"
+          test -n "$AGGREGATE"
+          test -n "$SUMMARY"
+          cp "$AGGREGATE" economic-lab/diagnostics/reality-validation/evidence/r4-cu-d3d-b7-d1-authoritative-aggregate.json
+          cp "$SUMMARY" economic-lab/diagnostics/reality-validation/evidence/r4-cu-d3d-b7-d1-authoritative-summary.md
+          echo "artifact_id=$ARTIFACT_ID" >> "$GITHUB_OUTPUT"
+          echo "artifact_digest=$ARTIFACT_DIGEST" >> "$GITHUB_OUTPUT"
+      - name: Validate D1 decision and generate Closure
+        env:
+          SOURCE_RUN_URL: ${{ steps.source.outputs.run_url }}
+          SOURCE_ARTIFACT_ID: ${{ steps.artifact.outputs.artifact_id }}
+          SOURCE_ARTIFACT_DIGEST: ${{ steps.artifact.outputs.artifact_digest }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          const x = JSON.parse(fs.readFileSync('economic-lab/diagnostics/reality-validation/evidence/r4-cu-d3d-b7-d1-authoritative-aggregate.json', 'utf8'));
+          assert.equal(x.schemaVersion, 'r4-cu-d3d-b7-d1-aggregate-v0.1');
+          assert.equal(x.front, 'R4-CU-D3D-B7-D1');
+          assert.equal(x.status, 'PASS_TECHNICAL_D1_CAUSAL_AGGREGATION');
+          assert.equal(x.technicalGates.ok, true);
+          assert.ok(['TOPOLOGY_CAUSAL', 'TOPOLOGY_NONCAUSAL'].includes(x.decision));
+          assert.equal(x.expected.jobs, 12);
+          assert.equal(x.expected.cells, 24);
+          assert.equal(x.expected.modelReplayStates, 48);
+          assert.equal(x.observed.cellResults, 24);
+          assert.equal(x.observed.missingKeys.length, 0);
+          assert.equal(x.observed.duplicateKeys.length, 0);
+          assert.equal(x.interpretation.candidateRetuningAuthorized, false);
+          assert.equal(x.interpretation.thresholdRelaxationAuthorized, false);
+          assert.equal(x.interpretation.canonicalMutationAuthorized, false);
+          NODE
+          SOURCE_RUN_ID="$SOURCE_RUN_ID" \
+          SOURCE_HEAD_SHA="$SOURCE_HEAD_SHA" \
+          SOURCE_RUN_URL="$SOURCE_RUN_URL" \
+          SOURCE_ARTIFACT_ID="$SOURCE_ARTIFACT_ID" \
+          SOURCE_ARTIFACT_DIGEST="$SOURCE_ARTIFACT_DIGEST" \
+          node economic-lab/scripts/rv08-r4-cu-d3d-b7-d1-closure.mjs \
+            economic-lab/diagnostics/reality-validation/evidence/r4-cu-d3d-b7-d1-authoritative-aggregate.json \
+            economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B7_D1_CLOSURE_v0.1.md
+      - name: Persist authoritative D1 evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          AGGREGATE=economic-lab/diagnostics/reality-validation/evidence/r4-cu-d3d-b7-d1-authoritative-aggregate.json
+          DECISION="$(node -p "JSON.parse(require('fs').readFileSync('$AGGREGATE','utf8')).decision")"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            economic-lab/diagnostics/reality-validation/evidence/r4-cu-d3d-b7-d1-authoritative-aggregate.json \
+            economic-lab/diagnostics/reality-validation/evidence/r4-cu-d3d-b7-d1-authoritative-summary.md \
+            economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B7_D1_CLOSURE_v0.1.md
+          if git diff --cached --quiet; then
+            echo 'Authoritative D1 evidence is already persisted.'
+            exit 0
+          fi
+          git commit -m "docs(econ): close R4-CU-D3D-B7-D1 ${DECISION} route D6"
+          git pull --rebase origin "$SOURCE_BRANCH"
+          git push origin "HEAD:$SOURCE_BRANCH"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r4-cu-d3d-b7-d1-persisted-evidence
+          path: |
+            economic-lab/diagnostics/reality-validation/evidence/r4-cu-d3d-b7-d1-authoritative-aggregate.json
+            economic-lab/diagnostics/reality-validation/evidence/r4-cu-d3d-b7-d1-authoritative-summary.md
+            economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B7_D1_CLOSURE_v0.1.md
+          retention-days: 90
+      - name: Final beacon
+        run: echo 'R4-CU-D3D-B7-D1 authoritative evidence persisted; D6 may begin only from this closure'
