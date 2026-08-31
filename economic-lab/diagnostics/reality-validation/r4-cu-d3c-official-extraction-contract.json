@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "front": "R4-CU-D3C",
   "canonicalMutationAuthorized": false,
   "numericCalibrationRangesAuthorized": false,
@@ -30,6 +30,16 @@
     "numericTransformation": "none beyond parsing the OECD percentage observation",
     "outlierExclusionAllowed": false
   },
+  "coveragePolicy": {
+    "thresholdMayNotBeLoweredAfterObservation": true,
+    "missingMemberMayNotBeSubstitutedAfterObservation": true,
+    "classBelowMinimumStatus": "BLOCKED_INSUFFICIENT_COMPLETE_ECONOMIES",
+    "classAboveMissingnessLimitStatus": "BLOCKED_EXCESSIVE_MISSINGNESS",
+    "blockedClassMayRemainDescriptive": true,
+    "blockedClassMayNotPublishProvisionalBand": true,
+    "blockedClassDoesNotInvalidateSuccessfulOfficialExtraction": true,
+    "rationale": "The five-economy threshold is a band-admission rule. A coverage shortfall is an empirical result to preserve, not a reason to alter the frozen sample or discard a reproducible extraction."
+  },
   "interpretation": {
     "status": "PROVISIONAL_REFERENCE_BAND_ONLY",
     "allowedUse": [
@@ -45,15 +55,19 @@
       "canonical parameter mutation"
     ]
   },
-  "hardGates": [
+  "executionHardGates": [
     "official dataset identifier exact",
     "frozen memberships unchanged",
     "raw panel retained",
     "all values within percentage bounds",
-    "at least five complete primary-window economies per class",
-    "missingness at or below 25 percent",
+    "every class receives an explicit admission or blocked status",
+    "classes below five complete economies remain blocked without substitution",
     "provisional bands not promoted to calibration targets",
     "canonical mutation remains locked"
   ],
-  "nextFront": "R4-CU-D3D source snapshot closure and multi-indicator empirical-band expansion after D3C evidence review"
+  "bandAdmissionGates": [
+    "at least five complete primary-window economies",
+    "country-year missingness at or below 25 percent"
+  ],
+  "nextFront": "R4-CU-D3D source snapshot closure, coverage remediation without post-outcome substitution, and multi-indicator empirical-band expansion"
 }
