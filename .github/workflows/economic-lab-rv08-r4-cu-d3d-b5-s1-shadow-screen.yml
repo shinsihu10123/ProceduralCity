@@ -1,0 +1,154 @@
+name: Economic Lab RV08 R4-CU-D3D-B5 Stage-1 Shadow Screen
+
+on:
+  push:
+    branches:
+      - scratch/new-project-2026-08-12
+    paths:
+      - 'economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B5_TWO_AXIS_SHADOW_REPAIR_PREREGISTRATION_v0.1.md'
+      - 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b5-shadow-repair-family-contract.json'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b5-s1-shadow-screen.mjs'
+      - 'economic-lab/scripts/rv08-r4-cu-d3d-b5-s1-aggregate.mjs'
+      - '.github/workflows/economic-lab-rv08-r4-cu-d3d-b5-s1-shadow-screen.yml'
+  workflow_dispatch:
+
+jobs:
+  preregistration-and-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NODE_OPTIONS: --max-old-space-size=7168
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax gates
+        run: |
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b5-s1-shadow-screen.mjs
+          node --check economic-lab/scripts/rv08-r4-cu-d3d-b5-s1-aggregate.mjs
+      - name: Validate frozen family contract
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const p = 'economic-lab/diagnostics/reality-validation/r4-cu-d3d-b5-shadow-repair-family-contract.json';
+          const x = JSON.parse(fs.readFileSync(p, 'utf8'));
+          const expected = x.candidates.length * x.stage1Execution.seeds.length;
+          if (x.front !== 'R4-CU-D3D-B5-S1') process.exit(1);
+          if (x.canonicalMutationAuthorized !== false || x.directParameterCalibrationAuthorized !== false) process.exit(1);
+          if (x.candidates.length !== 16 || x.stage1Execution.seeds.length !== 2 || expected !== 32) process.exit(1);
+          if (x.stage1Execution.matrixJobs !== expected || x.stage1Execution.months !== 12) process.exit(1);
+          if (!x.candidates.some(c => c.id === 'CTRL' && c.kind === 'CONTROL')) process.exit(1);
+          console.log('B5 preregistration contract validated', { candidates: x.candidates.length, seeds: x.stage1Execution.seeds.length, jobs: expected });
+          NODE
+      - name: Control and low-edge preflight
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p /tmp/b5-preflight
+          CANDIDATE_ID=CTRL DIAG_SEED=ECON-RV02-A DIAG_MONTHS=12 \
+          OUTPUT_JSON=/tmp/b5-preflight/ctrl.json \
+          node economic-lab/scripts/rv08-r4-cu-d3d-b5-s1-shadow-screen.mjs \
+          2>&1 | tee /tmp/b5-preflight/ctrl.log
+          CANDIDATE_ID=V24_C1 DIAG_SEED=ECON-RV02-A DIAG_MONTHS=12 \
+          OUTPUT_JSON=/tmp/b5-preflight/v24-c1.json \
+          node economic-lab/scripts/rv08-r4-cu-d3d-b5-s1-shadow-screen.mjs \
+          2>&1 | tee /tmp/b5-preflight/v24-c1.log
+
+  candidate-screen:
+    needs: preregistration-and-preflight
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        candidate:
+          - CTRL
+          - V24_C1
+          - V24_C2
+          - V24_C4
+          - V24_C8
+          - V24_C16
+          - V48_C1
+          - V48_C2
+          - V48_C4
+          - V48_C8
+          - V48_C16
+          - V96_C1
+          - V96_C2
+          - V96_C4
+          - V96_C8
+          - V96_C16
+        case:
+          - label: original-A
+            seed: ECON-RV02-A
+          - label: original-C
+            seed: ECON-RV02-C
+    name: B5-S1 ${{ matrix.candidate }} ${{ matrix.case.label }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NODE_OPTIONS: --max-old-space-size=7168
+      CANDIDATE_ID: ${{ matrix.candidate }}
+      DIAG_SEED: ${{ matrix.case.seed }}
+      CASE_LABEL: ${{ matrix.case.label }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Screen preregistered candidate
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p economic-lab/performance-results
+          OUTPUT_JSON="economic-lab/performance-results/r4-cu-d3d-b5-s1-${CANDIDATE_ID}-${CASE_LABEL}.json" \
+          DIAG_MONTHS=12 \
+          node economic-lab/scripts/rv08-r4-cu-d3d-b5-s1-shadow-screen.mjs \
+          2>&1 | tee "economic-lab/performance-results/r4-cu-d3d-b5-s1-${CANDIDATE_ID}-${CASE_LABEL}.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-cu-d3d-b5-s1-${{ matrix.candidate }}-${{ matrix.case.label }}
+          path: |
+            economic-lab/performance-results/r4-cu-d3d-b5-s1-${{ matrix.candidate }}-${{ matrix.case.label }}.json
+            economic-lab/performance-results/r4-cu-d3d-b5-s1-${{ matrix.candidate }}-${{ matrix.case.label }}.log
+          retention-days: 90
+
+  aggregate-and-rank:
+    needs: candidate-screen
+    if: always() && needs.candidate-screen.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r4-cu-d3d-b5-s1-*
+          path: economic-lab/performance-results/b5-s1-input
+          merge-multiple: true
+      - name: Aggregate, apply Pareto eligibility and freeze finalists
+        shell: bash
+        run: |
+          set -o pipefail
+          RESULTS_DIR=economic-lab/performance-results/b5-s1-input \
+          OUTPUT_JSON=economic-lab/performance-results/r4-cu-d3d-b5-s1-aggregate.json \
+          node economic-lab/scripts/rv08-r4-cu-d3d-b5-s1-aggregate.mjs \
+          2>&1 | tee economic-lab/performance-results/r4-cu-d3d-b5-s1-aggregate.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r4-cu-d3d-b5-s1-aggregate
+          path: |
+            economic-lab/performance-results/r4-cu-d3d-b5-s1-aggregate.json
+            economic-lab/performance-results/r4-cu-d3d-b5-s1-aggregate.log
+          retention-days: 90
+
+  final-beacon:
+    needs: aggregate-and-rank
+    if: always() && needs.aggregate-and-rank.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'R4-CU-D3D-B5 Stage-1 shadow family screen completed'
