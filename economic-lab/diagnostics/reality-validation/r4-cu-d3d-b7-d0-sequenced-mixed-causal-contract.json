@@ -1,0 +1,471 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3D-B7-D0",
+  "status": "FROZEN_BEFORE_SEQUENCED_CHILD_EXECUTION",
+  "canonicalMutationAuthorized": false,
+  "directParameterCalibrationAuthorized": false,
+  "candidateRetuningAuthorized": false,
+  "purpose": "Preregister a dependency-safe sequence that separates the candidate-specific supplier-topology mechanism from the broadly shared price-cost and value-transformation mechanism after the authoritative R4-CU-D3D-B7 decision MIXED, without reversing B6-S3, retuning candidates or mutating canonical state.",
+  "sourceB7": {
+    "closurePath": "economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B7_CLOSURE_v0.1.md",
+    "closureCommit": "53275393b6906e203640c4db60f00dbd67bd30c8",
+    "workflowRunId": 33371200438,
+    "workflowHeadSha": "9bed96f445e87765431235c9ff7908bf73668e07",
+    "aggregateArtifactId": 9750222167,
+    "aggregateArtifactDigest": "sha256:a77cc56408882ecb5318a2c2dd116a3f5772ff520579bee68dd1b3b63ed381b2",
+    "aggregateJsonPath": "economic-lab/diagnostics/reality-validation/evidence/r4-cu-d3d-b7-authoritative-aggregate.json",
+    "aggregateJsonSha256": "8618beb8a8de76f87fc553e008be107b19bb332d6d26f5e60e604f0223ccd03c",
+    "technicalStatus": "PASS_TECHNICAL_B7_DIAGNOSTIC_AGGREGATION",
+    "decision": "MIXED",
+    "routing": "R4-CU-D3D-B7-D0 sequenced multi-mechanism causal preregistration",
+    "observedJobs": 12
+  },
+  "sourceStage3": {
+    "front": "R4-CU-D3D-B6-S3",
+    "closureCommit": "ab50c676947a6215a7d58acce9302cda5fb02611",
+    "workflowRunId": 33362894408,
+    "decision": "LONG_HORIZON_OR_STRESS_VALIDATION_FAILED_NO_RETUNING",
+    "decisionReversalAuthorized": false
+  },
+  "frozenPanel": {
+    "candidates": [
+      {
+        "id": "V1_M1_C42",
+        "role": "CANONICAL_CONTROL",
+        "control": true,
+        "V": 1,
+        "M": 1,
+        "W": "C42"
+      },
+      {
+        "id": "V24_M16_C42",
+        "role": "FAILED_LONG_HORIZON_PRIMARY_CAUSAL_PROBE",
+        "control": false,
+        "V": 24,
+        "M": 16,
+        "W": "C42"
+      }
+    ],
+    "validationSeeds": [
+      {
+        "case": "long-G",
+        "seed": "ECON-RV08-LONG-G"
+      },
+      {
+        "case": "long-H",
+        "seed": "ECON-RV08-LONG-H"
+      }
+    ],
+    "months": 36,
+    "shockMonth": 13,
+    "windows": [
+      {
+        "id": "FULL_36",
+        "startMonth": 1,
+        "endMonth": 36
+      },
+      {
+        "id": "PRE_SHOCK_12",
+        "startMonth": 1,
+        "endMonth": 12
+      },
+      {
+        "id": "TRANSITION_12",
+        "startMonth": 13,
+        "endMonth": 24
+      },
+      {
+        "id": "TERMINAL_12",
+        "startMonth": 25,
+        "endMonth": 36
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "BASELINE_36",
+        "role": "UNSHOCKED_LONG_HORIZON",
+        "schedule": []
+      },
+      {
+        "id": "SUPPLY_SHOCK_M13",
+        "role": "ADVERSE_REAL_PRODUCTIVITY_STRESS",
+        "schedule": [
+          {
+            "id": "B6S3-SUPPLY-075-M13",
+            "month": 13,
+            "countryId": "*",
+            "kind": "productivity_shock",
+            "factor": 0.75
+          }
+        ]
+      },
+      {
+        "id": "FINANCIAL_CONFIDENCE_STRESS_M13",
+        "role": "COMPOUND_CONFIDENCE_AND_BANK_RISK_STRESS",
+        "schedule": [
+          {
+            "id": "B6S3-CONFIDENCE-N035-M13",
+            "month": 13,
+            "countryId": "*",
+            "kind": "confidence_shock",
+            "delta": -0.35,
+            "agentKinds": [
+              "household",
+              "firm",
+              "bank"
+            ]
+          },
+          {
+            "id": "B6S3-BANK-RISK-P035-M13",
+            "month": 13,
+            "countryId": "*",
+            "kind": "bank_risk_shock",
+            "delta": 0.35
+          }
+        ]
+      }
+    ],
+    "candidateSeedScenarioJobs": 12,
+    "seedScenarioWindowsPerCandidate": 24,
+    "exactReplayRequired": true,
+    "hardAccountingHealthRequired": true
+  },
+  "authoritativeB7Finding": {
+    "failedPrimaryPanels": 24,
+    "dominantMechanisms": [
+      "INPUT_SUPPLIER_TOPOLOGY_BINDING",
+      "VALUE_TRANSFORMATION_BINDING"
+    ],
+    "mechanismComparison": [
+      {
+        "label": "INPUT_SUPPLIER_TOPOLOGY_BINDING",
+        "primaryQualifiedPanels": 18,
+        "primaryTotalPanels": 24,
+        "primaryPrevalence": 0.75,
+        "controlQualifiedPanels": 12,
+        "controlTotalPanels": 24,
+        "controlPrevalence": 0.5,
+        "primaryControlDelta": 0.25,
+        "primaryDominant": true
+      },
+      {
+        "label": "INPUT_CASH_BUDGET_BINDING",
+        "primaryQualifiedPanels": 6,
+        "primaryTotalPanels": 24,
+        "primaryPrevalence": 0.25,
+        "controlQualifiedPanels": 12,
+        "controlTotalPanels": 24,
+        "controlPrevalence": 0.5,
+        "primaryControlDelta": -0.25,
+        "primaryDominant": false
+      },
+      {
+        "label": "INPUT_SEARCH_EXECUTION_BINDING",
+        "primaryQualifiedPanels": 0,
+        "primaryTotalPanels": 24,
+        "primaryPrevalence": 0,
+        "controlQualifiedPanels": 0,
+        "controlTotalPanels": 24,
+        "controlPrevalence": 0,
+        "primaryControlDelta": 0,
+        "primaryDominant": false
+      },
+      {
+        "label": "DEMAND_INVENTORY_MISMATCH",
+        "primaryQualifiedPanels": 0,
+        "primaryTotalPanels": 24,
+        "primaryPrevalence": 0,
+        "controlQualifiedPanels": 0,
+        "controlTotalPanels": 24,
+        "controlPrevalence": 0,
+        "primaryControlDelta": 0,
+        "primaryDominant": false
+      },
+      {
+        "label": "GOODS_MARKET_MATCHING_BINDING",
+        "primaryQualifiedPanels": 0,
+        "primaryTotalPanels": 24,
+        "primaryPrevalence": 0,
+        "controlQualifiedPanels": 0,
+        "controlTotalPanels": 24,
+        "controlPrevalence": 0,
+        "primaryControlDelta": 0,
+        "primaryDominant": false
+      },
+      {
+        "label": "VALUE_TRANSFORMATION_BINDING",
+        "primaryQualifiedPanels": 20,
+        "primaryTotalPanels": 24,
+        "primaryPrevalence": 0.8333333333333334,
+        "controlQualifiedPanels": 23,
+        "controlTotalPanels": 24,
+        "controlPrevalence": 0.9583333333333334,
+        "primaryControlDelta": -0.125,
+        "primaryDominant": true
+      }
+    ],
+    "sequencingInterpretation": {
+      "status": "PREREGISTERED_INTERPRETATION_NOT_YET_CAUSAL_CONCLUSION",
+      "firstIsolationTarget": "INPUT_SUPPLIER_TOPOLOGY_BINDING",
+      "firstIsolationReason": "It is dominant in the failed primary and has a positive primary-minus-control prevalence differential, so it is the first candidate-specific amplification mechanism to isolate.",
+      "secondAuditTarget": "VALUE_TRANSFORMATION_BINDING",
+      "secondAuditReason": "It is dominant in the failed primary but even more prevalent in control, so it must be tested as a shared or downstream pathology after topology is isolated rather than presumed to be candidate-specific.",
+      "cashBudgetRole": "TRACKED_SENTINEL_AND_COVARIATE_NOT_A_DOMINANT_CHILD_FRONT",
+      "zeroPrevalenceMechanismRole": "NEGATIVE_CONTROL_SURFACE_RETAINED_FOR_SPILLOVER_DETECTION"
+    }
+  },
+  "causalQuestion": {
+    "primary": "Does supplier reachability and inventory concentration create the failed-primary shortage path and thereby induce the observed value-transformation pathology, or do topology and value transformation remain independent or interacting bindings?",
+    "null": "The topology-neutral diagnostic replay does not materially reduce input shortage or value-pathology indices relative to the exact observed replay.",
+    "alternativeFamilies": [
+      "TOPOLOGY_UPSTREAM_OF_VALUE_TRANSFORMATION",
+      "VALUE_TRANSFORMATION_INDEPENDENT_OF_TOPOLOGY",
+      "PARALLEL_ADDITIVE_BINDINGS",
+      "TOPOLOGY_VALUE_INTERACTION",
+      "COMMON_CAUSE_OR_UNRESOLVED"
+    ]
+  },
+  "counterfactualCells": [
+    {
+      "id": "O",
+      "name": "OBSERVED_FROZEN_REPLAY",
+      "physicalReplay": "EXACT_B7_SOURCE_PATH",
+      "valueObserver": "RAW_AND_CANONICAL_ACCOUNTING",
+      "behavioralFeedback": true
+    },
+    {
+      "id": "T",
+      "name": "TOPOLOGY_NEUTRAL_DISPOSABLE_SHADOW",
+      "physicalReplay": "D1_REACHABILITY_ONLY_INTERVENTION",
+      "valueObserver": "RAW_AND_CANONICAL_ACCOUNTING",
+      "behavioralFeedback": true
+    },
+    {
+      "id": "O_R",
+      "name": "OBSERVED_RECONCILED_VALUE_OBSERVER",
+      "physicalReplay": "EXACT_B7_SOURCE_PATH",
+      "valueObserver": "D6_PARALLEL_RECONCILIATION_ONLY",
+      "behavioralFeedback": false
+    },
+    {
+      "id": "T_R",
+      "name": "TOPOLOGY_NEUTRAL_RECONCILED_VALUE_OBSERVER",
+      "physicalReplay": "D1_REACHABILITY_ONLY_INTERVENTION",
+      "valueObserver": "D6_PARALLEL_RECONCILIATION_ONLY",
+      "behavioralFeedback": false
+    }
+  ],
+  "sequence": [
+    {
+      "order": 1,
+      "front": "R4-CU-D3D-B7-D1",
+      "name": "SUPPLIER_TOPOLOGY_AND_REACHABLE_INVENTORY_CAUSAL_ISOLATION",
+      "childContractRequiredBeforeExecution": true,
+      "authorizedProbeFamily": "REACHABILITY_ONLY_DISPOSABLE_SHADOW",
+      "interventionBoundary": {
+        "mayChangeInsideDisposableShadow": [
+          "compatible supplier reachability set",
+          "deterministic supplier traversal order",
+          "realized supplier links caused by the changed reachability set",
+          "downstream quantities and balances endogenously caused by those links"
+        ],
+        "mustRemainExactAtInterventionBoundary": [
+          "candidate identity and V/M/W axes",
+          "validation seed",
+          "scenario schedule and shock month",
+          "opening physical inventories by firm",
+          "opening inventory book values by firm",
+          "supplier prices",
+          "buyer cash and procurement budget rule",
+          "wages and payroll rules",
+          "demand plans and inventory targets",
+          "capacity and productivity before scheduled scenario events",
+          "settlement and accounting rules"
+        ]
+      },
+      "requiredOutputs": [
+        "reachable compatible supplier count and stock",
+        "supplier inventory HHI and top share",
+        "planned need, purchased units and input shortage",
+        "topology, cash and search-execution shortage attribution",
+        "distinct realized supplier links",
+        "output, sales and finished inventory",
+        "active firms and nominal purchasing power",
+        "raw value-pathology index"
+      ],
+      "exitLabels": [
+        "TOPOLOGY_CAUSAL",
+        "TOPOLOGY_NONCAUSAL",
+        "TOPOLOGY_INDETERMINATE"
+      ]
+    },
+    {
+      "order": 2,
+      "front": "R4-CU-D3D-B7-D6",
+      "name": "PRICE_COST_AND_VALUE_ADDED_TRANSFORMATION_AUDIT",
+      "childContractRequiredBeforeExecution": true,
+      "inputCells": [
+        "O",
+        "T"
+      ],
+      "authorizedProbeFamily": "PARALLEL_VALUE_RECONCILIATION_OBSERVER_WITHOUT_BEHAVIORAL_FEEDBACK",
+      "observerBoundary": {
+        "mayCompute": [
+          "transaction-price revenue",
+          "COGS from realized sales",
+          "intermediate-input consumption",
+          "labour compensation accrual",
+          "finished-inventory book change",
+          "production and income GVA approaches",
+          "price-to-book-unit-cost distribution",
+          "below-cost firm and revenue shares",
+          "raw versus reconciled value-pathology indices"
+        ],
+        "mayNotChange": [
+          "prices",
+          "wages",
+          "quantities",
+          "buyer or seller matching",
+          "cash settlement",
+          "inventory quantities or book values in the physical replay",
+          "firm entry or exit",
+          "future behavior"
+        ]
+      },
+      "requiredOutputs": [
+        "raw and reconciled GVA by country-month",
+        "GVA approach residual",
+        "raw and reconciled value-pathology indices",
+        "price-to-book-unit-cost distribution",
+        "below-cost revenue share",
+        "value-pathology persistence after topology neutralization"
+      ],
+      "exitLabels": [
+        "VALUE_REAL_ECONOMIC",
+        "VALUE_MEASUREMENT_OR_VALUATION",
+        "VALUE_MIXED",
+        "VALUE_INDETERMINATE"
+      ]
+    },
+    {
+      "order": 3,
+      "front": "R4-CU-D3D-B7-D0-R1",
+      "name": "SEQUENCED_TOPOLOGY_VALUE_CAUSAL_RECONCILIATION",
+      "childContractRequiredBeforeExecution": true,
+      "requiredDependencies": [
+        "R4-CU-D3D-B7-D1 authoritative closure",
+        "R4-CU-D3D-B7-D6 authoritative closure covering O and T cells"
+      ],
+      "purpose": "Apply the frozen estimands and rules below without reopening candidates, thresholds, seeds, scenarios or horizon."
+    }
+  ],
+  "estimands": {
+    "inputShortageRate": "sum(inputShortageUnits) / sum(plannedInputNeedUnits)",
+    "absoluteTopologyEffect": "inputShortageRate_O - inputShortageRate_T",
+    "relativeTopologyEffect": "absoluteTopologyEffect / max(inputShortageRate_O, 1e-9)",
+    "normalizedValuePathologyIndex": "max(nonPositiveGvaCountryMonthShare / 0.25, belowCostRevenueShare / 0.50)",
+    "valueEffectOfTopology": "normalizedValuePathologyIndex_O - normalizedValuePathologyIndex_T",
+    "valueObserverGapObserved": "abs(normalizedValuePathologyIndex_O - normalizedValuePathologyIndex_O_R)",
+    "valueObserverGapTopologyNeutral": "abs(normalizedValuePathologyIndex_T - normalizedValuePathologyIndex_T_R)",
+    "topologyValueInteractionIndex": "abs((normalizedValuePathologyIndex_O - normalizedValuePathologyIndex_T) - (normalizedValuePathologyIndex_O_R - normalizedValuePathologyIndex_T_R))"
+  },
+  "classificationThresholds": {
+    "minimumAbsoluteTopologyEffect": 0.1,
+    "minimumRelativeTopologyEffect": 0.2,
+    "minimumNormalizedValueIndexReduction": 0.2,
+    "valueBindingIndex": 1,
+    "minimumLargeObserverGap": 0.2,
+    "maximumAdditiveInteractionIndex": 0.1,
+    "minimumInteractionIndex": 0.2,
+    "minimumReplicatedPanelFrequency": 0.5,
+    "maximumOppositeSignPanelFrequency": 0.25,
+    "bothValidationSeedsRequired": true,
+    "role": "CAUSAL_DIAGNOSTIC_CLASSIFICATION_ONLY_NOT_PARAMETER_CALIBRATION"
+  },
+  "finalClassificationRules": [
+    {
+      "label": "TECHNICAL_INDETERMINATE",
+      "rule": "Assign whenever any exact-replay, full-panel, schedule-identity, intervention-identity, accounting-health or observer-reconciliation gate fails."
+    },
+    {
+      "label": "TOPOLOGY_UPSTREAM_OF_VALUE_TRANSFORMATION",
+      "rule": "D1 must be TOPOLOGY_CAUSAL, topology effects must replicate at the frozen frequency in both seeds, valueEffectOfTopology must meet its threshold and the T or T_R value-pathology index must fall below the binding index in the required panel frequency."
+    },
+    {
+      "label": "VALUE_TRANSFORMATION_INDEPENDENT_OF_TOPOLOGY",
+      "rule": "The T and T_R value-pathology indices remain binding at the frozen frequency after D1, while D6 identifies a replicated real-economic or valuation component that does not depend on topology neutralization."
+    },
+    {
+      "label": "PARALLEL_ADDITIVE_BINDINGS",
+      "rule": "D1 is causal, D6 identifies an independent value component, both effects replicate, and topologyValueInteractionIndex does not exceed maximumAdditiveInteractionIndex."
+    },
+    {
+      "label": "TOPOLOGY_VALUE_INTERACTION",
+      "rule": "Both child fronts pass and topologyValueInteractionIndex reaches minimumInteractionIndex at the frozen panel frequency in both seeds."
+    },
+    {
+      "label": "COMMON_CAUSE_OR_UNRESOLVED",
+      "rule": "Assign when all technical gates pass but no other single frozen causal label is uniquely satisfied. No post-hoc tie-break or threshold relaxation is authorized."
+    }
+  ],
+  "technicalEvidenceContract": {
+    "exactObservedReplayRequired": true,
+    "exactCounterfactualReplayRequired": true,
+    "completeCandidateSeedScenarioWindowPanelRequired": true,
+    "scenarioScheduleIdentityRequired": true,
+    "interventionIdentityHashRequired": true,
+    "shortageAttributionIdentityRequired": true,
+    "gvaApproachReconciliationRequired": true,
+    "hardAccountingHealthRequired": true,
+    "sourceB7IntegrityRequired": true,
+    "aggregateOnlyAfterAllChildJobs": true,
+    "failedJobMayNotBeDropped": true,
+    "postObservationThresholdMutationAuthorized": false
+  },
+  "shadowInterventionContract": {
+    "isolatedDisposableCloneOnly": true,
+    "childContractRequiredBeforeAnyIntervention": true,
+    "sourceReplayMustRemainUnmodified": true,
+    "physicalStateChangesMayExistOnlyInsideDisposableCounterfactualReplay": true,
+    "productionOrCanonicalMutationAuthorized": false,
+    "canonicalSourceMutationAuthorized": false,
+    "directParameterCalibrationAuthorized": false,
+    "candidateValueMutationAuthorized": false,
+    "scenarioMutationAuthorized": false,
+    "resultMayAuthorizeCanonicalMutation": false
+  },
+  "retainedSentinels": [
+    "INPUT_CASH_BUDGET_BINDING",
+    "INPUT_SEARCH_EXECUTION_BINDING",
+    "DEMAND_INVENTORY_MISMATCH",
+    "GOODS_MARKET_MATCHING_BINDING"
+  ],
+  "blockedMutations": [
+    "candidate panel or candidate identity",
+    "V24 productivity factor",
+    "M16 material-efficiency divisor",
+    "C42 procurement share or procurement budget rule",
+    "canonical supplier sampling or matching rules",
+    "canonical prices or wages",
+    "opening cash, wealth, inventories or book values",
+    "desired household consumption budgets",
+    "demand plans or inventory targets",
+    "tax rates",
+    "bank underwriting",
+    "trade-credit rules",
+    "firm entry or exit rules",
+    "validation seeds",
+    "scenario schedules or shock month",
+    "36-month horizon or windows",
+    "classification thresholds after observation",
+    "dropping failed or adverse panels",
+    "reversing the B6-S3 or B7 decisions"
+  ],
+  "routing": {
+    "afterPreregistrationPass": "R4-CU-D3D-B7-D1 supplier-topology and reachable-inventory causal isolation",
+    "afterD1Closure": "R4-CU-D3D-B7-D6 price-cost and value-added transformation audit over O and T cells",
+    "afterD6Closure": "R4-CU-D3D-B7-D0-R1 sequenced topology-value causal reconciliation",
+    "afterTechnicalFailure": "Repair only the failing diagnostic interface under the same frozen D0 contract",
+    "afterFinalClassification": "Create a separate mechanism-specific preregistration; canonical mutation remains unauthorized"
+  }
+}
