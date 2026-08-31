@@ -1,0 +1,161 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3D-B5-S1",
+  "canonicalMutationAuthorized": false,
+  "directParameterCalibrationAuthorized": false,
+  "purpose": "Preregister and screen a coarse two-axis real-productivity shadow family without blind repricing, wage cuts, desired-budget tuning or financial-rule changes.",
+  "dependencies": {
+    "b4Closure": "WP-RV08_R4_CU_D3D_B4_EMPIRICAL_MODEL_GAP_CLOSURE_v0.1.md",
+    "b4Summary": "r4-cu-d3d-b4-authoritative-summary.json",
+    "referenceBandsRole": "SHADOW_SCORING_ONLY",
+    "gapFactorDirectUseBlocked": true
+  },
+  "empiricalShadowScoringBands": {
+    "labourIncomeShare": [0.521557, 0.607117],
+    "realizedConsumptionShare": [0.883763, 0.979344],
+    "directCanonicalTarget": false
+  },
+  "mechanisms": {
+    "valueRecoveryAxis": {
+      "id": "V",
+      "kind": "REAL_FIRM_PRODUCTIVITY_MULTIPLIER",
+      "commonGrid": [24, 48, 96],
+      "sectorShape": {
+        "RESOURCE": 2.0,
+        "MATERIALS": 1.4,
+        "CAPITAL": 0.65,
+        "CONSUMER": 1.0
+      },
+      "fittedToEmpiricalCenter": false,
+      "initialPriceMutation": false,
+      "initialWageMutation": false
+    },
+    "consumerYieldAxis": {
+      "id": "C",
+      "kind": "ADDITIONAL_CONSUMER_FIRM_REAL_PRODUCTIVITY_MULTIPLIER",
+      "grid": [1, 2, 4, 8, 16],
+      "inputCoefficientMutation": false,
+      "desiredBudgetMutation": false,
+      "goodsMarketRuleMutation": false
+    }
+  },
+  "candidates": [
+    { "id": "CTRL", "kind": "CONTROL", "valueScale": 1, "consumerYieldScale": 1 },
+    { "id": "V24_C1", "kind": "SHADOW", "valueScale": 24, "consumerYieldScale": 1 },
+    { "id": "V24_C2", "kind": "SHADOW", "valueScale": 24, "consumerYieldScale": 2 },
+    { "id": "V24_C4", "kind": "SHADOW", "valueScale": 24, "consumerYieldScale": 4 },
+    { "id": "V24_C8", "kind": "SHADOW", "valueScale": 24, "consumerYieldScale": 8 },
+    { "id": "V24_C16", "kind": "SHADOW", "valueScale": 24, "consumerYieldScale": 16 },
+    { "id": "V48_C1", "kind": "SHADOW", "valueScale": 48, "consumerYieldScale": 1 },
+    { "id": "V48_C2", "kind": "SHADOW", "valueScale": 48, "consumerYieldScale": 2 },
+    { "id": "V48_C4", "kind": "SHADOW", "valueScale": 48, "consumerYieldScale": 4 },
+    { "id": "V48_C8", "kind": "SHADOW", "valueScale": 48, "consumerYieldScale": 8 },
+    { "id": "V48_C16", "kind": "SHADOW", "valueScale": 48, "consumerYieldScale": 16 },
+    { "id": "V96_C1", "kind": "SHADOW", "valueScale": 96, "consumerYieldScale": 1 },
+    { "id": "V96_C2", "kind": "SHADOW", "valueScale": 96, "consumerYieldScale": 2 },
+    { "id": "V96_C4", "kind": "SHADOW", "valueScale": 96, "consumerYieldScale": 4 },
+    { "id": "V96_C8", "kind": "SHADOW", "valueScale": 96, "consumerYieldScale": 8 },
+    { "id": "V96_C16", "kind": "SHADOW", "valueScale": 96, "consumerYieldScale": 16 }
+  ],
+  "applicationContract": {
+    "initialFirmsAppliedAfterCanonicalConstruction": true,
+    "replacementEntrantsAppliedExactlyOnce": true,
+    "firmProvenanceTagsRequired": true,
+    "canonicalModulesModified": false,
+    "inactiveFirmRetroactiveMutation": false,
+    "formula": "shadow productivity = canonical firm productivity × valueScale × sectorShape[industry] × (consumerYieldScale for CONSUMER only)"
+  },
+  "protectedNominalSurface": {
+    "mustMatchControlBeforeSimulation": [
+      "country and agent identities",
+      "firm industry assignment",
+      "firm prices",
+      "firm wages",
+      "household wages",
+      "household reservation wages",
+      "all settlement-ledger opening balances",
+      "firm cash and safe cash",
+      "household wealth",
+      "desired consumption budgets",
+      "input products and inputPerOutput",
+      "country demandLevel, financialAccess and fiscal parameters"
+    ],
+    "allowedDifference": [
+      "firm productivity",
+      "B5 provenance tags"
+    ]
+  },
+  "stage1Execution": {
+    "seeds": [
+      { "case": "original-A", "seed": "ECON-RV02-A" },
+      { "case": "original-C", "seed": "ECON-RV02-C" }
+    ],
+    "heldoutSeedsReserved": ["ECON-RV08-HOLDOUT-E", "ECON-RV08-HOLDOUT-F"],
+    "months": 12,
+    "scaleProfile": "baseline",
+    "matrixJobs": 32,
+    "exactReplayRequiredPerJob": true,
+    "hardAccountingHealthRequiredPerJob": true,
+    "aggregateAfterAllJobs": true
+  },
+  "measurement": {
+    "b3Compatible": [
+      "positive-GVA employee compensation share",
+      "realized household purchaser outlay over cash disposable income",
+      "net household saving flow over cash disposable income",
+      "non-positive-GVA incidence"
+    ],
+    "operationalSafety": [
+      "goods fulfillment",
+      "payroll paid and unpaid",
+      "wage arrears",
+      "active firms, exits and entries",
+      "input shortage and B2B procurement",
+      "unemployment",
+      "average wage over price index",
+      "firm and household cash",
+      "GDP and accounting health"
+    ]
+  },
+  "stage1Eligibility": {
+    "requiresBothOriginalSeeds": true,
+    "labourLogDistanceMustImproveVsControl": true,
+    "consumptionLogDistanceMustImproveVsControl": true,
+    "minimumMedianActiveFirmRatioVsControl": 0.5,
+    "minimumMedianPurchasingPowerRatioVsControl": 0.8,
+    "exactReplayRequired": true,
+    "accountingHealthRequired": true,
+    "protectedSurfaceRequired": true,
+    "directNominalOrBudgetMutationForbidden": true,
+    "maximumFinalists": 3,
+    "noEligibleDecision": "FAMILY_INSUFFICIENT"
+  },
+  "ranking": {
+    "primary": "minimum worst-seed sum of two log-distances to admitted shadow bands",
+    "tieBreakers": [
+      "lower non-positive-GVA share",
+      "higher active-firm retention",
+      "lower input-shortage burden"
+    ],
+    "singleWeightedScoreMayOverrideEligibility": false,
+    "failedCasesMustRemainReported": true
+  },
+  "blockedMutations": [
+    "COUNTRY_SEEDS persistence",
+    "INDUSTRIES persistence",
+    "initial prices",
+    "initial wages",
+    "firm cash",
+    "household wealth",
+    "desiredConsumptionBudget logic or values",
+    "input coefficients",
+    "goods-market rules",
+    "procurement cash cap",
+    "trade-credit rules",
+    "bank-credit rules",
+    "tax rates",
+    "canonical production coefficients"
+  ],
+  "nextFrontIfEligible": "R4-CU-D3D-B5-S2 24-month heldout replication",
+  "nextFrontIfNone": "R4-CU-D3D-B6 input-output and working-capital shadow family"
+}
