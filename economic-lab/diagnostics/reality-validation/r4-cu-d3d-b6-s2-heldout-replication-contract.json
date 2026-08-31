@@ -1,0 +1,138 @@
+{
+  "schemaVersion": "1.0",
+  "front": "R4-CU-D3D-B6-S2",
+  "status": "FROZEN_BEFORE_HELDOUT_EXECUTION",
+  "canonicalMutationAuthorized": false,
+  "directParameterCalibrationAuthorized": false,
+  "purpose": "Replicate the frozen B6 Stage-1 control and finalists on untouched heldout seeds without retuning candidates, thresholds or model semantics.",
+  "sourceStage1": {
+    "closure": "economic-lab/diagnostics/reality-validation/WP-RV08_R4_CU_D3D_B6_S1_CLOSURE_v0.1.md",
+    "baseContract": "economic-lab/diagnostics/reality-validation/r4-cu-d3d-b6-input-output-working-capital-contract.json",
+    "workflowRunId": 33358631295,
+    "headSha": "32c4753ee062e62f09789cb7a7492f2c6fdae354",
+    "aggregateArtifactId": 9745969839,
+    "aggregateArtifactName": "r4-cu-d3d-b6-s1-authoritative-aggregate",
+    "aggregateArtifactZipSha256": "2048535126ade399b10133f74592bed193135da2d558ab02b07c691aa29f7aa7",
+    "eligibleCandidateCount": 8,
+    "frozenFinalists": [
+      "V1_M16_C42",
+      "V1_M4_C42",
+      "V24_M16_C42"
+    ]
+  },
+  "candidatePanel": [
+    {
+      "id": "V1_M1_C42",
+      "role": "SAME_SEED_CONTROL",
+      "V": 1,
+      "M": 1,
+      "W": "C42"
+    },
+    {
+      "id": "V1_M16_C42",
+      "role": "FROZEN_STAGE1_FINALIST",
+      "stage1Rank": 1,
+      "V": 1,
+      "M": 16,
+      "W": "C42"
+    },
+    {
+      "id": "V1_M4_C42",
+      "role": "FROZEN_STAGE1_FINALIST",
+      "stage1Rank": 2,
+      "V": 1,
+      "M": 4,
+      "W": "C42"
+    },
+    {
+      "id": "V24_M16_C42",
+      "role": "FROZEN_STAGE1_FINALIST",
+      "stage1Rank": 3,
+      "V": 24,
+      "M": 16,
+      "W": "C42"
+    }
+  ],
+  "execution": {
+    "months": 12,
+    "scaleProfile": "baseline",
+    "heldoutSeeds": [
+      {
+        "label": "heldout-E",
+        "seed": "ECON-RV08-HOLDOUT-E"
+      },
+      {
+        "label": "heldout-F",
+        "seed": "ECON-RV08-HOLDOUT-F"
+      }
+    ],
+    "candidateJobs": 4,
+    "candidateSeedJobs": 8,
+    "exactReplayRunsPerJob": 2,
+    "sourceEngine": "economic-lab/scripts/rv08-r4-cu-d3d-b6-s1-shadow-screen.mjs",
+    "sourceEngineReuseMode": "READ_ONLY_HELDOUT_COMPATIBILITY_VIEW_AND_RESULT_RELABEL",
+    "sourceEngineMutationAuthorized": false
+  },
+  "empiricalExternalBands": {
+    "labourShare": {
+      "lower": 0.491,
+      "upper": 0.629,
+      "role": "EXTERNAL_VALIDATION_ONLY"
+    },
+    "realizedConsumptionShare": {
+      "lower": 0.814839,
+      "upper": 1.0,
+      "role": "EXTERNAL_VALIDATION_ONLY"
+    }
+  },
+  "replicationEligibility": {
+    "mustPassOnBothHeldoutSeeds": true,
+    "strictImprovementEpsilon": 0,
+    "sameSeedControlRequired": true,
+    "labourBandDistanceStrictlyImproved": true,
+    "realizedConsumptionBandDistanceStrictlyImproved": true,
+    "maximumMedianInputShortageRatioVsControl": 1.0,
+    "minimumMedianActiveFirmRatioVsControl": 0.5,
+    "minimumMedianPurchasingPowerRatioVsControl": 0.8,
+    "positiveGvaRowsRequired": true,
+    "positiveIncomeRowsRequired": true,
+    "exactCanonicalReplayRequired": true,
+    "exactDiagnosticReplayRequired": true,
+    "hardAccountingHealthRequired": true,
+    "postHocGateRelaxationAuthorized": false
+  },
+  "ranking": {
+    "appliesOnlyToCandidatesPassingBothHeldoutSeeds": true,
+    "primaryCandidateLimit": 1,
+    "orderedCriteria": [
+      "lowest worst-heldout-seed maximum of labour-band and realized-consumption-band distance",
+      "lowest worst-heldout-seed median input-shortage ratio versus same-seed control",
+      "lowest mean nonpositive-GVA share across heldout seeds",
+      "highest minimum active-firm ratio versus same-seed control",
+      "lowest candidate id lexicographically"
+    ],
+    "postOutcomeCandidateAdditionAuthorized": false,
+    "postOutcomeCandidateValueChangeAuthorized": false,
+    "postOutcomeRankingChangeAuthorized": false
+  },
+  "technicalGates": [
+    "exactly eight unique candidate-seed results",
+    "control present on both heldout seeds",
+    "only the frozen control and three frozen finalists executed",
+    "each source engine job passes exact replay and accounting gates",
+    "each relabeled result preserves source rows, summary and world digests",
+    "no canonical mutation",
+    "no heldout-driven candidate or threshold change"
+  ],
+  "blockedActions": [
+    "add another Stage-1 candidate after observing heldout results",
+    "change V, M or W values after observing heldout results",
+    "replace a heldout seed",
+    "extend or shorten the 12-month horizon after observing results",
+    "relax an eligibility threshold",
+    "map empirical bands directly to canonical parameters",
+    "mutate canonical wages, prices, productivity, material coefficients, procurement, household demand or credit rules"
+  ],
+  "nextFrontIfReplicated": "R4-CU-D3D-B6-S3 long-horizon and stress validation of the preregistered primary replicated candidate against canonical control",
+  "nextFrontIfNone": "R4-CU-D3D-B7 causal redesign of demand, inventory valuation and value-transformation topology; no B6 retuning"
+}
