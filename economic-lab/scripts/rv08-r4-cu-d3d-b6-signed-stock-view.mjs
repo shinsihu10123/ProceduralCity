@@ -14,9 +14,15 @@ const signedStockReplacements = [
   ["Math.max(0, world.accounting.gl.naturalBalance(firm.id, 'wages_payable'))", "world.accounting.gl.naturalBalance(firm.id, 'wages_payable')"],
   ["Math.max(0, world.accounting.gl.naturalBalance(household.id, 'wage_receivable'))", "world.accounting.gl.naturalBalance(household.id, 'wage_receivable')"]
 ];
-const scenarioAxisReplacement = [
-  'const expectedProductivity = tag.baseProductivity * tag.productivityFactor;',
-  'const expectedProductivity = tag.baseProductivity * tag.productivityFactor * finite(firm.__r4CuD3dB6S3ExpectedProductivityFactor, 1);'
+const scenarioAxisReplacements = [
+  [
+    'if (Math.abs(tag.baseProductivity - finite(canonicalFirm.productivity)) > 1e-10) return false;',
+    'if (Math.abs(tag.baseProductivity * finite(canonicalFirm.__r4CuD3dB6S3ExpectedProductivityFactor, 1) - finite(canonicalFirm.productivity)) > 1e-10) return false;'
+  ],
+  [
+    'const expectedProductivity = tag.baseProductivity * tag.productivityFactor;',
+    'const expectedProductivity = tag.baseProductivity * tag.productivityFactor * finite(firm.__r4CuD3dB6S3ExpectedProductivityFactor, 1);'
+  ]
 ];
 
 let source = readFileSync(sourcePath, 'utf8');
@@ -28,12 +34,16 @@ for (const [from, to] of signedStockReplacements) {
   signedStockCount += occurrences;
 }
 
-const [axisFrom, axisTo] = scenarioAxisReplacement;
-const scenarioAxisCount = source.split(axisFrom).length - 1;
-assert.equal(scenarioAxisCount, 1, `Expected one scenario-aware terminal-axis replacement; got ${scenarioAxisCount}`);
-source = source.replace(axisFrom, axisTo);
+let scenarioAxisCount = 0;
+for (const [from, to] of scenarioAxisReplacements) {
+  const occurrences = source.split(from).length - 1;
+  assert.equal(occurrences, 1, `Expected one scenario-aware axis replacement for ${from}; got ${occurrences}`);
+  source = source.replace(from, to);
+  scenarioAxisCount += occurrences;
+}
 
 assert.equal(signedStockCount, 8, 'B6 signed-stock compatibility replacement count changed');
+assert.equal(scenarioAxisCount, 2, 'B6 S3 scenario-axis compatibility replacement count changed');
 writeFileSync(outputPath, source, 'utf8');
 console.log('WP_RV08_R4_CU_D3D_B6_DIAGNOSTIC_VIEW', JSON.stringify({
   signedStockReplacements: signedStockCount,
